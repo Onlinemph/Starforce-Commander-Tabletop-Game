@@ -8,6 +8,20 @@ import {
   type DeckState,
   type DestructionOptions,
 } from './damage'
+import {
+  commandSystemBoxes,
+  hasCommandSystems,
+  lentTacticalScan,
+  newCommandState,
+  type CommandState,
+} from './command'
+import {
+  checkOneAttackPerPhase,
+  attackKey,
+  validateCoordinatedFire,
+  FIRING_STEPS,
+  type FiringStep,
+} from './coordinatedFire'
 import { FACE_DAMAGE, rollDie, Rng } from './dice'
 import { commitAllocation } from './engineering'
 import type { CircleObstacle } from './geometry'
@@ -133,11 +147,34 @@ export interface GameState {
   deck: DeckState
   rng: Rng
   log: LogEntry[]
-  /** Ships that have already fired this Combat Segment (E6.2 Step 1). */
+  /**
+   * Ships that have already fired this Combat Segment (E6.2 Step 1). There is
+   * one Combat Segment per combat phase, so this is also the "one opportunity
+   * to fire per phase" of H4.1.1.
+   */
   firedThisSegment: Set<string>
   /** Ships that have raised or lowered a shield this phase (G1.1.5). */
   shieldChangedThisPhase: Set<string>
+  /** Command ship and lent tactical scan, per side, for this round (H5.2). */
+  command: Record<string, CommandState>
+  /** H4 Coordinated Fire is optional (H4.1) and off unless switched on. */
+  coordinatedFire: boolean
+  /** Position in the ten-step firing sequence while H4 is in force (H4.2.3). */
+  firingStepIndex: number
+  /** `faction->targetId` pairs already attacked this phase (H4.3.1). */
+  attackedThisPhase: Set<string>
+  /** The coordinated attack declared on the current step, if any (H4.5). */
+  coordinatedGroup: CoordinatedGroup | null
   options: DestructionOptions
+}
+
+/** Ships of one faction attacking a single target together (H4.5). */
+export interface CoordinatedGroup {
+  /** The firing step the group fires on. */
+  step: number
+  side: string
+  shipIds: string[]
+  targetId: string
 }
 
 export function defaultCommandCard(ship: ShipState): CommandCard {
@@ -156,10 +193,24 @@ export function createGame(args: {
   ships: ShipState[]
   seed?: number
   options?: DestructionOptions
+  /** Play with the optional Coordinated Fire rules (H4.1). */
+  coordinatedFire?: boolean
 }): GameState {
   const rng = new Rng(args.seed ?? 0x5f04ce)
   const options = args.options ?? STANDARD_DESTRUCTION
   setDestructionOptions(options)
+  // One command ship per side (H5.1.6). The side's largest command ship is the
+  // obvious flagship, so pre-designate it; the player may change the choice in
+  // any Resource Allocation Segment.
+  const command: Record<string, CommandState> = {}
+  for (const side of new Set(args.ships.map((s) => s.side))) {
+    const state = newCommandState()
+    const flagship = args.ships
+      .filter((s) => s.side === side && hasCommandSystems(s))
+      .sort((a, b) => commandSystemBoxes(b) - commandSystemBoxes(a))[0]
+    state.commandShipId = flagship?.id ?? null
+    command[side] = state
+  }
   const game: GameState = {
     scenario: args.scenario,
     round: 1,
@@ -172,6 +223,11 @@ export function createGame(args: {
     log: [],
     firedThisSegment: new Set(),
     shieldChangedThisPhase: new Set(),
+    command,
+    coordinatedFire: args.coordinatedFire ?? false,
+    firingStepIndex: 0,
+    attackedThisPhase: new Set(),
+    coordinatedGroup: null,
     options,
   }
   for (const ship of game.ships) beginRound(ship)
@@ -214,6 +270,99 @@ export function sides(game: GameState): string[] {
 
 export function isCombatPhase(phase: Phase): boolean {
   return phase === 'combat-1' || phase === 'combat-2' || phase === 'combat-3'
+}
+
+// ---------------------------------------------------------------------------
+// Command Systems (H5)
+// ---------------------------------------------------------------------------
+
+export function commandStateFor(game: GameState, side: string): CommandState {
+  if (!game.command[side]) game.command[side] = newCommandState()
+  return game.command[side]
+}
+
+/** Tactical scan points every ship currently holds on loan (H5.2.1). */
+export function lentScanPoints(game: GameState): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const side of sides(game)) {
+    Object.assign(out, lentTacticalScan(commandStateFor(game, side), game.ships))
+  }
+  return out
+}
+
+/**
+ * A ship's Tactical Scan level for the firing sequence: the points it plotted
+ * from its own sensors plus any lent by its faction's command ship. Lent points
+ * may push a ship past the cap its own sensor rating imposes (H5.2.2).
+ */
+export function tacticalScanOf(game: GameState, ship: ShipState): number {
+  return ship.sensors.tacticalScan + (lentScanPoints(game)[ship.id] ?? 0)
+}
+
+// ---------------------------------------------------------------------------
+// Coordinated Fire (H4)
+// ---------------------------------------------------------------------------
+
+export function currentFiringStep(game: GameState): FiringStep {
+  return FIRING_STEPS[Math.min(game.firingStepIndex, FIRING_STEPS.length - 1)]
+}
+
+/** Move to the next of the ten firing steps (H4.2.3). */
+export function advanceFiringStep(game: GameState): void {
+  if (game.firingStepIndex >= FIRING_STEPS.length - 1) return
+  game.firingStepIndex += 1
+  // A declared group belongs to the step it was declared on (H4.5.4).
+  game.coordinatedGroup = null
+  pushLog(game, `Firing step ${currentFiringStep(game).index}: ${currentFiringStep(game).label}.`)
+}
+
+/**
+ * Declare a coordinated attack on the current step (H4.5). Returns an error
+ * message when the group is illegal, in which case nothing is declared.
+ */
+export function declareCoordinatedFire(
+  game: GameState,
+  ships: ShipState[],
+  target: ShipState,
+): string | null {
+  const step = currentFiringStep(game)
+  const entries = ships.map((ship) => ({ ship, scan: tacticalScanOf(game, ship) }))
+  const problem = validateCoordinatedFire(entries, step)
+  if (problem) return problem
+  if (ships.some((s) => game.firedThisSegment.has(s.id))) {
+    return 'A ship may only fire once per combat phase (H4.1.1).'
+  }
+  const blocked = attackAllowed(game, ships[0], target)
+  if (blocked) return blocked
+
+  game.coordinatedGroup = {
+    step: step.index,
+    side: ships[0].side,
+    shipIds: ships.map((s) => s.id),
+    targetId: target.id,
+  }
+  // The whole group counts as the faction's one attack on this target (H4.3.1).
+  recordAttack(game, ships[0], target)
+  pushLog(
+    game,
+    `${ships.map((s) => s.name).join(', ')} coordinate fire on ${target.name} at step ${step.index} (H4.5).`,
+  )
+  return null
+}
+
+/**
+ * Whether this faction may still attack `target` during the current combat
+ * phase. Only meaningful under the optional H4 rules; without them the base
+ * game places no such limit.
+ */
+export function attackAllowed(game: GameState, attacker: ShipState, target: ShipState): string | null {
+  if (!game.coordinatedFire) return null
+  return checkOneAttackPerPhase(attacker.side, target, game.attackedThisPhase)
+}
+
+/** Mark a target as attacked by a faction this phase (H4.3.1). */
+export function recordAttack(game: GameState, attacker: ShipState, target: ShipState): void {
+  game.attackedThisPhase.add(attackKey(attacker.side, target.id))
 }
 
 /**
@@ -322,6 +471,11 @@ function runSegmentExit(game: GameState): void {
 
     case 'combat':
       game.firedThisSegment.clear()
+      // Attack markers are removed once all firing is complete (H4.3.1), and
+      // the next phase starts the firing sequence again at step 1.
+      game.attackedThisPhase.clear()
+      game.firingStepIndex = 0
+      game.coordinatedGroup = null
       break
 
     case 'delayed-action':
@@ -367,6 +521,11 @@ function startNewRound(game: GameState): void {
   game.round += 1
   game.phase = 'engineering'
   game.segment = 'resource-allocation'
+  // Lent tactical scan lasts one round and is re-assigned during the coming
+  // Resource Allocation Segment (H5.2.1). The command ship itself is also
+  // re-designated each round (H5.1.6); the previous choice is left in place as
+  // a default the player may change.
+  for (const state of Object.values(game.command)) state.assignments = []
   for (const ship of activeShips(game)) beginRound(ship)
   pushLog(game, `— Round ${game.round} —`)
 }

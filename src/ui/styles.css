@@ -1149,3 +1149,129 @@ input[type='number'] {
   font-size: 0.68rem;
   color: var(--warn);
 }
+
+/* ── Expansion 2: Command Systems (H5) and Coordinated Fire (H4) ─────────── */
+
+.command-systems {
+  margin-top: 0.6rem;
+}
+
+.command-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  margin-top: 0.4rem;
+}
+.command-table th {
+  text-align: left;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  font-weight: 500;
+  padding-bottom: 0.2rem;
+}
+.command-table td {
+  padding: 0.18rem 0.4rem 0.18rem 0;
+  border-top: 1px solid var(--line);
+}
+.command-table tr.is-out td {
+  color: var(--ink-dim);
+  opacity: 0.55;
+}
+.command-table em {
+  color: var(--accent);
+  font-style: normal;
+  font-size: 0.66rem;
+}
+
+.command-points {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.command-points span {
+  min-width: 1ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.command-points button {
+  width: 1.4rem;
+  padding: 0 0.2rem;
+  line-height: 1.4;
+}
+
+.firing-steps {
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+}
+.firing-steps > strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+.firing-steps ol {
+  display: flex;
+  gap: 3px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.firing-steps li {
+  flex: 1;
+  text-align: center;
+  padding: 0.2rem 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  color: var(--ink-dim);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+}
+/* The four Coordinated steps read as one block, set apart from the six
+   Individual steps that precede them (H4.2.3). */
+.firing-steps li.is-coordinated {
+  border-style: dashed;
+}
+.firing-steps li.is-mine {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.firing-steps li.is-past {
+  opacity: 0.4;
+}
+.firing-steps li.is-current {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #08121a;
+  font-weight: 600;
+}
+
+.coordinated-builder {
+  border: 1px dashed var(--accent);
+  border-radius: 5px;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.6rem;
+}
+.coordinated-builder h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.coordinated-ships {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.4rem;
+}
+.coordinated-ships em {
+  color: var(--ink-dim);
+  font-style: normal;
+  font-size: 0.66rem;
+}
+
+.next-step {
+  margin-top: 0.5rem;
+}

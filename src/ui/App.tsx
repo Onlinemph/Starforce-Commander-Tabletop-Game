@@ -17,6 +17,7 @@ import { damageLevel, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
 import { CombatPanel } from './CombatPanel'
 import { CommandCardPanel } from './CommandCardPanel'
+import { CommandSystemsPanel } from './CommandSystemsPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ShipPicker } from './ShipPicker'
@@ -83,6 +84,26 @@ export function App() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label
+          className="checkbox"
+          title="Expansion 2, H4: ships may fire first or fire together, never both"
+        >
+          <input
+            type="checkbox"
+            checked={game.coordinatedFire}
+            onChange={(e) =>
+              act((g) => {
+                g.coordinatedFire = e.target.checked
+                g.firingStepIndex = 0
+                g.coordinatedGroup = null
+                g.attackedThisPhase.clear()
+                pushLog(g, `Coordinated Fire (H4) ${e.target.checked ? 'in force' : 'switched off'}.`)
+              })
+            }
+          />
+          Coordinated Fire
         </label>
 
         <button type="button" className="primary" onClick={() => setPicking(true)}>
@@ -188,13 +209,16 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
   if (game.phase === 'engineering') {
     if (game.segment === 'resource-allocation') {
       return (
-        <div className="segment-help">
-          <h3>Resource Allocation (B2)</h3>
-          <p>
-            Allocate reactor and battery power on the ship form below, then spend the arming points it generates on
-            individual weapon mounts. Unassigned arming points are lost when the segment ends (E4.2.10).
-          </p>
-        </div>
+        <>
+          <div className="segment-help">
+            <h3>Resource Allocation (B2)</h3>
+            <p>
+              Allocate reactor and battery power on the ship form below, then spend the arming points it generates on
+              individual weapon mounts. Unassigned arming points are lost when the segment ends (E4.2.10).
+            </p>
+          </div>
+          <CommandSystemsPanel game={game} ship={ship} />
+        </>
       )
     }
     return <DamageControlPanel game={game} ship={ship} />

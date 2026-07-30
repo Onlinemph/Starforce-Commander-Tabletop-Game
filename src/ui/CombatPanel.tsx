@@ -7,7 +7,24 @@ import {
   type MountSelection,
   type VolleyResult,
 } from '../engine/combat'
-import { damageContext, pushLog, terrainObstacles, type GameState } from '../engine/game'
+import {
+  coordinatedStepFor,
+  FIRING_STEPS,
+  individualStepFor,
+  mayFireAlone,
+} from '../engine/coordinatedFire'
+import {
+  advanceFiringStep,
+  attackAllowed,
+  currentFiringStep,
+  damageContext,
+  declareCoordinatedFire,
+  pushLog,
+  recordAttack,
+  tacticalScanOf,
+  terrainObstacles,
+  type GameState,
+} from '../engine/game'
 import { actualRange, arcTo, canBearOn, effectiveRange, shieldsFacing } from '../engine/geometry'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import { act } from './store'
@@ -15,6 +32,10 @@ import { act } from './store'
 /**
  * Offensive Fire (E6.2). Ships fire in descending order of Tactical Scan; the
  * panel shows who has the option to fire, then walks the firing steps.
+ *
+ * With the optional Coordinated Fire rules in force (H4), Step B of the Combat
+ * Segment instead runs through the ten firing steps of H4.2.3 and the panel
+ * gains a group builder for the four Coordinated steps.
  */
 
 interface Props {
@@ -31,10 +52,29 @@ export function CombatPanel({ game, attacker }: Props) {
   const [lastResult, setLastResult] = useState<VolleyResult | string | null>(null)
 
   const enemies = game.ships.filter((s) => s.side !== attacker.side && !s.destroyed && !s.disengaged)
-  const target = enemies.find((s) => s.id === targetId) ?? null
-  const groups = firingOrder(game.ships)
-  const currentGroup = groups.find((g) => g.some((s) => !game.firedThisSegment.has(s.id)))
-  const mayFire = currentGroup?.some((s) => s.id === attacker.id) ?? false
+  const step = currentFiringStep(game)
+  const group = game.coordinatedGroup
+  const inGroup = group?.shipIds.includes(attacker.id) ?? false
+
+  // A ship in a declared group must fire at the group's target (H4.5).
+  const forcedTargetId = inGroup ? group!.targetId : null
+  const target = enemies.find((s) => s.id === (forcedTargetId ?? targetId)) ?? null
+
+  const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
+  const currentTacScanGroup = groups.find((g) => g.some((s) => !game.firedThisSegment.has(s.id)))
+
+  const alreadyFired = game.firedThisSegment.has(attacker.id)
+  const mayFire = game.coordinatedFire
+    ? !alreadyFired &&
+      (inGroup
+        ? group!.step === step.index
+        : mayFireAlone(step, tacticalScanOf(game, attacker)) &&
+          !(group !== null && group.side === attacker.side))
+    : (currentTacScanGroup?.some((s) => s.id === attacker.id) ?? false)
+
+  // H4.3.1: one attack per faction per target per phase. A group member is
+  // covered by the attack its group already recorded.
+  const attackBlocked = target && !inGroup ? attackAllowed(game, attacker, target) : null
 
   const actual = target ? actualRange(attacker.placement.position, target.placement.position) : null
   const effective =
@@ -70,6 +110,7 @@ export function CombatPanel({ game, attacker }: Props) {
           mode,
           precisionSection: mode === 'precision' ? section : undefined,
           degradedFireControl: degraded,
+          coordinated: inGroup,
           obstacles: terrainObstacles(g.scenario.terrain),
         },
         damageContext(g),
@@ -84,6 +125,7 @@ export function CombatPanel({ game, attacker }: Props) {
 
     act((g) => {
       g.firedThisSegment.add(attacker.id)
+      if (g.coordinatedFire && !inGroup) recordAttack(g, attacker, target)
       const dice = result.records.flatMap((r) => r.rolls.map((d) => d.face)).join(' ')
       pushLog(
         g,
@@ -100,19 +142,31 @@ export function CombatPanel({ game, attacker }: Props) {
     <div className="combat-panel">
       <h3>Offensive Fire — {attacker.name}</h3>
 
-      <div className="firing-order">
-        <strong>Firing sequence (Tactical Scan):</strong>{' '}
-        {groups.length === 0
-          ? '—'
-          : groups
-              .map((g) => `${g[0].sensors.tacticalScan}: ${g.map((s) => s.name).join(' + ')}`)
-              .join(' → ')}
-        {!mayFire && <span className="chip chip-warn">Not this ship&apos;s turn to fire</span>}
-      </div>
+      {game.coordinatedFire ? (
+        <FiringSteps game={game} attacker={attacker} />
+      ) : (
+        <div className="firing-order">
+          <strong>Firing sequence (Tactical Scan):</strong>{' '}
+          {groups.length === 0
+            ? '—'
+            : groups
+                .map((g) => `${tacticalScanOf(game, g[0])}: ${g.map((s) => s.name).join(' + ')}`)
+                .join(' → ')}
+          {!mayFire && <span className="chip chip-warn">Not this ship&apos;s turn to fire</span>}
+        </div>
+      )}
+
+      {game.coordinatedFire && step.kind === 'coordinated' && !group && !alreadyFired && (
+        <CoordinatedFireBuilder game={game} attacker={attacker} />
+      )}
 
       <label className="field">
         <span>Target</span>
-        <select value={targetId ?? ''} onChange={(e) => setTargetId(e.target.value || null)}>
+        <select
+          value={forcedTargetId ?? targetId ?? ''}
+          disabled={forcedTargetId !== null}
+          onChange={(e) => setTargetId(e.target.value || null)}
+        >
           <option value="">— choose a target —</option>
           {enemies.map((e) => (
             <option key={e.id} value={e.id}>
@@ -121,6 +175,16 @@ export function CombatPanel({ game, attacker }: Props) {
           ))}
         </select>
       </label>
+
+      {inGroup && (
+        <p className="hint">
+          Firing with {group!.shipIds.filter((id) => id !== attacker.id).length} other ship(s) on step{' '}
+          {group!.step}. Each ship still resolves a separate volley (H4.6.1), and no member may use
+          precision targeting (H4.6.2).
+        </p>
+      )}
+
+      {attackBlocked && <p className="fire-error">{attackBlocked}</p>}
 
       {target && (
         <div className="range-readout">
@@ -219,7 +283,19 @@ export function CombatPanel({ game, attacker }: Props) {
       </div>
 
       <div className="fire-actions">
-        <button type="button" className="primary" disabled={!target || selected.size === 0} onClick={fire}>
+        <button
+          type="button"
+          className="primary"
+          // H4.1.3 makes the step order binding ("NO EXCEPTIONS"); the base
+          // game's Tactical Scan order is advisory here and only warns.
+          disabled={
+            !target ||
+            selected.size === 0 ||
+            attackBlocked !== null ||
+            (game.coordinatedFire && !mayFire)
+          }
+          onClick={fire}
+        >
           Fire volley
         </button>
         <button
@@ -236,6 +312,17 @@ export function CombatPanel({ game, attacker }: Props) {
       </div>
 
       {typeof lastResult === 'string' && <p className="fire-error">{lastResult}</p>}
+
+      {game.coordinatedFire && (
+        <button
+          type="button"
+          className="next-step"
+          disabled={step.index === FIRING_STEPS.length}
+          onClick={() => act((g) => advanceFiringStep(g))}
+        >
+          Next firing step →
+        </button>
+      )}
 
       {lastResult && typeof lastResult !== 'string' && (
         <div className="volley-result">
@@ -262,6 +349,114 @@ export function CombatPanel({ game, attacker }: Props) {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+/** The ten firing steps of H4.2.3, with the current one called out. */
+function FiringSteps({ game, attacker }: { game: GameState; attacker: ShipState }) {
+  const current = currentFiringStep(game)
+  const scan = tacticalScanOf(game, attacker)
+
+  return (
+    <div className="firing-steps">
+      <strong>
+        Step {current.index} — {current.label}
+      </strong>
+      <ol>
+        {FIRING_STEPS.map((step) => {
+          const mine = mayFireAlone(step, scan)
+          return (
+            <li
+              key={step.index}
+              className={[
+                step.index === current.index ? 'is-current' : '',
+                step.index < current.index ? 'is-past' : '',
+                mine ? 'is-mine' : '',
+                step.kind === 'coordinated' ? 'is-coordinated' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              title={step.label}
+            >
+              {step.index}
+            </li>
+          )
+        })}
+      </ol>
+      <p className="hint">
+        {attacker.name} has Tactical Scan {scan} and fires on step {individualStepFor(scan).index}
+        {coordinatedStepFor(scan) ? ` or step ${coordinatedStepFor(scan)!.index}` : ''} — one opportunity
+        only (H4.2.4).
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Build a coordinated attack on the current step (H4.5). Every ship needs at
+ * least as many tactical scan points as there are ships firing together, and
+ * the group fires on the step matching its highest level.
+ */
+function CoordinatedFireBuilder({ game, attacker }: { game: GameState; attacker: ShipState }) {
+  const [picked, setPicked] = useState<Set<string>>(new Set([attacker.id]))
+  const [targetId, setTargetId] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+
+  const step = currentFiringStep(game)
+  const friends = game.ships.filter(
+    (s) => s.side === attacker.side && !s.destroyed && !s.disengaged && !s.derelict && !game.firedThisSegment.has(s.id),
+  )
+  const enemies = game.ships.filter((s) => s.side !== attacker.side && !s.destroyed && !s.disengaged)
+
+  const toggle = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const declare = () => {
+    const target = enemies.find((s) => s.id === targetId)
+    if (!target) {
+      setError('Choose a target for the coordinated attack.')
+      return
+    }
+    const ships = friends.filter((s) => picked.has(s.id))
+    setError(act((g) => declareCoordinatedFire(g, ships, target)))
+  }
+
+  return (
+    <div className="coordinated-builder">
+      <h4>Coordinated fire — step {step.index}</h4>
+      <div className="coordinated-ships">
+        {friends.map((s) => (
+          <label key={s.id} className="checkbox">
+            <input type="checkbox" checked={picked.has(s.id)} onChange={() => toggle(s.id)} />
+            {s.name} <em>TacScan {tacticalScanOf(game, s)}</em>
+          </label>
+        ))}
+      </div>
+      <label className="field">
+        <span>Common target (H4.3.1)</span>
+        <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+          <option value="">— choose a target —</option>
+          {enemies.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" onClick={declare} disabled={picked.size === 0}>
+        Declare coordinated attack
+      </button>
+      {error && <p className="fire-error">{error}</p>}
+      <p className="hint">
+        Each ship needs Tactical Scan at least equal to the number of ships firing together (H4.5.1),
+        and the group fires on the step set by its highest level (H4.5.5).
+      </p>
     </div>
   )
 }

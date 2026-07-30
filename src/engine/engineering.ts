@@ -5,6 +5,7 @@ import {
   blueShieldRemaining,
   damageControlRating,
   findLine,
+  genSysSetting,
   lineValue,
   mountIsDamaged,
   powerSpent,
@@ -199,7 +200,7 @@ export function commitAllocation(ship: ShipState): CommitResult {
 
       case 'gen-sys':
         // Free power normally covers NRM; purchased circles reach MAX (J1.1).
-        ship.genSysLevel = value >= 2 ? 'max' : value >= 1 ? 'nrm' : 'off'
+        ship.genSysLevel = genSysSetting(ship)
         break
 
       case 'weapon': {

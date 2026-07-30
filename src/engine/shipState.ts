@@ -213,6 +213,21 @@ export function lineValue(ship: ShipState, lineId: string): number {
   return line.freeValue + filled
 }
 
+/**
+ * GEN SYS setting implied by the current allocation (J1.1).
+ *
+ * Free power normally covers NRM; purchased circles reach MAX. Derived rather
+ * than read from `genSysLevel` so that systems which need MAX can be planned
+ * *during* the Resource Allocation Segment — command systems are assigned then
+ * (H5.2.1), before `commitAllocation` writes the committed value.
+ */
+export function genSysSetting(ship: ShipState): 'off' | 'nrm' | 'max' {
+  const line = findLine(ship.form, 'gen-sys')
+  if (!line) return 'off'
+  const value = lineValue(ship, line.id)
+  return value >= 2 ? 'max' : value >= 1 ? 'nrm' : 'off'
+}
+
 export function findLine(form: ShipForm, kind: string, match?: Partial<FunctionLineDef>) {
   return form.functions.find(
     (l) =>

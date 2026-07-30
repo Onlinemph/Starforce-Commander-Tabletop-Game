@@ -1,4 +1,4 @@
-import type { GameState } from '../engine/game'
+import { lentScanPoints, type GameState } from '../engine/game'
 import { accelerationBudget, validatePlot } from '../engine/navigation'
 import { currentMaxSpeed, lineValue, maxReverseSpeed, sensorFunctionCap, turnTemplateAt, type ShipState } from '../engine/shipState'
 import type { Maneuver, ShieldSide, TurnDirection } from '../engine/types'
@@ -35,6 +35,7 @@ export function CommandCardPanel({ game, ship }: Props) {
   const sensorPoints = lineValue(ship, ship.form.functions.find((l) => l.kind === 'sensor')?.id ?? '')
   const sensorsUsed = card.sensors.targeting + card.sensors.jamming + card.sensors.tacticalScan
   const cap = sensorFunctionCap(ship)
+  const lent = lentScanPoints(game)[ship.id] ?? 0
 
   const setManeuver = (maneuver: Maneuver, direction: TurnDirection | null) =>
     act(() => {
@@ -151,6 +152,13 @@ export function CommandCardPanel({ game, ship }: Props) {
         <p className={`hint${sensorsUsed > sensorPoints ? ' is-error' : ''}`}>
           {sensorsUsed} of {sensorPoints} sensor points allocated · max {cap} per function (H2.2.3)
         </p>
+        {lent > 0 && (
+          <p className="hint">
+            Plus {lent} tactical scan point{lent === 1 ? '' : 's'} on loan from the command ship, which may
+            take the ship past its sensor cap (H5.2.2) — effective Tactical Scan{' '}
+            {card.sensors.tacticalScan + lent}.
+          </p>
+        )}
       </div>
 
       <div className="cc-block">

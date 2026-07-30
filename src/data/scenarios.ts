@@ -81,11 +81,48 @@ export const ORBITAL_AMBUSH: Scenario = {
 }
 
 // ---------------------------------------------------------------------------
+// Squadron Engagement (Expansion 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * A three-a-side fleet action.
+ *
+ * Expansion 2 prints no scenario of its own, but its two rules — Coordinated
+ * Fire (H4) and Command Systems (H5) — only bite once several ships of a
+ * faction are fighting together, so this is a plain Standard Placement setup
+ * (S2.4.1) built to exercise them: each side fields a command cruiser and two
+ * line ships.
+ */
+export const SQUADRON_ENGAGEMENT: Scenario = {
+  id: 'exp2-squadron-engagement',
+  name: 'Squadron Engagement (Expansion 2)',
+  background:
+    'Two squadrons meet in open space, each led by a command cruiser. The flagship can lend ' +
+    'tactical scan points to its consorts, letting them fire early — or, under the Coordinated ' +
+    'Fire rules, letting them fire together.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [],
+  objectives: {
+    [BLUE]: 'Break the Red squadron while keeping the flagship intact.',
+    [RED]: 'Break the Blue squadron while keeping the flagship intact.',
+  },
+  specialRules: [
+    'Each flagship carries CMND boxes and may lend one tactical scan point per box, ' +
+      'out to 36 inches, while its GEN SYS line is set to MAX (H5.1).',
+    'Switch on Coordinated Fire to fight the Combat Segment through the ten firing steps ' +
+      'of H4.2.3 instead of the single Tactical Scan pass of H2.4.',
+  ],
+  victory: 'Victory points are earned from damage levels inflicted (S2.8.4).',
+}
+
+// ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
 
 export interface SetupOptions {
   seed?: number
+  /** Play with the optional Coordinated Fire rules (H4.1). */
+  coordinatedFire?: boolean
   /** E11.2 / E11.3 optional rules, off by default in the Standard game. */
   derelicts?: boolean
   explosions?: boolean
@@ -147,12 +184,54 @@ function ambushShips(options: SetupOptions): ShipState[] {
   ]
 }
 
+/**
+ * Three ships a side, flagship first. The player's picked form is used for the
+ * flagship; its consorts keep the printed squadron's line ships.
+ */
+function squadronShips(options: SetupOptions): ShipState[] {
+  const blueFlag = shipFormById('union-yorktown-iiic-class-command-cruiser') ?? YORKTOWN
+  const redFlag = shipFormById('vallari-v-7e-raider-class-command-cruiser') ?? VALLARI_CRUISER
+
+  const ships: ShipState[] = []
+  // Blue enters from the east on facing 6, Red from the west on facing 2, as in
+  // the neutral setup of S3.1.
+  const blueForms = [pickForm(options.forms?.[BLUE], blueFlag), YORKTOWN, YORKTOWN]
+  const redForms = [pickForm(options.forms?.[RED], redFlag), VALLARI_CRUISER, VALLARI_CRUISER]
+
+  blueForms.forEach((form, i) => {
+    ships.push(
+      createShip({
+        id: `blue-${i + 1}`,
+        side: BLUE,
+        name: BLUE_NAMES[i],
+        form,
+        placement: { position: { x: 33, y: 10 + i * 8 }, heading: facingToHeading(6) },
+        speed: 4,
+      }),
+    )
+  })
+  redForms.forEach((form, i) => {
+    ships.push(
+      createShip({
+        id: `red-${i + 1}`,
+        side: RED,
+        name: RED_NAMES[i],
+        form,
+        placement: { position: { x: 3, y: 10 + i * 8 }, heading: facingToHeading(2) },
+        speed: 4,
+      }),
+    )
+  })
+  return ships
+}
+
 export const SCENARIOS: Array<{
   scenario: Scenario
   makeShips: (options: SetupOptions) => ShipState[]
 }> = [
   { scenario: THE_DUEL, makeShips: duelShips },
   { scenario: ORBITAL_AMBUSH, makeShips: ambushShips },
+  { scenario: SQUADRON_ENGAGEMENT, makeShips: squadronShips },
 ]
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
@@ -161,6 +240,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     scenario: entry.scenario,
     ships: entry.makeShips(options),
     seed: options.seed,
+    coordinatedFire: options.coordinatedFire ?? false,
     options: {
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,

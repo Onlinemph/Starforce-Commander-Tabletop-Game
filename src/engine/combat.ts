@@ -79,12 +79,19 @@ export function isLowSpeed(ship: ShipState, negated = false): boolean {
 /**
  * Ships fire in descending order of Tactical Scan; ties fire simultaneously
  * (H2.4.1, H2.4.2). Returns groups of ship ids, highest scan first.
+ *
+ * `scanOf` supplies each ship's effective Tactical Scan. It defaults to the
+ * ship's own sensor plot; a game running Command Systems passes a function that
+ * adds the points lent by its command ship (H5.2.2).
  */
-export function firingOrder(ships: ShipState[]): ShipState[][] {
+export function firingOrder(
+  ships: ShipState[],
+  scanOf: (ship: ShipState) => number = (ship) => ship.sensors.tacticalScan,
+): ShipState[][] {
   const active = ships.filter((s) => !s.destroyed && !s.disengaged && !s.derelict)
   const byScan = new Map<number, ShipState[]>()
   for (const ship of active) {
-    const scan = ship.sensors.tacticalScan
+    const scan = scanOf(ship)
     if (!byScan.has(scan)) byScan.set(scan, [])
     byScan.get(scan)!.push(ship)
   }
@@ -124,6 +131,8 @@ export interface VolleyRequest {
   defenderCoverRerolls?: number
   /** Low-speed penalty suppressed by terrain (C1.5.3, K2.2.1). */
   lowSpeedNegated?: boolean
+  /** Part of a Coordinated Fire attack, which bars precision targeting (H4.6.2). */
+  coordinated?: boolean
   obstacles?: CircleObstacle[]
 }
 
@@ -198,6 +207,10 @@ export function resolveVolley(
     // E9.1.3: precision targeting requires effective range 8 or less.
     if (effective > 8) return { ok: false, reason: 'Precision targeting requires effective range 8 or less (E9.1.3).' }
     if (!request.precisionSection) return { ok: false, reason: 'No precision target section declared (E9.1.2).' }
+    // H4.6.2: too much interference from the other ships' fire.
+    if (request.coordinated) {
+      return { ok: false, reason: 'Ships using Coordinated Fire may not use precision targeting (H4.6.2).' }
+    }
   }
   if (mode === 'proximity' && request.degradedFireControl) {
     // E3.3.2: proximity fire is unavailable while using degraded fire control.

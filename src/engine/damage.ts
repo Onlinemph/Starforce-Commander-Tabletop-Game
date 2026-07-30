@@ -92,6 +92,9 @@ export const autoChoices: DamageChoices = {
       ['TRAN', 'transporter'],
       ['TRAC', 'tractor-beam'],
       ['SCNC', 'sciences'],
+      // Command systems go before sensors: losing a lent tactical scan point
+      // (H5.1.4) hurts less than losing targeting and jamming outright.
+      ['CMND', 'special-system'],
       ['SENS', 'sensors'],
     ]
     for (const [kind, hit] of order) {
@@ -207,17 +210,30 @@ const SYSTEM_FOR_HIT: Partial<Record<DamageHit, SystemKind>> = {
   'special-system': 'SPCL',
 }
 
+/**
+ * Groups a hit may fall on when its own group is gone (E8.4.7, E8.4.10).
+ *
+ * The deck prints no card for probe launchers or command systems, so a Special
+ * System hit is the card that marks them off — H4.7 depends on a command ship
+ * being able to lose CMND boxes. Quarters hits spill onto cargo and special
+ * systems (J11.2.2).
+ */
+const ALTERNATE_SYSTEMS: Partial<Record<DamageHit, SystemKind[]>> = {
+  'special-system': ['PROB', 'CMND'],
+  quarters: ['CRGO', 'SPCL'],
+}
+
+/** The group a hit will actually mark off, or null when nothing is left. */
+function systemTargetFor(ship: ShipState, hit: DamageHit): SystemKind | null {
+  const primary = SYSTEM_FOR_HIT[hit]
+  if (!primary) return null
+  const order = [primary, ...(ALTERNATE_SYSTEMS[hit] ?? [])]
+  return order.find((kind) => undamagedSystemBoxes(ship, kind) > 0) ?? null
+}
+
 /** Can this hit find an undamaged target on the ship? */
 export function hitIsAvailable(ship: ShipState, hit: DamageHit, ctx: DamageContext): boolean {
-  const systemKind = SYSTEM_FOR_HIT[hit]
-  if (systemKind) {
-    if (undamagedSystemBoxes(ship, systemKind) > 0) return true
-    // Quarters hits may also be soaked by cargo or special systems (E8.4.10).
-    if (hit === 'quarters') {
-      return undamagedSystemBoxes(ship, 'CRGO') > 0 || undamagedSystemBoxes(ship, 'SPCL') > 0
-    }
-    return false
-  }
+  if (SYSTEM_FOR_HIT[hit]) return systemTargetFor(ship, hit) !== null
 
   switch (hit) {
     case 'shield-generator':
@@ -291,16 +307,10 @@ function damageSystem(ship: ShipState, kind: SystemKind): void {
  * Returns extra cards to draw (fires, bridge hits) and structure applied.
  */
 function applyHit(ship: ShipState, hit: DamageHit, ctx: DamageContext): { extraCards: number } {
-  const systemKind = SYSTEM_FOR_HIT[hit]
-  if (systemKind) {
-    if (undamagedSystemBoxes(ship, systemKind) > 0) {
-      damageSystem(ship, systemKind)
-    } else if (hit === 'quarters' && undamagedSystemBoxes(ship, 'CRGO') > 0) {
-      damageSystem(ship, 'CRGO') // J11.2.2
-    } else if (hit === 'quarters' && undamagedSystemBoxes(ship, 'SPCL') > 0) {
-      damageSystem(ship, 'SPCL')
-    }
-    ctx.log(`${ship.name}: ${HIT_LABELS[hit]}`)
+  if (SYSTEM_FOR_HIT[hit]) {
+    const target = systemTargetFor(ship, hit)
+    if (target) damageSystem(ship, target)
+    ctx.log(`${ship.name}: ${HIT_LABELS[hit]}${target && target !== SYSTEM_FOR_HIT[hit] ? ` (${target})` : ''}`)
     return { extraCards: 0 }
   }
 

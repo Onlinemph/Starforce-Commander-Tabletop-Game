@@ -5,13 +5,14 @@ of tactical starship combat by Patrick Doyle.
 
 Local hot-seat, no server, no accounts. All game data is canon: **72 ships** through Expansion 3 from
 the Master Ship Book, the **56-card damage deck** and the **attack dice** from the print-and-play
-components. The rules engine is a standalone TypeScript library with no UI dependencies, so it can
+components. The Basic Set Standard rules are complete, plus **Expansion 2** — Command Systems (H5)
+and, behind a toggle, the optional Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
 later be driven by a networked client or an AI opponent without change.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # 147 rules and data-integrity tests
+npm test           # 183 rules and data-integrity tests
 npm run typecheck
 npm run build
 ```
@@ -26,6 +27,9 @@ full Sequence of Play:
 - **Three Combat Phases** — command-card plotting, the Operations Segment steps A–E, simultaneous
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
+
+Plus **Expansion 2**: command ships that lend tactical scan to the fleet, and the optional ten-step
+Coordinated Fire sequence. See below.
 
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
@@ -69,11 +73,54 @@ introduction years the Master Ship List prints.
 | K Space Terrain | ⚠️ | Planets/moons block line of sight; asteroid transit damage and cover done |
 | S2 Scenario Rules | ✅ | Map types, placement, victory points by damage level |
 | S3 Scenarios | ⚠️ | The Duel and Orbital Ambush; the rest are straightforward to add |
+| **H4 Coordinated Fire** *(Expansion 2, optional)* | ✅ | Ten-step firing sequence, group validation, one attack per faction per phase |
+| **H5 Command Systems** *(Expansion 2)* | ✅ | CMND boxes lend tactical scan for the round, live withdrawal on damage |
 
 Optional rules (B2.5 full batteries, C3.6 evasive maneuvers, C3.7 reverse movement, C3.8 emergency
 stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6 boarding) are partly implemented in
 the engine — reverse movement, emergency stop, derelicts and explosions all work — but are not yet
 surfaced as UI toggles beyond the destruction options.
+
+## Expansion 2 — Coordinated Fire and Command Systems
+
+Expansion 2 adds two rules, both implemented.
+
+**H5 Command Systems** is a Standard rule and is always on. A ship with `CMND` boxes on its form is
+a command ship; 18 of the 72 ships in the roster have them, from the COVENTRY IIc (2 boxes) to the
+UNION II/III dreadnoughts (5). While its GEN SYS line is set to **MAX** (H5.1.3), each undamaged
+`CMND` box generates one tactical scan point that the flagship lends to a friendly ship within
+**36 inches** during the Resource Allocation Segment. Lent points last the whole round and let the
+receiving ship exceed the tactical scan cap its own sensor rating imposes (H5.2.2). Only one ship
+per faction may lend at a time (H5.1.6), and it may lend itself at most one point (H5.2.3).
+
+The loan is **live**, not a one-off transfer, which is what makes the worked examples in H4.7 come
+out right: destroy the flagship, or knock out one of its `CMND` boxes, and the points come off the
+recipients immediately. When capacity drops, the tail of the assignment list loses its point unless
+the owning player names a different ship — the "he decides which one as soon as the damage occurs"
+choice, exposed as **revoke** in the panel.
+
+**H4 Coordinated Fire** is marked `(Optional)` in the expansion, so it ships behind the
+**Coordinated Fire** toggle in the top bar and is off by default. With it on, the Combat Segment
+runs through the ten firing steps of H4.2.3 — six Individual steps in descending Tactical Scan
+order, then four Coordinated steps in ascending order — instead of the single Tactical Scan pass of
+H2.4. A ship gets **one** firing opportunity per phase and must choose: fire early alone, or fire
+later together. Coordinating ships each need at least as many tactical scan points as there are
+ships in the group (H4.5.1), a faction may attack any one target only once per phase (H4.3.1), and
+group members may not use precision targeting (H4.6.2).
+
+Two readings had to be settled where the text disagrees with itself:
+
+- **H4.5.5** is headed "ships with different tactical scan levels may not coordinate their fire",
+  but its own worked example has a scan-2 ship and a scan-3 ship firing together on step 8. The
+  engine follows the example: mixed groups are legal and fire on the step matching the group's
+  *highest* level, so coordinating never lets anyone fire earlier than they could alone.
+- **Step 10** is printed as "Up to Five Ships with Tactical Scan Level 5+" while H4.5.3 says
+  "followed by five and up". The engine leaves the ship count open at step 10, because H4.5.1's
+  one-point-per-ship requirement already bounds it — a six-ship group needs six points each.
+
+A three-a-side **Squadron Engagement** scenario ships with the expansion, since neither rule bites
+in a duel. Expansion 2 prints no scenario of its own, so this is a plain Standard Placement setup
+(S2.4.1) with a command cruiser and two line ships per side.
 
 ## Ship data
 
@@ -143,7 +190,9 @@ line — which is exactly what E7.2.5 describes.
 - **Terrain** (K) — planets and moons block line of sight, and asteroid transit damage and cover are
   implemented, but the printed terrain counters are raster art, so their individual SPD/DMG/CVR/SCAN
   values have not been imported.
-- **Scenarios** (S3) — The Duel and Orbital Ambush; the rest are straightforward to add.
+- **Scenarios** (S3) — The Duel, Orbital Ambush and the Expansion 2 Squadron Engagement; the rest
+  are straightforward to add.
+- **Expansions 1, 3, 4 and 5** — not yet supplied. Expansion 2 (H4, H5) is done.
 
 ## Architecture
 
@@ -155,6 +204,8 @@ src/
     geometry.ts    Ranges, arcs, line of sight, turn-template maneuvers
     shipState.ts   Mutable ship state and derived readings
     damage.ts      Damage deck, card resolution, volley application
+    command.ts     Command Systems: lending tactical scan (H5)
+    coordinatedFire.ts  The ten-step firing sequence (H4, optional)
     combat.ts      Volley resolution, rerolls, fire modes
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement

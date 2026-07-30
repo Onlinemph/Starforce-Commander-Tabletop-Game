@@ -34,7 +34,8 @@ export function act<T>(mutator: (g: GameState) => T): T {
 }
 
 export function resetGame(scenarioId: string, options?: SetupOptions): void {
-  game = startScenario(scenarioId, options)
+  // Optional rules in force carry across a scenario change or a rematch.
+  game = startScenario(scenarioId, { coordinatedFire: game.coordinatedFire, ...options })
   emit()
 }
 
