@@ -31,6 +31,23 @@ import {
   type Formation,
 } from './formation'
 import type { CircleObstacle } from './geometry'
+import {
+  cloudAt,
+  degradedByClouds,
+  HAMPERED_SYSTEMS,
+  ftlBlocked,
+  lowSpeedPenaltyNegated,
+  overspeedDice,
+  safeSpeed,
+  shieldsInoperative,
+  STANDARD_NEBULA_EFFECTS,
+  systemIsHampered,
+  turbulenceTurn,
+  underCloudEffects,
+  type CloudConditions,
+  type CloudFeature,
+  type NebulaEffects,
+} from './nebula'
 import { scoutSupportFor, type ScoutSupport } from './scouting'
 import {
   disengagementOptions,
@@ -43,10 +60,11 @@ import {
   damageLevel,
   structureRemaining,
   structureTotal,
+  undamagedSystemBoxes,
   VICTORY_FRACTION,
   type ShipState,
 } from './shipState'
-import type { CommandCard, Phase, Segment, ShieldSide } from './types'
+import type { CommandCard, Phase, Segment, ShieldSide, SystemKind } from './types'
 
 /**
  * Game orchestration: the Sequence of Play (A3) and everything that hangs off
@@ -57,7 +75,7 @@ import type { CommandCard, Phase, Segment, ShieldSide } from './types'
 // Terrain (K)
 // ---------------------------------------------------------------------------
 
-export type TerrainKind = 'planet' | 'moon' | 'asteroid-field'
+export type TerrainKind = 'planet' | 'moon' | 'asteroid-field' | 'gas-cloud'
 
 export interface Terrain {
   id: string
@@ -71,15 +89,38 @@ export interface Terrain {
   damageDie?: 'blue' | 'green' | 'yellow' | 'red'
   /** Asteroid fields only: defender rerolls granted as cover (K2.1.8). */
   cover?: number
+  /** Gas clouds only: information points needed to find a hidden unit (K5.2.3). */
+  scan?: number
 }
 
 export function terrainObstacles(terrain: Terrain[]): CircleObstacle[] {
   return terrain.map((t) => ({
     center: t.center,
     radius: t.radius,
-    // Planets and moons block line of sight; asteroids merely obstruct (K3.1.3).
+    // Planets and moons block line of sight; asteroids and gas clouds merely
+    // obstruct — a cloud degrades fire control instead (K3.1.3, K5.2.5).
     blocksLos: t.kind === 'planet' || t.kind === 'moon',
   }))
+}
+
+/** Gas cloud counters on the map (K5.1). */
+export function gasClouds(scenario: Scenario): CloudFeature[] {
+  return scenario.terrain
+    .filter((t) => t.kind === 'gas-cloud')
+    .map((t) => ({ id: t.id, name: t.name, center: t.center, radius: t.radius, scan: t.scan }))
+}
+
+/**
+ * The nebula and gas cloud conditions in force (K4, K5). A scenario declares
+ * whether the whole play area is a nebula (K4.1.1) and may tune which Common
+ * Nebula Effects apply (K4.2, K5.2.4).
+ */
+export function cloudConditions(scenario: Scenario): CloudConditions {
+  return {
+    nebula: scenario.nebula ?? false,
+    clouds: gasClouds(scenario),
+    effects: { ...STANDARD_NEBULA_EFFECTS, ...scenario.nebulaEffects },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +137,10 @@ export interface Scenario {
   objectives: Record<string, string>
   specialRules?: string[]
   victory: string
+  /** The whole play area is inside a nebula (K4.1.1). */
+  nebula?: boolean
+  /** Scenario-specific tuning of the Common Nebula Effects (K4.2, K5.2.4). */
+  nebulaEffects?: Partial<NebulaEffects>
 }
 
 // ---------------------------------------------------------------------------
@@ -270,6 +315,68 @@ export function scoutSupport(game: GameState, attacker: ShipState, target: ShipS
 /** The formation a ship is flying in, if any (C5). */
 export function formationFor(game: GameState, ship: ShipState): Formation | null {
   return formationOf(game.formations, ship.id)
+}
+
+// ---------------------------------------------------------------------------
+// Nebulae and gas clouds (K4, K5)
+// ---------------------------------------------------------------------------
+
+/** Cloud effects biting on one ship right now, for the UI and the log. */
+export interface CloudStatus {
+  /** Inside a nebula or a gas cloud. */
+  inside: boolean
+  /** The gas cloud the ship is in, if any (K5.1.2). */
+  cloud: CloudFeature | null
+  /** Highest speed that costs nothing here (K4.2.2, K5.2.1). */
+  safeSpeed: number
+  /** Blue dice the ship will roll for its current speed. */
+  overspeedDice: number
+  shieldsInoperative: boolean
+  /** Systems switched off unless GEN SYS is at MAX (K4.2.4). */
+  hamperedSystems: SystemKind[]
+  ftlBlocked: boolean
+}
+
+export function cloudStatus(game: GameState, ship: ShipState): CloudStatus {
+  const conditions = cloudConditions(game.scenario)
+  const cloud = cloudAt(conditions.clouds, ship.placement.position)
+  const inside = underCloudEffects(conditions, ship)
+  return {
+    inside,
+    cloud,
+    safeSpeed: safeSpeed(conditions, ship.placement.position),
+    overspeedDice: overspeedDice(conditions, ship),
+    shieldsInoperative: shieldsInoperative(conditions, ship),
+    hamperedSystems: HAMPERED_SYSTEMS.filter((kind) => systemIsHampered(conditions, ship, kind)),
+    ftlBlocked: ftlBlocked(conditions, ship),
+  }
+}
+
+/**
+ * Terrain modifiers for one volley (K4.2.1, K4.2.3, K4.2.6, K5.2.5), ready to
+ * spread into a `VolleyRequest`.
+ */
+export function cloudModifiers(
+  game: GameState,
+  attacker: ShipState,
+  target: ShipState,
+): { degradedFireControl: boolean; lowSpeedNegated: boolean; targetShieldsInoperative: boolean } {
+  const conditions = cloudConditions(game.scenario)
+  return {
+    degradedFireControl: degradedByClouds(conditions, attacker, target),
+    lowSpeedNegated: lowSpeedPenaltyNegated(conditions, target),
+    targetShieldsInoperative: shieldsInoperative(conditions, target),
+  }
+}
+
+/**
+ * Undamaged boxes of a system, after a nebula switches it off (K4.2.4). Use
+ * this rather than `undamagedSystemBoxes` wherever a system's *capability* is
+ * being read, so SCNC, TRAN and TRAC go dark below GEN SYS MAX.
+ */
+export function workingSystemBoxes(game: GameState, ship: ShipState, kind: SystemKind): number {
+  if (systemIsHampered(cloudConditions(game.scenario), ship, kind)) return 0
+  return undamagedSystemBoxes(ship, kind)
 }
 
 // ---------------------------------------------------------------------------
@@ -497,6 +604,7 @@ function runSegmentExit(game: GameState): void {
       // finish the move sharing its position exactly (C5.1.3).
       pruneFormations(game.formations, game.ships)
       for (const formation of game.formations) alignToLead(formation, game.ships)
+      applyTurbulence(game)
       break
     }
 
@@ -524,7 +632,12 @@ function runSegmentExit(game: GameState): void {
 
     case 'disengagement': {
       for (const ship of activeShips(game)) {
-        const options = disengagementOptions(ship, enemiesOf(game, ship), game.scenario.bounds)
+        const options = disengagementOptions(
+          ship,
+          enemiesOf(game, ship),
+          game.scenario.bounds,
+          !cloudStatus(game, ship).ftlBlocked, // K4.2.7
+        )
         // Leaving a fixed map is automatic (J9.2.4); the rest are voluntary and
         // are triggered from the UI before this segment ends.
         if (options.some((o) => o.startsWith('Left the map'))) {
@@ -610,6 +723,7 @@ export function setShieldDown(game: GameState, ship: ShipState, side: ShieldSide
 
 /** Asteroid fields damage ships that transit above the safe speed (K2.1.6). */
 function applyTerrainDamage(game: GameState, ship: ShipState, path: Array<{ x: number; y: number }>): void {
+  applyCloudDamage(game, ship)
   for (const feature of game.scenario.terrain) {
     if (feature.kind !== 'asteroid-field') continue
     const entered = path.some((p) => Math.hypot(p.x - feature.center.x, p.y - feature.center.y) <= feature.radius)
@@ -632,5 +746,58 @@ function applyTerrainDamage(game: GameState, ship: ShipState, path: Array<{ x: n
     const side: ShieldSide = ship.speed < 0 ? 'A' : 'F'
     pushLog(game, `${ship.name} takes ${total} damage transiting ${feature.name}.`)
     applyVolley(ship, { standard: total, leak: 0, structurePenetration: 0, side }, damageContext(game))
+  }
+}
+
+/**
+ * Speed damage inside a nebula or gas cloud (K4.2.2, K5.2.2): one blue die per
+ * point of speed above the local safe speed, rolled each Navigation Segment.
+ */
+function applyCloudDamage(game: GameState, ship: ShipState): void {
+  const conditions = cloudConditions(game.scenario)
+  const dice = overspeedDice(conditions, ship)
+  if (dice === 0) return
+
+  let total = 0
+  for (let i = 0; i < dice; i++) {
+    const die = rollDie('blue', game.rng)
+    total += die.face === 'S' ? 0 : FACE_DAMAGE[die.face]
+  }
+  if (total === 0) return
+
+  const where = cloudAt(conditions.clouds, ship.placement.position)
+  const side: ShieldSide = ship.speed < 0 ? 'A' : 'F'
+  pushLog(
+    game,
+    `${ship.name} takes ${total} damage running at speed ${Math.abs(ship.speed)} ` +
+      `inside ${where ? where.name : 'the nebula'} (${where ? 'K5.2.2' : 'K4.2.2'}).`,
+  )
+  applyVolley(
+    ship,
+    {
+      standard: total,
+      leak: 0,
+      structurePenetration: 0,
+      side,
+      shieldsInoperative: shieldsInoperative(conditions, ship),
+    },
+    damageContext(game),
+  )
+}
+
+/**
+ * Turbulence (K4.2.5, optional): after movement in Phase 3, each ship inside a
+ * nebula or cloud may be pushed 30 degrees off course.
+ */
+function applyTurbulence(game: GameState): void {
+  const conditions = cloudConditions(game.scenario)
+  if (!conditions.effects.turbulence || game.phase !== 'combat-3') return
+
+  for (const ship of activeShips(game)) {
+    if (ship.derelict || !underCloudEffects(conditions, ship)) continue
+    const turn = turbulenceTurn(game.rng)
+    if (turn === 0) continue
+    ship.placement.heading = (ship.placement.heading + turn + 360) % 360
+    pushLog(game, `${ship.name} is pushed ${Math.abs(turn)}° ${turn > 0 ? 'right' : 'left'} by turbulence (K4.2.5).`)
   }
 }

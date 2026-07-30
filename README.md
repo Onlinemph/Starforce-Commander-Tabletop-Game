@@ -5,15 +5,15 @@ of tactical starship combat by Patrick Doyle.
 
 Local hot-seat, no server, no accounts. All game data is canon: **72 ships** through Expansion 3 from
 the Master Ship Book, the **56-card damage deck** and the **attack dice** from the print-and-play
-components. The Basic Set Standard rules are complete, plus **Expansions 1 and 2** — Formation
-Maneuvering (C5), Scouting Sensors (H3), Command Systems (H5), and, behind a toggle, the optional
-Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
+components. The Basic Set Standard rules are complete, plus **Expansions 1, 2 and 3** — Formation
+Maneuvering (C5), Scouting Sensors (H3), Command Systems (H5), nebulae and gas clouds (K4, K5), and,
+behind a toggle, the optional Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
 later be driven by a networked client or an AI opponent without change.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # 219 rules and data-integrity tests
+npm test           # 245 rules and data-integrity tests
 npm run typecheck
 npm run build
 ```
@@ -29,9 +29,9 @@ full Sequence of Play:
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
 
-Plus **Expansions 1 and 2**: squadrons flying as one counter, scouts that illuminate and jam for the
-whole fleet, command ships that lend tactical scan, and the optional ten-step Coordinated Fire
-sequence. See below.
+Plus **Expansions 1, 2 and 3**: squadrons flying as one counter, scouts that illuminate and jam for
+the whole fleet, command ships that lend tactical scan, the optional ten-step Coordinated Fire
+sequence, and battles fought inside a nebula. See below.
 
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
@@ -80,6 +80,8 @@ introduction years the Master Ship List prints.
 | **H4 Coordinated Fire** *(Expansion 2, optional)* | ✅ | Ten-step firing sequence, group validation, one attack per faction per phase |
 | **H5 Command Systems** *(Expansion 2)* | ✅ | CMND boxes lend tactical scan for the round, live withdrawal on damage |
 | E11.3 Ship Explosions *(optional)* | ✅ | Excess-damage check, range-1 blast, aft shield for stacked ships |
+| **K4 Nebula** *(Expansion 3)* | ✅ | All eight Common Nebula Effects, plus optional turbulence |
+| **K5 Gas Clouds** *(Expansion 3)* | ✅ | Counters, safe speed 1, transit damage, all four degraded-fire cases |
 
 Optional rules (B2.5 full batteries, C3.6 evasive maneuvers, C3.7 reverse movement, C3.8 emergency
 stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6 boarding) are partly implemented in
@@ -173,6 +175,45 @@ bites in a duel. Neither expansion prints a scenario of its own, so this is a pl
 Placement setup (S2.4.1): a command cruiser, a line ship and a scout per side, entering in a tight
 vee so the squadron can form up in the first Command Segment.
 
+## Expansion 3 — Nebulae and Gas Clouds
+
+Expansion 3's Sections B and E are the Version 2.6 text of chapters the Basic Set rulebook already
+carries — the same B1–B3, E3, E4 and E10 this project implemented from the base book. Comparing
+every rule id in the expansion against the base rulebook turns up exactly 28 that are new, and all
+28 are K4 and K5. (K6 Hidden Units is a header reserving space for a future expansion.)
+
+**K4 Nebula** covers the entire play area and has no counter (K4.1.1). All eight Common Nebula
+Effects are implemented:
+
+| Rule | Effect |
+| --- | --- |
+| K4.2.1 | Blue and green shield boxes are ignored — damage strikes armor, then goes internal |
+| K4.2.2 | Safe speed 2; one blue damage die per point above it, every Navigation Segment |
+| K4.2.3 | No low-speed penalty; slow ships are no easier to hit |
+| K4.2.4 | SCNC, TRAN and TRAC are offline unless GEN SYS is set to MAX |
+| K4.2.5 | *(Optional)* Turbulence: in Phase 3, one red and one green die may push a ship 30° off course |
+| K4.2.6 | All weapon fire uses Degraded Fire Control (E10) |
+| K4.2.7 | No FTL travel, and no FTL disengagement |
+| K4.2.8 | Cloaking gives no benefit — noted for Expansion 5, which introduces cloaks |
+
+Because "specific scenarios may alter the effects of a nebula" (K4.2), and K5.2.4 asks players to
+agree which effects apply inside a gas cloud, each effect is a switch on the scenario. Turbulence is
+the only one off by default, since it is the only one the rules mark `(Optional)`.
+
+**K5 Gas Clouds** are denser patches drawn as counters. A ship is inside once its base overlaps the
+counter (K5.1.2), which the engine measures as the cloud's radius plus half a 1.5-inch counter. The
+safe speed drops to 1 (K5.2.1), transit damage follows the same one-blue-die rule (K5.2.2), each
+counter records the information points needed to find a hidden unit in it (K5.2.3), and K5.2.4 sends
+everything else back to the Common Nebula Effects above. K5.2.5's four degraded-fire cases —
+shooting out, shooting in, both inside, and a line of sight merely crossing a cloud — reduce to "any
+cloud anywhere on the firing line", which is how the engine tests it.
+
+Where a nebula and a gas cloud overlap, the cloud is the denser region, so its lower safe speed wins.
+
+A **Nebula Patrol** scenario ships with it: two patrols a side, a nebula over the whole map and two
+gas clouds inside it (K4.1.2 allows exactly that). With no shields, a crawl for a safe speed and
+every shot degraded, it plays nothing like open space.
+
 ## Ship data
 
 `src/data/ships.json` holds all 72 forms, machine-extracted from the **Master Ship Book** (all ships
@@ -243,14 +284,17 @@ line — which is exactly what E7.2.5 describes.
   engine, but there are no shuttles or fighters to fly yet.
 - **Operations systems** (J3–J8) — tractor beams, transporters, sciences, probes and shuttle bays are
   on the ship form and take damage correctly, but are not interactively usable.
-- **Terrain** (K) — planets and moons block line of sight, and asteroid transit damage and cover are
-  implemented, but the printed terrain counters are raster art, so their individual SPD/DMG/CVR/SCAN
-  values have not been imported.
-- **Scenarios** (S3) — The Duel, Orbital Ambush and the Squadron Engagement; the rest are
-  straightforward to add.
+- **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
+  the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
+  numbered counter have not been imported; scenarios set them directly instead.
+- **Hidden units** (K6) — the rule is a placeholder in Expansion 3 itself ("we will add Hidden Units
+  in a future expansion"). Gas clouds carry their SCAN value ready for it.
+- **Scenarios** (S3) — The Duel, Orbital Ambush, the Squadron Engagement and Nebula Patrol; the rest
+  are straightforward to add.
 - **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
   points (H3.6), but the scan procedure itself is not interactive.
-- **Expansions 3, 4 and 5** — not yet supplied. Expansions 1 (C5, H3) and 2 (H4, H5) are done.
+- **Expansions 4 and 5** — not yet supplied. Expansion 4 is the Master Ship Book, already imported
+  in full. Expansions 1 (C5, H3), 2 (H4, H5) and 3 (K4, K5) are done.
 
 ## Architecture
 
@@ -265,6 +309,7 @@ src/
     command.ts     Command Systems: lending tactical scan (H5)
     coordinatedFire.ts  The ten-step firing sequence (H4, optional)
     formation.ts   Formation maneuvering: joining, leading, flying as one (C5)
+    nebula.ts      Nebulae and gas clouds (K4, K5)
     scouting.ts    Scouting sensors: illumination, area jamming, scans (H3)
     combat.ts      Volley resolution, rerolls, fire modes
     engineering.ts Resource allocation, arming, damage control

@@ -136,6 +136,14 @@ export interface VolleyRequest {
   coordinated?: boolean
   /** Targeting and area jamming lent by scouts (H3.4, H3.5). */
   scoutSupport?: ScoutSupport
+  /** Target is inside a nebula or gas cloud, so its shields do nothing (K4.2.1). */
+  targetShieldsInoperative?: boolean
+  /**
+   * Working SCNC boxes on the attacker, for the precision-targeting hand
+   * (E9.2.2). Defaults to its undamaged boxes; a nebula can switch them off
+   * (K4.2.4).
+   */
+  attackerSciences?: number
   obstacles?: CircleObstacle[]
 }
 
@@ -383,7 +391,15 @@ export function resolveVolley(
     structurePenetration = 0
   }
 
-  const damage: VolleyDamage = { standard, leak, structurePenetration, side: targetShield }
+  const damage: VolleyDamage = {
+    standard,
+    leak,
+    structurePenetration,
+    side: targetShield,
+    // K4.2.1: inside a nebula or gas cloud the target's blue and green boxes
+    // are ignored and damage goes straight to armor.
+    shieldsInoperative: request.targetShieldsInoperative,
+  }
 
   // Precision targeting: the attacker draws a private hand of replacement
   // cards before damage is applied (E9.2.2).
@@ -395,7 +411,7 @@ export function resolveVolley(
         return traitValue(weapon, 'PREC') ?? 0
       }),
     )
-    const scnc = undamagedSystemBoxes(attacker, 'SCNC')
+    const scnc = request.attackerSciences ?? undamagedSystemBoxes(attacker, 'SCNC')
     const cardCount = precisionLevel + (attacker.genSysLevel === 'max' ? scnc * 2 : scnc)
     const hand = Array.from({ length: cardCount }, () => drawCard(ctx.deck, ctx.rng))
     volleyCtx.precision = { section: request.precisionSection, hand }

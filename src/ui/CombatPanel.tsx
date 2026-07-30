@@ -16,6 +16,7 @@ import {
 import {
   advanceFiringStep,
   attackAllowed,
+  cloudModifiers,
   currentFiringStep,
   damageContext,
   declareCoordinatedFire,
@@ -23,6 +24,7 @@ import {
   recordAttack,
   scoutSupport,
   tacticalScanOf,
+  workingSystemBoxes,
   terrainObstacles,
   type GameState,
 } from '../engine/game'
@@ -80,13 +82,19 @@ export function CombatPanel({ game, attacker }: Props) {
 
   // Scout targeting and area jamming both bend the effective range (H3.4, H3.5).
   const support = target ? scoutSupport(game, attacker, target) : NO_SCOUT_SUPPORT
+  // Nebulae and gas clouds force degraded fire control, cancel the low-speed
+  // penalty and switch the target's shields off (K4.2.1, K4.2.3, K4.2.6, K5.2.5).
+  const clouds = target
+    ? cloudModifiers(game, attacker, target)
+    : { degradedFireControl: false, lowSpeedNegated: false, targetShieldsInoperative: false }
+  const degradedNow = degraded || clouds.degradedFireControl
   const actual = target ? actualRange(attacker.placement.position, target.placement.position) : null
   const effective =
     target !== null && actual !== null
       ? effectiveRange(
           actual,
           target.sensors.jamming + support.jamming,
-          degraded ? 0 : attacker.sensors.targeting + support.targeting,
+          degradedNow ? 0 : attacker.sensors.targeting + support.targeting,
         )
       : null
   const targetArcs = target ? arcTo(attacker.placement.position, attacker.placement.heading, target.placement.position) : []
@@ -109,23 +117,28 @@ export function CombatPanel({ game, attacker }: Props) {
       return { weaponId, mountIndex: Number(indexStr) }
     })
 
-    const result = act((g) =>
-      resolveVolley(
+    const result = act((g) => {
+      const terrain = cloudModifiers(g, attacker, target)
+      return resolveVolley(
         {
           attacker,
           target,
           mounts,
           mode,
           precisionSection: mode === 'precision' ? section : undefined,
-          degradedFireControl: degraded,
           coordinated: inGroup,
           scoutSupport: scoutSupport(g, attacker, target),
+          // A nebula can switch the sciences off, shrinking the precision hand
+          // (K4.2.4, E9.2.2).
+          attackerSciences: workingSystemBoxes(g, attacker, 'SCNC'),
+          ...terrain,
+          degradedFireControl: degraded || terrain.degradedFireControl,
           obstacles: terrainObstacles(g.scenario.terrain),
         },
         damageContext(g),
         g.rng,
-      ),
-    )
+      )
+    })
 
     if (!result.ok) {
       setLastResult(result.reason)
@@ -202,7 +215,7 @@ export function CombatPanel({ game, attacker }: Props) {
             Effective {effective}&quot;{' '}
             <em>
               (+{target.sensors.jamming + support.jamming} jam −{' '}
-              {degraded ? 0 : attacker.sensors.targeting + support.targeting} targeting)
+              {degradedNow ? 0 : attacker.sensors.targeting + support.targeting} targeting)
             </em>
           </span>
           {support.targeting > 0 && (
@@ -217,7 +230,19 @@ export function CombatPanel({ game, attacker }: Props) {
           )}
           <span>Firing arc {targetArcs.join(' or ')}</span>
           <span>Strikes {shieldOptions.join(' or ')} shield</span>
-          {target.speed === 0 && <span className="chip chip-warn">Low-speed penalty (C1.5)</span>}
+          {target.speed === 0 && !clouds.lowSpeedNegated && (
+            <span className="chip chip-warn">Low-speed penalty (C1.5)</span>
+          )}
+          {clouds.degradedFireControl && (
+            <span className="chip chip-warn" title="K4.2.6, K5.2.5">
+              Degraded fire control — nebula or gas cloud
+            </span>
+          )}
+          {clouds.targetShieldsInoperative && (
+            <span className="chip chip-warn" title="K4.2.1">
+              Target&apos;s shields inoperative
+            </span>
+          )}
         </div>
       )}
 
@@ -240,7 +265,12 @@ export function CombatPanel({ game, attacker }: Props) {
           </button>
         ))}
         <label className="checkbox" title="Firing at small targets, cloaked ships or through terrain (E10)">
-          <input type="checkbox" checked={degraded} onChange={(e) => setDegraded(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={degradedNow}
+            disabled={clouds.degradedFireControl}
+            onChange={(e) => setDegraded(e.target.checked)}
+          />
           Degraded fire control
         </label>
       </div>

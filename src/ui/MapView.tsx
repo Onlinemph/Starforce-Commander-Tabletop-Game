@@ -50,7 +50,13 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
   return (
     <svg className="map" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Play surface">
-      <rect x={0} y={0} width={w} height={h} className="map-bg" />
+      <rect
+        x={0}
+        y={0}
+        width={w}
+        height={h}
+        className={`map-bg${game.scenario.nebula ? ' is-nebula' : ''}`}
+      />
       {grid}
 
       {/* Terrain (Section K) */}

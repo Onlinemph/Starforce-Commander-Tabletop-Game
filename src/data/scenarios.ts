@@ -121,6 +121,64 @@ export const SQUADRON_ENGAGEMENT: Scenario = {
 }
 
 // ---------------------------------------------------------------------------
+// Nebula Patrol (Expansion 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * A knife fight inside a nebula.
+ *
+ * K4.1.1 puts the nebula over the whole play area, and K4.1.2 lets other
+ * terrain sit inside it, so this adds two gas clouds as denser patches. With
+ * main shields down (K4.2.1), a safe speed of 2 (K4.2.2) and every shot on
+ * degraded fire control (K4.2.6), it is a very different battle from open
+ * space — which is exactly what Expansion 3's terrain chapter is for.
+ */
+export const NEBULA_PATROL: Scenario = {
+  id: 'exp3-nebula-patrol',
+  name: 'Nebula Patrol (Expansion 3)',
+  background:
+    'Two patrols grope for each other deep inside a nebula. Shields are useless in the ionised ' +
+    'gas, sensors barely reach, and anything faster than a crawl tears at the hull. Denser ' +
+    'clouds drift across the battle, worse in every respect.',
+  bounds: { width: 36, height: 36, fixed: true },
+  nebula: true,
+  terrain: [
+    {
+      id: 'cloud-1',
+      kind: 'gas-cloud',
+      name: 'Gas cloud 1',
+      center: { x: 13, y: 14 },
+      radius: 4,
+      // Information points needed to find a hidden unit inside (K5.2.3).
+      scan: 3,
+    },
+    {
+      id: 'cloud-2',
+      kind: 'gas-cloud',
+      name: 'Gas cloud 2',
+      center: { x: 24, y: 23 },
+      radius: 5,
+      scan: 4,
+    },
+  ],
+  objectives: {
+    [BLUE]: 'Find the Vallari patrol in the murk and destroy it.',
+    [RED]: 'Find the Union patrol in the murk and destroy it.',
+  },
+  specialRules: [
+    'The nebula covers the whole map (K4.1.1). Blue and green shield boxes are ignored; damage ' +
+      'strikes armor and then goes internal (K4.2.1).',
+    'Safe speed is 2 — one blue damage die per point above it, every Navigation Segment ' +
+      '(K4.2.2). Inside a gas cloud the limit drops to 1 (K5.2.1).',
+    'All weapon fire uses Degraded Fire Control, and slow targets gain no low-speed penalty ' +
+      '(K4.2.6, K4.2.3).',
+    'SCNC, TRAN and TRAC only work with GEN SYS at MAX (K4.2.4), and no ship may use FTL ' +
+      '(K4.2.7).',
+  ],
+  victory: 'Victory points are earned from damage levels inflicted (S2.8.4).',
+}
+
+// ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
 
@@ -258,7 +316,46 @@ export const SCENARIOS: Array<{
   { scenario: THE_DUEL, makeShips: duelShips },
   { scenario: ORBITAL_AMBUSH, makeShips: ambushShips },
   { scenario: SQUADRON_ENGAGEMENT, makeShips: squadronShips },
+  { scenario: NEBULA_PATROL, makeShips: nebulaShips },
 ]
+
+/** Two ships a side, entering the nebula at the safe speed of 2 (K4.2.2). */
+function nebulaShips(options: SetupOptions): ShipState[] {
+  return [
+    createShip({
+      id: 'blue-1',
+      side: BLUE,
+      name: BLUE_NAMES[0],
+      form: pickForm(options.forms?.[BLUE], YORKTOWN),
+      placement: { position: { x: 31, y: 8 }, heading: facingToHeading(5) },
+      speed: 2,
+    }),
+    createShip({
+      id: 'blue-2',
+      side: BLUE,
+      name: BLUE_NAMES[1],
+      form: YORKTOWN,
+      placement: { position: { x: 33, y: 12 }, heading: facingToHeading(5) },
+      speed: 2,
+    }),
+    createShip({
+      id: 'red-1',
+      side: RED,
+      name: RED_NAMES[0],
+      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
+      placement: { position: { x: 5, y: 28 }, heading: facingToHeading(1) },
+      speed: 2,
+    }),
+    createShip({
+      id: 'red-2',
+      side: RED,
+      name: RED_NAMES[1],
+      form: VALLARI_CRUISER,
+      placement: { position: { x: 3, y: 24 }, heading: facingToHeading(1) },
+      speed: 2,
+    }),
+  ]
+}
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
   const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]

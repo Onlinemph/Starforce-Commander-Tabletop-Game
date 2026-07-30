@@ -252,12 +252,14 @@ export function disengagementOptions(
   ship: ShipState,
   enemies: ShipState[],
   bounds: MapBounds,
+  /** Set false inside a nebula or gas cloud, which shuts FTL down (K4.2.7). */
+  ftlAvailable = true,
 ): string[] {
   const options: string[] = []
 
   // FTL disengagement needs a fully powered, undamaged drive (J9.1.3, J9.1.4).
   const ftlLine = findLine(ship.form, 'ftl-drive')
-  if (ftlLine && ship.ftlDriveDamage < ship.form.ftlDriveBoxes) {
+  if (ftlAvailable && ftlLine && ship.ftlDriveDamage < ship.form.ftlDriveBoxes) {
     const filled = ship.allocation[ftlLine.id] ?? 0
     if (filled >= ftlLine.steps.length && ftlLine.steps.length > 0) options.push('FTL disengagement (J9.1)')
   }

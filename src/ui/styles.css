@@ -216,6 +216,17 @@ input[type='number'] {
   fill: #2a2620;
   stroke-dasharray: 4 3;
 }
+/* Gas clouds are soft-edged and translucent, not solid bodies (K5). */
+.terrain-gas-cloud {
+  fill: #2d2a3f;
+  fill-opacity: 0.75;
+  stroke: #4b4370;
+  stroke-dasharray: 2 4;
+}
+/* A nebula covers the whole play area, so it tints the map itself (K4.1.1). */
+.map-bg.is-nebula {
+  fill: #191527;
+}
 .terrain-label {
   fill: var(--ink-dim);
   font-size: 10px;
@@ -1359,4 +1370,25 @@ input[type='number'] {
   font-size: 11px;
   font-weight: 700;
   fill: var(--accent);
+}
+
+/* ── Expansion 3: nebulae and gas clouds (K4, K5) ────────────────────────── */
+
+.cloud-panel {
+  border-color: #4b4370;
+}
+.cloud-effects {
+  margin: 0.4rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+}
+.cloud-effects li {
+  padding: 0.1rem 0;
+}
+.cloud-effects li.is-warn {
+  color: var(--warn);
+}
+.cloud-effects strong {
+  color: var(--ink);
 }

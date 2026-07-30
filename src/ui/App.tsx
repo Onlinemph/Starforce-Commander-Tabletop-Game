@@ -3,6 +3,7 @@ import { BLUE, RED, SCENARIOS } from '../data/scenarios'
 import {
   activeShips,
   advanceSegment,
+  cloudStatus,
   isCombatPhase,
   PHASE_LABELS,
   PHASE_SEGMENTS,
@@ -15,6 +16,7 @@ import {
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
+import { CloudPanel } from './CloudPanel'
 import { CombatPanel } from './CombatPanel'
 import { CommandCardPanel } from './CommandCardPanel'
 import { CommandSystemsPanel } from './CommandSystemsPanel'
@@ -219,6 +221,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
               individual weapon mounts. Unassigned arming points are lost when the segment ends (E4.2.10).
             </p>
           </div>
+          <CloudPanel game={game} ship={ship} />
           <CommandSystemsPanel game={game} ship={ship} />
           <ScoutSensorPanel game={game} ship={ship} assigning />
         </>
@@ -232,6 +235,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
       case 'command':
         return (
           <>
+            <CloudPanel game={game} ship={ship} />
             <FormationPanel game={game} ship={ship} />
             <CommandCardPanel game={game} ship={ship} />
           </>
@@ -290,7 +294,12 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
         </div>
       )
     case 'disengagement':
-      return <DisengagementPanel game={game} ship={ship} />
+      return (
+        <>
+          <CloudPanel game={game} ship={ship} />
+          <DisengagementPanel game={game} ship={ship} />
+        </>
+      )
     case 'final-activity':
       return <ScorePanel game={game} />
     default:
@@ -342,7 +351,13 @@ function OperationsPanel({ ship }: { game: GameState; ship: ShipState }) {
 
 function DisengagementPanel({ game, ship }: { game: GameState; ship: ShipState }) {
   const enemies = game.ships.filter((s) => s.side !== ship.side && !s.destroyed && !s.disengaged)
-  const options = disengagementOptions(ship, enemies, game.scenario.bounds)
+  // A nebula shuts the FTL drive down, including as a way out (K4.2.7).
+  const options = disengagementOptions(
+    ship,
+    enemies,
+    game.scenario.bounds,
+    !cloudStatus(game, ship).ftlBlocked,
+  )
 
   return (
     <div className="segment-help">

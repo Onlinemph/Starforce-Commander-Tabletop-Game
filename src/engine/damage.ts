@@ -609,6 +609,8 @@ export interface VolleyDamage {
   structurePenetration: number
   /** Which shield the volley strikes (E6.2 Step 4). */
   side: ShieldSide
+  /** Nebula or gas cloud: blue and green shield boxes are ignored (K4.2.1). */
+  shieldsInoperative?: boolean
 }
 
 export interface VolleyOutcome {
@@ -642,8 +644,9 @@ export function applyVolley(
     structureFromSpecial: 0,
   }
 
-  // Derelicts and lowered shields provide no protection (E11.2.5, G1.1.5).
-  const shieldsWork = !ship.derelict && !ship.shieldsDown[side]
+  // Derelicts and lowered shields provide no protection (E11.2.5, G1.1.5), and
+  // neither do blue or green boxes inside a nebula or gas cloud (K4.2.1).
+  const shieldsWork = !ship.derelict && !ship.shieldsDown[side] && !volley.shieldsInoperative
 
   if (shieldsWork) {
     // Reinforcement absorbs before the blue boxes (G1.3.2).
