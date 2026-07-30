@@ -1,104 +1,18 @@
-import type { DamageCard, DamageCategory, DamageHit } from '../engine/types'
+import type { DamageCard, DamageHit } from '../engine/types'
+import deckData from './damageDeck.json'
 
 /**
  * The 56-card damage deck (A2.6, E8).
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * DATA GAP — VERIFY AGAINST THE PRINTED DECK
- * ─────────────────────────────────────────────────────────────────────────────
- * The rulebook documents what every card *does* (E8.2 – E8.7) and states the
- * deck is 56 cards colour-coded by system, but the per-card composition and the
- * ALT HIT pairings live on the physical cards, not in the rules text. The deck
- * below totals 56 and follows the colour coding and alt-hit logic described in
- * the rules, but the exact card counts, alt-hit pairings and Stress Damage icon
- * placement should be corrected against the real deck.
+ * Transcribed from the four "CARD FRONT n of 4" sheets in the print-and-play
+ * components. Each card's category comes from its header band colour, its
+ * primary and alternate hits from the two band titles, and its Stress Damage
+ * icon (C3.1.4) from the one piece of artwork a card can carry.
  *
- * Everything downstream reads this table, so fixing it here fixes the game.
+ * To regenerate after a components update, re-run `tools/extract_damage_deck.py`
+ * and replace `damageDeck.json`.
  */
-
-interface CardSpec {
-  category: DamageCategory
-  primary: DamageHit
-  alt?: DamageHit
-  count: number
-  /** How many copies of this spec carry the Stress Damage icon (C3.1.4). */
-  stressIcons?: number
-}
-
-const SPECS: CardSpec[] = [
-  // ── Defense (blue) — E8.2 ────────────────────────────────────────────────
-  { category: 'defense', primary: 'shield-generator', alt: 'any-hit', count: 4, stressIcons: 1 },
-  { category: 'defense', primary: 'shield-power-loss', alt: 'shield-generator', count: 2 },
-
-  // ── Weapons (red) — E8.3 ─────────────────────────────────────────────────
-  { category: 'weapon', primary: 'facing-weapon', alt: 'any-weapon', count: 3 },
-  { category: 'weapon', primary: 'any-weapon', alt: 'structure', count: 3, stressIcons: 1 },
-  { category: 'weapon', primary: 'heavy-weapon', alt: 'any-weapon', count: 2 },
-  { category: 'weapon', primary: 'weapon-power-loss', alt: 'any-weapon', count: 2 },
-
-  // ── General systems (yellow) — E8.4 ──────────────────────────────────────
-  { category: 'general', primary: 'any-hit', count: 2 },
-  { category: 'general', primary: 'casualties', alt: 'structure', count: 1 },
-  { category: 'general', primary: 'sciences', alt: 'quarters', count: 2 },
-  { category: 'general', primary: 'sensors', alt: 'quarters', count: 3, stressIcons: 1 },
-  { category: 'general', primary: 'sensor-power-loss', alt: 'sensors', count: 1 },
-  { category: 'general', primary: 'shuttle-bay', alt: 'quarters', count: 1 },
-  { category: 'general', primary: 'special-system', alt: 'quarters', count: 1 },
-  { category: 'general', primary: 'tractor-beam', alt: 'quarters', count: 2 },
-  { category: 'general', primary: 'transporter', alt: 'quarters', count: 1 },
-  { category: 'general', primary: 'quarters', alt: 'structure', count: 1 },
-
-  // ── Engineering (green) — E8.5 ───────────────────────────────────────────
-  {
-    category: 'engineering',
-    primary: 'left-main-reactor',
-    alt: 'any-main-reactor',
-    count: 3,
-    stressIcons: 1,
-  },
-  {
-    category: 'engineering',
-    primary: 'right-main-reactor',
-    alt: 'any-main-reactor',
-    count: 3,
-    stressIcons: 1,
-  },
-  { category: 'engineering', primary: 'sublight-reactor', alt: 'battery', count: 2, stressIcons: 1 },
-  { category: 'engineering', primary: 'sublight-drive', alt: 'sublight-reactor', count: 2 },
-  { category: 'engineering', primary: 'aux-reactor', alt: 'sif', count: 1 },
-  { category: 'engineering', primary: 'battery', alt: 'sif', count: 1 },
-  { category: 'engineering', primary: 'ftl-drive', alt: 'aux-reactor', count: 1 },
-
-  // ── Structural (orange) — E8.7 ───────────────────────────────────────────
-  { category: 'structure', primary: 'structure', alt: 'derelict', count: 6, stressIcons: 3 },
-
-  // ── Critical (white) — E8.6. No alt hits (E8.6 preamble). ────────────────
-  { category: 'critical', primary: 'bridge-hit', count: 1 },
-  { category: 'critical', primary: 'major-fire', count: 1 },
-  { category: 'critical', primary: 'minor-fire', count: 1, stressIcons: 1 },
-  { category: 'critical', primary: 'main-engineering-hit', count: 1 },
-  { category: 'critical', primary: 'battery-power-loss', count: 1 },
-  { category: 'critical', primary: 'no-effect', count: 1 },
-]
-
-function buildDeck(): DamageCard[] {
-  const cards: DamageCard[] = []
-  for (const spec of SPECS) {
-    for (let i = 0; i < spec.count; i++) {
-      cards.push({
-        id: `${spec.primary}-${i + 1}`,
-        category: spec.category,
-        primary: spec.primary,
-        alt: spec.alt,
-        stressIcon: i < (spec.stressIcons ?? 0),
-      })
-    }
-  }
-  return cards
-}
-
-/** A fresh, ordered deck. Callers shuffle (E7.1.3). */
-export const DAMAGE_DECK: readonly DamageCard[] = buildDeck()
+export const DAMAGE_DECK: readonly DamageCard[] = deckData as unknown as DamageCard[]
 
 export const DAMAGE_DECK_SIZE = DAMAGE_DECK.length
 
@@ -124,8 +38,8 @@ export const HIT_LABELS: Record<DamageHit, string> = {
   battery: 'Battery',
   'sublight-drive': 'Sublight Drive',
   'sublight-reactor': 'Sublight Reactor',
-  'left-main-reactor': 'Left (or Center) Main Reactor',
-  'right-main-reactor': 'Right (or Center) Main Reactor',
+  'left-main-reactor': 'Left or Center Main Reactor',
+  'right-main-reactor': 'Right or Center Main Reactor',
   'any-main-reactor': 'Any Main Reactor',
   'ftl-drive': 'FTL Drive',
   sif: 'SIF',

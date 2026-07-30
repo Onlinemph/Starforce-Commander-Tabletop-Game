@@ -3,31 +3,28 @@ import type { DieColor, DieFace } from './types'
 /**
  * Attack dice (A2.7, E7.2).
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * DATA GAP — VERIFY AGAINST THE PHYSICAL DICE
- * ─────────────────────────────────────────────────────────────────────────────
- * The rulebook shows the six faces of each die as an image (A2.7), so the exact
- * face distribution could not be read from the PDF text. The constraints the
- * rules text *does* pin down are honoured here:
+ * Faces are transcribed from the DIE ROLL CHART on the Captain's Reference Card,
+ * which prints the equivalent result for each face of a standard d6:
  *
- *   • Potency order is Red > Yellow > Green > Blue (A2.7).
- *   • Only red dice carry the `S` (Special) face (E7.2.5).
- *   • J3.2.5 states the maximum result of each die when auto-hitting a tractored
- *     small target: red → S, yellow and green → H, blue → M. So blue dice have
- *     no `H` face, and green/yellow top out at `H`.
- *   • J3.3.1 gives blue damage values Miss = 0, Light = 2, Medium = 3, and lists
- *     no heavy result — consistent with the above.
+ *   ROLL   RED     YELLOW  GREEN   BLUE
+ *     1    SPCL    L (2)   L (2)   L (2)
+ *     2    SPCL    M (3)   L (2)   L (2)
+ *     3    SPCL    M (3)   L (2)   L (2)
+ *     4    M (3)   H (4+1) M (3)   M (3)
+ *     5    H (4+1) H (4+1) H (4+1) MISS
+ *     6    MISS    MISS    MISS    MISS
  *
- * The distributions below are a reconstruction consistent with those
- * constraints. Replace `DIE_FACES` with the printed faces once the physical
- * dice (or the Captain's Reference Card d6 chart) are to hand — nothing else in
- * the engine needs to change.
+ * Listed in roll order so the table can be checked against the card at a glance.
+ * This matches every constraint the rulebook states in prose: potency runs
+ * red > yellow > green > blue (A2.7), only red carries `S` (E7.2.5), and the
+ * maximum face of each colour is red → S, yellow and green → H, blue → M
+ * (J3.2.5, J3.3.1).
  */
 export const DIE_FACES: Record<DieColor, readonly DieFace[]> = {
-  blue: ['-', '-', '-', 'L', 'L', 'M'],
-  green: ['-', '-', 'L', 'L', 'M', 'H'],
-  yellow: ['-', 'L', 'L', 'M', 'M', 'H'],
-  red: ['-', 'L', 'M', 'M', 'H', 'S'],
+  red: ['S', 'S', 'S', 'M', 'H', '-'],
+  yellow: ['L', 'M', 'M', 'H', 'H', '-'],
+  green: ['L', 'L', 'L', 'M', 'H', '-'],
+  blue: ['L', 'L', 'L', 'M', '-', '-'],
 }
 
 /** Damage points per face (E7.2.1 – E7.2.4). `S` is weapon-defined. */

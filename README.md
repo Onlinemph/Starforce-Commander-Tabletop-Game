@@ -3,14 +3,15 @@
 A browser implementation of **StarForce Commander** (Mariner Games, rulebook v2.6, 2026), a game
 of tactical starship combat by Patrick Doyle.
 
-Local hot-seat, no server, no accounts. All **72 canon ships** through Expansion 3 are imported from
-the Master Ship Book. The rules engine is a standalone TypeScript library with no UI dependencies, so
-it can later be driven by a networked client or an AI opponent without change.
+Local hot-seat, no server, no accounts. All game data is canon: **72 ships** through Expansion 3 from
+the Master Ship Book, the **56-card damage deck** and the **attack dice** from the print-and-play
+components. The rules engine is a standalone TypeScript library with no UI dependencies, so it can
+later be driven by a networked client or an AI opponent without change.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # 133 rules and data-integrity tests
+npm test           # 147 rules and data-integrity tests
 npm run typecheck
 npm run build
 ```
@@ -111,24 +112,38 @@ One transcription conflict in the source is corrected at import and recorded on 
 The third bracket overlaps the second as printed; every other weapon in the book has a continuous
 chart, and a test enforces that.
 
-## ⚠️ Data that still needs verifying
+## Damage deck and dice
 
-Two pieces of game data live in images or physical components rather than in any text, so they remain
-**reconstructions**. Both are isolated in one file each and flagged in code.
+`src/data/damageDeck.json` holds all 56 cards, transcribed from the four "CARD FRONT n of 4" sheets
+in the print-and-play components. Each card's category comes from its header band colour, its primary
+and alternate hits from the two band titles, and its Stress Damage icon (C3.1.4) from the one piece
+of artwork a card can carry. Thirteen of the 56 carry the icon.
 
-### 1. Attack dice faces — `src/engine/dice.ts`
+The attack die faces in `src/engine/dice.ts` come from the DIE ROLL CHART on the Captain's Reference
+Card, which prints the equivalent result for every face of a standard d6:
 
-A2.7 shows the six faces of each die as an image. The constraints the *text* pins down are honoured:
-potency order red > yellow > green > blue; only red dice carry `S` (E7.2.5); and J3.2.5 states the
-maximum face of each colour (red → `S`, yellow and green → `H`, blue → `M`), which J3.3.1 corroborates
-for blue. The exact distribution within those bounds is a guess. Correcting `DIE_FACES` re-balances
-the whole game and needs no other change.
+| Roll | Red | Yellow | Green | Blue |
+| --- | --- | --- | --- | --- |
+| 1 | SPCL | L (2) | L (2) | L (2) |
+| 2 | SPCL | M (3) | L (2) | L (2) |
+| 3 | SPCL | M (3) | L (2) | L (2) |
+| 4 | M (3) | H (4+1) | M (3) | M (3) |
+| 5 | H (4+1) | H (4+1) | H (4+1) | MISS |
+| 6 | MISS | MISS | MISS | MISS |
 
-### 2. Damage deck composition — `src/data/damageDeck.ts`
+Half of a red die's faces are Special, so red dice are only fearsome on weapons with a strong `SPCL`
+line — which is exactly what E7.2.5 describes.
 
-E8 documents what every card *does*, and A2.6 says the deck is 56 cards colour-coded by system. The
-per-card counts, the ALT HIT pairings, and which cards carry the Stress Damage icon live on the
-physical cards. The deck here totals 56 and follows the described colour coding and alt-hit logic.
+## Known gaps
+
+- **Small craft** (E12, J8) — the terminology, degraded-fire and point-defense rules are in the
+  engine, but there are no shuttles or fighters to fly yet.
+- **Operations systems** (J3–J8) — tractor beams, transporters, sciences, probes and shuttle bays are
+  on the ship form and take damage correctly, but are not interactively usable.
+- **Terrain** (K) — planets and moons block line of sight, and asteroid transit damage and cover are
+  implemented, but the printed terrain counters are raster art, so their individual SPD/DMG/CVR/SCAN
+  values have not been imported.
+- **Scenarios** (S3) — The Duel and Orbital Ambush; the rest are straightforward to add.
 
 ## Architecture
 
@@ -144,11 +159,11 @@ src/
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement
     game.ts        Sequence of play, terrain, victory points
-  data/            Game content
-    ships.json     72 canon ship forms imported from the Master Ship Book
-    ships.ts       Typed roster access
-    damageDeck.ts  The 56-card damage deck
+  data/            Game content — all canon, all machine-imported
+    ships.json     72 ship forms from the Master Ship Book
+    damageDeck.json  The 56-card damage deck from the component sheets
     scenarios.ts   Section S scenarios and force setup
+tools/             Importers that regenerate the JSON from the source PDFs
   ui/              React components; the only mutable-state boundary is store.ts
 ```
 
