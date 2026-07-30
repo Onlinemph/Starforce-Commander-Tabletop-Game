@@ -254,6 +254,26 @@ export interface SublightDef {
 
 export type Availability = 'common' | 'uncommon' | 'rare' | 'unique'
 
+/**
+ * The SCOUT SENSOR block printed beneath the FUNCTIONS list on scouts, ELINT
+ * and survey ships (H3.1.1). Each sensor has one green power circle and one
+ * damage box; the three ranges sit under the targeting, jamming and scan icons.
+ */
+export interface ScoutSensorDef {
+  /** Sensor units on the form — also the top step of the SCOUT SEN line. */
+  sensors: number
+  damageBoxes: number
+  /** Range at which a target may be illuminated (H3.4.2). */
+  targetingRange: number
+  /** Radius within which friendly ships gain area jamming (H3.5.2). */
+  jammingRange: number
+  /** Range for a full informational scan (H3.6.1). */
+  scanRange: number
+}
+
+/** What one powered scout sensor is doing this round (H3.2.2, H3.3.1). */
+export type ScoutFunction = 'targeting' | 'jamming' | 'scan'
+
 export interface ShipForm {
   id: string
   /** Class name, e.g. "Yorktown-class Heavy Cruiser". */
@@ -298,6 +318,9 @@ export interface ShipForm {
 
   /** Page in the Master Ship Book this form was imported from. */
   shipBookPage?: number
+
+  /** Scouting sensor block, on scouts and survey ships only (H3.1.1). */
+  scoutSensor?: ScoutSensorDef
 
   /**
    * Set when the stats are a reconstruction rather than canon, so the UI can

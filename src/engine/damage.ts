@@ -1,5 +1,8 @@
 import { DAMAGE_DECK, HIT_LABELS, PRECISION_SECTION, type PrecisionSection } from '../data/damageDeck'
-import { Rng, rollForSpecial } from './dice'
+import { FACE_DAMAGE, rollDice, Rng, rollForSpecial } from './dice'
+import { formationOf, type Formation } from './formation'
+import { distance, shieldsFacing } from './geometry'
+import { damageScoutSensor, scoutSensorAvailable } from './scouting'
 import {
   armorRemaining,
   blueShieldRemaining,
@@ -7,6 +10,7 @@ import {
   greenShieldRemaining,
   markStructure,
   mountIsDamaged,
+  scoutSensorsIntact,
   shieldGeneratorRating,
   SHIELD_SIDES,
   structureRemaining,
@@ -100,6 +104,9 @@ export const autoChoices: DamageChoices = {
     for (const [kind, hit] of order) {
       if (undamagedSystemBoxes(ship, kind) > 0) return hit
     }
+    // A scout gives up a scout sensor only once its ordinary systems are gone
+    // (H3.1.1) — they are the reason the ship is on the map.
+    if (scoutSensorAvailable(ship)) return 'special-system'
     if (shieldGeneratorRating(ship) > 0) return 'shield-generator'
     if (this.weaponMount(ship, {})) return 'any-weapon'
     const reactor = reactorGroupsFor(ship, ['aux', 'sublight-reactor'])
@@ -193,6 +200,13 @@ export interface DamageContext {
    * (J6.2.4).
    */
   marineAttack?: boolean
+  /**
+   * Every ship in the battle, so an exploding reactor can reach its neighbours
+   * (E11.3.2). Omit to suppress explosion splash entirely.
+   */
+  ships?: readonly ShipState[]
+  /** Formations, which share explosion damage on the aft shield (E11.3.4). */
+  formations?: readonly Formation[]
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +237,18 @@ const ALTERNATE_SYSTEMS: Partial<Record<DamageHit, SystemKind[]>> = {
   quarters: ['CRGO', 'SPCL'],
 }
 
+/**
+ * Scout sensors are marked off by a Special System hit, and a Sensor Hit may be
+ * taken on them instead of the normal sensors at the captain's choice (H3.1.1).
+ * A competent defender keeps whichever it has more of.
+ */
+function scoutSoaksHit(ship: ShipState, hit: DamageHit): boolean {
+  if (!scoutSensorAvailable(ship)) return false
+  if (hit === 'special-system') return true
+  if (hit !== 'sensors') return false
+  return scoutSensorsIntact(ship) > undamagedSystemBoxes(ship, 'SENS')
+}
+
 /** The group a hit will actually mark off, or null when nothing is left. */
 function systemTargetFor(ship: ShipState, hit: DamageHit): SystemKind | null {
   const primary = SYSTEM_FOR_HIT[hit]
@@ -233,7 +259,10 @@ function systemTargetFor(ship: ShipState, hit: DamageHit): SystemKind | null {
 
 /** Can this hit find an undamaged target on the ship? */
 export function hitIsAvailable(ship: ShipState, hit: DamageHit, ctx: DamageContext): boolean {
-  if (SYSTEM_FOR_HIT[hit]) return systemTargetFor(ship, hit) !== null
+  if (SYSTEM_FOR_HIT[hit]) {
+    if (scoutSoaksHit(ship, hit)) return true
+    return systemTargetFor(ship, hit) !== null
+  }
 
   switch (hit) {
     case 'shield-generator':
@@ -308,6 +337,11 @@ function damageSystem(ship: ShipState, kind: SystemKind): void {
  */
 function applyHit(ship: ShipState, hit: DamageHit, ctx: DamageContext): { extraCards: number } {
   if (SYSTEM_FOR_HIT[hit]) {
+    // H3.1.1: scout sensors take Special System hits, and may take Sensor Hits.
+    if (scoutSoaksHit(ship, hit) && damageScoutSensor(ship)) {
+      ctx.log(`${ship.name}: ${HIT_LABELS[hit]} (scout sensor)`)
+      return { extraCards: 0 }
+    }
     const target = systemTargetFor(ship, hit)
     if (target) damageSystem(ship, target)
     ctx.log(`${ship.name}: ${HIT_LABELS[hit]}${target && target !== SYSTEM_FOR_HIT[hit] ? ` (${target})` : ''}`)
@@ -597,6 +631,7 @@ export function applyVolley(
 ): VolleyOutcome {
   const side = volley.side
   let remaining = volley.standard
+  const excessBefore = ship.excessStructureDamage
 
   const outcome: VolleyOutcome = {
     greenAbsorbed: 0,
@@ -653,6 +688,8 @@ export function applyVolley(
   }
 
   checkDestruction(ship, ctx)
+  // E11.3.1: the explosion check is made once, after the volley resolves.
+  explosionCheck(ship, ship.excessStructureDamage - excessBefore, ctx)
   return outcome
 }
 
@@ -696,5 +733,93 @@ export function checkDestruction(ship: ShipState, ctx: DamageContext): void {
   if (ship.excessStructureDamage >= ship.form.sizeClass) {
     ship.destroyed = true
     ctx.log(`${ship.name} comes apart from excess structural damage.`)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ship explosions (E11.3, optional)
+// ---------------------------------------------------------------------------
+
+/** Any ship within range 1 of an exploding ship is caught (E11.3.2). */
+export const EXPLOSION_RANGE = 2
+
+/**
+ * Half a 1.5-inch counter. E11.3.4 calls units "stacked" when their centre
+ * point overlaps any part of the exploding ship's counter — formation members
+ * share a counter outright, so they always qualify.
+ */
+const COUNTER_RADIUS = 0.75
+
+/**
+ * Explosion check (E11.3.1): one red die per point of excess structure damage
+ * suffered in the volley just resolved. Any `S` blows the main reactor.
+ *
+ * `chain` carries the ships whose explosions are already being resolved, so a
+ * blast that destroys a neighbour cannot recurse back into itself.
+ */
+export function explosionCheck(
+  ship: ShipState,
+  excessSustained: number,
+  ctx: DamageContext,
+  chain: Set<string> = new Set(),
+): boolean {
+  if (!destructionOptions.explosions) return false
+  if (excessSustained <= 0 || chain.has(ship.id)) return false
+
+  const { rolls, success } = rollForSpecial(excessSustained, ctx.rng)
+  ctx.log(
+    `${ship.name}: explosion check on ${excessSustained} excess damage — ${rolls
+      .map((r) => r.face)
+      .join(' ')}`,
+  )
+  if (!success) return false
+
+  ship.destroyed = true
+  ctx.log(`${ship.name}'s main reactor explodes.`)
+  resolveExplosionDamage(ship, ctx, new Set(chain).add(ship.id))
+  return true
+}
+
+/**
+ * Explosion damage (E11.3.3): every ship within range 1 rolls one blue die per
+ * point of the exploding ship's size class and takes the total on the shield
+ * facing the blast — or on its aft shield if it was stacked with it (E11.3.4),
+ * which is what makes flying in formation a gamble (C5).
+ */
+export function resolveExplosionDamage(
+  exploding: ShipState,
+  ctx: DamageContext,
+  chain: Set<string> = new Set([exploding.id]),
+): void {
+  const ships = ctx.ships
+  if (!ships) return
+
+  const formation = ctx.formations ? formationOf(ctx.formations, exploding.id) : null
+
+  for (const victim of ships) {
+    if (victim.id === exploding.id || victim.destroyed || victim.disengaged) continue
+    const gap = distance(exploding.placement.position, victim.placement.position)
+    if (gap >= EXPLOSION_RANGE) continue
+
+    const dice = new Array(exploding.form.sizeClass).fill('blue' as const)
+    const rolls = rollDice(dice, ctx.rng)
+    const total = rolls.reduce((sum, r) => sum + (r.face === 'S' ? 0 : FACE_DAMAGE[r.face]), 0)
+    if (total === 0) continue
+
+    const stacked =
+      gap <= COUNTER_RADIUS ||
+      (formation !== null && formationOf(ctx.formations!, victim.id)?.id === formation.id)
+    const side = stacked
+      ? 'A'
+      : shieldsFacing(exploding.placement.position, victim.placement.position, victim.placement.heading)[0]
+
+    ctx.log(
+      `${victim.name} takes ${total} explosion damage on its ${side} shield` +
+        (stacked ? ' (stacked with the wreck, E11.3.4)' : ''),
+    )
+    const excessBefore = victim.excessStructureDamage
+    applyVolley(victim, { standard: total, leak: 0, structurePenetration: 0, side }, ctx)
+    // A ship gutted by the blast may go up in turn (E11.3.1).
+    explosionCheck(victim, victim.excessStructureDamage - excessBefore, ctx, chain)
   }
 }

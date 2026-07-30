@@ -5,14 +5,15 @@ of tactical starship combat by Patrick Doyle.
 
 Local hot-seat, no server, no accounts. All game data is canon: **72 ships** through Expansion 3 from
 the Master Ship Book, the **56-card damage deck** and the **attack dice** from the print-and-play
-components. The Basic Set Standard rules are complete, plus **Expansion 2** — Command Systems (H5)
-and, behind a toggle, the optional Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
+components. The Basic Set Standard rules are complete, plus **Expansions 1 and 2** — Formation
+Maneuvering (C5), Scouting Sensors (H3), Command Systems (H5), and, behind a toggle, the optional
+Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
 later be driven by a networked client or an AI opponent without change.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # 183 rules and data-integrity tests
+npm test           # 219 rules and data-integrity tests
 npm run typecheck
 npm run build
 ```
@@ -28,8 +29,9 @@ full Sequence of Play:
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
 
-Plus **Expansion 2**: command ships that lend tactical scan to the fleet, and the optional ten-step
-Coordinated Fire sequence. See below.
+Plus **Expansions 1 and 2**: squadrons flying as one counter, scouts that illuminate and jam for the
+whole fleet, command ships that lend tactical scan, and the optional ten-step Coordinated Fire
+sequence. See below.
 
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
@@ -73,13 +75,61 @@ introduction years the Master Ship List prints.
 | K Space Terrain | ⚠️ | Planets/moons block line of sight; asteroid transit damage and cover done |
 | S2 Scenario Rules | ✅ | Map types, placement, victory points by damage level |
 | S3 Scenarios | ⚠️ | The Duel and Orbital Ambush; the rest are straightforward to add |
+| **C5 Formation Maneuvering** *(Expansion 1)* | ✅ | Join requirements, lead selection, one plot for the group, one counter on the map |
+| **H3 Scouting Sensors** *(Expansion 1)* | ✅ | Targeting illumination, area jamming, scan range; canon scout blocks for all 8 scouts |
 | **H4 Coordinated Fire** *(Expansion 2, optional)* | ✅ | Ten-step firing sequence, group validation, one attack per faction per phase |
 | **H5 Command Systems** *(Expansion 2)* | ✅ | CMND boxes lend tactical scan for the round, live withdrawal on damage |
+| E11.3 Ship Explosions *(optional)* | ✅ | Excess-damage check, range-1 blast, aft shield for stacked ships |
 
 Optional rules (B2.5 full batteries, C3.6 evasive maneuvers, C3.7 reverse movement, C3.8 emergency
 stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6 boarding) are partly implemented in
 the engine — reverse movement, emergency stop, derelicts and explosions all work — but are not yet
 surfaced as UI toggles beyond the destruction options.
+
+## Expansion 1 — Formation Maneuvering and Scouting Sensors
+
+Both rules are Standard (neither is marked `(Optional)`), so both are always on. Expansion 1 also
+reprints C4 Special Situations, which the base implementation already covered.
+
+**C5 Formation Maneuvering** lets a group fly as one counter. Joining takes range 1 of the lead ship,
+the same speed, and a heading the joining ship could match with a turn of 45° or less (C5.1.2); the
+lead is the *least* maneuverable ship at the formation's speed — the smallest turn template, since a
+bigger template angle is a tighter turn (C5.1.1). The formation then plots one set of helm orders for
+everybody, and the map draws a single counter with a `×n` badge, as C5.1.3 describes. Everything
+else stays independent: sensors, shields, weapons, damage control (C5.2).
+
+The price is E11.3.4 — a ship exploding inside the formation hits everyone on that counter, on the
+aft shield. That made E11.3 Ship Explosions worth finishing: it was a declared option whose effect
+had never been implemented, so C5's stated tradeoff had nothing to bite on. It is now complete —
+one red die per point of excess structure damage, a range-1 blast of one blue die per size class,
+and chain explosions that terminate.
+
+**H3 Scouting Sensors** are the fleet-support rule. Eight ships in the roster carry a SCOUT SENSOR
+block — four Hermes scouts, the Knox II survey cruiser, two Spectra heavy scouts and the V-2R
+Flanker. The block was machine-extracted from the ship forms along with everything else; see
+[Ship data](#ship-data).
+
+Each powered sensor is assigned one function during Resource Allocation and holds it for the round
+(H3.2.2):
+
+- **Targeting** illuminates one enemy ship within the scout's targeting range. *Every* friendly ship
+  firing at that ship gains one targeting point per sensor pointed at it (H3.4.1, H3.4.3) — the
+  scout does not need to be anywhere near the shooter.
+- **Area jamming** adds one jamming point to every friendly ship within the scout's jamming radius,
+  itself included (H3.5.1).
+- **Informational scans** extend J4.2 scans to the scout's scan range for one bonus information
+  point per sensor (H3.6). J4.2's scan procedure is not interactive yet, so the engine reports the
+  capability rather than resolving a scan.
+
+A ship may take targeting from one scout and jamming from one scout (H3.4.4, H3.5.3), and a scout
+busy using its own sensors cannot take data from another scout — though its own sensors still serve
+it, which H3.5.1 states outright for jamming. Sensors are switched on and off during Operations step
+2.E (H3.3.2), never carry power between rounds (H3.3.3), and are marked off by Special System hits
+or, at the captain's choice, by Sensor Hits (H3.1.1).
+
+One erratum: H3.2.1 lists the three functions as "targeting, jamming, or tactical scan", but H3.3.1
+and H3.6 both name them targeting, area jamming and informational scans, and no rule anywhere lets a
+scout sensor feed H2.4 Tactical Scan. The engine follows H3.3.1.
 
 ## Expansion 2 — Coordinated Fire and Command Systems
 
@@ -118,9 +168,10 @@ Two readings had to be settled where the text disagrees with itself:
   "followed by five and up". The engine leaves the ship count open at step 10, because H4.5.1's
   one-point-per-ship requirement already bounds it — a six-ship group needs six points each.
 
-A three-a-side **Squadron Engagement** scenario ships with the expansion, since neither rule bites
-in a duel. Expansion 2 prints no scenario of its own, so this is a plain Standard Placement setup
-(S2.4.1) with a command cruiser and two line ships per side.
+A three-a-side **Squadron Engagement** scenario ships with the expansions, since none of these rules
+bites in a duel. Neither expansion prints a scenario of its own, so this is a plain Standard
+Placement setup (S2.4.1): a command cruiser, a line ship and a scout per side, entering in a tight
+vee so the squadron can form up in the first Command Segment.
 
 ## Ship data
 
@@ -143,6 +194,11 @@ Every import is cross-checked against the form's own printed totals (TOTAL POWER
 four shield values) and against the Master Ship List's structure count. All 72 ships pass with zero
 discrepancies, and the arc-icon count matches the hit-box group count on every weapon block in the
 book, so no mount is silently dropped.
+
+The eight scouts additionally carry a SCOUT SENSOR block — sensor count, damage boxes and the
+targeting, jamming and scan ranges — read from the same forms. Each one is checked three ways: the
+power circles, the damage boxes and the top step of the SCOUT SEN line must all agree on how many
+sensors the ship has. All eight reconcile.
 
 Several independent spot-checks against the rulebook's own worked examples came out exact: the
 Yorktown I's `□□□■ 4` structure track (B3.1.2), its four slow-arming torpedo mounts (E4.2.8), and the
@@ -190,9 +246,11 @@ line — which is exactly what E7.2.5 describes.
 - **Terrain** (K) — planets and moons block line of sight, and asteroid transit damage and cover are
   implemented, but the printed terrain counters are raster art, so their individual SPD/DMG/CVR/SCAN
   values have not been imported.
-- **Scenarios** (S3) — The Duel, Orbital Ambush and the Expansion 2 Squadron Engagement; the rest
-  are straightforward to add.
-- **Expansions 1, 3, 4 and 5** — not yet supplied. Expansion 2 (H4, H5) is done.
+- **Scenarios** (S3) — The Duel, Orbital Ambush and the Squadron Engagement; the rest are
+  straightforward to add.
+- **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
+  points (H3.6), but the scan procedure itself is not interactive.
+- **Expansions 3, 4 and 5** — not yet supplied. Expansions 1 (C5, H3) and 2 (H4, H5) are done.
 
 ## Architecture
 
@@ -206,6 +264,8 @@ src/
     damage.ts      Damage deck, card resolution, volley application
     command.ts     Command Systems: lending tactical scan (H5)
     coordinatedFire.ts  The ten-step firing sequence (H4, optional)
+    formation.ts   Formation maneuvering: joining, leading, flying as one (C5)
+    scouting.ts    Scouting sensors: illumination, area jamming, scans (H3)
     combat.ts      Volley resolution, rerolls, fire modes
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement

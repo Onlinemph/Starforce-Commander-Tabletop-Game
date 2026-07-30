@@ -2,6 +2,7 @@ import type {
   Arc,
   FunctionLineDef,
   Placement,
+  ScoutFunction,
   ShieldSide,
   ShipForm,
   SystemKind,
@@ -13,6 +14,15 @@ export const SHIELD_SIDES: readonly ShieldSide[] = ['F', 'S', 'A', 'P']
 // ---------------------------------------------------------------------------
 // Mutable per-ship state
 // ---------------------------------------------------------------------------
+
+/** One scout sensor's orders for the round (H3.2.2, H3.3.2). */
+export interface ScoutSensorState {
+  function: ScoutFunction
+  /** Enemy ship illuminated, for targeting sensors only (H3.4.1). */
+  targetId: string | null
+  /** Switched on or off during Operations step 2.E (H3.3.2). */
+  active: boolean
+}
 
 export interface MountState {
   /** Green arming circles filled (E4.2.2). */
@@ -63,6 +73,14 @@ export interface ShipState {
   genSysLevel: 'off' | 'nrm' | 'max'
   /** Sensor points split during the Command Segment (H2.2.2). */
   sensors: { targeting: number; jamming: number; tacticalScan: number }
+  /** Scout sensor damage boxes marked (H3.1.1). */
+  scoutSensorDamage: number
+  /**
+   * One entry per scout sensor, set during Resource Allocation and fixed for
+   * the round (H3.2.2). Sensors beyond the number the SCOUT SEN line powers
+   * are simply unpowered and contribute nothing.
+   */
+  scoutAssignments: ScoutSensorState[]
 
   // ── Structure ──────────────────────────────────────────────────────────
   /** Damaged flags, one per box entry on the Structural Integrity track. */
@@ -151,6 +169,8 @@ export function createShip(args: {
     systemDamage,
     genSysLevel: 'off',
     sensors: { targeting: 0, jamming: 0, tacticalScan: 0 },
+    scoutSensorDamage: 0,
+    scoutAssignments: newScoutAssignments(form),
     structureDamaged: form.structure.filter((e) => e.kind === 'box').map(() => false),
     structureHitsTaken: 0,
     excessStructureDamage: 0,
@@ -323,6 +343,60 @@ export function sensorFunctionCap(ship: ShipState): number {
   return sensorBoxesRemaining(ship)
 }
 
+// ---------------------------------------------------------------------------
+// Scouting sensors (H3)
+// ---------------------------------------------------------------------------
+
+/** Fresh orders for a form's scout sensors: idle, pointed nowhere, switched on. */
+export function newScoutAssignments(form: ShipForm): ScoutSensorState[] {
+  const count = form.scoutSensor?.sensors ?? 0
+  return Array.from({ length: count }, () => ({
+    function: 'targeting' as ScoutFunction,
+    targetId: null,
+    active: true,
+  }))
+}
+
+export function isScout(ship: ShipState): boolean {
+  return (ship.form.scoutSensor?.sensors ?? 0) > 0
+}
+
+/** Scout sensors still undamaged (H3.1.1). */
+export function scoutSensorsIntact(ship: ShipState): number {
+  const block = ship.form.scoutSensor
+  if (!block) return 0
+  return Math.max(0, block.sensors - ship.scoutSensorDamage)
+}
+
+/**
+ * Scout sensors the SCOUT SEN line is currently powering (H3.2.1).
+ *
+ * The numbers beside that line's circles are sensor counts rather than a
+ * capability value: one power point might activate two sensors. Damage caps the
+ * total, and scout sensors never store power from round to round (H3.2.2).
+ */
+export function scoutSensorsPowered(ship: ShipState): number {
+  const block = ship.form.scoutSensor
+  if (!block) return 0
+  const scoutLine = ship.form.functions.find((l) => l.label.startsWith('SCOUT SEN'))
+  const powered = scoutLine ? lineValue(ship, scoutLine.id) : 0
+  return Math.min(powered, scoutSensorsIntact(ship))
+}
+
+/**
+ * Scout sensors that are powered, undamaged and switched on, grouped by the
+ * function they were assigned during Resource Allocation (H3.2.2, H3.3.2).
+ */
+export function activeScoutSensors(ship: ShipState): ScoutSensorState[] {
+  if (ship.destroyed || ship.derelict || ship.disengaged) return []
+  return ship.scoutAssignments.slice(0, scoutSensorsPowered(ship)).filter((s) => s.active)
+}
+
+/** True once the scout is using any of its scout sensors (H3.4.4, H3.5.3). */
+export function usingScoutSensors(ship: ShipState): boolean {
+  return activeScoutSensors(ship).length > 0
+}
+
 export function undamagedSystemBoxes(ship: ShipState, kind: SystemKind): number {
   const group = ship.form.systems.find((g) => g.kind === kind)
   if (!group) return 0
@@ -491,6 +565,9 @@ export const VICTORY_FRACTION: Record<DamageLevel, number> = {
  */
 export function beginRound(ship: ShipState): void {
   ship.allocation = {}
+  // Scout sensors do not store power between rounds, and their function is
+  // re-assigned during each Resource Allocation Segment (H3.2.2, H3.3.3).
+  for (const sensor of ship.scoutAssignments) sensor.active = true
   ship.genSysLevel = 'off'
   ship.accelUsedThisRound = 0
   ship.emergencyTurnUsed = false

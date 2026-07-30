@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formationOf } from '../engine/formation'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
 import type { GameState } from '../engine/game'
 import { blueShieldRemaining, greenShieldRemaining, type ShipState } from '../engine/shipState'
@@ -117,15 +118,28 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         </g>
       )}
 
-      {game.ships.map((ship) => (
-        <ShipToken
-          key={ship.id}
-          ship={ship}
-          selected={ship.id === selectedId}
-          targeted={ship.id === targetId}
-          onSelect={onSelect}
-        />
-      ))}
+      {/*
+        Only the lead ship's counter stays on the map when ships fly in
+        formation (C5.1.3), so members are drawn as a strength badge on the
+        lead rather than as counters stacked in the same square.
+      */}
+      {game.ships
+        .filter((ship) => {
+          const formation = formationOf(game.formations, ship.id)
+          return !formation || formation.leadId === ship.id
+        })
+        .map((ship) => (
+          <ShipToken
+            key={ship.id}
+            ship={ship}
+            selected={ship.id === selectedId}
+            targeted={ship.id === targetId}
+            formationSize={
+              (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1
+            }
+            onSelect={onSelect}
+          />
+        ))}
     </svg>
   )
 }
@@ -170,11 +184,14 @@ function ShipToken({
   ship,
   selected,
   targeted,
+  formationSize,
   onSelect,
 }: {
   ship: ShipState
   selected: boolean
   targeted: boolean
+  /** Ships sharing this counter, including the lead (C5.1.3). */
+  formationSize: number
   onSelect: (id: string) => void
 }) {
   if (ship.destroyed || ship.disengaged) return null
@@ -226,8 +243,14 @@ function ShipToken({
 
       {/* Counter-rotate so labels stay upright regardless of ship heading. */}
       <g transform={`rotate(${-ship.placement.heading})`}>
+        {formationSize > 1 && (
+          <text x={size / 2 - 3} y={-size / 2 + 11} className="ship-formation" textAnchor="end">
+            ×{formationSize}
+          </text>
+        )}
         <text y={size / 2 + 30} className="ship-name" textAnchor="middle">
           {ship.name} · spd {ship.speed}
+          {formationSize > 1 ? ` · formation of ${formationSize}` : ''}
           {ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : ''}
           {ship.derelict ? ' · DERELICT' : ''}
         </text>

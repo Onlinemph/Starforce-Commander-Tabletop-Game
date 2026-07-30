@@ -81,25 +81,26 @@ export const ORBITAL_AMBUSH: Scenario = {
 }
 
 // ---------------------------------------------------------------------------
-// Squadron Engagement (Expansion 2)
+// Squadron Engagement (Expansions 1 and 2)
 // ---------------------------------------------------------------------------
 
 /**
  * A three-a-side fleet action.
  *
- * Expansion 2 prints no scenario of its own, but its two rules — Coordinated
- * Fire (H4) and Command Systems (H5) — only bite once several ships of a
- * faction are fighting together, so this is a plain Standard Placement setup
- * (S2.4.1) built to exercise them: each side fields a command cruiser and two
- * line ships.
+ * Neither expansion prints a scenario of its own, and their four rules —
+ * Formation Maneuvering (C5), Scouting Sensors (H3), Coordinated Fire (H4) and
+ * Command Systems (H5) — only bite once several ships of a faction are fighting
+ * together. So this is a plain Standard Placement setup (S2.4.1) built to
+ * exercise them: a command cruiser, a line ship and a scout per side, entering
+ * in close order so they may form up at once.
  */
 export const SQUADRON_ENGAGEMENT: Scenario = {
   id: 'exp2-squadron-engagement',
-  name: 'Squadron Engagement (Expansion 2)',
+  name: 'Squadron Engagement (Expansions 1–2)',
   background:
-    'Two squadrons meet in open space, each led by a command cruiser. The flagship can lend ' +
-    'tactical scan points to its consorts, letting them fire early — or, under the Coordinated ' +
-    'Fire rules, letting them fire together.',
+    'Two squadrons meet in open space, each led by a command cruiser and screened by a scout. ' +
+    'The flagship lends tactical scan points to its consorts; the scout illuminates targets and ' +
+    'jams for the force. A setup for the fleet rules of Expansions 1 and 2.',
   bounds: { width: 36, height: 36, fixed: true },
   terrain: [],
   objectives: {
@@ -109,6 +110,10 @@ export const SQUADRON_ENGAGEMENT: Scenario = {
   specialRules: [
     'Each flagship carries CMND boxes and may lend one tactical scan point per box, ' +
       'out to 36 inches, while its GEN SYS line is set to MAX (H5.1).',
+    'Each squadron includes a scout. Its scouting sensors can illuminate a target for the ' +
+      'whole force, blanket friendly ships in area jamming, or run long-range scans (H3).',
+    'Ships within range 1 at matching speed and heading may fly in formation on one ' +
+      'counter, plotting a single set of helm orders (C5).',
     'Switch on Coordinated Fire to fight the Combat Segment through the ten firing steps ' +
       'of H4.2.3 instead of the single Tactical Scan pass of H2.4.',
   ],
@@ -185,18 +190,31 @@ function ambushShips(options: SetupOptions): ShipState[] {
 }
 
 /**
- * Three ships a side, flagship first. The player's picked form is used for the
- * flagship; its consorts keep the printed squadron's line ships.
+ * Flagship at the point, the other two trailing off each quarter. Every pair is
+ * inside the 2-inch joining range of C5.1.2, so whichever ship the turn rate
+ * picks as lead (C5.1.1), the rest can join it.
+ */
+const SQUADRON_VEE = [
+  { back: 0, side: 0 },
+  { back: 1.5, side: -0.8 },
+  { back: 1.5, side: 0.8 },
+]
+
+/**
+ * Three ships a side — flagship, line ship, scout. The player's picked form is
+ * used for the flagship; the rest keep the printed squadron.
  */
 function squadronShips(options: SetupOptions): ShipState[] {
   const blueFlag = shipFormById('union-yorktown-iiic-class-command-cruiser') ?? YORKTOWN
   const redFlag = shipFormById('vallari-v-7e-raider-class-command-cruiser') ?? VALLARI_CRUISER
+  const blueScout = shipFormById('union-hermes-i-class-scout') ?? YORKTOWN
+  const redScout = shipFormById('vallari-v-5q-spectra-class-heavy-scout') ?? VALLARI_CRUISER
 
   const ships: ShipState[] = []
   // Blue enters from the east on facing 6, Red from the west on facing 2, as in
   // the neutral setup of S3.1.
-  const blueForms = [pickForm(options.forms?.[BLUE], blueFlag), YORKTOWN, YORKTOWN]
-  const redForms = [pickForm(options.forms?.[RED], redFlag), VALLARI_CRUISER, VALLARI_CRUISER]
+  const blueForms = [pickForm(options.forms?.[BLUE], blueFlag), YORKTOWN, blueScout]
+  const redForms = [pickForm(options.forms?.[RED], redFlag), VALLARI_CRUISER, redScout]
 
   blueForms.forEach((form, i) => {
     ships.push(
@@ -205,7 +223,12 @@ function squadronShips(options: SetupOptions): ShipState[] {
         side: BLUE,
         name: BLUE_NAMES[i],
         form,
-        placement: { position: { x: 33, y: 10 + i * 8 }, heading: facingToHeading(6) },
+        // A tight vee, every ship within range 1 of every other, so the
+        // squadron may form up in the first Command Segment (C5.1.2).
+        placement: {
+          position: { x: 32 + SQUADRON_VEE[i].back, y: 18 + SQUADRON_VEE[i].side },
+          heading: facingToHeading(6),
+        },
         speed: 4,
       }),
     )
@@ -217,7 +240,10 @@ function squadronShips(options: SetupOptions): ShipState[] {
         side: RED,
         name: RED_NAMES[i],
         form,
-        placement: { position: { x: 3, y: 10 + i * 8 }, heading: facingToHeading(2) },
+        placement: {
+          position: { x: 4 - SQUADRON_VEE[i].back, y: 18 + SQUADRON_VEE[i].side },
+          heading: facingToHeading(2),
+        },
         speed: 4,
       }),
     )

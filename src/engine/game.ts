@@ -24,7 +24,14 @@ import {
 } from './coordinatedFire'
 import { FACE_DAMAGE, rollDie, Rng } from './dice'
 import { commitAllocation } from './engineering'
+import {
+  alignToLead,
+  formationOf,
+  pruneFormations,
+  type Formation,
+} from './formation'
 import type { CircleObstacle } from './geometry'
+import { scoutSupportFor, type ScoutSupport } from './scouting'
 import {
   disengagementOptions,
   executeMovement,
@@ -165,6 +172,8 @@ export interface GameState {
   attackedThisPhase: Set<string>
   /** The coordinated attack declared on the current step, if any (H4.5). */
   coordinatedGroup: CoordinatedGroup | null
+  /** Ships flying as one counter (C5). */
+  formations: Formation[]
   options: DestructionOptions
 }
 
@@ -228,6 +237,7 @@ export function createGame(args: {
     firingStepIndex: 0,
     attackedThisPhase: new Set(),
     coordinatedGroup: null,
+    formations: [],
     options,
   }
   for (const ship of game.ships) beginRound(ship)
@@ -245,7 +255,21 @@ export function damageContext(game: GameState): DamageContext {
     rng: game.rng,
     choices: autoChoices,
     log: (message) => pushLog(game, message),
+    // Explosions reach neighbours, and everyone sharing a formation's counter
+    // takes the blast on the aft shield (E11.3.2, E11.3.4, C5).
+    ships: game.ships,
+    formations: game.formations,
   }
+}
+
+/** Scout targeting and area jamming applying to one volley (H3.4, H3.5). */
+export function scoutSupport(game: GameState, attacker: ShipState, target: ShipState): ScoutSupport {
+  return scoutSupportFor(attacker, target, game.ships)
+}
+
+/** The formation a ship is flying in, if any (C5). */
+export function formationFor(game: GameState, ship: ShipState): Formation | null {
+  return formationOf(game.formations, ship.id)
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +478,9 @@ function runSegmentExit(game: GameState): void {
         if (!card) continue
         ship.sensors = { ...card.sensors }
       }
+      // A formation plots one set of movement orders (C5.1.3). Sensors, weapons
+      // and everything else stay independent (C5.2).
+      applyFormationOrders(game)
       break
     }
 
@@ -466,6 +493,10 @@ function runSegmentExit(game: GameState): void {
         if (result.stress > 0) pushLog(game, `${ship.name}: +${result.stress} stress from maneuver.`)
         applyTerrainDamage(game, ship, result.path)
       }
+      // Only the lead ship's counter is on the map, so the rest of a formation
+      // finish the move sharing its position exactly (C5.1.3).
+      pruneFormations(game.formations, game.ships)
+      for (const formation of game.formations) alignToLead(formation, game.ships)
       break
     }
 
@@ -509,6 +540,28 @@ function runSegmentExit(game: GameState): void {
   }
 }
 
+/**
+ * Copy the lead ship's movement orders onto every other ship in its formation
+ * (C5.1.3, C5.2). Only the helm order is shared — a formation never dictates a
+ * ship's sensors, shields or weapons.
+ */
+function applyFormationOrders(game: GameState): void {
+  pruneFormations(game.formations, game.ships)
+  for (const formation of game.formations) {
+    const lead = game.orders[formation.leadId]
+    if (!lead) continue
+    for (const id of formation.memberIds) {
+      const card = game.orders[id]
+      if (!card) continue
+      card.maneuver = lead.maneuver
+      card.direction = lead.direction
+      card.halfSlide = lead.halfSlide
+      card.accel = lead.accel
+      card.speed = lead.speed
+    }
+  }
+}
+
 function runSegmentEnter(game: GameState): void {
   if (game.segment === 'command') {
     // Fresh command cards each combat phase (C1.1.1).
@@ -526,6 +579,7 @@ function startNewRound(game: GameState): void {
   // re-designated each round (H5.1.6); the previous choice is left in place as
   // a default the player may change.
   for (const state of Object.values(game.command)) state.assignments = []
+  pruneFormations(game.formations, game.ships)
   for (const ship of activeShips(game)) beginRound(ship)
   pushLog(game, `— Round ${game.round} —`)
 }

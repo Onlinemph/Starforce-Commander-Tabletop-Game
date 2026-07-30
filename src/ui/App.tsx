@@ -18,6 +18,8 @@ import type { ShieldSide } from '../engine/types'
 import { CombatPanel } from './CombatPanel'
 import { CommandCardPanel } from './CommandCardPanel'
 import { CommandSystemsPanel } from './CommandSystemsPanel'
+import { FormationPanel } from './FormationPanel'
+import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ShipPicker } from './ShipPicker'
@@ -218,6 +220,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
             </p>
           </div>
           <CommandSystemsPanel game={game} ship={ship} />
+          <ScoutSensorPanel game={game} ship={ship} assigning />
         </>
       )
     }
@@ -227,9 +230,19 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
   if (isCombatPhase(game.phase)) {
     switch (game.segment) {
       case 'command':
-        return <CommandCardPanel game={game} ship={ship} />
+        return (
+          <>
+            <FormationPanel game={game} ship={ship} />
+            <CommandCardPanel game={game} ship={ship} />
+          </>
+        )
       case 'operations':
-        return <OperationsPanel game={game} ship={ship} />
+        return (
+          <>
+            <OperationsPanel game={game} ship={ship} />
+            <ScoutSensorPanel game={game} ship={ship} assigning={false} />
+          </>
+        )
       case 'navigation':
         return (
           <div className="segment-help">

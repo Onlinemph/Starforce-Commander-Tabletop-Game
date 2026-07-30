@@ -127,6 +127,18 @@ def arc_icons(page):
 
 # ------------------------------------------------------------------ helpers
 
+def group_numbers(chars, gap=6):
+    """Digits sorted by x, joined into numbers wherever they sit side by side."""
+    out, cur, last = [], '', None
+    for c in sorted(chars, key=lambda c: c['x']):
+        if last is not None and c['x'] - last > gap and cur:
+            out.append((last, cur)); cur = ''
+        cur += c['ch']; last = c['x1']
+    if cur:
+        out.append((last, cur))
+    return out
+
+
 def group_by_gap(items, gap):
     groups, cur = [], []
     for c in items:
@@ -343,6 +355,28 @@ def parse_ship(pno):
                     systems[current] = systems.get(current, 0) + 1
         # A trailing label with no boxes means a zero-box system; ignore it.
     ship['systems'] = systems
+
+    # ------------------------------------------------- SCOUT SENSORS (H3.1)
+    # Scout ships print a yellow SCOUT SENSOR block beneath the FUNCTIONS list.
+    # It holds one green power circle and one damage box per scout sensor, and
+    # three range numbers under the targeting, jamming and scan icons, in that
+    # left-to-right order (H3.4.2, H3.5.2, H3.6.1).
+    if any(f['label'].startswith('SCOUT SEN') for f in funcs):
+        block = [c for c in gl if 240 <= c['y'] <= 300 and c['x'] < 280]
+        sensors = sum(1 for c in block
+                      if c['font'].startswith('Wingdings') and c['o'] == CIRCLE)
+        boxes = sum(1 for c in block
+                    if c['font'].startswith('Wingdings') and c['o'] == BOX)
+        digits = [c for c in block if c['font'].startswith('Arial') and c['ch'].isdigit()
+                  and c['y'] > 262]
+        ranges = [int(n) for _, n in group_numbers(digits)]
+        ship['scoutSensor'] = {
+            'sensors': sensors,
+            'damageBoxes': boxes,
+            'targetingRange': ranges[0] if len(ranges) > 0 else None,
+            'jammingRange': ranges[1] if len(ranges) > 1 else None,
+            'scanRange': ranges[2] if len(ranges) > 2 else None,
+        }
 
     # ----------------------------------------------------------- STRUCTURE
     struct = sorted([c for c in gl if c['y'] > 500 and

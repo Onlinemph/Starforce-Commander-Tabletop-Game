@@ -21,11 +21,13 @@ import {
   declareCoordinatedFire,
   pushLog,
   recordAttack,
+  scoutSupport,
   tacticalScanOf,
   terrainObstacles,
   type GameState,
 } from '../engine/game'
 import { actualRange, arcTo, canBearOn, effectiveRange, shieldsFacing } from '../engine/geometry'
+import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import { act } from './store'
 
@@ -76,10 +78,16 @@ export function CombatPanel({ game, attacker }: Props) {
   // covered by the attack its group already recorded.
   const attackBlocked = target && !inGroup ? attackAllowed(game, attacker, target) : null
 
+  // Scout targeting and area jamming both bend the effective range (H3.4, H3.5).
+  const support = target ? scoutSupport(game, attacker, target) : NO_SCOUT_SUPPORT
   const actual = target ? actualRange(attacker.placement.position, target.placement.position) : null
   const effective =
     target !== null && actual !== null
-      ? effectiveRange(actual, target.sensors.jamming, degraded ? 0 : attacker.sensors.targeting)
+      ? effectiveRange(
+          actual,
+          target.sensors.jamming + support.jamming,
+          degraded ? 0 : attacker.sensors.targeting + support.targeting,
+        )
       : null
   const targetArcs = target ? arcTo(attacker.placement.position, attacker.placement.heading, target.placement.position) : []
   const shieldOptions = target
@@ -111,6 +119,7 @@ export function CombatPanel({ game, attacker }: Props) {
           precisionSection: mode === 'precision' ? section : undefined,
           degradedFireControl: degraded,
           coordinated: inGroup,
+          scoutSupport: scoutSupport(g, attacker, target),
           obstacles: terrainObstacles(g.scenario.terrain),
         },
         damageContext(g),
@@ -192,9 +201,20 @@ export function CombatPanel({ game, attacker }: Props) {
           <span>
             Effective {effective}&quot;{' '}
             <em>
-              (+{target.sensors.jamming} jam − {degraded ? 0 : attacker.sensors.targeting} targeting)
+              (+{target.sensors.jamming + support.jamming} jam −{' '}
+              {degraded ? 0 : attacker.sensors.targeting + support.targeting} targeting)
             </em>
           </span>
+          {support.targeting > 0 && (
+            <span className="chip chip-scout" title="H3.4.1">
+              +{support.targeting} targeting from {support.targetingFrom}
+            </span>
+          )}
+          {support.jamming > 0 && (
+            <span className="chip chip-scout" title="H3.5.1">
+              +{support.jamming} area jamming from {support.jammingFrom}
+            </span>
+          )}
           <span>Firing arc {targetArcs.join(' or ')}</span>
           <span>Strikes {shieldOptions.join(' or ')} shield</span>
           {target.speed === 0 && <span className="chip chip-warn">Low-speed penalty (C1.5)</span>}

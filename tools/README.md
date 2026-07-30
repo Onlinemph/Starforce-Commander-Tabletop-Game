@@ -14,10 +14,14 @@ are identified by Wingdings codepoint plus colour, range-bracket bands by Calibr
 attack dice by Wingdings2 colour, and firing arcs by rasterising each icon *placement* (the layout
 rotates and mirrors a small set of source images) and reading its eight wedges.
 
+Scouts also carry a SCOUT SENSOR block below the FUNCTIONS list; its power circles, damage boxes and
+three range numbers (targeting, jamming, scan) are read positionally.
+
 `generate_ships.py` maps those records onto the engine's `ShipForm` schema, joins the Master Ship
 List for point values, availability, year and the victory table, applies the errata list, and
-cross-checks each ship against its own printed TOTAL POWER, battery count and shield values. It
-prints `validation problems: 0` when everything reconciles.
+cross-checks each ship against its own printed TOTAL POWER, battery count and shield values — plus,
+on scouts, that the sensor count, damage boxes and SCOUT SEN line all agree. It prints
+`validation problems: 0` when everything reconciles.
 
 The Master Ship List itself is parsed from a plain-text dump of pages 5-6; `msl.json` is the
 intermediate. Both intermediates are scratch files and are not committed.

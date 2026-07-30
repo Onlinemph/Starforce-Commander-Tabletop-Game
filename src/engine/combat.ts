@@ -8,6 +8,7 @@ import {
   type VolleyOutcome,
 } from './damage'
 import { actualRange, arcTo, canBearOn, effectiveRange, hasLineOfSight, shieldsFacing, type CircleObstacle } from './geometry'
+import { NO_SCOUT_SUPPORT, type ScoutSupport } from './scouting'
 import { mountIsReady, undamagedSystemBoxes, type ShipState } from './shipState'
 import type { Arc, DieColor, RangeBracketDef, ShieldSide, WeaponSystemDef } from './types'
 
@@ -133,6 +134,8 @@ export interface VolleyRequest {
   lowSpeedNegated?: boolean
   /** Part of a Coordinated Fire attack, which bars precision targeting (H4.6.2). */
   coordinated?: boolean
+  /** Targeting and area jamming lent by scouts (H3.4, H3.5). */
+  scoutSupport?: ScoutSupport
   obstacles?: CircleObstacle[]
 }
 
@@ -180,9 +183,15 @@ export function resolveVolley(
 
   // Step 2: effective range (E6.2 Step 2, H2.3.3). Degraded fire control forfeits
   // the attacker's targeting but still suffers the target's jamming (E10.2.1/2).
+  //
+  // A scout illuminating the target adds to the attacker's targeting points and
+  // a scout's area jamming adds to the target's jamming (H3.4.1, H3.5.1). Both
+  // are the scout's own sensors, so neither is capped by the firing ship's
+  // sensor rating.
+  const support = request.scoutSupport ?? NO_SCOUT_SUPPORT
   const actual = actualRange(attacker.placement.position, target.placement.position)
-  const targeting = request.degradedFireControl ? 0 : attacker.sensors.targeting
-  const effective = effectiveRange(actual, target.sensors.jamming, targeting)
+  const targeting = request.degradedFireControl ? 0 : attacker.sensors.targeting + support.targeting
+  const effective = effectiveRange(actual, target.sensors.jamming + support.jamming, targeting)
 
   if (request.obstacles && !hasLineOfSight(attacker.placement.position, target.placement.position, request.obstacles)) {
     return { ok: false, reason: 'Line of sight is blocked (E2.3.2).' }

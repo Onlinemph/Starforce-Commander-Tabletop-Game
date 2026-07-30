@@ -140,6 +140,8 @@ def build(ship):
             continue
 
         if label in SPECIAL:
+            # SCOUT SEN's circles give the number of scout sensors each power
+            # point activates, not a capability value (H3.2.1).
             functions.append({'id': slug(label), 'label': label, 'kind': 'special',
                               'freeValue': (free['value'] or 1) if free else 0,
                               'steps': steps(), 'sequential': True})
@@ -259,6 +261,7 @@ def build(ship):
         'availability': msl['availability'],
         'victoryTable': msl['victory'],
         'shipBookPage': ship['page'],
+        **({'scoutSensor': ship['scoutSensor']} if ship.get('scoutSensor') else {}),
         **({'notes': ' '.join(errata)} if errata else {}),
     }
 
@@ -300,4 +303,15 @@ for s, raw in zip(ships, S):
         for m in w['mounts']:
             if not m['arcs']:
                 print(f"  no arcs: {s['name']} / {w['name']}"); problems += 1
+    # A scout's sensor block must carry one power circle and one damage box per
+    # sensor, and the SCOUT SEN line's top step must activate all of them (H3.2.1).
+    scout = s.get('scoutSensor')
+    if scout:
+        line = next((f for f in s['functions'] if f['label'].startswith('SCOUT SEN')), None)
+        top = max((st['value'] for st in line['steps']), default=0) if line else 0
+        if not (scout['sensors'] == scout['damageBoxes'] == top):
+            print(f"  scout sensor mismatch: {s['name']} "
+                  f"{scout['sensors']}/{scout['damageBoxes']}/{top}"); problems += 1
+        if not all(scout[k] for k in ('targetingRange', 'jammingRange', 'scanRange')):
+            print(f"  scout sensor range missing: {s['name']}"); problems += 1
 print(f'validation problems: {problems}')
