@@ -983,3 +983,169 @@ input[type='number'] {
 .scenario-brief p {
   font-size: 0.74rem;
 }
+
+/* ── Ship picker (S2.5 force selection) ─────────────────────────────────── */
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 20;
+}
+
+.picker {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  width: min(1100px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.picker > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.picker > footer {
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.picker-controls {
+  display: flex;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.picker-controls .field {
+  margin: 0;
+  min-width: 220px;
+}
+.picker-controls input[type='search'] {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+}
+
+.picker-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: hidden;
+  min-height: 0;
+}
+@media (max-width: 820px) {
+  .picker-sides {
+    grid-template-columns: 1fr;
+  }
+}
+
+.picker-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+.picker-blue {
+  border-color: rgba(74, 158, 255, 0.5);
+}
+.picker-red {
+  border-color: rgba(255, 92, 92, 0.5);
+}
+
+.roster {
+  overflow-y: auto;
+  max-height: 40vh;
+  margin-top: 0.5rem;
+}
+.roster h4 {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  padding: 0.25rem 0;
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.68rem;
+}
+.roster-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  gap: 1px;
+  margin-bottom: 2px;
+  padding: 0.25rem 0.45rem;
+  background: transparent;
+  border-color: transparent;
+}
+.roster-row:hover {
+  background: var(--panel-2);
+}
+.roster-row.is-picked {
+  background: #1d3a54;
+  border-color: var(--accent);
+}
+.roster-name {
+  font-size: 0.76rem;
+}
+.roster-meta {
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+}
+
+.picked-summary {
+  background: var(--panel-2);
+  border-radius: 5px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.74rem;
+}
+.picked-summary dl {
+  display: flex;
+  gap: 0.9rem;
+  margin: 0.4rem 0;
+  flex-wrap: wrap;
+}
+.picked-summary dt {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+}
+.picked-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+.picked-weapons {
+  margin: 0.3rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+}
+.picked-weapons em {
+  color: var(--ink-dim);
+  font-style: normal;
+  font-size: 0.68rem;
+}
+.picked-note {
+  margin-top: 0.4rem;
+  font-size: 0.68rem;
+  color: var(--warn);
+}

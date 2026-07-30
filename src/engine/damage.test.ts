@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { YORKTOWN } from '../data/ships'
+
+/** Canon Yorktown I: 3 phaser mounts, 15/13/13/12 shields, 13 structure boxes. */
+const PHASER = YORKTOWN.weapons.find((w) => w.weaponClass === 'phaser')!
 import {
   applyVolley,
   autoChoices,
@@ -52,8 +55,8 @@ describe('shields and armor (G1.2, G2.2)', () => {
   it('absorbs damage on the struck shield only (G1.1.6)', () => {
     const ship = makeShip()
     applyVolley(ship, { standard: 5, leak: 0, structurePenetration: 0, side: 'F' }, makeContext())
-    expect(blueShieldRemaining(ship, 'F')).toBe(11) // 16 − 5
-    expect(blueShieldRemaining(ship, 'P')).toBe(12)
+    expect(blueShieldRemaining(ship, 'F')).toBe(YORKTOWN.shields.blue.F - 5)
+    expect(blueShieldRemaining(ship, 'P')).toBe(YORKTOWN.shields.blue.P)
   })
 
   it('spends green reinforcement boxes before blue ones (G1.3.2)', () => {
@@ -61,12 +64,12 @@ describe('shields and armor (G1.2, G2.2)', () => {
     ship.greenShieldActive.F = 3
     applyVolley(ship, { standard: 4, leak: 0, structurePenetration: 0, side: 'F' }, makeContext())
     expect(greenShieldRemaining(ship, 'F')).toBe(0)
-    expect(blueShieldRemaining(ship, 'F')).toBe(15) // only 1 got through
+    expect(blueShieldRemaining(ship, 'F')).toBe(YORKTOWN.shields.blue.F - 1)
   })
 
   it('passes damage to internal systems once shields are gone (G1.2.1)', () => {
     const ship = makeShip()
-    ship.blueShieldDamage.A = 10 // aft shield stripped
+    ship.blueShieldDamage.A = YORKTOWN.shields.blue.A // aft shield stripped
     const outcome = applyVolley(ship, { standard: 4, leak: 0, structurePenetration: 0, side: 'A' }, makeContext())
     expect(outcome.internal).toBe(4)
   })
@@ -84,7 +87,7 @@ describe('shields and armor (G1.2, G2.2)', () => {
   it('lets armor absorb after shields (G2.2.1)', () => {
     const ship = makeShip()
     ship.form = { ...YORKTOWN, armor: { F: 4, P: 0, S: 0, A: 0 } }
-    ship.blueShieldDamage.F = 16
+    ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
     const outcome = applyVolley(ship, { standard: 6, leak: 0, structurePenetration: 0, side: 'F' }, makeContext())
     expect(outcome.armorAbsorbed).toBe(4)
     expect(outcome.internal).toBe(2)
@@ -112,7 +115,7 @@ describe('leak damage (E7.2.6)', () => {
 describe('STR +X special hits (F1.43)', () => {
   it('applies structure damage only when shields and armor are down', () => {
     const ship = makeShip()
-    ship.blueShieldDamage.F = 16
+    ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
     const before = structureRemaining(ship)
     const outcome = applyVolley(ship, { standard: 0, leak: 0, structurePenetration: 2, side: 'F' }, makeContext())
     expect(outcome.structureFromSpecial).toBe(2)
@@ -142,8 +145,9 @@ describe('alternate hits (E7.3.7)', () => {
   it('falls through to structure when neither primary nor alternate is available', () => {
     const ship = makeShip()
     const ctx = makeContext()
-    ship.systemDamage['SCNC'] = 4
-    ship.systemDamage['QTRS'] = 6
+    // Quarters hits also soak into cargo and special systems (E8.4.10), so those
+    // have to be gone too before the hit reaches structure.
+    for (const kind of ['SCNC', 'QTRS', 'CRGO', 'SPCL']) ship.systemDamage[kind] = 99
     const before = structureRemaining(ship)
     resolveCard(ship, card('sciences', 'quarters'), ctx)
     expect(structureRemaining(ship)).toBe(before - 1)
@@ -153,8 +157,7 @@ describe('alternate hits (E7.3.7)', () => {
     const ship = makeShip()
     const ctx = makeContext()
     ctx.precision = { section: 'general', hand: [] }
-    ship.systemDamage['SCNC'] = 4
-    ship.systemDamage['QTRS'] = 6
+    for (const kind of ['SCNC', 'QTRS', 'CRGO', 'SPCL']) ship.systemDamage[kind] = 99
     const before = structureRemaining(ship)
     resolveCard(ship, card('sciences', 'quarters'), ctx)
     expect(structureRemaining(ship)).toBe(before)
@@ -170,24 +173,26 @@ describe('specific damage cards (E8)', () => {
       blueShieldRemaining(ship, 'P') +
       blueShieldRemaining(ship, 'S') +
       blueShieldRemaining(ship, 'A')
-    expect(total).toBe(16 + 12 + 12 + 10 - 3)
+    const printed = Object.values(YORKTOWN.shields.blue).reduce((a, b) => a + b, 0)
+    expect(total).toBe(printed - 3)
   })
 
   it('a fully damaged weapon mount loses its arming points (E8.3.1)', () => {
     const ship = makeShip()
-    ship.mounts['lnc-447'][0].armed = 2
+    const state = ship.mounts[PHASER.id][0]
+    state.armed = PHASER.mounts[0].armingCircles
     const ctx = makeContext()
-    // Force the choice onto the armed forward mount.
-    ctx.choices = { ...autoChoices, weaponMount: () => ({ weaponId: 'lnc-447', index: 0 }) }
-    resolveCard(ship, card('any-weapon'), ctx)
-    expect(ship.mounts['lnc-447'][0].damage).toBe(1)
-    expect(ship.mounts['lnc-447'][0].armed).toBe(0)
+    // Force the choice onto the armed mount, and knock out every box on it.
+    ctx.choices = { ...autoChoices, weaponMount: () => ({ weaponId: PHASER.id, index: 0 }) }
+    for (let i = 0; i < PHASER.mounts[0].hitBoxes; i++) resolveCard(ship, card('any-weapon'), ctx)
+    expect(state.damage).toBe(PHASER.mounts[0].hitBoxes)
+    expect(state.armed).toBe(0)
   })
 
   it('Casualties removes three marine squads (E8.4.2)', () => {
     const ship = makeShip()
     resolveCard(ship, card('casualties'), makeContext())
-    expect(ship.marineSquads).toBe(1) // 4 − 3
+    expect(ship.marineSquads).toBe(YORKTOWN.marineSquads - 3)
   })
 
   it('destroying every sublight drive box forces an Emergency Stop (E8.5.4)', () => {
@@ -220,14 +225,19 @@ describe('damage control rating decay (B3.1.2)', () => {
     const ship = makeShip()
     expect(damageControlRating(ship)).toBe(4)
 
-    // Yorktown's track: 4 boxes at DC 4, then DC 3, 4 more, then DC 2, 2 more, DC 1.
+    // Canon Yorktown I track: □□□■ 4 ■■■ 3 ■■■ 2 ■■■ 1 (B3.1.2's worked example).
+    // Four hits still leave DC 4; the fifth drops it to 3.
     for (let i = 0; i < 4; i++) markStructure(ship)
+    expect(damageControlRating(ship)).toBe(4)
+
+    markStructure(ship)
     expect(damageControlRating(ship)).toBe(3)
 
-    for (let i = 0; i < 4; i++) markStructure(ship)
+    // Eight points of structure damage drop it to 2.
+    for (let i = 0; i < 3; i++) markStructure(ship)
     expect(damageControlRating(ship)).toBe(2)
 
-    for (let i = 0; i < 2; i++) markStructure(ship)
+    for (let i = 0; i < 3; i++) markStructure(ship)
     expect(damageControlRating(ship)).toBe(1)
 
     // Repairing a black box does not restore the rating (B3.3.3).
@@ -240,7 +250,7 @@ describe('destruction (E11.1)', () => {
   it('removes a ship once its last structure box is marked', () => {
     const ship = makeShip()
     const ctx = makeContext()
-    ship.blueShieldDamage.F = 16
+    ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
     applyVolley(ship, { standard: 0, leak: 0, structurePenetration: 20, side: 'F' }, ctx)
     expect(ship.destroyed).toBe(true)
   })
@@ -249,8 +259,9 @@ describe('destruction (E11.1)', () => {
     setDestructionOptions({ derelicts: true, explosions: false })
     const ship = makeShip()
     const ctx = makeContext()
-    ship.blueShieldDamage.F = 16
-    applyVolley(ship, { standard: 0, leak: 0, structurePenetration: 10, side: 'F' }, ctx)
+    ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
+    const boxes = YORKTOWN.structure.filter((e) => e.kind === 'box').length
+    applyVolley(ship, { standard: 0, leak: 0, structurePenetration: boxes, side: 'F' }, ctx)
     expect(ship.derelict).toBe(true)
     expect(ship.destroyed).toBe(false)
     expect(ship.speed).toBe(0)
@@ -260,9 +271,14 @@ describe('destruction (E11.1)', () => {
     setDestructionOptions({ derelicts: true, explosions: false })
     const ship = makeShip()
     const ctx = makeContext()
-    ship.blueShieldDamage.F = 16
-    // 10 structure boxes plus 5 excess for a size class 5 ship.
-    applyVolley(ship, { standard: 0, leak: 0, structurePenetration: 15, side: 'F' }, ctx)
+    ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
+    // Every structure box plus excess equal to the size class (E11.2.3).
+    const total = YORKTOWN.structure.filter((e) => e.kind === 'box').length
+    applyVolley(
+      ship,
+      { standard: 0, leak: 0, structurePenetration: total + YORKTOWN.sizeClass, side: 'F' },
+      ctx,
+    )
     expect(ship.destroyed).toBe(true)
   })
 })

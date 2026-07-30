@@ -205,6 +205,7 @@ export type SystemKind =
   | 'QTRS' // quarters (J2)
   | 'CRGO' // cargo (J11)
   | 'PROB' // probe launcher (J7)
+  | 'CMND' // command systems (H5)
   | 'SPCL' // special system (E8.4.7)
 
 export interface SystemGroupDef {
@@ -288,8 +289,19 @@ export interface ShipForm {
   availability?: Availability
 
   /**
-   * Set when the stats are our own reconstruction rather than canon, so the
-   * UI can flag them. Remove when real Ship Book data is imported.
+   * The Master Ship List's damage-level table (S2.8.3): structure damage
+   * required to reach each level, and the victory points it earns. Ordered
+   * minor, light, moderate, heavy, crippled. Canon values, so they are used in
+   * preference to recomputing the S2.8.4 percentages.
+   */
+  victoryTable?: Array<{ damage: number; points: number }>
+
+  /** Page in the Master Ship Book this form was imported from. */
+  shipBookPage?: number
+
+  /**
+   * Set when the stats are a reconstruction rather than canon, so the UI can
+   * flag them.
    */
   provisional?: boolean
   notes?: string

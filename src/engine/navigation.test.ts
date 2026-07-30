@@ -42,19 +42,21 @@ function ctx(seed = 42): DamageContext {
 }
 
 describe('turn templates (C2.2.2)', () => {
-  it('matches the rulebook worked example', () => {
+  it('reads the TURN line for the ship\'s current speed', () => {
     const ship = makeShip()
-    expect(turnTemplateAt(ship, 2)).toBe(35)
-    expect(turnTemplateAt(ship, 3)).toBe(30)
-    expect(turnTemplateAt(ship, 5)).toBe(20)
-    expect(turnTemplateAt(ship, 6)).toBe(0) // no turn at top speed
+    YORKTOWN.sublight.turnBySpeed.forEach((degrees, speed) => {
+      expect(turnTemplateAt(ship, speed)).toBe(degrees)
+    })
+    // Tighter turns are available at lower speed, and none at the top.
+    expect(turnTemplateAt(ship, 0)).toBeGreaterThan(turnTemplateAt(ship, YORKTOWN.sublight.maxSpeed - 1))
+    expect(turnTemplateAt(ship, YORKTOWN.sublight.maxSpeed)).toBe(0)
   })
 })
 
 describe('plot validation (C1)', () => {
   it('enforces the per-phase acceleration limit (C1.2.5)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'accel', 3)
+    setAllocation(ship, 'accel', YORKTOWN.functions.find((l) => l.kind === 'accel')!.steps.length)
     commitAllocation(ship)
     const errors = validatePlot(ship, card({ accel: 3, speed: 7 }))
     expect(errors.some((e) => /per phase/.test(e.message))).toBe(true)
@@ -70,18 +72,18 @@ describe('plot validation (C1)', () => {
 
   it('caps speed at the ship maximum (C1.2.7)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'accel', 3)
+    setAllocation(ship, 'accel', YORKTOWN.functions.find((l) => l.kind === 'accel')!.steps.length)
     commitAllocation(ship)
-    const errors = validatePlot(ship, card({ accel: 2, speed: 8 }))
+    const errors = validatePlot(ship, card({ accel: 2, speed: YORKTOWN.sublight.maxSpeed + 2 }))
     expect(errors.some((e) => /exceeds current maximum/.test(e.message))).toBe(true)
   })
 
   it('caps reverse at half maximum speed, rounded down (C3.7.3)', () => {
     const ship = makeShip()
-    expect(maxReverseSpeed(ship)).toBe(3) // max speed 6
-    setAllocation(ship, 'accel', 3)
+    expect(maxReverseSpeed(ship)).toBe(Math.floor(YORKTOWN.sublight.maxSpeed / 2))
+    setAllocation(ship, 'accel', YORKTOWN.functions.find((l) => l.kind === 'accel')!.steps.length)
     commitAllocation(ship)
-    const errors = validatePlot(ship, card({ accel: 2, speed: -4 }))
+    const errors = validatePlot(ship, card({ accel: 2, speed: -(maxReverseSpeed(ship) + 1) }))
     expect(errors.some((e) => /Reverse speed limited/.test(e.message))).toBe(true)
   })
 
@@ -111,20 +113,22 @@ describe('plot validation (C1)', () => {
 describe('movement execution', () => {
   it('applies the plotted speed and records maneuver stress (C3.2.3)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'accel', 3)
+    setAllocation(ship, 'accel', YORKTOWN.functions.find((l) => l.kind === 'accel')!.steps.length)
     commitAllocation(ship)
     const result = executeMovement(ship, card({ maneuver: 'hard', direction: 'right', accel: 0, speed: 4 }))
     expect(result.stress).toBe(1)
     expect(ship.stressMarkers).toBe(1)
-    expect(ship.placement.heading).toBe(50) // two 25-degree turns at speed 4
+    // A hard turn is two standard turns in the same direction (C3.2.2).
+    expect(ship.placement.heading).toBe(YORKTOWN.sublight.turnBySpeed[4] * 2)
   })
 
   it('clamps speed to the damaged drive maximum (C4.2.1)', () => {
-    const ship = makeShip(6)
-    ship.systemDamage['__sublight'] = 3 // top speed drops to 2 (E8.5.4)
-    expect(currentMaxSpeed(ship)).toBe(2)
-    executeMovement(ship, card({ speed: 6 }))
-    expect(ship.speed).toBe(2)
+    const ship = makeShip(YORKTOWN.sublight.maxSpeed)
+    ship.systemDamage['__sublight'] = 3
+    const capped = YORKTOWN.sublight.dmgTopSpeed[2]
+    expect(currentMaxSpeed(ship)).toBe(capped)
+    executeMovement(ship, card({ speed: YORKTOWN.sublight.maxSpeed }))
+    expect(ship.speed).toBe(capped)
   })
 
   it('holds the ship still during an emergency stop (C3.8.2)', () => {
@@ -140,12 +144,12 @@ describe('movement execution', () => {
 describe('acceleration stress (C1.2.6)', () => {
   it('charges one stress per point past the safe limit', () => {
     const ship = makeShip()
-    // Yorktown: 2 safe acceleration points per round.
-    ship.accelUsedThisRound = 2
+    const safe = YORKTOWN.sublight.safeAccelPerRound
+    ship.accelUsedThisRound = safe
     expect(accelerationStress(ship)).toBe(0)
-    ship.accelUsedThisRound = 3
+    ship.accelUsedThisRound = safe + 1
     expect(accelerationStress(ship)).toBe(1)
-    ship.accelUsedThisRound = 4
+    ship.accelUsedThisRound = safe + 2
     expect(accelerationStress(ship)).toBe(2)
   })
 })
@@ -153,7 +157,7 @@ describe('acceleration stress (C1.2.6)', () => {
 describe('stress check (C3.1.3)', () => {
   it('cancels stress with the SIF before rolling (C3.1.1)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'sif', 2) // SIF value 2
+    setAllocation(ship, 'sif', 2) // two circles → SIF cancels 2 stress
     commitAllocation(ship)
     ship.stressMarkers = 3
 
@@ -178,7 +182,7 @@ describe('stress check (C3.1.3)', () => {
   it('folds acceleration stress into the check (C1.2.6)', () => {
     const ship = makeShip()
     commitAllocation(ship)
-    ship.accelUsedThisRound = 4 // 2 over the safe limit
+    ship.accelUsedThisRound = YORKTOWN.sublight.safeAccelPerRound + 2
     const result = resolveStressCheck(ship, ctx())
     expect(result.markersBefore).toBe(2)
   })
@@ -218,7 +222,7 @@ describe('disengagement (J9)', () => {
     commitAllocation(ship)
     expect(disengagementOptions(ship, [enemy], { width: 36, height: 36, fixed: true })).toHaveLength(0)
 
-    setAllocation(ship, 'ftl', 3)
+    setAllocation(ship, 'ftl', YORKTOWN.functions.find((l) => l.kind === 'ftl-drive')!.steps.length)
     commitAllocation(ship)
     expect(disengagementOptions(ship, [enemy], { width: 36, height: 36, fixed: true })).toContain(
       'FTL disengagement (J9.1)',

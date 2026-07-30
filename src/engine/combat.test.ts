@@ -15,9 +15,11 @@ import { Rng } from './dice'
 import { createShip, type ShipState } from './shipState'
 import type { WeaponSystemDef } from './types'
 
-const phaser = YORKTOWN.weapons.find((w) => w.id === 'lnc-447')!
-const torpedo = YORKTOWN.weapons.find((w) => w.id === 'mk4-torp')!
-const disruptor = VALLARI_CRUISER.weapons.find((w) => w.id === 'type-51')!
+const phaser = YORKTOWN.weapons.find((w) => w.weaponClass === 'phaser')!
+const torpedo = YORKTOWN.weapons.find((w) => w.weaponClass === 'a-mat-torpedo')!
+const disruptor = VALLARI_CRUISER.weapons.find((w) => w.weaponClass === 'disruptor')!
+/** Highest range any phaser bracket covers, for out-of-range cases. */
+const phaserMax = phaser.brackets[phaser.brackets.length - 1].max
 
 function pair(distanceInches: number): { attacker: ShipState; target: ShipState } {
   const attacker = createShip({
@@ -73,21 +75,20 @@ describe('weapon traits (F1)', () => {
 
 describe('range brackets (E1.2, C1.5)', () => {
   it('picks the bracket containing the effective range', () => {
-    expect(bracketIndexFor(disruptor, 0)).toBe(0)
-    expect(bracketIndexFor(disruptor, 4)).toBe(1)
-    expect(bracketIndexFor(disruptor, 7)).toBe(2)
-    expect(bracketIndexFor(disruptor, 13)).toBe(4)
-    expect(bracketIndexFor(disruptor, 14)).toBe(-1) // out of range
+    disruptor.brackets.forEach((b, i) => {
+      expect(bracketIndexFor(disruptor, b.min)).toBe(i)
+      expect(bracketIndexFor(disruptor, b.max)).toBe(i)
+    })
+    const beyond = disruptor.brackets[disruptor.brackets.length - 1].max + 1
+    expect(bracketIndexFor(disruptor, beyond)).toBe(-1)
   })
 
   it('shifts one bracket closer against a target at speed zero (C1.5.2)', () => {
-    // Effective range 7 normally sits in the 6-8 black bracket; the low-speed
-    // penalty moves the attacker to the 3-5 green bracket.
-    const normal = selectBracket(disruptor, 7, false)!
-    const lowSpeed = selectBracket(disruptor, 7, true)!
-    expect(normal.bracket.band).toBe('black')
-    expect(lowSpeed.bracket.band).toBe('green')
-    expect(lowSpeed.index).toBe(normal.index - 1)
+    const second = disruptor.brackets[2]
+    const normal = selectBracket(disruptor, second.min, false)!
+    const lowSpeed = selectBracket(disruptor, second.min, true)!
+    expect(normal.index).toBe(2)
+    expect(lowSpeed.index).toBe(1)
   })
 
   it('never shifts past the first bracket', () => {
@@ -115,10 +116,10 @@ describe('volley resolution (E6.2, E7.3)', () => {
     const { attacker, target } = pair(5)
     // Move the target astern; the forward torpedo tubes cannot bear.
     target.placement = { position: { x: 0, y: 8 }, heading: 0 }
-    attacker.mounts['mk4-torp'][0].armed = 2
+    attacker.mounts[torpedo.id][0].armed = 2
 
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'mk4-torp', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: torpedo.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
@@ -128,9 +129,9 @@ describe('volley resolution (E6.2, E7.3)', () => {
 
   it('rejects a mount that is not fully armed (E4.2.3)', () => {
     const { attacker, target } = pair(5)
-    attacker.mounts['lnc-447'][0].armed = 1 // needs 2
+    attacker.mounts[phaser.id][0].armed = 1 // needs 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
@@ -139,21 +140,21 @@ describe('volley resolution (E6.2, E7.3)', () => {
 
   it('erases arming circles for mounts that fire (E6.2 Step 6)', () => {
     const { attacker, target } = pair(5)
-    attacker.mounts['lnc-447'][0].armed = 2
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
     expect(result.ok).toBe(true)
-    expect(attacker.mounts['lnc-447'][0].armed).toBe(0)
+    expect(attacker.mounts[phaser.id][0].armed).toBe(0)
   })
 
   it('rejects targets beyond the weapon chart', () => {
-    const { attacker, target } = pair(30)
-    attacker.mounts['lnc-447'][0].armed = 2
+    const { attacker, target } = pair(phaserMax + 15)
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
@@ -162,40 +163,43 @@ describe('volley resolution (E6.2, E7.3)', () => {
   })
 
   it('applies jamming to push a target out of reach (H2.3.7)', () => {
-    const { attacker, target } = pair(14)
-    target.sensors.jamming = 4 // effective range 18, past the phaser's 15
-    attacker.mounts['lnc-447'][0].armed = 2
+    const { attacker, target } = pair(phaserMax - 1)
+    target.sensors.jamming = 4 // pushes the effective range past the last bracket
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
     expect(result.ok).toBe(false)
   })
 
-  it('drops one attack die per damage box on a degraded mount (E8.3.1)', () => {
-    const { attacker, target } = pair(7) // 6-8 bracket: green + blue
-    attacker.mounts['lnc-447'][0].armed = 2
-    attacker.mounts['lnc-447'][0].damage = 0
+  it('rolls one die per die printed in the bracket (E3.2.1)', () => {
+    const { attacker, target } = pair(7)
+    attacker.mounts[phaser.id][0].armed = 2
+    attacker.mounts[phaser.id][0].damage = 0
     const full = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(5),
     )
     expect(full.ok).toBe(true)
-    if (full.ok) expect(full.records[0].rolls).toHaveLength(2)
+    if (full.ok) {
+      const bracket = selectBracket(phaser, full.effectiveRange, false)!
+      expect(full.records[0].rolls).toHaveLength(bracket.bracket.dice.length)
+    }
   })
 
   it('halves damage and discards leak under degraded fire control (E10.2)', () => {
     const { attacker, target } = pair(4)
     attacker.sensors.targeting = 3
-    attacker.mounts['lnc-447'][0].armed = 2
+    attacker.mounts[phaser.id][0].armed = 2
 
     const result = resolveVolley(
       {
         attacker,
         target,
-        mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }],
+        mounts: [{ weaponId: phaser.id, mountIndex: 0 }],
         mode: 'standard',
         degradedFireControl: true,
       },
@@ -214,13 +218,13 @@ describe('volley resolution (E6.2, E7.3)', () => {
 
   it('halves damage for proximity fire and refuses to mix it with degraded FC (E3.3)', () => {
     const { attacker, target } = pair(4)
-    attacker.mounts['lnc-447'][0].armed = 2
+    attacker.mounts[phaser.id][0].armed = 2
 
     const rejected = resolveVolley(
       {
         attacker,
         target,
-        mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }],
+        mounts: [{ weaponId: phaser.id, mountIndex: 0 }],
         mode: 'proximity',
         degradedFireControl: true,
       },
@@ -230,7 +234,7 @@ describe('volley resolution (E6.2, E7.3)', () => {
     expect(rejected.ok).toBe(false)
 
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'proximity' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'proximity' },
       ctx(3),
       new Rng(3),
     )
@@ -242,13 +246,13 @@ describe('volley resolution (E6.2, E7.3)', () => {
   })
 
   it('refuses precision targeting beyond effective range 8 (E9.1.3)', () => {
-    const { attacker, target } = pair(12)
-    attacker.mounts['lnc-447'][0].armed = 2
+    const { attacker, target } = pair(10)
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
       {
         attacker,
         target,
-        mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }],
+        mounts: [{ weaponId: phaser.id, mountIndex: 0 }],
         mode: 'precision',
         precisionSection: 'weapons',
       },
@@ -261,12 +265,12 @@ describe('volley resolution (E6.2, E7.3)', () => {
 
   it('refuses non-PREC weapons in a precision volley (E9.2.1)', () => {
     const { attacker, target } = pair(4)
-    attacker.mounts['mk4-torp'][0].armed = 2
+    attacker.mounts[torpedo.id][0].armed = 2
     const result = resolveVolley(
       {
         attacker,
         target,
-        mounts: [{ weaponId: 'mk4-torp', mountIndex: 0 }],
+        mounts: [{ weaponId: torpedo.id, mountIndex: 0 }],
         mode: 'precision',
         precisionSection: 'weapons',
       },
@@ -281,9 +285,9 @@ describe('volley resolution (E6.2, E7.3)', () => {
     const { attacker, target } = pair(5)
     // Target faces north, attacker is to its south → aft shield.
     target.placement = { position: { x: 0, y: -5 }, heading: 180 }
-    attacker.mounts['lnc-447'][0].armed = 2
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0 }], mode: 'standard' },
       ctx(),
       new Rng(11),
     )
@@ -293,12 +297,12 @@ describe('volley resolution (E6.2, E7.3)', () => {
 
   it('blocks fire when a planet sits between the ships (E2.3.2)', () => {
     const { attacker, target } = pair(12)
-    attacker.mounts['lnc-447'][0].armed = 2
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
       {
         attacker,
         target,
-        mounts: [{ weaponId: 'lnc-447', mountIndex: 0 }],
+        mounts: [{ weaponId: phaser.id, mountIndex: 0 }],
         mode: 'standard',
         obstacles: [{ center: { x: 0, y: -6 }, radius: 3, blocksLos: true }],
       },
@@ -310,15 +314,15 @@ describe('volley resolution (E6.2, E7.3)', () => {
   })
 
   it('fires at low power, spending only the circles used (E3.4.3)', () => {
-    const { attacker, target } = pair(7) // 6-8: green + blue, 2 dice, 2 circles
-    attacker.mounts['lnc-447'][0].armed = 2
+    const { attacker, target } = pair(7)
+    attacker.mounts[phaser.id][0].armed = 2
     const result = resolveVolley(
-      { attacker, target, mounts: [{ weaponId: 'lnc-447', mountIndex: 0, lowPowerDice: 1 }], mode: 'standard' },
+      { attacker, target, mounts: [{ weaponId: phaser.id, mountIndex: 0, lowPowerDice: 1 }], mode: 'standard' },
       ctx(),
       new Rng(4),
     )
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.records[0].rolls).toHaveLength(1)
-    expect(attacker.mounts['lnc-447'][0].armed).toBe(1)
+    expect(attacker.mounts[phaser.id][0].armed).toBe(1)
   })
 })

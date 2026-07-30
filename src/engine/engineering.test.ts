@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { YORKTOWN } from '../data/ships'
+
+const TORPEDO = YORKTOWN.weapons.find((w) => w.weaponClass === 'a-mat-torpedo')!
+const PHASER = YORKTOWN.weapons.find((w) => w.weaponClass === 'phaser')!
+const TORP_LINE = YORKTOWN.functions.find((l) => l.weaponSystemId === TORPEDO.id)!
+const PHASER_LINE = YORKTOWN.functions.find((l) => l.weaponSystemId === PHASER.id)!
+const reactorPoints = YORKTOWN.reactors.reduce((n, r) => n + r.points.length, 0)
 import {
   armingPointsAvailable,
   armMount,
@@ -22,6 +28,26 @@ import {
   type ShipState,
 } from './shipState'
 
+/**
+ * Fill FUNCTIONS circles until nothing legal can take another point, and return
+ * the power left over. Lines that refuse the change are skipped rather than
+ * retried, so this always terminates.
+ */
+function spendEverything(ship: ShipState): number {
+  const lines = YORKTOWN.functions.filter((l) => l.kind !== 'shield-repair')
+  let progressed = true
+  while (progressed && powerRemaining(ship) > 0) {
+    progressed = false
+    for (const line of lines) {
+      if (powerRemaining(ship) === 0) break
+      const filled = ship.allocation[line.id] ?? 0
+      if (filled >= line.steps.length) continue
+      if (setAllocation(ship, line.id, filled + 1) === null) progressed = true
+    }
+  }
+  return powerRemaining(ship)
+}
+
 function makeShip(): ShipState {
   return createShip({
     id: 'test',
@@ -34,60 +60,65 @@ function makeShip(): ShipState {
 }
 
 describe('power totals (B2.2.1)', () => {
-  it('reports TOTAL POWER 8+1 for an undamaged Yorktown', () => {
+  it('matches the TOTAL POWER printed on the form', () => {
     const ship = makeShip()
-    expect(reactorPower(ship)).toBe(8)
-    expect(batteryPower(ship)).toBe(1)
-    expect(totalPowerAvailable(ship)).toBe(9)
+    expect(reactorPower(ship)).toBe(reactorPoints)
+    expect(batteryPower(ship)).toBe(YORKTOWN.batteries)
+    expect(totalPowerAvailable(ship)).toBe(reactorPoints + YORKTOWN.batteries)
   })
 
   it('loses a power point only when every box on it is damaged (E8.5.1)', () => {
     const ship = makeShip()
-    ship.reactorDamage['l-main'][0] = 1 // one of two boxes
-    expect(reactorPower(ship)).toBe(8)
-    ship.reactorDamage['l-main'][0] = 2
-    expect(reactorPower(ship)).toBe(7)
+    const group = YORKTOWN.reactors[0]
+    const boxes = group.points[0].boxes
+    ship.reactorDamage[group.id][0] = boxes - 1
+    expect(reactorPower(ship)).toBe(reactorPoints)
+    ship.reactorDamage[group.id][0] = boxes
+    expect(reactorPower(ship)).toBe(reactorPoints - 1)
   })
 })
 
 describe('resource allocation (B2.2)', () => {
   it('refuses to spend more power than the ship has', () => {
     const ship = makeShip()
-    expect(setAllocation(ship, 'accel', 3)).toBeNull()
-    expect(setAllocation(ship, 'f-lnc447', 3)).toBeNull()
-    expect(setAllocation(ship, 'sensor', 2)).toBeNull()
-    expect(setAllocation(ship, 'sif', 1)).toBeNull() // 9 of 9 spent
-    const overspend = setAllocation(ship, 'gensys', 1)
-    expect(overspend).not.toBeNull()
-    expect(powerRemaining(ship)).toBe(0)
+    expect(spendEverything(ship)).toBe(0)
+
+    // With every reactor point and battery committed, one more circle is refused.
+    const spare = YORKTOWN.functions.find(
+      (l) => l.kind === 'accel' && l.steps.length > (ship.allocation[l.id] ?? 0),
+    )
+    if (spare) {
+      expect(setAllocation(ship, spare.id, (ship.allocation[spare.id] ?? 0) + 1)).not.toBeNull()
+    }
   })
 
   it('reads capability off the sequential circles (B2.2.2)', () => {
     const ship = makeShip()
-    // Free power gives 1 acceleration point; three circles give 4 (B2.2.2 example).
-    expect(lineValue(ship, 'accel')).toBe(1)
-    setAllocation(ship, 'accel', 3)
-    expect(lineValue(ship, 'accel')).toBe(4)
+    const accel = YORKTOWN.functions.find((l) => l.kind === 'accel')!
+    // Free power alone gives the printed free value…
+    expect(lineValue(ship, accel.id)).toBe(accel.freeValue)
+    // …and filling every circle gives the value printed beside the last one.
+    setAllocation(ship, accel.id, accel.steps.length)
+    expect(lineValue(ship, accel.id)).toBe(accel.steps[accel.steps.length - 1].value)
   })
 
-  it('generates the documented phaser arming points (E4.1 Arming Example 1)', () => {
+  it('steps a weapon line through its printed arming points (E4.1)', () => {
     const ship = makeShip()
-    expect(lineValue(ship, 'f-lnc447')).toBe(1) // free power
-    setAllocation(ship, 'f-lnc447', 1)
-    expect(lineValue(ship, 'f-lnc447')).toBe(4)
-    setAllocation(ship, 'f-lnc447', 2)
-    expect(lineValue(ship, 'f-lnc447')).toBe(6)
-    setAllocation(ship, 'f-lnc447', 3)
-    expect(lineValue(ship, 'f-lnc447')).toBe(8)
+    expect(lineValue(ship, PHASER_LINE.id)).toBe(PHASER_LINE.freeValue)
+    PHASER_LINE.steps.forEach((step, i) => {
+      setAllocation(ship, PHASER_LINE.id, i + 1)
+      expect(lineValue(ship, PHASER_LINE.id)).toBe(step.value)
+    })
   })
 
-  it('generates the documented sensor points (H2.2.1)', () => {
+  it('steps the sensor line through its printed values (H2.2.1)', () => {
     const ship = makeShip()
-    expect(lineValue(ship, 'sensor')).toBe(2)
-    setAllocation(ship, 'sensor', 1)
-    expect(lineValue(ship, 'sensor')).toBe(4)
-    setAllocation(ship, 'sensor', 2)
-    expect(lineValue(ship, 'sensor')).toBe(6)
+    const sensor = YORKTOWN.functions.find((l) => l.kind === 'sensor')!
+    expect(lineValue(ship, sensor.id)).toBe(sensor.freeValue)
+    sensor.steps.forEach((step, i) => {
+      setAllocation(ship, sensor.id, i + 1)
+      expect(lineValue(ship, sensor.id)).toBe(step.value)
+    })
   })
 
   it('will not power a repair line for an undamaged shield', () => {
@@ -107,18 +138,18 @@ describe('resource allocation (B2.2)', () => {
 describe('commit (B2.4, G1.3)', () => {
   it('repairs blue shield boxes equal to the generator rating (G1.3.3)', () => {
     const ship = makeShip()
+    const gen = YORKTOWN.shields.generatorBoxes
     ship.blueShieldDamage.F = 8
     setAllocation(ship, 'repr-F', 1)
     commitAllocation(ship)
-    // Generator rating 3 → three boxes restored.
-    expect(blueShieldRemaining(ship, 'F')).toBe(16 - 5)
+    expect(blueShieldRemaining(ship, 'F')).toBe(YORKTOWN.shields.blue.F - (8 - gen))
   })
 
   it('activates green boxes equal to the generator rating when reinforcing (G1.3.2)', () => {
     const ship = makeShip()
     setAllocation(ship, 'rnfc-F', 1)
     commitAllocation(ship)
-    expect(greenShieldRemaining(ship, 'F')).toBe(3)
+    expect(greenShieldRemaining(ship, 'F')).toBe(YORKTOWN.shields.generatorBoxes)
   })
 
   it('reinforces less when shield generators are damaged (G1.3.2)', () => {
@@ -126,16 +157,12 @@ describe('commit (B2.4, G1.3)', () => {
     ship.shieldGeneratorDamage = 1
     setAllocation(ship, 'rnfc-F', 1)
     commitAllocation(ship)
-    expect(greenShieldRemaining(ship, 'F')).toBe(2)
+    expect(greenShieldRemaining(ship, 'F')).toBe(YORKTOWN.shields.generatorBoxes - 1)
   })
 
   it('drains a battery when allocation exceeds reactor output (B2.4.1)', () => {
     const ship = makeShip()
-    // Spend all 8 reactor points plus the battery.
-    setAllocation(ship, 'accel', 3)
-    setAllocation(ship, 'f-lnc447', 3)
-    setAllocation(ship, 'sensor', 2)
-    setAllocation(ship, 'sif', 1)
+    expect(spendEverything(ship)).toBe(0)
     commitAllocation(ship)
     expect(batteryPower(ship)).toBe(0)
   })
@@ -161,66 +188,81 @@ describe('commit (B2.4, G1.3)', () => {
 describe('weapon arming (E4.2)', () => {
   it('makes arming points available inside the same segment (E4.2.1)', () => {
     const ship = makeShip()
-    // Free power alone gives the LNC-447 one arming point.
-    expect(armingPointsAvailable(ship, 'lnc-447')).toBe(1)
-    setAllocation(ship, 'f-lnc447', 2)
-    expect(armingPointsAvailable(ship, 'lnc-447')).toBe(6)
+    // Free power alone already generates the line's free arming points.
+    expect(armingPointsAvailable(ship, PHASER.id)).toBe(PHASER_LINE.freeValue)
+    setAllocation(ship, PHASER_LINE.id, PHASER_LINE.steps.length)
+    expect(armingPointsAvailable(ship, PHASER.id)).toBe(
+      PHASER_LINE.steps[PHASER_LINE.steps.length - 1].value,
+    )
   })
 
   it('distributes arming points across mounts of the same system', () => {
     const ship = makeShip()
-    setAllocation(ship, 'f-lnc447', 2) // 6 arming points
+    setAllocation(ship, PHASER_LINE.id, PHASER_LINE.steps.length)
+    const budget = armingPointsAvailable(ship, PHASER.id)
 
-    // Fully arm three mounts (E4.2 Arming Example 2, option one).
-    for (const index of [0, 1, 2]) {
-      expect(armMount(ship, 'lnc-447', index)).toBeNull()
-      expect(armMount(ship, 'lnc-447', index)).toBeNull()
-      expect(mountIsReady(YORKTOWN.weapons[0], index, ship.mounts['lnc-447'][index])).toBe(true)
+    let spent = 0
+    for (let index = 0; index < PHASER.mounts.length && spent < budget; index++) {
+      for (let c = 0; c < PHASER.mounts[index].armingCircles && spent < budget; c++) {
+        expect(armMount(ship, PHASER.id, index)).toBeNull()
+        spent += 1
+      }
+      if (spent <= budget) {
+        expect(mountIsReady(PHASER, index, ship.mounts[PHASER.id][index])).toBe(true)
+      }
     }
-    expect(armingPointsAvailable(ship, 'lnc-447')).toBe(0)
-    expect(armMount(ship, 'lnc-447', 3)).not.toBeNull()
+    // Spend any remainder across the mounts, then confirm the budget is closed.
+    for (let i = 0; i < PHASER.mounts.length * 4; i++) {
+      if (armingPointsAvailable(ship, PHASER.id) === 0) break
+      armMount(ship, PHASER.id, i % PHASER.mounts.length)
+    }
+    expect(armingPointsAvailable(ship, PHASER.id)).toBe(0)
+    expect(armMount(ship, PHASER.id, 0)).not.toBeNull()
   })
 
   it('will not transfer arming points between weapon systems (E4.2.6)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'f-lnc447', 1)
-    expect(armingPointsAvailable(ship, 'mk4-torp')).toBe(0)
-    expect(armMount(ship, 'mk4-torp', 0)).not.toBeNull()
+    setAllocation(ship, PHASER_LINE.id, 1)
+    // The torpedo line has no power, so only its own free points are available.
+    expect(armingPointsAvailable(ship, TORPEDO.id)).toBe(TORP_LINE.freeValue)
   })
 
   it('will not pull power off a weapon line after its points are spent (E4.2.7)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'f-lnc447', 2) // 6 points
-    for (let i = 0; i < 5; i++) armMount(ship, 'lnc-447', i % 4)
-    // Dropping to 4 points would strand a spent point.
-    expect(setAllocation(ship, 'f-lnc447', 1)).not.toBeNull()
+    setAllocation(ship, PHASER_LINE.id, PHASER_LINE.steps.length)
+    const budget = armingPointsAvailable(ship, PHASER.id)
+    for (let i = 0; i < budget; i++) armMount(ship, PHASER.id, i % PHASER.mounts.length)
+    expect(setAllocation(ship, PHASER_LINE.id, 0)).not.toBeNull()
   })
 
   it('stops slow-arming weapons at the diamond (E4.2.8)', () => {
     const ship = makeShip()
-    setAllocation(ship, 'f-mk4', 2) // 4 arming points
+    setAllocation(ship, TORP_LINE.id, TORP_LINE.steps.length)
+    const mount = TORPEDO.mounts[0]
+    expect(mount.roundGates?.some(Boolean)).toBe(true)
 
-    // The first circle fills; the diamond blocks the second this round.
-    expect(armMount(ship, 'mk4-torp', 0)).toBeNull()
-    expect(armMount(ship, 'mk4-torp', 0)).not.toBeNull()
-    expect(ship.mounts['mk4-torp'][0].armed).toBe(1)
+    // One circle fills; the diamond blocks the next until a later round.
+    expect(armMount(ship, TORPEDO.id, 0)).toBeNull()
+    expect(armMount(ship, TORPEDO.id, 0)).not.toBeNull()
+    expect(ship.mounts[TORPEDO.id][0].armed).toBe(1)
 
-    // All four mounts may be armed simultaneously, one circle each.
-    for (const index of [1, 2, 3]) expect(armMount(ship, 'mk4-torp', index)).toBeNull()
+    // Every mount may take its first circle in the same segment.
+    for (let i = 1; i < TORPEDO.mounts.length; i++) {
+      expect(armMount(ship, TORPEDO.id, i)).toBeNull()
+    }
 
-    // Next round the second circle may be filled.
-    for (const state of ship.mounts['mk4-torp']) state.armedThisRound = 0
-    setAllocation(ship, 'f-mk4', 2)
-    expect(armMount(ship, 'mk4-torp', 0)).toBeNull()
-    expect(ship.mounts['mk4-torp'][0].armed).toBe(2)
-    expect(mountIsReady(YORKTOWN.weapons[1], 0, ship.mounts['mk4-torp'][0])).toBe(true)
+    // Next round the circle past the diamond may be filled.
+    for (const state of ship.mounts[TORPEDO.id]) state.armedThisRound = 0
+    setAllocation(ship, TORP_LINE.id, TORP_LINE.steps.length)
+    expect(armMount(ship, TORPEDO.id, 0)).toBeNull()
+    expect(ship.mounts[TORPEDO.id][0].armed).toBe(2)
   })
 
   it('refuses to arm a damaged mount', () => {
     const ship = makeShip()
-    setAllocation(ship, 'f-lnc447', 1)
-    ship.mounts['lnc-447'][0].damage = 1
-    expect(armMount(ship, 'lnc-447', 0)).not.toBeNull()
+    setAllocation(ship, PHASER_LINE.id, 1)
+    ship.mounts[PHASER.id][0].damage = PHASER.mounts[0].hitBoxes
+    expect(armMount(ship, PHASER.id, 0)).not.toBeNull()
   })
 })
 
@@ -231,8 +273,8 @@ describe('damage control (B3)', () => {
 
     ship.systemDamage['SENS'] = 1
     ship.shieldGeneratorDamage = 1
-    ship.mounts['lnc-447'][0].damage = 1
-    ship.reactorDamage['l-main'][0] = 1
+    ship.mounts[PHASER.id][0].damage = 1
+    ship.reactorDamage[YORKTOWN.reactors[0].id][0] = 1
 
     const targets = repairTargets(ship)
     expect(targets.map((t) => t.category).sort()).toEqual(['engineering', 'shields', 'systems', 'weapons'])

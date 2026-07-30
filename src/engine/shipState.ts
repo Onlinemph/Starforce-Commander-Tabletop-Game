@@ -227,23 +227,34 @@ export function findLine(form: ShipForm, kind: string, match?: Partial<FunctionL
 // ---------------------------------------------------------------------------
 
 /**
- * Current Damage Control Rating. Structure damage walks the Structural
- * Integrity track; each DC marker whose boxes are all damaged lowers the
- * rating permanently (B3.1.2).
+ * Current Damage Control Rating (B3.1.2).
+ *
+ * The Structural Integrity track interleaves boxes with rating markers. "When
+ * the ship suffers a structure hit resulting in a box to the right of a number,
+ * reduce the ship's Damage Control Rating to the following number to the
+ * right." So a marker only bites once a box *beyond* it is damaged, and the new
+ * rating is the marker after the one passed.
+ *
+ * Worked example from B3.1.2 — a Yorktown whose track is `□□□■ 4 □□□ 3 …` with
+ * a DC icon of 4: four hits leave it at 4, the fifth drops it to 3, and eight
+ * hits drop it to 2. Reductions are permanent even if a box is repaired
+ * (B3.3.3), which is why this reads `structureHitsTaken` rather than current
+ * damage.
  */
 export function damageControlRating(ship: ShipState): number {
-  let rating = ship.form.damageControlRating
+  const markers: number[] = []
+  let passed = 0
   let boxesSeen = 0
   for (const entry of ship.form.structure) {
     if (entry.kind === 'box') {
       boxesSeen += 1
-    } else if (boxesSeen <= ship.structureHitsTaken) {
-      rating = entry.rating
     } else {
-      break
+      markers.push(entry.rating)
+      if (boxesSeen < ship.structureHitsTaken) passed += 1
     }
   }
-  return rating
+  if (markers.length === 0) return ship.form.damageControlRating
+  return markers[Math.min(passed, markers.length - 1)]
 }
 
 // ---------------------------------------------------------------------------

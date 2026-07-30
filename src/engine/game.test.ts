@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BLUE, RED, startScenario } from '../data/scenarios'
 import { advanceSegment, PHASE_ORDER, PHASE_SEGMENTS, victoryPoints, type GameState } from './game'
-import { markStructure, structureTotal } from './shipState'
+import { markStructure } from './shipState'
 
 /** Walk the sequence of play until the given round/phase/segment is reached. */
 function runTo(game: GameState, predicate: (g: GameState) => boolean, limit = 200): void {
@@ -88,14 +88,21 @@ describe('sequence of play (A3)', () => {
 })
 
 describe('victory points (S2.8.4)', () => {
-  it('scores damage levels by structure percentage', () => {
+  it('scores each damage band from the Master Ship List table (S2.8.3)', () => {
     const game = startScenario('s3.1-the-duel', { seed: 1 })
     const red = game.ships.find((s) => s.id === 'red-1')!
-    const total = structureTotal(red)
+    const table = red.form.victoryTable!
+    expect(table.length).toBe(5)
 
-    // Half the structure gone → moderate damage → 50% of point value.
-    for (let i = 0; i < Math.ceil(total * 0.5); i++) markStructure(red)
-    expect(victoryPoints(game)[BLUE]).toBeCloseTo(red.form.pointValue * 0.5)
+    // Below the first threshold nothing is scored.
+    expect(victoryPoints(game)[BLUE]).toBe(0)
+
+    // Each band pays exactly its printed points, and bands are not cumulative.
+    let damage = 0
+    for (const row of table) {
+      while (damage < row.damage && markStructure(red)) damage += 1
+      expect(victoryPoints(game)[BLUE]).toBeCloseTo(row.points)
+    }
     expect(victoryPoints(game)[RED]).toBe(0)
   })
 

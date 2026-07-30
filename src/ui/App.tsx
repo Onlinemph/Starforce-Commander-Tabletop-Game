@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { SCENARIOS } from '../data/scenarios'
+import { BLUE, RED, SCENARIOS } from '../data/scenarios'
 import {
   activeShips,
   advanceSegment,
@@ -19,6 +19,7 @@ import { CombatPanel } from './CombatPanel'
 import { CommandCardPanel } from './CommandCardPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
+import { ShipPicker } from './ShipPicker'
 import { ShipFormPanel } from './ShipFormPanel'
 import { act, resetGame, useGame } from './store'
 
@@ -29,6 +30,7 @@ export function App() {
   const [targetId, setTargetId] = useState<string | null>(null)
   const [showArcs, setShowArcs] = useState(true)
   const [showRings, setShowRings] = useState(false)
+  const [picking, setPicking] = useState(false)
 
   const selected = game.ships.find((s) => s.id === selectedId) ?? ships[0] ?? null
 
@@ -83,10 +85,27 @@ export function App() {
           </select>
         </label>
 
+        <button type="button" className="primary" onClick={() => setPicking(true)}>
+          Choose forces
+        </button>
         <button type="button" onClick={() => resetGame(game.scenario.id, { seed: Math.floor(Math.random() * 1e9) })}>
-          New game
+          Rematch
         </button>
       </header>
+
+      {picking && (
+        <ShipPicker
+          scenarioId={game.scenario.id}
+          current={{
+            [BLUE]: game.ships.find((s) => s.side === BLUE)?.form.id,
+            [RED]: game.ships.find((s) => s.side === RED)?.form.id,
+          }}
+          onClose={() => {
+            setPicking(false)
+            setTargetId(null)
+          }}
+        />
+      )}
 
       <SequenceBar game={game} />
 

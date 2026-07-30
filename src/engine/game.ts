@@ -17,7 +17,14 @@ import {
   resolveStressCheck,
   type MapBounds,
 } from './navigation'
-import { beginRound, damageLevel, VICTORY_FRACTION, type ShipState } from './shipState'
+import {
+  beginRound,
+  damageLevel,
+  structureRemaining,
+  structureTotal,
+  VICTORY_FRACTION,
+  type ShipState,
+} from './shipState'
 import type { CommandCard, Phase, Segment, ShieldSide } from './types'
 
 /**
@@ -209,13 +216,41 @@ export function isCombatPhase(phase: Phase): boolean {
   return phase === 'combat-1' || phase === 'combat-2' || phase === 'combat-3'
 }
 
+/**
+ * Points an opponent earns for the state of one ship (S2.8.2 – S2.8.4).
+ *
+ * The Master Ship List prints an exact damage/points table per ship, so use it
+ * when present and fall back to the S2.8.4 percentages otherwise. A ship that
+ * disengages is worth the moderate-damage value, or its actual damage level if
+ * that is higher (S2.8.4 item 4).
+ */
+export function pointsAgainst(ship: ShipState): number {
+  const damaged = structureTotal(ship) - structureRemaining(ship)
+  const table = ship.form.victoryTable
+
+  let earned: number
+  if (ship.destroyed || (structureTotal(ship) > 0 && damaged >= structureTotal(ship))) {
+    earned = ship.form.pointValue
+  } else if (table && table.length > 0) {
+    // Highest band whose damage threshold has been reached; levels are not
+    // cumulative (S2.8.2).
+    earned = table.reduce((best, row) => (damaged >= row.damage ? row.points : best), 0)
+  } else {
+    earned = ship.form.pointValue * VICTORY_FRACTION[damageLevel(ship)]
+  }
+
+  if (ship.disengaged) {
+    earned = Math.max(earned, ship.form.pointValue * VICTORY_FRACTION.moderate)
+  }
+  return earned
+}
+
 /** Victory points earned by each side (S2.8.2 – S2.8.4). */
 export function victoryPoints(game: GameState): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const side of sides(game)) totals[side] = 0
   for (const ship of game.ships) {
-    const level = ship.disengaged && damageLevel(ship) === 'none' ? 'moderate' : damageLevel(ship)
-    const earned = ship.form.pointValue * VICTORY_FRACTION[level]
+    const earned = pointsAgainst(ship)
     for (const side of sides(game)) {
       if (side !== ship.side) totals[side] += earned
     }

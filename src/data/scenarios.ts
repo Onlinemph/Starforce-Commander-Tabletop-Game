@@ -1,6 +1,7 @@
 import { createGame, type GameState, type Scenario } from '../engine/game'
 import { createShip, type ShipState } from '../engine/shipState'
-import { VALLARI_CRUISER, YORKTOWN } from './ships'
+import type { ShipForm } from '../engine/types'
+import { shipFormById, VALLARI_CRUISER, YORKTOWN } from './ships'
 
 /**
  * Scenarios from Section S. Setup follows S2.4.1 Standard Placement: forces are
@@ -88,15 +89,25 @@ export interface SetupOptions {
   /** E11.2 / E11.3 optional rules, off by default in the Standard game. */
   derelicts?: boolean
   explosions?: boolean
+  /** Ship form ids to field, keyed by side — lets players pick from the roster. */
+  forms?: Partial<Record<string, string>>
 }
 
-function duelShips(): ShipState[] {
+/** Vessel names for the ships players field, so the log reads like a battle. */
+const BLUE_NAMES = ['U.S.S. Yorktown', 'U.S.S. Endeavour', 'U.S.S. Hood']
+const RED_NAMES = ['V.I.S. Karnath', 'V.I.S. Vashtar', 'V.I.S. Draketh']
+
+function pickForm(id: string | undefined, fallback: ShipForm): ShipForm {
+  return (id ? shipFormById(id) : undefined) ?? fallback
+}
+
+function duelShips(options: SetupOptions): ShipState[] {
   return [
     createShip({
       id: 'blue-1',
       side: BLUE,
-      name: 'U.S.S. Yorktown',
-      form: YORKTOWN,
+      name: BLUE_NAMES[0],
+      form: pickForm(options.forms?.[BLUE], YORKTOWN),
       // FAC 6 is west, so Blue's setup zone is the eastern edge (S3.1).
       placement: { position: { x: 33, y: 18 }, heading: facingToHeading(6) },
       speed: 4,
@@ -104,8 +115,8 @@ function duelShips(): ShipState[] {
     createShip({
       id: 'red-1',
       side: RED,
-      name: 'V.I.S. Karnath',
-      form: VALLARI_CRUISER,
+      name: RED_NAMES[0],
+      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
       // FAC 2 is east, so Red's setup zone is the western edge (S3.1).
       placement: { position: { x: 3, y: 18 }, heading: facingToHeading(2) },
       speed: 4,
@@ -113,13 +124,13 @@ function duelShips(): ShipState[] {
   ]
 }
 
-function ambushShips(): ShipState[] {
+function ambushShips(options: SetupOptions): ShipState[] {
   return [
     createShip({
       id: 'blue-1',
       side: BLUE,
-      name: 'U.S.S. Yorktown',
-      form: YORKTOWN,
+      name: BLUE_NAMES[0],
+      form: pickForm(options.forms?.[BLUE], YORKTOWN),
       // In orbit north of the colony, coasting south (facing 4) at low speed.
       placement: { position: { x: 18, y: 8 }, heading: facingToHeading(4) },
       speed: 1,
@@ -127,8 +138,8 @@ function ambushShips(): ShipState[] {
     createShip({
       id: 'red-1',
       side: RED,
-      name: 'V.I.S. Karnath',
-      form: VALLARI_CRUISER,
+      name: RED_NAMES[0],
+      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
       // Coming around the far side of the planet on an intercept (facing 8).
       placement: { position: { x: 18, y: 28 }, heading: facingToHeading(8) },
       speed: 4,
@@ -136,7 +147,10 @@ function ambushShips(): ShipState[] {
   ]
 }
 
-export const SCENARIOS: Array<{ scenario: Scenario; makeShips: () => ShipState[] }> = [
+export const SCENARIOS: Array<{
+  scenario: Scenario
+  makeShips: (options: SetupOptions) => ShipState[]
+}> = [
   { scenario: THE_DUEL, makeShips: duelShips },
   { scenario: ORBITAL_AMBUSH, makeShips: ambushShips },
 ]
@@ -145,7 +159,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
   const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
   return createGame({
     scenario: entry.scenario,
-    ships: entry.makeShips(),
+    ships: entry.makeShips(options),
     seed: options.seed,
     options: {
       derelicts: options.derelicts ?? false,
