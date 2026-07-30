@@ -1,0 +1,985 @@
+/* StarForce Commander — digital tabletop.
+   Visual language borrows from the printed components: dark space for the play
+   surface, and pale "dry-erase" panels for the ship form and command card. */
+
+:root {
+  --bg: #0b0e14;
+  --panel: #151a24;
+  --panel-2: #1c2230;
+  --ink: #e6ebf5;
+  --ink-dim: #8b96ab;
+  --line: #2b3444;
+  --blue: #4a9eff;
+  --red: #ff5c5c;
+  --green: #46c46f;
+  --yellow: #ffc94a;
+  --accent: #6ee7ff;
+  --warn: #ffb020;
+  --danger: #ff5c5c;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.4rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-size: 1.1rem;
+}
+h2 {
+  font-size: 1rem;
+}
+h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+h4 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+p {
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+button.primary {
+  background: #1d3a54;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+select,
+input[type='number'] {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand .subtitle {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+}
+.topbar .field {
+  margin-left: auto;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(380px, 460px);
+  gap: 1rem;
+  padding: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.map-column,
+.control-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* ── Sequence bar (A3) ──────────────────────────────────────────────────── */
+
+.sequence-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.sequence-bar .round {
+  font-weight: 700;
+  color: var(--accent);
+}
+.sequence-bar .phase {
+  font-weight: 600;
+}
+.sequence-bar .segments {
+  display: flex;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+.sequence-bar .segments li {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  color: var(--ink-dim);
+  border: 1px solid transparent;
+}
+.sequence-bar .segments li.is-current {
+  color: var(--ink);
+  background: #24405c;
+  border-color: var(--accent);
+}
+.sequence-bar > button {
+  margin-left: auto;
+}
+
+/* ── Map ────────────────────────────────────────────────────────────────── */
+
+.map {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #05070c;
+}
+.map-bg {
+  fill: #05070c;
+}
+.grid {
+  stroke: #131a26;
+  stroke-width: 1;
+}
+
+.terrain {
+  fill: #1a2436;
+  stroke: #2f3d55;
+  stroke-width: 1.5;
+}
+.terrain-planet {
+  fill: #24384f;
+}
+.terrain-asteroid-field {
+  fill: #2a2620;
+  stroke-dasharray: 4 3;
+}
+.terrain-label {
+  fill: var(--ink-dim);
+  font-size: 10px;
+}
+
+.range-ring {
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+.range-ring-green {
+  stroke: rgba(70, 196, 111, 0.45);
+}
+.range-ring-max {
+  stroke: rgba(139, 150, 171, 0.3);
+}
+.range-ring-label {
+  fill: var(--ink-dim);
+  font-size: 9px;
+}
+
+.arc-overlay .arc {
+  fill: rgba(110, 231, 255, 0.04);
+  stroke: rgba(110, 231, 255, 0.25);
+  stroke-width: 1;
+}
+.arc-label {
+  fill: rgba(110, 231, 255, 0.6);
+  font-size: 9px;
+}
+
+.los {
+  stroke: var(--warn);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 3;
+}
+.los-label {
+  fill: var(--warn);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ship {
+  cursor: pointer;
+}
+.ship-base {
+  fill: #101722;
+  stroke: var(--ink-dim);
+  stroke-width: 1.5;
+}
+.ship-blue .ship-base {
+  stroke: var(--blue);
+}
+.ship-red .ship-base {
+  stroke: var(--red);
+}
+.ship-blue .ship-bow {
+  fill: var(--blue);
+}
+.ship-red .ship-bow {
+  fill: var(--red);
+}
+.ship.is-selected .ship-base {
+  fill: #17263a;
+  stroke-width: 2.5;
+}
+.ship.is-targeted .ship-base {
+  stroke: var(--warn);
+  stroke-width: 2.5;
+}
+.ship-shield {
+  fill: var(--ink-dim);
+  font-size: 8px;
+}
+.ship-name {
+  fill: var(--ink);
+  font-size: 10px;
+}
+
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.ship-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.ship-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+.ship-tab em {
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  font-style: normal;
+}
+.ship-tab.is-current {
+  border-color: var(--accent);
+}
+.ship-tab.is-out {
+  opacity: 0.4;
+}
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+
+.ship-form,
+.command-card,
+.combat-panel,
+.damage-control,
+.segment-help,
+.log,
+.scenario-brief {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+}
+
+.ship-form-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.ship-class {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+}
+.general-data {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+}
+.general-data dt {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.general-data dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.provisional-note {
+  font-size: 0.72rem;
+  color: var(--warn);
+  border-left: 2px solid var(--warn);
+  padding-left: 0.5rem;
+  cursor: help;
+}
+
+.form-section {
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.chip {
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-dim);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.05rem 0.45rem;
+}
+.chip-warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+/* Power systems */
+.reactor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.reactor-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.reactor-label {
+  font-size: 0.62rem;
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+  margin-right: 0.15rem;
+}
+.power-point {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: #0f141d;
+}
+.power-point.is-dead {
+  opacity: 0.3;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+}
+.dot:not(.is-charged) {
+  background: var(--green);
+}
+.reactor-group .dot:not(.is-charged) {
+  background: var(--green);
+}
+.power-point .dot.is-charged {
+  background: var(--green);
+}
+.box {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--ink-dim);
+  display: inline-block;
+}
+.box.is-damaged {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Functions table */
+.functions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+.functions th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  padding: 1px 6px 1px 0;
+  width: 1%;
+}
+.functions td.circles {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  padding: 1px 0;
+}
+.functions .line-value {
+  text-align: right;
+  font-weight: 700;
+  color: var(--accent);
+  width: 2rem;
+}
+.circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 0.66rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.circle.is-filled {
+  background: var(--green);
+  border-color: var(--green);
+  color: #07120b;
+  font-weight: 700;
+}
+.circle.is-free {
+  background: #0f3d22;
+  border-color: var(--green);
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* Weapons */
+.weapon-block {
+  margin-bottom: 0.75rem;
+}
+.weapon-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.traits {
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+}
+.mounts {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin: 0.3rem 0;
+}
+.mount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.62rem;
+}
+.mount.is-damaged {
+  border-color: var(--danger);
+  opacity: 0.5;
+}
+.mount.is-degraded {
+  border-color: var(--warn);
+}
+.mount-arcs {
+  color: var(--ink-dim);
+}
+.arming {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.circle-sm {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: inline-block;
+}
+.circle-sm.is-filled {
+  background: var(--green);
+  border-color: var(--green);
+}
+.gate {
+  color: var(--warn);
+  font-size: 7px;
+}
+.hitboxes {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.firing-chart {
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+.firing-chart th,
+.firing-chart td {
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  text-align: center;
+}
+.band-green,
+.band.band-green {
+  color: var(--green);
+  text-decoration: underline;
+}
+.band-red,
+.band.band-red {
+  color: var(--red);
+  font-style: italic;
+}
+.die {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+  margin: 0 1px;
+}
+.die-red {
+  background: var(--red);
+}
+.die-yellow {
+  background: var(--yellow);
+}
+.die-green {
+  background: var(--green);
+}
+.die-blue {
+  background: var(--blue);
+}
+.special {
+  font-size: 0.68rem;
+  color: var(--warn);
+}
+
+/* Shields, systems, structure */
+.shields {
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+.shields th,
+.shields td {
+  border: 1px solid var(--line);
+  padding: 2px 8px;
+  text-align: center;
+}
+.shields td.is-down {
+  color: var(--danger);
+}
+
+.systems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.72rem;
+}
+.system-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-dim);
+}
+.system-group .count {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.structure {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.structure .box {
+  width: 12px;
+  height: 12px;
+}
+.structure-red {
+  border-color: var(--danger);
+}
+.dc-marker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 0 3px;
+}
+.excess {
+  color: var(--danger);
+  font-size: 0.72rem;
+}
+
+/* ── Command card ───────────────────────────────────────────────────────── */
+
+.cc-block {
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+.maneuver-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.3rem;
+}
+.maneuver-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.maneuver-name {
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+  flex: 1;
+  text-align: center;
+}
+.maneuver {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+}
+.maneuver.is-current {
+  background: #1d3a54;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.accel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.accel-value,
+.speed-value {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.speed-value {
+  color: var(--accent);
+}
+
+.sensor-grid {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.sensor-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  gap: 2px;
+}
+.sensor-grid input {
+  width: 4rem;
+}
+
+.shield-toggles {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.shield-toggle {
+  font-size: 0.72rem;
+}
+.shield-toggle.is-down {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.hint {
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+  margin: 0.3rem 0 0;
+}
+.hint.is-error {
+  color: var(--danger);
+}
+
+.plot-errors {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+}
+.plot-errors .is-error {
+  color: var(--danger);
+}
+.plot-errors .is-warn {
+  color: var(--warn);
+}
+
+/* ── Combat ─────────────────────────────────────────────────────────────── */
+
+.firing-order {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  margin-bottom: 0.5rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+  margin-bottom: 0.5rem;
+}
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.range-readout {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.74rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--panel-2);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.range-readout em {
+  color: var(--ink-dim);
+  font-size: 0.68rem;
+}
+
+.fire-modes {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.mode {
+  text-transform: capitalize;
+  font-size: 0.72rem;
+}
+.mode.is-current {
+  background: #1d3a54;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+}
+
+.weapon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+.weapon-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 0.7rem;
+  gap: 2px;
+}
+.weapon-pick.is-selected {
+  background: #1d3a54;
+  border-color: var(--accent);
+}
+.weapon-pick.is-disabled {
+  opacity: 0.3;
+}
+
+.fire-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.fire-error {
+  color: var(--danger);
+  font-size: 0.74rem;
+  margin-top: 0.5rem;
+}
+
+.volley-result {
+  margin-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+  font-size: 0.74rem;
+}
+.volley-result ul {
+  margin: 0 0 0.4rem;
+  padding-left: 1rem;
+}
+.roll {
+  display: inline-block;
+  min-width: 15px;
+  text-align: center;
+  border-radius: 2px;
+  margin: 0 1px;
+  font-weight: 700;
+  color: #07120b;
+}
+.roll-red {
+  background: var(--red);
+}
+.roll-yellow {
+  background: var(--yellow);
+}
+.roll-green {
+  background: var(--green);
+}
+.roll-blue {
+  background: var(--blue);
+}
+
+/* ── Damage control ─────────────────────────────────────────────────────── */
+
+.repair-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+}
+.repair-table th {
+  text-align: left;
+  text-transform: capitalize;
+  color: var(--ink-dim);
+  font-weight: 500;
+  padding: 3px 6px 3px 0;
+}
+.repair-table td {
+  padding: 3px 0;
+}
+.dice-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+.repair-results {
+  font-size: 0.74rem;
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+}
+
+.ops-steps {
+  font-size: 0.76rem;
+  padding-left: 1.1rem;
+  line-height: 1.9;
+}
+
+.score {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.score th,
+.score td {
+  border: 1px solid var(--line);
+  padding: 3px 10px;
+  text-align: left;
+}
+
+/* ── Log & brief ────────────────────────────────────────────────────────── */
+
+.log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.74rem;
+}
+.log li {
+  padding: 2px 0;
+  border-bottom: 1px solid #1a2130;
+  display: flex;
+  gap: 0.5rem;
+}
+.log-where {
+  color: var(--ink-dim);
+  font-size: 0.66rem;
+  min-width: 8rem;
+  flex-shrink: 0;
+}
+
+.scenario-brief summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.scenario-brief dl {
+  font-size: 0.74rem;
+}
+.scenario-brief dt {
+  color: var(--ink-dim);
+  font-size: 0.68rem;
+}
+.scenario-brief dd {
+  margin: 0 0 0.4rem;
+}
+.scenario-brief ul,
+.scenario-brief p {
+  font-size: 0.74rem;
+}
