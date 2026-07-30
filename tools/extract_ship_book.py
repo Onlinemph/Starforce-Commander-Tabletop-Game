@@ -7,11 +7,19 @@ italics encode the band; attack dice are Wingdings2 glyphs whose colour encodes
 the die; and firing-arc icons are small images that the layout rotates and
 mirrors, so each *placement* is rasterised and classified rather than each image.
 """
-import fitz, hashlib, json, math, re, sys
+import fitz, hashlib, json, math, os, re, sys
 from collections import defaultdict
 
-PDF = ('/root/.claude/uploads/62d6f1a5-56b2-574a-9fb3-4d36711828b4/'
-       'ccff2378-2_StarForce_Commander_Ship_Book_4_MASTER_SHIP_Book.pdf')
+UPLOADS = '/root/.claude/uploads/62d6f1a5-56b2-574a-9fb3-4d36711828b4/'
+BOOKS = {
+    'master': UPLOADS + 'ccff2378-2_StarForce_Commander_Ship_Book_4_MASTER_SHIP_Book.pdf',
+    'aurelian': UPLOADS + '18b6b876-007_AURELIAN_STARSHIP_BOOK_v26_Expansion_5.pdf',
+}
+# `BOOK=aurelian python3 extract_ship_book.py all` reads the Expansion 5 book
+# instead of the Master Ship Book. The two share a layout and differ only in
+# palette, which the colour sets below already allow for.
+BOOK = os.environ.get('BOOK', 'master')
+PDF = BOOKS.get(BOOK, BOOK)
 doc = fitz.open(PDF)
 
 BOX, CIRCLE, FILLED, DIAMOND = 0xf06f, 0xf06d, 0x26ab, 0x2b27
@@ -21,9 +29,10 @@ ARMOR_COLORS = {'#7f7f7f', '#ffc000', '#bf9000'}
 ARCS = ['FS', 'SF', 'SA', 'AS', 'AP', 'PA', 'PF', 'FP']
 
 # Union forms print headings in white on blue; Vallari forms use yellow on red
-# and set titles in Impact rather than Arial.
-HEADER_COLORS = {'#ffffff', '#ffff00'}
-ICON_COLORS = {'#ffffff', '#ff0000'}
+# and set titles in Impact rather than Arial; Aurelian forms (Expansion 5) use
+# purple on green with dark-green general-data icons.
+HEADER_COLORS = {'#ffffff', '#ffff00', '#7030a0'}
+ICON_COLORS = {'#ffffff', '#ff0000', '#385723'}
 
 
 def chars_of(page):
@@ -136,6 +145,37 @@ def group_numbers(chars, gap=6):
         cur += c['ch']; last = c['x1']
     if cur:
         out.append((last, cur))
+    return out
+
+
+def cluster_rows(chars, tol=3.0):
+    """
+    Group glyphs into printed rows by proximity rather than a fixed grid.
+
+    A label and the boxes beside it are not always set on exactly the same
+    baseline — on Aurelian forms the CLOAK box sits 0.8pt above its label — and
+    a fixed bucket boundary can fall in that gap and split the row in two.
+    """
+    rows = []
+    for c in sorted(chars, key=lambda c: c['y']):
+        if rows and c['y'] - rows[-1][0] <= tol:
+            rows[-1][1].append(c)
+        else:
+            rows.append((c['y'], [c]))
+    return [sorted(cs, key=lambda c: c['x']) for _, cs in rows]
+
+
+def dedupe(items):
+    """Order-preserving unique. Aurelian forms overprint the FTL trait in two
+    colours, which reads out as a repeat."""
+    seen, out = set(), []
+    for item in items:
+        # "FTL FTL" collapses to "FTL" as well as whole-token repeats.
+        parts = item.split()
+        if len(parts) > 1 and len(set(parts)) == 1:
+            item = parts[0]
+        if item not in seen:
+            seen.add(item); out.append(item)
     return out
 
 
@@ -336,12 +376,10 @@ def parse_ship(pno):
                                     and c['font'].startswith('Wingdings') and c['o'] == BOX)
 
     # ------------------------------------------------------------- SYSTEMS
+    # Aurelian forms carry a CLOAK row that sits a line lower than the deepest
+    # Union or Vallari systems block, so the window reaches to 492.
     systems = {}
-    sysrows = defaultdict(list)
-    for c in gl:
-        if 270 <= c['x'] <= 505 and 420 <= c['y'] <= 482:
-            sysrows[round(c['y'] / 6)].append(c)
-    for _, cs in sorted(sysrows.items()):
+    for cs in cluster_rows([c for c in gl if 270 <= c['x'] <= 505 and 420 <= c['y'] <= 492]):
         cs.sort(key=lambda c: c['x'])
         current = None
         buf = ''
@@ -413,8 +451,33 @@ def parse_ship(pno):
     return ship
 
 
+def endurance_boxes(page):
+    """
+    Red rectangles drawn around range brackets in the weapons column.
+
+    E5.1.5: "Each range bracket of a homing weapon will have a thick red boxed
+    outline. Each red box equals 1 phase of movement." So the boxes are the
+    weapon's endurance, and which brackets fall inside which box gives the
+    distance it covers in that phase.
+    """
+    out = []
+    for dr in page.get_drawings():
+        colour = dr.get('color')
+        if not colour or dr.get('width', 0) < 1.2:
+            continue
+        if not (colour[0] > 0.8 and colour[1] < 0.3 and colour[2] < 0.3):
+            continue
+        r = dr['rect']
+        if r.x0 < 500 or r.y0 > 500 or r.width < 15 or r.width > 200 or r.height > 40:
+            continue
+        out.append({'x0': r.x0, 'x1': r.x1, 'y0': r.y0, 'y1': r.y1})
+    out.sort(key=lambda b: (round(b['y0'] / 8), b['x0']))
+    return out
+
+
 def parse_weapons(page, chars, gl):
     right = [c for c in gl if c['x'] > 500 and c['y'] < 500]
+    boxes = endurance_boxes(page)
     rows = defaultdict(list)
     for c in right:
         rows[round(c['y'] / 4.0)].append(c)
@@ -424,6 +487,10 @@ def parse_weapons(page, chars, gl):
     heads = []
     for k in sorted(rows, key=lambda k: rows[k][0]['y']):
         cs = rows[k]
+        # The ship title shares this column on Aurelian forms, and is set in the
+        # same purple as the section bands, so skip everything above the bands.
+        if cs[0]['y'] < 45:
+            continue
         if cs[0]['color'] in HEADER_COLORS and cs[0]['font'].startswith('Arial') and cs[0]['size'] >= 9.5:
             t = row_text(chars, cs[0]['y'], 3, 500).strip()
             if t and 'WEAPONS' not in t:
@@ -469,14 +536,32 @@ def parse_weapons(page, chars, gl):
             b = inside[0] if inside else min(brackets, key=lambda b: abs((b['x0'] + b['x1']) / 2 - die['x']))
             b['dice'].append(DIE_BY_GLYPH[die['o']])
 
-        # Bonus damage: "+N" printed just left of a bracket's dice.
+        # Bonus damage: "+N" printed just left of a bracket's attack dice (E4.3).
+        # It is set in Arial on Union and Vallari forms and Calibri on Aurelian
+        # ones, and the digit sits flush against the plus, so the only reliable
+        # discriminator is the row: a bonus shares the dice row, while the plus
+        # signs in "SPCL: 4 DMG, LEAK+1, STR+1" sit a line below.
+        dice_ys = [c['y'] for c in seg if c['font'] == 'Wingdings2' and c['o'] in DIE_BY_GLYPH]
+        dice_y = min(dice_ys) if dice_ys else None
         for c in seg:
-            if c['ch'] == '+' and c['font'].startswith('Arial'):
-                nxt = [d for d in seg if d['y'] == c['y'] and 0 < d['x'] - c['x1'] < 8 and d['ch'].isdigit()]
-                if not nxt or not brackets:
-                    continue
-                b = min(brackets, key=lambda b: abs(b['x0'] - c['x']))
-                b['bonus'] = int(nxt[0]['ch'])
+            if c['ch'] != '+' or dice_y is None or abs(c['y'] - dice_y) > 4:
+                continue
+            nxt = [d for d in seg if abs(d['y'] - c['y']) < 0.5
+                   and -1 <= d['x'] - c['x1'] < 8 and d['ch'].isdigit()]
+            if not nxt or not brackets:
+                continue
+            b = min(brackets, key=lambda b: abs(b['x0'] - c['x']))
+            b['bonus'] = int(nxt[0]['ch'])
+
+        # Tag each bracket with the red endurance box it sits in (E5.1.5). The
+        # boxes are numbered left to right, one per phase of homing movement.
+        block_boxes = [b for b in boxes if y0 <= b['y0'] < y1]
+        for b in brackets:
+            cx = (b['x0'] + b['x1']) / 2
+            for n, box in enumerate(block_boxes, start=1):
+                if box['x0'] - 2 <= cx <= box['x1'] + 2:
+                    b['endurancePhase'] = n
+                    break
 
         blob = ' '.join(row_text(chars, rows[k][0]['y'], 3, 500) for k in sorted(rows)
                         if y0 <= rows[k][0]['y'] < y1)
@@ -523,9 +608,12 @@ def parse_weapons(page, chars, gl):
         out.append({
             'name': name,
             'mounts': mounts,
-            'brackets': [{k: b[k] for k in ('min', 'max', 'band', 'dice', 'bonus')} for b in brackets],
+            'brackets': [{k: b[k] for k in ('min', 'max', 'band', 'dice', 'bonus')}
+                         | ({'endurancePhase': b['endurancePhase']} if 'endurancePhase' in b else {})
+                         for b in brackets],
             'spcl': spcl.group(1).strip() if spcl else None,
-            'traits': [t.strip() for t in re.split(r'[,•]', trait.group(1)) if t.strip()] if trait else [],
+            'traits': dedupe([t.strip() for t in re.split(r'[,•]', trait.group(1)) if t.strip()])
+            if trait else [],
         })
     return out
 

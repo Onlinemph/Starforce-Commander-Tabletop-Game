@@ -3,11 +3,18 @@
 Regenerates `src/data/ships.json` from the StarForce Commander **Master Ship Book** PDF.
 
 ```bash
-pip install pymupdf
+pip install pymupdf pypdf
 cd tools
-python3 extract_ship_book.py all      # → ships_raw.json   (one record per form)
-python3 generate_ships.py             # → ships_final.json (engine schema, validated)
+python3 extract_ship_list.py                     # → msl.json         (both ship lists)
+python3 extract_ship_book.py all                 # → ships_raw.json   (Master Ship Book)
+BOOK=aurelian python3 extract_ship_book.py all   # → ships_raw.json, rename to
+                                                 #   aurelian_raw.json
+python3 generate_ships.py                        # → ships_final.json (validated)
 ```
+
+The Aurelian Starship Book from Expansion 5 shares the Master Ship Book's layout and differs only in
+palette — purple section bands, dark-green general-data icons — so the same extractor reads both;
+`BOOK` picks which.
 
 `extract_ship_book.py` reads the forms structurally rather than as text: box and power-circle glyphs
 are identified by Wingdings codepoint plus colour, range-bracket bands by Calibri colour and italics,
@@ -23,10 +30,12 @@ cross-checks each ship against its own printed TOTAL POWER, battery count and sh
 on scouts, that the sensor count, damage boxes and SCOUT SEN line all agree. It prints
 `validation problems: 0` when everything reconciles.
 
-The Master Ship List itself is parsed from a plain-text dump of pages 5-6; `msl.json` is the
-intermediate. Both intermediates are scratch files and are not committed.
+`extract_ship_list.py` parses the Master Ship List from both books into `msl.json`; rows flagged
+`(Exp 6)` have no form yet and are dropped at generation. All intermediates are scratch files and
+are not committed.
 
-Set `PDF` at the top of `extract_ship_book.py` to the Ship Book path before running.
+Set the paths in `BOOKS` at the top of `extract_ship_book.py` and `extract_ship_list.py` before
+running.
 
 
 # Damage deck importer

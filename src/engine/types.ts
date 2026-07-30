@@ -136,6 +136,13 @@ export interface RangeBracketDef {
   dice: DieColor[]
   /** Bonus damage per die that scores a hit (E4.3). */
   bonus?: number
+  /**
+   * Homing weapons only (E5.1.5). Brackets sit inside thick red boxes on the
+   * form, one box per phase of flight; this is that box's number, so the
+   * highest value across a weapon's brackets is its endurance in phases and
+   * the widest bracket in box *n* is how far it flies during phase *n*.
+   */
+  endurancePhase?: number
 }
 
 /** Damage produced by an `S` result on a red die (E7.2.5, F1.40). */
@@ -206,6 +213,7 @@ export type SystemKind =
   | 'CRGO' // cargo (J11)
   | 'PROB' // probe launcher (J7)
   | 'CMND' // command systems (H5)
+  | 'CLOAK' // cloaking system (H6, Expansion 5)
   | 'SPCL' // special system (E8.4.7)
 
 export interface SystemGroupDef {
@@ -318,6 +326,8 @@ export interface ShipForm {
 
   /** Page in the Master Ship Book this form was imported from. */
   shipBookPage?: number
+  /** Which book the form came from, when it is not the Master Ship Book. */
+  shipBook?: string
 
   /** Scouting sensor block, on scouts and survey ships only (H3.1.1). */
   scoutSensor?: ScoutSensorDef

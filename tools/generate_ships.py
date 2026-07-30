@@ -1,14 +1,29 @@
-"""Turn the extracted ship forms into src/data/ships.ts."""
-import difflib, json, re, sys
+"""
+Turn the extracted ship forms into src/data/ships.json.
+
+Reads `ships_raw.json` (the Master Ship Book) and, if present,
+`aurelian_raw.json` (the Expansion 5 Aurelian Starship Book), and writes one
+combined roster.
+"""
+import difflib, json, os, re, sys
 from collections import defaultdict
 
 S = json.load(open('ships_raw.json'))
-M = json.load(open('msl.json'))
-
-# Union forms come first in the book, Vallari after; the Master Ship List uses
-# the same split.
+# Union forms come first in the Master Ship Book, Vallari after; the Master
+# Ship List uses the same split.
 for _s in S:
     _s['faction'] = 'union' if _s['page'] <= 44 else 'vallari'
+
+if os.path.exists('aurelian_raw.json'):
+    for _s in json.load(open('aurelian_raw.json')):
+        _s['faction'] = 'aurelian'
+        # Keep the book of origin so page references stay meaningful.
+        _s['book'] = 'aurelian'
+        S.append(_s)
+
+M = [m for m in json.load(open('msl.json')) if not m.get('future')]
+
+for _s in S:
     _s['strCount'] = sum(1 for e in _s['structure'] if e['kind'] == 'box')
 
 STANDARD = {'ACC/DEC', 'SIF/IDF', 'SIF', 'EMER', 'BTY RECH', 'FTL DRV',
@@ -27,9 +42,11 @@ REACTOR_KIND = {'L MAIN': 'left-main', 'R MAIN': 'right-main', 'C MAIN': 'center
 SYSTEM_LABEL = {'SCNC': 'Sciences', 'SENS': 'Sensors', 'TRAC': 'Tractor Beams',
                 'TRAN': 'Transporters', 'SHTL': 'Shuttle Bay', 'QTRS': 'Quarters',
                 'CRGO': 'Cargo', 'CMND': 'Command Systems', 'HNGR': 'Hangar Bay',
-                'PROB': 'Probe Launcher', 'SPCL': 'Special System'}
+                'PROB': 'Probe Launcher', 'SPCL': 'Special System',
+                'CLOAK': 'Cloaking System'}
 
-FACTION_NAME = {'union': 'Union of Federated Systems', 'vallari': 'Vallari Imperium'}
+FACTION_NAME = {'union': 'Union of Federated Systems', 'vallari': 'Vallari Imperium',
+                'aurelian': 'Aurelian Empire'}
 
 # Errata: places where the printed form is internally inconsistent. Each entry
 # is keyed by (ship name fragment, weapon name) and is applied after extraction,
@@ -41,7 +58,28 @@ ERRATA = [
                  'bracket overlaps the second. Read as 11-15 so the chart is continuous.'),
         'fix': lambda w: [b.update({'min': 11}) for b in w['brackets'] if b['min'] == 9 and b['max'] == 15],
     },
+    {
+        'ship': 'INVICTUS I-class', 'weapon': 'RP-B MEDIUM PLASMA TORP',
+        'note': ('Aurelian Starship Book prints "TRAIT: PREC 1, PD MODE, ATMO" on this '
+                 'plasma torpedo — the trait line of the disruptor block below it. The '
+                 'same weapon reads "HOMING 3, PARTCL, NoBAT, FTL" on all eight other '
+                 'ships that carry it, and F5.4 gives those as the standard traits.'),
+        'fix': lambda w: w.__setitem__('traits', ['HOMING 3', 'PARTCL', 'NoBAT', 'FTL']),
+    },
 ]
+
+# Forms whose printed shield strengths do not match the number of shield boxes
+# drawn on them. The printed number is what the rules quote ("FWD SHIELD 6"), so
+# it is what the engine uses; the box count is recorded here so the validator
+# stays honest rather than being loosened.
+SHIELD_BOX_ERRATA = {
+    'PASSER II-class Frigate': (21,
+        'Form prints FWD SHIELD 6 but draws 7 forward shield boxes (20 printed, 21 drawn). '
+        'The printed strengths are used.'),
+    'CORVUS I-class Destroyer': (48,
+        'Form prints AFT SHIELD 12 but draws 10 aft shield boxes (50 printed, 48 drawn). '
+        'The printed strengths are used.'),
+}
 
 
 def apply_errata(ship):
@@ -53,6 +91,9 @@ def apply_errata(ship):
             if w['name'] == e['weapon']:
                 e['fix'](w)
                 notes.append(e['note'])
+    known = SHIELD_BOX_ERRATA.get(ship['name'])
+    if known:
+        notes.append(known[1])
     return notes
 
 
@@ -187,7 +228,10 @@ def build(ship):
             'mounts': mounts,
             'brackets': [{'min': b['min'], 'max': b['max'], 'band': b['band'],
                           'dice': b['dice'] or ['blue'],
-                          **({'bonus': b['bonus']} if b['bonus'] else {})}
+                          **({'bonus': b['bonus']} if b['bonus'] else {}),
+                          # One red endurance box per phase of homing flight (E5.1.5).
+                          **({'endurancePhase': b['endurancePhase']}
+                             if b.get('endurancePhase') else {})}
                          for b in w['brackets']],
             **({'special': spcl} if spcl else {}),
             'traits': w['traits'],
@@ -261,6 +305,7 @@ def build(ship):
         'availability': msl['availability'],
         'victoryTable': msl['victory'],
         'shipBookPage': ship['page'],
+        **({'shipBook': ship['book']} if ship.get('book') else {}),
         **({'scoutSensor': ship['scoutSensor']} if ship.get('scoutSensor') else {}),
         **({'notes': ' '.join(errata)} if errata else {}),
     }
@@ -268,6 +313,10 @@ def build(ship):
 
 def weapon_class(name, traits):
     n = name.upper()
+    # F5.1.1 gives plasma torpedoes their own class; they are homing particle
+    # weapons rather than the Union and Vallari antimatter torpedoes (F4).
+    if 'PLASMA' in n:
+        return 'plasma-torpedo'
     if 'TORPEDO' in n or 'TORP' in n:
         return 'a-mat-torpedo'
     if 'DISRUPTOR' in n or 'LANCE' in n:
@@ -292,7 +341,8 @@ for s, raw in zip(ships, S):
         print(f"  battery mismatch {s['name']}: {s['batteries']} vs {raw['totalBatteries']}")
         problems += 1
     blue = sum(s['shields']['blue'].values())
-    if blue != raw['_blue']:
+    known = SHIELD_BOX_ERRATA.get(s['name'])
+    if blue != raw['_blue'] and not (known and known[0] == raw['_blue']):
         print(f"  shield mismatch {s['name']}: printed {blue} vs boxes {raw['_blue']}")
         problems += 1
     if not s['weapons']:

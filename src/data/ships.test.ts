@@ -1,23 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { SHIP_FORMS, VALLARI_CRUISER, YORKTOWN } from './ships'
+import { findShipForm, SHIP_FORMS, VALLARI_CRUISER, YORKTOWN } from './ships'
 import { createShip, damageControlRating, markStructure, structureBoxes } from '../engine/shipState'
 import { armingCapacityThisRound } from '../engine/shipState'
 import { ARC_ORDER } from '../engine/geometry'
 
 /**
- * Integrity of the imported Master Ship Book roster.
+ * Integrity of the imported roster — the Master Ship Book plus the Expansion 5
+ * Aurelian Starship Book.
  *
  * These are checks on the *data*, not the rules: they would catch an importer
  * regression that silently drops mounts, loses arcs, or mangles a firing chart.
  */
 
 describe('roster', () => {
-  it('imports both factions in full', () => {
-    expect(SHIP_FORMS.length).toBe(72)
+  it('imports all three factions in full', () => {
+    // 72 from the Master Ship Book plus 21 Aurelians from Expansion 5.
+    expect(SHIP_FORMS.length).toBe(93)
     const union = SHIP_FORMS.filter((f) => f.faction === 'Union of Federated Systems')
     const vallari = SHIP_FORMS.filter((f) => f.faction === 'Vallari Imperium')
+    const aurelian = SHIP_FORMS.filter((f) => f.faction === 'Aurelian Empire')
     expect(union.length).toBe(37)
     expect(vallari.length).toBe(35)
+    expect(aurelian.length).toBe(21)
   })
 
   it('gives every ship a unique id', () => {
@@ -55,8 +59,18 @@ describe('roster', () => {
 
         // Brackets run left to right without gaps or overlaps, and each rolls
         // at least one die (E3.2.1).
+        //
+        // A homing weapon's chart is divided into red endurance boxes, one per
+        // phase of flight, and "the homing weapon's range begins at zero during
+        // each phase" (E5.1.5) — so continuity holds inside each box and every
+        // box starts again at zero.
         let previousMax = -1
+        let phase = weapon.brackets[0]?.endurancePhase
         for (const bracket of weapon.brackets) {
+          if (bracket.endurancePhase !== phase) {
+            phase = bracket.endurancePhase
+            previousMax = -1
+          }
           expect(bracket.min, `${form.name} / ${weapon.name}`).toBe(previousMax + 1)
           expect(bracket.max).toBeGreaterThanOrEqual(bracket.min)
           expect(bracket.dice.length).toBeGreaterThan(0)
@@ -186,3 +200,72 @@ function makeShip(form: (typeof SHIP_FORMS)[number]) {
     speed: 0,
   })
 }
+
+// ---------------------------------------------------------------------------
+// Expansion 5: the Aurelian Empire
+// ---------------------------------------------------------------------------
+
+describe('Aurelian roster (Expansion 5)', () => {
+  const aurelian = SHIP_FORMS.filter((f) => f.faction === 'Aurelian Empire')
+
+  it('gives every Aurelian ship a cloaking system (H6.1.4)', () => {
+    for (const form of aurelian) {
+      const cloak = form.systems.find((g) => g.kind === 'CLOAK')
+      expect(cloak, form.name).toBeTruthy()
+      expect(cloak!.boxes, form.name).toBeGreaterThan(0)
+      // A cloak needs a power line to charge it (H6.3.1).
+      const line = form.functions.find((l) => l.label === 'CLOAK')
+      expect(line, form.name).toBeTruthy()
+      expect(line!.steps.length, form.name).toBeGreaterThan(0)
+    }
+  })
+
+  it('imports the plasma torpedo as a homing particle weapon (F5.1.2, F5.4)', () => {
+    const passer = findShipForm('PASSER I-class Frigate')!
+    const torp = passer.weapons.find((w) => w.weaponClass === 'plasma-torpedo')!
+    expect(torp.name).toBe('RP-F SMALL PLASMA TORP')
+    expect(torp.traits).toEqual(['HOMING 3', 'PARTCL', 'NoBAT', 'FTL'])
+  })
+
+  it('reads the red endurance boxes off the firing chart (E5.1.5)', () => {
+    const torp = findShipForm('PASSER I-class Frigate')!.weapons.find(
+      (w) => w.weaponClass === 'plasma-torpedo',
+    )!
+    // Three red boxes: 3 inches in phase one, 6 in phase two, 9 in phase three,
+    // with bonus damage falling off as the plasma dissipates.
+    expect(
+      torp.brackets.map((b) => [b.endurancePhase, b.min, b.max, b.bonus]),
+    ).toEqual([
+      [1, 0, 3, 4],
+      [2, 0, 6, 3],
+      [3, 0, 9, 2],
+    ])
+  })
+
+  it('gives every plasma torpedo an endurance and a homing trait', () => {
+    for (const form of aurelian) {
+      for (const weapon of form.weapons) {
+        if (weapon.weaponClass !== 'plasma-torpedo') continue
+        expect(weapon.traits.some((t) => t.startsWith('HOMING')), weapon.name).toBe(true)
+        expect(weapon.traits, weapon.name).toContain('PARTCL')
+        const phases = weapon.brackets.map((b) => b.endurancePhase ?? 0)
+        expect(Math.max(...phases), `${form.name} / ${weapon.name}`).toBeGreaterThan(0)
+        // Endurance boxes are numbered from one with no gaps.
+        expect([...new Set(phases)].sort()).toEqual(
+          Array.from({ length: Math.max(...phases) }, (_, i) => i + 1),
+        )
+      }
+    }
+  })
+
+  it('leaves direct-fire weapons without endurance boxes', () => {
+    for (const form of SHIP_FORMS) {
+      for (const weapon of form.weapons) {
+        const homing = weapon.traits.some((t) => t.startsWith('HOMING'))
+        for (const bracket of weapon.brackets) {
+          if (!homing) expect(bracket.endurancePhase, weapon.name).toBeUndefined()
+        }
+      }
+    }
+  })
+})
