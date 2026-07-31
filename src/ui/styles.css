@@ -1194,6 +1194,48 @@ input:focus-visible {
 .mount-arcs {
   color: var(--ink-dim);
 }
+
+/* The firing-arc rose: eight wedges, bow up, covered arcs lit (E2.2.1). */
+.arc-rose {
+  flex-shrink: 0;
+  display: block;
+}
+.rose-arc {
+  fill: #141928;
+  stroke: var(--line);
+  stroke-width: 0.75;
+}
+.rose-arc.is-on {
+  fill: var(--lc-orange);
+  stroke: var(--lc-orange);
+}
+.rose-bow {
+  fill: var(--ink-dim);
+}
+/* On a lit (selected) pick the rose must stay readable on orange. */
+.weapon-pick.is-selected .rose-arc {
+  fill: rgba(21, 12, 0, 0.35);
+  stroke: rgba(21, 12, 0, 0.5);
+}
+.weapon-pick.is-selected .rose-arc.is-on {
+  fill: #150c00;
+  stroke: #150c00;
+}
+.weapon-pick.is-selected .rose-bow {
+  fill: rgba(21, 12, 0, 0.7);
+}
+
+.pick-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.arc-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .arming {
   display: inline-flex;
   align-items: center;

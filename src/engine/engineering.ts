@@ -282,6 +282,33 @@ export function armingPointsAvailable(ship: ShipState, weaponId: string): number
   return Math.max(0, generated - spent)
 }
 
+/**
+ * Fill every mount automatically when there is no choice to make (E4.2.2).
+ *
+ * Distributing arming points is a real decision only while they are scarce.
+ * The moment a weapon's points cover every circle that may legally be filled
+ * this segment — gates and damage included — the "distribution" is fully
+ * determined, so the game does it rather than making the player click each
+ * circle. Returns how many circles were armed.
+ */
+export function autoArmIfChoiceFree(ship: ShipState, weaponId: string): number {
+  const weapon = ship.form.weapons.find((w) => w.id === weaponId)
+  if (!weapon) return 0
+
+  const capacity = weapon.mounts.reduce((sum, _, index) => {
+    const state = ship.mounts[weaponId][index]
+    if (mountIsDamaged(weapon, index, state)) return sum
+    return sum + armingCapacityThisRound(weapon, index, state)
+  }, 0)
+  if (capacity === 0 || armingPointsAvailable(ship, weaponId) < capacity) return 0
+
+  let armed = 0
+  for (let index = 0; index < weapon.mounts.length; index++) {
+    while (armMount(ship, weaponId, index) === null) armed += 1
+  }
+  return armed
+}
+
 /** Spend one arming point on a mount (E4.2.2). */
 export function armMount(ship: ShipState, weaponId: string, mountIndex: number): AllocationError | null {
   const weapon = ship.form.weapons.find((w) => w.id === weaponId)

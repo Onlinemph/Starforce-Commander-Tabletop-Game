@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { ArcRose } from './ArcRose'
 import { BLUE, RED } from '../data/scenarios'
 import { SHIP_FORMS } from '../data/ships'
 import {
@@ -1025,7 +1026,9 @@ function WeaponEditor({
           {weapon.mounts.map((mount, mi) => (
             <tr key={mount.id}>
               <td>
-                <div className="arc-toggles">
+                <div className="arc-edit">
+                  <ArcRose arcs={mount.arcs} size={26} />
+                  <div className="arc-toggles">
                   {ARCS.map((arc) => (
                     <button
                       key={arc}
@@ -1043,6 +1046,7 @@ function WeaponEditor({
                       {arc}
                     </button>
                   ))}
+                  </div>
                 </div>
               </td>
               <td>

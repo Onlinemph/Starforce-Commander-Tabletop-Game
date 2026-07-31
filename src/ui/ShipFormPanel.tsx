@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ArcRose } from './ArcRose'
 import { dispatch } from './store'
 import { armingPointsAvailable, powerRemaining, totalPowerAvailable } from '../engine/engineering'
 import {
@@ -216,9 +217,8 @@ export function ShipFormPanel({ game, ship }: Props) {
                       className={`mount${damaged ? ' is-damaged' : ''}${degraded ? ' is-degraded' : ''}`}
                       disabled={pending === 0 || damaged}
                       title={
-                        pending > 0
-                          ? 'Spend one arming point on this mount (E4.2.2)'
-                          : `Arcs: ${mount.arcs.join(', ')}`
+                        (pending > 0 ? 'Spend one arming point on this mount (E4.2.2) · ' : '') +
+                        `Arcs: ${mount.arcs.join(', ')}`
                       }
                       onClick={() =>
                         setRefusal(
@@ -231,7 +231,7 @@ export function ShipFormPanel({ game, ship }: Props) {
                         )
                       }
                     >
-                      <span className="mount-arcs">{mount.arcs.join('/')}</span>
+                      <ArcRose arcs={mount.arcs} size={18} />
                       <span className="arming">
                         {Array.from({ length: mount.armingCircles }, (_, c) => (
                           <span key={c}>

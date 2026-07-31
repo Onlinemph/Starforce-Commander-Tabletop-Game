@@ -32,6 +32,7 @@ import { endurance, impactShield, isHoming, speedInPhase } from '../engine/homin
 import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
+import { ArcRose } from './ArcRose'
 import { dispatch } from './store'
 
 /**
@@ -309,7 +310,8 @@ export function CombatPanel({ game, attacker }: Props) {
                         : `${bracket.bracket.dice.length} dice from the ${bracket.bracket.min}–${bracket.bracket.max} bracket`
                 }
               >
-                <span>
+                <span className="pick-head">
+                  <ArcRose arcs={mount.arcs} size={15} />
                   {weapon.name} #{index + 1}
                 </span>
                 {bracket && (
@@ -720,12 +722,11 @@ function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipS
                   )
                 }
               >
-                <span>
+                <span className="pick-head">
+                  <ArcRose arcs={mount.arcs} size={15} />
                   Launch {weapon.name} #{index + 1}
                 </span>
-                <em>
-                  {endurance(weapon)} phases · {mount.arcs.join('/')}
-                </em>
+                <em>{endurance(weapon)} phases</em>
               </button>
             )
           }),

@@ -7,7 +7,13 @@ import {
 } from './cloaking'
 import { resolveVolley, type FireMode, type MountSelection, type VolleyResult } from './combat'
 import { setCommandAssignment } from './command'
-import { armMount, resolveDamageControl, setAllocation, type RepairAssignment } from './engineering'
+import {
+  armMount,
+  autoArmIfChoiceFree,
+  resolveDamageControl,
+  setAllocation,
+  type RepairAssignment,
+} from './engineering'
 import { chooseLead, joinFormation, leaveFormation } from './formation'
 import {
   advanceFiringStep,
@@ -193,7 +199,20 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
     case 'allocate': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
-      return said(setAllocation(ship, action.lineId, action.circles)?.message ?? null)
+      const refused = setAllocation(ship, action.lineId, action.circles)
+      if (refused) return said(refused.message)
+      // When the points now cover every circle a weapon may legally fill,
+      // spending them one click at a time is busywork, not a decision —
+      // arm the lot (E4.2.2, E4.2.8).
+      const line = ship.form.functions.find((l) => l.id === action.lineId)
+      if (line?.kind === 'weapon' && line.weaponSystemId) {
+        const armed = autoArmIfChoiceFree(ship, line.weaponSystemId)
+        if (armed > 0) {
+          const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
+          pushLog(game, `${ship.name}: ${weapon?.name ?? line.label} armed in full (${armed} circles).`)
+        }
+      }
+      return said(null)
     }
     case 'arm-mount': {
       const ship = shipById(game, action.shipId)
