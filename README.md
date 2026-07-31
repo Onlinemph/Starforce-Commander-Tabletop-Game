@@ -42,6 +42,9 @@ measurement.
 V-2N Flanker scout to the UNION III dreadnought — with the point values, availability and
 introduction years the Master Ship List prints.
 
+And a **ship builder**, built on the designers' own costing spreadsheet, so you can design your own
+hulls, have them priced on the same scale as the printed ones, and fly them the same afternoon.
+
 ## Rules coverage
 
 | Section | Status | Notes |
@@ -144,7 +147,7 @@ scout sensor feed H2.4 Tactical Scan. The engine follows H3.3.1.
 Expansion 2 adds two rules, both implemented.
 
 **H5 Command Systems** is a Standard rule and is always on. A ship with `CMND` boxes on its form is
-a command ship; 18 of the 72 ships in the roster have them, from the COVENTRY IIc (2 boxes) to the
+a command ship; 18 of the ships in the roster have them, from the COVENTRY IIc (2 boxes) to the
 UNION II/III dreadnoughts (5). While its GEN SYS line is set to **MAX** (H5.1.3), each undamaged
 `CMND` box generates one tactical scan point that the flagship lends to a friendly ship within
 **36 inches** during the Resource Allocation Segment. Lent points last the whole round and let the
@@ -292,9 +295,9 @@ ground down by point defense on the way in.
 
 ## Ship data
 
-`src/data/ships.json` holds all 72 forms, machine-extracted from the **Master Ship Book** (all ships
-through Expansion 3). The forms are vector art rather than tables, so the importer reads them
-structurally:
+`src/data/ships.json` holds all 93 forms, machine-extracted from the **Master Ship Book** (all ships
+through Expansion 3) and the **Aurelian Starship Book** (Expansion 5). The forms are vector art
+rather than tables, so the importer reads them structurally:
 
 - Hit, shield, armor and structure boxes are Wingdings glyphs whose **colour** gives their kind —
   blue shields, green reinforcement, black systems, red unrepairable structure, grey armor (B1.1.1).
@@ -308,7 +311,7 @@ structurally:
   came out unambiguous — typically 690 red pixels to 0 white, or the reverse.
 
 Every import is cross-checked against the form's own printed totals (TOTAL POWER, battery count, the
-four shield values) and against the Master Ship List's structure count. All 72 ships pass with zero
+four shield values) and against the Master Ship List's structure count. All 93 ships pass with zero
 discrepancies, and the arc-icon count matches the hit-box group count on every weapon block in the
 book, so no mount is silently dropped.
 
@@ -336,6 +339,74 @@ Every other weapon in the books has a continuous chart, and a test enforces that
 for homing weapons, whose range restarts at zero in each endurance box (E5.1.5). The Invictus
 erratum was found by cross-checking the same weapon across every ship that carries it, and the two
 shield errata by the importer's own box-count validation, which is left strict rather than loosened.
+
+## Ship builder
+
+The designers sent through their own design spreadsheet, `1. SHIP FORM MASTER FEDERATION V38` — the
+tool they cost ships with. `src/engine/shipBuilder.ts` is a transcription of its model, and
+**Ship builder** in the top bar is a front end for it.
+
+You can start from a blank hull or copy any canon ship, edit every part of the form — reactors,
+sublight drive and its damage table, shields, armor, systems, the structure track, weapons down to
+individual mounts and firing-chart brackets, and the FUNCTIONS power levels — and watch the point
+value move as you do. Designs are saved in the browser, export and import as JSON, and appear in
+**Choose forces** alongside the canon roster, so a custom hull can be flown immediately.
+
+### How a ship is priced
+
+The sheet values eight components, weights each, and divides by ten:
+
+    point value = (general systems + sensors + defense + power system
+                   + speed & accel + SIF + maneuver + offense) / 10 × special modifier
+
+Weapons are valued first, because almost everything else is priced against the ship's firepower. A
+weapon's damage is averaged across its six range brackets — each weighted by how useful that range
+is and how wide the bracket is — then scaled by its reach, its arming time, the arcs each mount
+covers, and its traits. Five of the eight components are then scaled by the ship's *actual power*
+against a reference hull's 118.39, where actual power counts free power too: free sensor points,
+free acceleration, free SIF, and every free arming circle on a weapon line.
+
+Two things in the model are worth knowing because they are not obvious:
+
+- **Sciences boxes are free.** The sheet leaves the SCNC modifier blank — sciences are already paid
+  for through the precision bonus they give the ship's weapons (E9.1.3).
+- **Damage boxes are one pool.** The system-hits component counts *every* box on the form —
+  reactors, batteries, the FTL drive, the maneuvering block, weapon mounts — not just the general
+  systems block.
+
+### How accurate it is
+
+Two ways of checking, and both are in `shipBuilder.test.ts`:
+
+The spreadsheet arrives with a part-built hull already entered, which it prices at **8.0809**. The
+transcription reproduces that number exactly, along with its actual power (149.33), its damage-box
+count (40) and its defense component (76.0498). That pins the arithmetic to the source.
+
+Against the 93 printed ships, the model is unbiased — median ratio **1.00**, and no faction or size
+class drifts more than a few percent — with a median absolute error of **3.5%** and 73 of 93 ships
+within a tenth of their printed value.
+
+The residual is not a bug to be tuned away. The sheet's last input is a **Special Modifier**, a
+designer's thumb on the scale for a ship that plays better or worse than its parts suggest, and the
+printed value is the model's value times that modifier. So the builder shows it: type a printed
+point value and it reports the modifier your number implies, the same dial the designers turned. No
+fudge factor is baked into the model itself.
+
+### What it checks
+
+The design is validated against the rules as you edit, and an illegal ship cannot be flown:
+
+- Size class 1–10 (B1.3.1), max speed 1–8 (C1.2.7), at least one reactor (B2.1.1), at least one
+  structure box (B1.8), a Stress Rating of at least 1 (C3.1).
+- Shield facings within their printed maxima — 36 forward and aft, 28 to a side (G1.1.3). The input
+  deliberately lets you exceed them so the rule can explain itself rather than silently clamping.
+- Every weapon has a mount, a firing chart, an arc, arming circles, damage boxes (E2.2.2, E4.2.2,
+  E8.3.1) and an arming line in FUNCTIONS (E4.2.6).
+- Firing charts run continuously, except for homing weapons, whose range restarts each phase
+  (E3.2.1, E5.1.5).
+- One damaged-speed entry per sublight drive box (E8.5.4), and a turn row for every speed (C2.2.2).
+- Warnings for anything no printed ship does: no weapons, a Damage Control Rating of zero, or a
+  weapon trait the designers never priced.
 
 ## Damage deck and dice
 
@@ -399,6 +470,7 @@ src/
     combat.ts      Volley resolution, rerolls, fire modes
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement
+    shipBuilder.ts The designers' point-value model and design validation
     game.ts        Sequence of play, terrain, victory points
   data/            Game content — all canon, all machine-imported
     ships.json     93 ship forms: the Master Ship Book plus the Aurelian book
@@ -417,7 +489,8 @@ players want to audit a volley after the fact.
 ### Adding ships
 
 The roster comes from `ships.json`, so a Ship Book update means re-running the importer and replacing
-that file — no engine change. To hand-author a ship, append a `ShipForm` object. The schema has a home
+that file — no engine change. To design one by hand, use the ship builder; to add one in code, append
+a `ShipForm` object. The schema has a home
 for every stat on a printed form: reactor groups and their hit boxes, FUNCTIONS lines with free power
 and per-circle values, weapon systems with mounts/arcs/arming circles/slow-arm diamonds/firing
 charts/special hits/traits, shields with generator rating, armor, system groups, the interleaved

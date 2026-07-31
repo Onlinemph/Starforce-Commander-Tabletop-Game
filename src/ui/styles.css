@@ -1480,3 +1480,381 @@ input[type='number'] {
   font-size: 0.64rem;
   color: var(--ink-dim);
 }
+
+/* --- Ship builder ------------------------------------------------------- */
+
+.picker.builder {
+  width: min(1500px, 100%);
+  max-height: 94vh;
+}
+
+.builder-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.builder-status {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.builder-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.builder-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.builder-section {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+}
+
+.builder-section > h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.builder-section > h3 em {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+.builder-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.builder-row.wrap {
+  flex-wrap: wrap;
+}
+
+.builder-hint {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  margin: 0.5rem 0 0.35rem;
+}
+
+.field.tiny {
+  min-width: 0;
+}
+
+.field.tiny input,
+.field.tiny select {
+  width: 5.2rem;
+}
+
+.field.grow {
+  flex: 1;
+}
+
+.field.grow input {
+  width: 100%;
+}
+
+.builder-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.builder-table th,
+.builder-table td {
+  padding: 0.15rem 0.3rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.builder-table thead th {
+  color: var(--ink-dim);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.builder-table input,
+.builder-table select {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  width: 100%;
+}
+
+.builder-table .field.tiny input {
+  width: 3.4rem;
+}
+
+.chip {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chip.danger {
+  color: var(--danger);
+}
+
+.chip.arc {
+  padding: 0.05rem 0.35rem;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.arc.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #05202a;
+  font-weight: 600;
+}
+
+.arc-toggles {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 2px;
+  width: max-content;
+}
+
+.weapon-editor {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.6rem;
+  margin-bottom: 0.7rem;
+  background: var(--panel);
+}
+
+.step-pair {
+  display: inline-flex;
+  gap: 2px;
+  padding: 1px 3px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.functions-table th {
+  white-space: nowrap;
+}
+
+.structure-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 0.5rem;
+}
+
+.track-box {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink-dim);
+  border-radius: 2px;
+}
+
+.track-box.track-black {
+  background: #2b3444;
+}
+
+.track-box.track-red {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.track-dc {
+  min-width: 16px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--yellow);
+  color: #241a00;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 14px;
+}
+
+/* --- cost panel --- */
+
+.builder-cost {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.cost-panel {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+}
+
+.cost-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.cost-headline strong {
+  font-size: 1.9rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.cost-headline span {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+}
+
+.cost-bars {
+  list-style: none;
+  margin: 0.6rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cost-bars li {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 3rem;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.cost-label {
+  color: var(--ink-dim);
+}
+
+.cost-bar {
+  background: var(--panel);
+  border-radius: 3px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.cost-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.cost-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-facts {
+  display: flex;
+  gap: 0.9rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+}
+
+.cost-facts dt {
+  color: var(--ink-dim);
+}
+
+.cost-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.weapon-costs {
+  margin-top: 0.6rem;
+}
+
+.design-problems {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.design-problems li::before {
+  content: '▲ ';
+}
+
+.design-problems li.error {
+  color: var(--danger);
+}
+
+.design-problems li.warning {
+  color: var(--warn);
+}
+
+.design-ok {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green);
+  font-size: 0.78rem;
+}
+
+.builder-launch {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.builder-launch p {
+  margin: 0 0 0.3rem;
+  color: var(--ink-dim);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .builder-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

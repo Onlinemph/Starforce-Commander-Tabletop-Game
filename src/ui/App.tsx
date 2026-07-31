@@ -25,6 +25,7 @@ import { FormationPanel } from './FormationPanel'
 import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
+import { ShipBuilder } from './ShipBuilder'
 import { ShipPicker } from './ShipPicker'
 import { ShipFormPanel } from './ShipFormPanel'
 import { act, resetGame, useGame } from './store'
@@ -37,6 +38,7 @@ export function App() {
   const [showArcs, setShowArcs] = useState(true)
   const [showRings, setShowRings] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [building, setBuilding] = useState(false)
 
   const selected = game.ships.find((s) => s.id === selectedId) ?? ships[0] ?? null
 
@@ -114,6 +116,9 @@ export function App() {
         <button type="button" className="primary" onClick={() => setPicking(true)}>
           Choose forces
         </button>
+        <button type="button" onClick={() => setBuilding(true)} title="Design a ship on the designers' own point model">
+          Ship builder
+        </button>
         <button type="button" onClick={() => resetGame(game.scenario.id, { seed: Math.floor(Math.random() * 1e9) })}>
           Rematch
         </button>
@@ -132,6 +137,8 @@ export function App() {
           }}
         />
       )}
+
+      {building && <ShipBuilder onClose={() => setBuilding(false)} />}
 
       <SequenceBar game={game} />
 

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { SHIP_FORMS } from '../data/ships'
+import { allShipForms, SHIP_FORMS } from '../data/ships'
 import { BLUE, RED, SCENARIOS } from '../data/scenarios'
 import type { ShipForm } from '../engine/types'
+import { useCustomForms } from './customShips'
 import { resetGame } from './store'
 
 /**
@@ -30,16 +31,20 @@ export function ShipPicker({ scenarioId, current, onClose }: Props) {
     [RED]: current[RED] ?? SHIP_FORMS.find((f) => f.faction.startsWith('Vallari'))!.id,
   })
   const [search, setSearch] = useState('')
+  // Custom designs sit alongside the canon roster, grouped under their own
+  // faction name so they never masquerade as printed ships.
+  const custom = useCustomForms()
+  const roster = useMemo(() => allShipForms(), [custom])
 
   const byFaction = useMemo(() => {
     const groups = new Map<string, ShipForm[]>()
-    for (const form of SHIP_FORMS) {
+    for (const form of roster) {
       if (search && !form.name.toLowerCase().includes(search.toLowerCase())) continue
       if (!groups.has(form.faction)) groups.set(form.faction, [])
       groups.get(form.faction)!.push(form)
     }
     return groups
-  }, [search])
+  }, [search, roster])
 
   const start = () =>
     resetGame(scenario, { forms: picks, seed: Math.floor(Math.random() * 1e9) })
@@ -66,7 +71,7 @@ export function ShipPicker({ scenarioId, current, onClose }: Props) {
             </select>
           </label>
           <label className="field">
-            <span>Filter roster ({SHIP_FORMS.length} ships)</span>
+            <span>Filter roster ({roster.length} ships)</span>
             <input
               type="search"
               value={search}
@@ -80,7 +85,7 @@ export function ShipPicker({ scenarioId, current, onClose }: Props) {
           {[BLUE, RED].map((side) => (
             <section key={side} className={`picker-side picker-${side.startsWith('Blue') ? 'blue' : 'red'}`}>
               <h3>{side}</h3>
-              <SelectedSummary form={SHIP_FORMS.find((f) => f.id === picks[side])} />
+              <SelectedSummary form={roster.find((f) => f.id === picks[side])} />
               <div className="roster">
                 {[...byFaction.entries()].map(([faction, forms]) => (
                   <div key={faction}>

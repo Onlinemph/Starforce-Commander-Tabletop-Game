@@ -31,8 +31,30 @@ import shipData from './ships.json'
  */
 export const SHIP_FORMS: ShipForm[] = shipData as unknown as ShipForm[]
 
+/**
+ * Designs built in the ship builder. They are kept apart from the canon roster
+ * so nothing can quietly overwrite a printed ship, but they are visible
+ * everywhere a form is looked up by id, which is what lets a custom hull be
+ * dropped straight into a scenario.
+ */
+const CUSTOM_FORMS: ShipForm[] = []
+
+/** Replace the custom roster wholesale. Called by the builder's store. */
+export function registerCustomForms(forms: ShipForm[]): void {
+  CUSTOM_FORMS.splice(0, CUSTOM_FORMS.length, ...forms)
+}
+
+export function customShipForms(): ShipForm[] {
+  return CUSTOM_FORMS
+}
+
+/** Canon roster first, custom designs after. */
+export function allShipForms(): ShipForm[] {
+  return [...SHIP_FORMS, ...CUSTOM_FORMS]
+}
+
 export function shipFormById(id: string): ShipForm | undefined {
-  return SHIP_FORMS.find((f) => f.id === id)
+  return SHIP_FORMS.find((f) => f.id === id) ?? CUSTOM_FORMS.find((f) => f.id === id)
 }
 
 export function shipFormsByFaction(faction: string): ShipForm[] {
