@@ -2,7 +2,7 @@ import { lentScanPoints, type GameState } from '../engine/game'
 import { accelerationBudget, validatePlot } from '../engine/navigation'
 import { currentMaxSpeed, lineValue, maxReverseSpeed, sensorFunctionCap, turnTemplateAt, type ShipState } from '../engine/shipState'
 import type { Maneuver, ShieldSide, TurnDirection } from '../engine/types'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * The command card (A2.3, C1). Orders are plotted here during the Command
@@ -38,29 +38,15 @@ export function CommandCardPanel({ game, ship }: Props) {
   const lent = lentScanPoints(game)[ship.id] ?? 0
 
   const setManeuver = (maneuver: Maneuver, direction: TurnDirection | null) =>
-    act(() => {
-      card.maneuver = maneuver
-      card.direction = direction
-    })
+    dispatch({ type: 'plot-maneuver', shipId: ship.id, maneuver, direction })
 
-  const setAccel = (delta: number) =>
-    act(() => {
-      const next = card.accel + delta
-      card.accel = next
-      card.speed = ship.speed + next
-    })
+  const setAccel = (delta: number) => dispatch({ type: 'plot-accel', shipId: ship.id, delta })
 
   const setSensor = (key: keyof typeof card.sensors, value: number) =>
-    act(() => {
-      card.sensors[key] = Math.max(0, Math.min(value, cap))
-    })
+    dispatch({ type: 'plot-sensor', shipId: ship.id, key, value })
 
   const toggleShield = (side: ShieldSide) =>
-    act(() => {
-      card.shieldsDown = card.shieldsDown.includes(side)
-        ? card.shieldsDown.filter((s) => s !== side)
-        : [...card.shieldsDown, side]
-    })
+    dispatch({ type: 'plot-shield', shipId: ship.id, side })
 
   return (
     <div className="command-card">

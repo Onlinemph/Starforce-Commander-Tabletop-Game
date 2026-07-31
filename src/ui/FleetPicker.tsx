@@ -13,7 +13,7 @@ import {
 } from '../engine/fleet'
 import type { Availability, ShipForm } from '../engine/types'
 import { useCustomForms } from './customShips'
-import { resetGame } from './store'
+import { newGame } from './store'
 
 /**
  * Force composition before a battle (S2.5).
@@ -111,9 +111,10 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const empty = sides.some((side) => fleetSize(fleets[side] ?? []) === 0)
 
   const start = () => {
-    resetGame(scenario, {
-      fleets: Object.fromEntries(sides.map((s) => [s, fleetFormIds(fleets[s] ?? [])])),
+    newGame({
+      scenarioId: scenario,
       seed: Math.floor(Math.random() * 1e9),
+      fleets: Object.fromEntries(sides.map((s) => [s, fleetFormIds(fleets[s] ?? [])])),
     })
     onClose()
   }

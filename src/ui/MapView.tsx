@@ -1,10 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
 import type { GameState, TerrainKind } from '../engine/game'
-import { blueShieldRemaining, greenShieldRemaining, type ShipState } from '../engine/shipState'
+import { plannedMovement } from '../engine/navigation'
+import {
+  blueShieldRemaining,
+  damageLevel,
+  greenShieldRemaining,
+  type ShipState,
+} from '../engine/shipState'
+import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 
 /**
@@ -82,6 +89,21 @@ function useNebulae(w: number, h: number) {
   }, [w, h])
 }
 
+/** Keep the visible window on the board as zoom and pan change. */
+function clampView(
+  v: { x: number; y: number; zoom: number },
+  fullW: number,
+  fullH: number,
+): { x: number; y: number; zoom: number } {
+  const maxX = fullW - fullW / v.zoom
+  const maxY = fullH - fullH / v.zoom
+  return {
+    zoom: v.zoom,
+    x: Math.min(maxX, Math.max(0, v.x)),
+    y: Math.min(maxY, Math.max(0, v.y)),
+  }
+}
+
 interface Props {
   game: GameState
   selectedId: string | null
@@ -107,6 +129,70 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
   const selected = game.ships.find((s) => s.id === selectedId) ?? null
   const target = game.ships.find((s) => s.id === targetId) ?? null
 
+  /**
+   * Zoom and pan, as a plain viewBox transform. Wheel zooms about the cursor,
+   * dragging empty space pans, double-click resets. The 1" = 20px drawing
+   * scale is untouched — zoom changes how much of the board the window shows,
+   * never where anything is.
+   */
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [view, setView] = useState({ x: 0, y: 0, zoom: 1 })
+  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+
+  const fullW = w + MARGIN * 2
+  const fullH = h + MARGIN * 2
+  const viewBox = `${-MARGIN + view.x} ${-MARGIN + view.y} ${fullW / view.zoom} ${fullH / view.zoom}`
+
+  /** Map a pointer event to board coordinates under the current view. */
+  const toBoard = (e: { clientX: number; clientY: number }) => {
+    const rect = svgRef.current!.getBoundingClientRect()
+    return {
+      x: -MARGIN + view.x + ((e.clientX - rect.left) / rect.width) * (fullW / view.zoom),
+      y: -MARGIN + view.y + ((e.clientY - rect.top) / rect.height) * (fullH / view.zoom),
+    }
+  }
+
+  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    const at = toBoard(e)
+    setView((v) => {
+      const zoom = Math.min(8, Math.max(1, v.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2)))
+      if (zoom === v.zoom) return v
+      // Keep the point under the cursor stationary through the zoom.
+      const x = at.x - (at.x - (-MARGIN + v.x)) * (v.zoom / zoom) + MARGIN
+      const y = at.y - (at.y - (-MARGIN + v.y)) * (v.zoom / zoom) + MARGIN
+      return clampView({ x, y, zoom }, fullW, fullH)
+    })
+  }
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (view.zoom === 1) return
+    drag.current = { x: e.clientX, y: e.clientY, moved: false }
+    svgRef.current?.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = drag.current
+    if (!d) return
+    const rect = svgRef.current!.getBoundingClientRect()
+    const dx = ((e.clientX - d.x) / rect.width) * (fullW / view.zoom)
+    const dy = ((e.clientY - d.y) / rect.height) * (fullH / view.zoom)
+    if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 3) d.moved = true
+    drag.current = { x: e.clientX, y: e.clientY, moved: d.moved }
+    setView((v) => clampView({ x: v.x - dx, y: v.y - dy, zoom: v.zoom }, fullW, fullH))
+  }
+  const onPointerUp = () => {
+    // A drag that moved should not also read as a ship click.
+    if (drag.current?.moved) suppressClick.current = true
+    drag.current = null
+  }
+  const suppressClick = useRef(false)
+  const select = (id: string) => {
+    if (suppressClick.current) {
+      suppressClick.current = false
+      return
+    }
+    onSelect(id)
+  }
+
   const grid = useMemo(() => {
     const lines: React.ReactElement[] = []
     for (let i = 3; i < width; i += 3) {
@@ -123,10 +209,16 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
   return (
     <svg
-      className="map"
-      viewBox={`${-MARGIN} ${-MARGIN} ${w + MARGIN * 2} ${h + MARGIN * 2}`}
+      className={`map${view.zoom > 1 ? ' is-zoomed' : ''}`}
+      ref={svgRef}
+      viewBox={viewBox}
       role="img"
       aria-label="Play surface"
+      onWheel={onWheel}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onDoubleClick={() => setView({ x: 0, y: 0, zoom: 1 })}
     >
       <SpaceDefs />
 
@@ -385,9 +477,20 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             formationSize={
               (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1
             }
-            onSelect={onSelect}
+            onSelect={select}
           />
         ))}
+
+      {/*
+        Plot preview: while orders are being written, the selected ship shows
+        where its current card will put it when the Navigation Segment reveals
+        the plots — computed by the same code that will move it (C1, C2).
+        Only the ship whose card is on screen is previewed, so nothing an
+        opponent has plotted leaks onto the shared map.
+      */}
+      {game.segment === 'command' && selected && !selected.destroyed && !selected.disengaged && (
+        <PlotPreview game={game} ship={selected} />
+      )}
 
       {/* Corner falloff, drawn last and click-through, to seat the board in
           the surrounding chrome. */}
@@ -483,6 +586,50 @@ function AsteroidScatter({ cx, cy, r, seed }: { cx: number; cy: number; r: numbe
       {rocks.map((rock, i) => (
         <circle key={i} cx={rock.x} cy={rock.y} r={rock.size} opacity={rock.o} />
       ))}
+    </g>
+  )
+}
+
+/**
+ * The ghost of a plotted move: the path the ship will fly and the counter
+ * outline where it will end up, with the stress the maneuver costs (C3.1.2).
+ */
+function PlotPreview({ game, ship }: { game: GameState; ship: ShipState }) {
+  const card = game.orders[ship.id]
+  if (!card) return null
+
+  const towed = isLinked(ship.id, game.ops.links)
+  const planned = plannedMovement(
+    ship,
+    card,
+    towed ? adjustedSpeed(ship, game.ops.links, game.ships, card.speed) : undefined,
+  )
+  const start = ship.placement
+  const unmoved =
+    planned.end.position.x === start.position.x &&
+    planned.end.position.y === start.position.y &&
+    planned.end.heading === start.heading
+  if (unmoved) return null
+
+  const size = 1.5 * SCALE
+  const ex = planned.end.position.x * SCALE
+  const ey = planned.end.position.y * SCALE
+
+  return (
+    <g className="plot-preview" aria-hidden="true">
+      <polyline
+        className="plot-path"
+        points={planned.path.map((p) => `${p.x * SCALE},${p.y * SCALE}`).join(' ')}
+      />
+      <g transform={`translate(${ex} ${ey}) rotate(${planned.end.heading})`}>
+        <rect x={-size / 2} y={-size / 2} width={size} height={size} className="plot-ghost" />
+        <path d={`M 0 ${-size / 2 - 5} L -4 ${-size / 2 + 2} L 4 ${-size / 2 + 2} Z`} className="plot-ghost-bow" />
+      </g>
+      <text x={ex} y={ey + size / 2 + 12} className="plot-label" textAnchor="middle">
+        spd {planned.speed}
+        {planned.stress > 0 ? ` · +${planned.stress} stress` : ''}
+        {planned.illegal ? ' · ILLEGAL — goes straight' : ''}
+      </text>
     </g>
   )
 }
@@ -632,6 +779,14 @@ function ShipToken({
       tabIndex={0}
       aria-label={`${ship.name}, speed ${ship.speed}`}
     >
+      {/* The browser's native hover tooltip — glanceable state without a click. */}
+      <title>
+        {`${ship.name} — ${ship.form.name}\n` +
+          `speed ${ship.speed} · heading ${Math.round(ship.placement.heading)}° · ${damageLevel(ship)}\n` +
+          `stress ${ship.stressMarkers} · marines ${ship.marineSquads}` +
+          (ship.derelict ? '\nDERELICT' : '') +
+          (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : '')}
+      </title>
       <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-base" />
 
       {/*

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { pushLog, type GameState } from '../engine/game'
-import { repairTargets, resolveDamageControl, type RepairAssignment, type RepairCategory } from '../engine/engineering'
+import type { GameState } from '../engine/game'
+import { repairTargets, type RepairAssignment, type RepairCategory } from '../engine/engineering'
 import { damageControlRating, type ShipState } from '../engine/shipState'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Damage Control Segment (B3.2). The player assigns red dice to categories and
@@ -43,17 +43,8 @@ export function DamageControlPanel({ ship }: Props) {
         targetKey: a.key || undefined,
       }))
 
-    const messages: string[] = []
-    act((g) => {
-      const outcomes = resolveDamageControl(ship, list, g.rng, (m) => {
-        messages.push(m)
-        pushLog(g, m)
-      })
-      for (const outcome of outcomes) {
-        if (!outcome.success) messages.push(`${outcome.category}: no success on ${outcome.dice} dice.`)
-      }
-    })
-    setResolved(messages.length > 0 ? messages : ['No repair attempts made.'])
+    const { messages } = dispatch({ type: 'damage-control', shipId: ship.id, assignments: list })
+    setResolved(messages && messages.length > 0 ? messages : ['No repair attempts made.'])
     setAssignments({})
   }
 

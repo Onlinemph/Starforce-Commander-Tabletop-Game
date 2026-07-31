@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   firingOrder,
-  resolveVolley,
   selectBracket,
   type FireMode,
   type MountSelection,
@@ -14,30 +13,18 @@ import {
   mayFireAlone,
 } from '../engine/coordinatedFire'
 import {
-  advanceFiringStep,
   attackAllowed,
   cloakModifiers,
   cloudModifiers,
   impactingHoming,
-  fireAtSmallTarget,
-  launchHoming,
-  launchProbe,
   probeLaunchers,
   smallTargetsFor,
   tractorableHoming,
   tractorBeamsFree,
-  tractorIncomingHoming,
-  resolveHomingImpacts,
   scanTargets,
   currentFiringStep,
-  damageContext,
-  declareCoordinatedFire,
-  pushLog,
-  recordAttack,
   scoutSupport,
   tacticalScanOf,
-  workingSystemBoxes,
-  terrainObstacles,
   type GameState,
 } from '../engine/game'
 import { actualRange, arcTo, canBearOn, effectiveRange, shieldsFacing } from '../engine/geometry'
@@ -45,7 +32,7 @@ import { endurance, impactShield, isHoming, speedInPhase } from '../engine/homin
 import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Offensive Fire (E6.2). Ships fire in descending order of Tactical Scan; the
@@ -136,48 +123,23 @@ export function CombatPanel({ game, attacker }: Props) {
       return { weaponId, mountIndex: Number(indexStr) }
     })
 
-    const result = act((g) => {
-      const terrain = cloudModifiers(g, attacker, target)
-      return resolveVolley(
-        {
-          attacker,
-          target,
-          mounts,
-          mode,
-          precisionSection: mode === 'precision' ? section : undefined,
-          coordinated: inGroup,
-          scoutSupport: scoutSupport(g, attacker, target),
-          ...cloakModifiers(g, attacker, target),
-          // A nebula can switch the sciences off, shrinking the precision hand
-          // (K4.2.4, E9.2.2).
-          attackerSciences: workingSystemBoxes(g, attacker, 'SCNC'),
-          ...terrain,
-          degradedFireControl: degraded || terrain.degradedFireControl,
-          obstacles: terrainObstacles(g.scenario.terrain),
-        },
-        damageContext(g),
-        g.rng,
-      )
+    // One action carries the whole volley: the handler re-derives every
+    // modifier from game state, resolves it, and journals the intent.
+    const outcome = dispatch({
+      type: 'fire-volley',
+      attackerId: attacker.id,
+      targetId: target.id,
+      mounts,
+      mode,
+      precisionSection: mode === 'precision' ? section : undefined,
+      degraded,
     })
-
-    if (!result.ok) {
-      setLastResult(result.reason)
-      return
+    if (outcome.volley) {
+      setSelected(new Set())
+      setLastResult(outcome.volley)
+    } else {
+      setLastResult(outcome.message)
     }
-
-    act((g) => {
-      g.firedThisSegment.add(attacker.id)
-      if (g.coordinatedFire && !inGroup) recordAttack(g, attacker, target)
-      const dice = result.records.flatMap((r) => r.rolls.map((d) => d.face)).join(' ')
-      pushLog(
-        g,
-        `${attacker.name} fires on ${target.name} at effective range ${result.effectiveRange} ` +
-          `(${result.targetShield} shield). Dice: ${dice} → ${result.damage.standard} damage` +
-          (result.damage.leak ? `, ${result.damage.leak} leak` : ''),
-      )
-    })
-    setSelected(new Set())
-    setLastResult(result)
   }
 
   return (
@@ -384,12 +346,7 @@ export function CombatPanel({ game, attacker }: Props) {
         </button>
         <button
           type="button"
-          onClick={() =>
-            act((g) => {
-              g.firedThisSegment.add(attacker.id)
-              pushLog(g, `${attacker.name} declines to fire this phase (E6.2 Step 1).`)
-            })
-          }
+          onClick={() => dispatch({ type: 'pass-fire', shipId: attacker.id })}
         >
           Pass
         </button>
@@ -407,7 +364,7 @@ export function CombatPanel({ game, attacker }: Props) {
           type="button"
           className="next-step"
           disabled={step.index === FIRING_STEPS.length}
-          onClick={() => act((g) => advanceFiringStep(g))}
+          onClick={() => dispatch({ type: 'advance-firing-step' })}
         >
           Next firing step →
         </button>
@@ -513,7 +470,7 @@ function CoordinatedFireBuilder({ game, attacker }: { game: GameState; attacker:
       return
     }
     const ships = friends.filter((s) => picked.has(s.id))
-    setError(act((g) => declareCoordinatedFire(g, ships, target)))
+    setError(dispatch({ type: 'declare-coordinated', shipIds: ships.map((s) => s.id), targetId: target.id }).message)
   }
 
   return (
@@ -580,7 +537,9 @@ function MissileCatch({ game, defender }: { game: GameState; defender: ShipState
             type="button"
             className="chip"
             disabled={free < 1}
-            onClick={() => act((g) => setError(tractorIncomingHoming(g, defender, hw.id, 1).refusal))}
+            onClick={() =>
+              setError(dispatch({ type: 'catch-missile', shipId: defender.id, homingId: hw.id, beams: 1 }).message)
+            }
           >
             catch {hw.weaponName}
           </button>
@@ -641,20 +600,17 @@ function SmallTargets({ game, attacker }: { game: GameState; attacker: ShipState
                     ? 'Point defense: full damage (E12.4.3)'
                     : 'No point defense trait: degraded fire control halves the damage (E12.4.4)'
                 }
-                onClick={() =>
-                  act((g) => {
-                    const result = fireAtSmallTarget(g, attacker, chosen.id, weapon.id, index)
-                    setError(
-                      result.refusal ??
-                        (result.volley
-                          ? `${result.volley.damage} damage${result.destroyed ? ' — destroyed' : ''}` +
-                            (result.volley.automatic ? ' (automatic, J3.2.5)' : '') +
-                            (result.volley.degraded ? ' (halved, E10.2.3)' : '')
-                          : null),
-                    )
-                    if (!result.refusal && result.destroyed) setTargetId('')
+                onClick={() => {
+                  const outcome = dispatch({
+                    type: 'fire-small-target',
+                    attackerId: attacker.id,
+                    targetId: chosen.id,
+                    weaponId: weapon.id,
+                    mountIndex: index,
                   })
-                }
+                  setError(outcome.message)
+                  if (outcome.destroyed) setTargetId('')
+                }}
               >
                 {weapon.name} #{index + 1}
                 {pd ? ' · PD' : ' · degraded'}
@@ -708,13 +664,14 @@ function ProbeLaunch({ game, attacker }: { game: GameState; attacker: ShipState 
             disabled={!objectId}
             title="Loading a probe costs the tube its full arming cycle (J7.2.2)"
             onClick={() =>
-              act((g) =>
-                setError(
-                  launchProbe(g, attacker, objectId, {
-                    weaponId: l.weaponId,
-                    mountIndex: l.mountIndex,
-                  }),
-                ),
+              setError(
+                dispatch({
+                  type: 'launch-probe',
+                  shipId: attacker.id,
+                  objectId,
+                  weaponId: l.weaponId,
+                  mountIndex: l.mountIndex,
+                }).message,
               )
             }
           >
@@ -751,7 +708,17 @@ function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipS
                     ? `Endurance ${endurance(weapon)} phases, ${speedInPhase(weapon, 1)}" on the first leg`
                     : 'Not fully armed (E4.2.3)'
                 }
-                onClick={() => act((g) => setError(launchHoming(g, attacker, weapon, index, target)))}
+                onClick={() =>
+                  setError(
+                    dispatch({
+                      type: 'launch-homing',
+                      shipId: attacker.id,
+                      weaponId: weapon.id,
+                      mountIndex: index,
+                      targetId: target.id,
+                    }).message,
+                  )
+                }
               >
                 <span>
                   Launch {weapon.name} #{index + 1}
@@ -803,12 +770,10 @@ function HomingImpacts({ game, target }: { game: GameState; target: ShipState })
       <button
         type="button"
         className="primary"
-        onClick={() =>
-          act((g) => {
-            resolveHomingImpacts(g, target, pd)
-            setPd({})
-          })
-        }
+        onClick={() => {
+          dispatch({ type: 'resolve-homing-impacts', shipId: target.id, pointDefense: pd })
+          setPd({})
+        }}
       >
         Resolve impacts
       </button>

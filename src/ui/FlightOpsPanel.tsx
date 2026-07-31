@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import {
-  craftName,
-  dockShuttle,
-  effectiveSpeed,
-  launchShuttle,
-  maxSystemOf,
-  moveSmallCraft,
-  recoverShuttle,
-  tractorBeamsFree,
-  type GameState,
-} from '../engine/game'
+import { craftName, effectiveSpeed, maxSystemOf, tractorBeamsFree, type GameState } from '../engine/game'
 import { undamagedSystemBoxes, type ShipState } from '../engine/shipState'
 import {
   isShuttle,
@@ -18,7 +8,7 @@ import {
   SHUTTLE_SPEED,
   type SmallCraft,
 } from '../engine/smallCraft'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * The Flight Operations Segment (A3.3.5, J8.2). Shuttles launch in Step A and
@@ -50,7 +40,7 @@ export function FlightOpsPanel({ game, ship }: { game: GameState; ship: ShipStat
               type="button"
               className="chip"
               disabled={launched}
-              onClick={() => act((g) => setError(launchShuttle(g, ship)))}
+              onClick={() => setError(dispatch({ type: 'launch-shuttle', shipId: ship.id }).message)}
             >
               Launch shuttle
             </button>
@@ -58,7 +48,12 @@ export function FlightOpsPanel({ game, ship }: { game: GameState; ship: ShipStat
               type="button"
               className="chip"
               disabled={launched || ship.marineSquads < 1}
-              onClick={() => act((g) => setError(launchShuttle(g, ship, 'shuttle', 1)))}
+              onClick={() =>
+                setError(
+                  dispatch({ type: 'launch-shuttle', shipId: ship.id, kind: 'shuttle', marines: 1 })
+                    .message,
+                )
+              }
               title="J8.3.5 — a standard shuttle carries one marine squad or away team"
             >
               Launch with marines
@@ -67,7 +62,12 @@ export function FlightOpsPanel({ game, ship }: { game: GameState; ship: ShipStat
               type="button"
               className="chip"
               disabled={launched}
-              onClick={() => act((g) => setError(launchShuttle(g, ship, 'jamming-shuttle')))}
+              onClick={() =>
+                setError(
+                  dispatch({ type: 'launch-shuttle', shipId: ship.id, kind: 'jamming-shuttle' })
+                    .message,
+                )
+              }
               title="J8.4 — GEN SYS at MAX, mother ship at speed 3 or less"
             >
               Launch jammer
@@ -134,16 +134,17 @@ function CraftRow({
 }) {
   const [distance, setDistance] = useState(SHUTTLE_SPEED)
 
-  const fly = (heading: number) =>
-    act((g) => {
-      const radians = (heading * Math.PI) / 180
-      onError(
-        moveSmallCraft(g, craft.id, {
-          x: craft.position.x + Math.sin(radians) * distance,
-          y: craft.position.y - Math.cos(radians) * distance,
-        }),
-      )
-    })
+  const fly = (heading: number) => {
+    const radians = (heading * Math.PI) / 180
+    onError(
+      dispatch({
+        type: 'move-craft',
+        craftId: craft.id,
+        x: craft.position.x + Math.sin(radians) * distance,
+        y: craft.position.y - Math.cos(radians) * distance,
+      }).message,
+    )
+  }
 
   const nearby = game.ships.filter(
     (s) =>
@@ -193,7 +194,9 @@ function CraftRow({
                 key={s.id}
                 type="button"
                 className="chip"
-                onClick={() => act((g) => onError(recoverShuttle(g, craft.id, s)))}
+                onClick={() =>
+                  onError(dispatch({ type: 'recover-shuttle', craftId: craft.id, shipId: s.id }).message)
+                }
               >
                 land on {s.name.split(' ').pop()}
               </button>
@@ -206,7 +209,9 @@ function CraftRow({
                 type="button"
                 className="chip"
                 title={`J8.2.6 — ${s.name} is at speed ${effectiveSpeed(game, s)}`}
-                onClick={() => act((g) => onError(dockShuttle(g, craft.id, s)))}
+                onClick={() =>
+                  onError(dispatch({ type: 'dock-shuttle', craftId: craft.id, shipId: s.id }).message)
+                }
               >
                 board {s.name.split(' ').pop()}
               </button>

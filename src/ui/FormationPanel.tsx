@@ -1,14 +1,9 @@
 import { useState } from 'react'
-import {
-  chooseLead,
-  joinFormation,
-  joinRequirements,
-  leaveFormation,
-} from '../engine/formation'
-import { formationFor, pushLog, type GameState } from '../engine/game'
+import { joinRequirements } from '../engine/formation'
+import { formationFor, type GameState } from '../engine/game'
 import { distance } from '../engine/geometry'
 import { turnTemplateAt, type ShipState } from '../engine/shipState'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Formation Maneuvering (C5). Ships join at the beginning of the Command
@@ -47,22 +42,9 @@ export function FormationPanel({ game, ship }: Props) {
       setError('Pick at least one ship to form up with.')
       return
     }
-    // C5.1.1: the least maneuverable ship at the formation's speed leads.
-    const lead = chooseLead([ship, ...joining])!
-    const rest = [ship, ...joining].filter((s) => s.id !== lead.id)
-
-    act((g) => {
-      const { formation: made, rejected } = joinFormation(g.formations, lead, rest)
-      setError(rejected.length > 0 ? rejected.map((r) => r.reason).join(' ') : null)
-      if (made) {
-        pushLog(
-          g,
-          `${lead.name} leads a formation with ${made.memberIds
-            .map((id) => g.ships.find((s) => s.id === id)!.name)
-            .join(', ')} (C5.1).`,
-        )
-      }
-    })
+    // The lead is chosen inside the action handler (C5.1.1), so the journal
+    // records the request, not a conclusion that could drift.
+    setError(dispatch({ type: 'form-up', shipIds: [ship.id, ...joining.map((s) => s.id)] }).message)
     setPicked(new Set())
   }
 
@@ -90,12 +72,7 @@ export function FormationPanel({ game, ship }: Props) {
           </ul>
           <button
             type="button"
-            onClick={() =>
-              act((g) => {
-                leaveFormation(g.formations, ship.id)
-                pushLog(g, `${ship.name} leaves the formation (C5.2).`)
-              })
-            }
+            onClick={() => dispatch({ type: 'leave-formation', shipId: ship.id })}
           >
             {formation.leadId === ship.id ? 'Disband formation' : `Detach ${ship.name}`}
           </button>

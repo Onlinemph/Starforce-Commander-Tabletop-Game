@@ -9,7 +9,7 @@ import {
   turnTemplateAt,
   type ShipState,
 } from './shipState'
-import type { CommandCard, DamageCard } from './types'
+import type { CommandCard, DamageCard, Maneuver } from './types'
 
 /**
  * Navigation: plotting validation, movement execution, and the Stress Check
@@ -127,20 +127,15 @@ export interface MovementResult extends ManeuverResult {
 }
 
 /**
- * Execute a plotted maneuver during the Navigation Segment (A3.3.3).
- * Speed changes take effect now, not when plotted (C1.2.4).
- *
- * `towedSpeed` is the adjusted speed of a ship in a tractor link (J3.3.4). The
- * ship keeps plotting — and keeps — its true speed, and the acceleration it
- * paid for still counts against the round; only the distance it actually covers
- * and the turn template it may use come from the adjusted figure (J3.4.1,
- * J3.4.5).
+ * What a plotted card will do when the Navigation Segment reveals it — the
+ * pure half of `executeMovement`, shared with the map's plot preview so the
+ * ghost and the real move can never disagree.
  */
-export function executeMovement(
+export function plannedMovement(
   ship: ShipState,
   card: CommandCard,
   towedSpeed?: number,
-): MovementResult {
+): MovementResult & { maneuver: Maneuver } {
   const errors = validatePlot(ship, card)
   const mustGoStraight = errors.some((e) => e.fallbackToStraight)
 
@@ -150,8 +145,6 @@ export function executeMovement(
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
   if (ship.emergencyStopPhases > 0) speed = 0
-  ship.speed = speed
-  ship.accelUsedThisRound += Math.abs(card.accel)
 
   const travel =
     towedSpeed === undefined
@@ -168,15 +161,40 @@ export function executeMovement(
     halfSlide: card.halfSlide,
   })
 
-  ship.placement = result.end
-
   // Stress from the maneuver itself (C3.1.2).
-  const stress = maneuverStress(maneuver, travel)
-  ship.stressMarkers += stress
-  if (maneuver === 'em-90' || maneuver === 'em-180') ship.emergencyTurnUsed = true
+  return { ...result, speed: travel, stress: maneuverStress(maneuver, travel), maneuver }
+}
+
+/**
+ * Execute a plotted maneuver during the Navigation Segment (A3.3.3).
+ * Speed changes take effect now, not when plotted (C1.2.4).
+ *
+ * `towedSpeed` is the adjusted speed of a ship in a tractor link (J3.3.4). The
+ * ship keeps plotting — and keeps — its true speed, and the acceleration it
+ * paid for still counts against the round; only the distance it actually covers
+ * and the turn template it may use come from the adjusted figure (J3.4.1,
+ * J3.4.5).
+ */
+export function executeMovement(
+  ship: ShipState,
+  card: CommandCard,
+  towedSpeed?: number,
+): MovementResult {
+  const planned = plannedMovement(ship, card, towedSpeed)
+  const maxForward = currentMaxSpeed(ship)
+  let speed = card.speed
+  if (speed > maxForward) speed = maxForward
+  if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
+  if (ship.emergencyStopPhases > 0) speed = 0
+  ship.speed = speed
+  ship.accelUsedThisRound += Math.abs(card.accel)
+
+  ship.placement = planned.end
+  ship.stressMarkers += planned.stress
+  if (planned.maneuver === 'em-90' || planned.maneuver === 'em-180') ship.emergencyTurnUsed = true
   if (ship.emergencyStopPhases > 0) ship.emergencyStopPhases -= 1
 
-  return { ...result, speed: travel, stress }
+  return planned
 }
 
 // ---------------------------------------------------------------------------

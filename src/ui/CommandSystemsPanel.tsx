@@ -5,13 +5,12 @@ import {
   COMMAND_RANGE,
   hasCommandSystems,
   lentTacticalScan,
-  setCommandAssignment,
   totalAssigned,
 } from '../engine/command'
-import { commandStateFor, pushLog, type GameState } from '../engine/game'
+import { commandStateFor, type GameState } from '../engine/game'
 import { actualRange } from '../engine/geometry'
 import { genSysSetting, type ShipState } from '../engine/shipState'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Command Systems (H5). Lending is done during the Resource Allocation Segment
@@ -37,14 +36,7 @@ export function CommandSystemsPanel({ game, ship }: Props) {
   const spent = totalAssigned(state)
 
   const assign = (targetId: string, points: number) =>
-    act((g) => {
-      const message = setCommandAssignment(commandStateFor(g, ship.side), g.ships, targetId, points)
-      setError(message)
-      if (!message) {
-        const recipient = g.ships.find((s) => s.id === targetId)!
-        pushLog(g, `${commandShip?.name}: ${points} command point(s) to ${recipient.name} (H5.2.1).`)
-      }
-    })
+    setError(dispatch({ type: 'assign-command', side: ship.side, targetId, points }).message)
 
   return (
     <div className="segment-help command-systems">
@@ -54,14 +46,10 @@ export function CommandSystemsPanel({ game, ship }: Props) {
         <span>Command ship for {ship.side} this round (H5.1.6)</span>
         <select
           value={state.commandShipId ?? ''}
-          onChange={(e) =>
-            act((g) => {
-              const next = commandStateFor(g, ship.side)
-              next.commandShipId = e.target.value || null
-              next.assignments = []
-              setError(null)
-            })
-          }
+          onChange={(e) => {
+            dispatch({ type: 'set-command-ship', side: ship.side, shipId: e.target.value || null })
+            setError(null)
+          }}
         >
           <option value="">— none —</option>
           {candidates.map((s) => (

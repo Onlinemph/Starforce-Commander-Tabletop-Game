@@ -2,12 +2,10 @@ import { useMemo, useState } from 'react'
 import { SCENARIOS } from '../data/scenarios'
 import {
   activeShips,
-  advanceSegment,
   cloudStatus,
   isCombatPhase,
   PHASE_LABELS,
   PHASE_SEGMENTS,
-  pushLog,
   SEGMENT_LABELS,
   victoryPoints,
   type GameState,
@@ -29,7 +27,16 @@ import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
-import { act, resetGame, useGame } from './store'
+import {
+  canUndo,
+  currentSetup,
+  dispatch,
+  exportBattle,
+  importBattle,
+  newGame,
+  undo,
+  useGame,
+} from './store'
 
 export function App() {
   const game = useGame()
@@ -89,7 +96,11 @@ export function App() {
           <select
             value={game.scenario.id}
             onChange={(e) => {
-              resetGame(e.target.value)
+              newGame({
+                scenarioId: e.target.value,
+                seed: Math.floor(Math.random() * 1e9),
+                coordinatedFire: game.coordinatedFire,
+              })
               setTargetId(null)
             }}
           >
@@ -108,15 +119,7 @@ export function App() {
           <input
             type="checkbox"
             checked={game.coordinatedFire}
-            onChange={(e) =>
-              act((g) => {
-                g.coordinatedFire = e.target.checked
-                g.firingStepIndex = 0
-                g.coordinatedGroup = null
-                g.attackedThisPhase.clear()
-                pushLog(g, `Coordinated Fire (H4) ${e.target.checked ? 'in force' : 'switched off'}.`)
-              })
-            }
+            onChange={(e) => dispatch({ type: 'set-coordinated-fire', on: e.target.checked })}
           />
           Coordinated Fire
         </label>
@@ -127,9 +130,14 @@ export function App() {
         <button type="button" onClick={() => setBuilding(true)} title="Design a ship on the designers' own point model">
           Ship builder
         </button>
-        <button type="button" onClick={() => resetGame(game.scenario.id, { seed: Math.floor(Math.random() * 1e9) })}>
+        <button
+          type="button"
+          title="Same scenario and forces, fresh dice"
+          onClick={() => newGame({ ...currentSetup(), seed: Math.floor(Math.random() * 1e9) })}
+        >
           Rematch
         </button>
+        <BattleMenu />
       </header>
 
       {picking && (
@@ -258,6 +266,54 @@ const PHASE_CODES: Record<GameState['phase'], string> = {
   final: 'FIN',
 }
 
+/**
+ * The battle file, in and out. A battle is (setup + action journal), so the
+ * file is small, replays exactly, and carries any custom designs it needs —
+ * hand it to another player and they resume your game to the die roll.
+ */
+function BattleMenu() {
+  const [note, setNote] = useState<string | null>(null)
+
+  const save = () => {
+    const blob = new Blob([exportBattle()], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'starforce-battle.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const load = async (file: File) => {
+    setNote(importBattle(await file.text()) ?? 'Battle loaded.')
+  }
+
+  return (
+    <>
+      <button type="button" onClick={save} title="Download this battle as a file — setup, every action, and any custom ship designs">
+        Save file
+      </button>
+      <label className="chip file-chip" title="Resume a battle from a downloaded file">
+        Load file
+        <input
+          type="file"
+          accept=".json,application/json"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void load(file)
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {note && (
+        <span className="hint" role="status">
+          {note}
+        </span>
+      )}
+    </>
+  )
+}
+
 /** The Sequence of Play strip (A3.1). */
 function SequenceBar({ game }: { game: GameState }) {
   const segments = PHASE_SEGMENTS[game.phase]
@@ -272,7 +328,15 @@ function SequenceBar({ game }: { game: GameState }) {
           </li>
         ))}
       </ol>
-      <button type="button" className="primary" onClick={() => act((g) => advanceSegment(g))}>
+      <button
+        type="button"
+        onClick={() => undo()}
+        disabled={!canUndo()}
+        title="Take back the last action — dice included, the replay is exact"
+      >
+        ↶ Undo
+      </button>
+      <button type="button" className="primary" onClick={() => dispatch({ type: 'advance-segment' })}>
         Complete {SEGMENT_LABELS[game.segment]} →
       </button>
     </div>
@@ -406,12 +470,7 @@ function DisengagementPanel({ game, ship }: { game: GameState; ship: ShipState }
           </ul>
           <button
             type="button"
-            onClick={() =>
-              act((g) => {
-                ship.disengaged = true
-                pushLog(g, `${ship.name} disengages from the battle.`)
-              })
-            }
+            onClick={() => dispatch({ type: 'disengage', shipId: ship.id })}
           >
             Disengage {ship.name}
           </button>

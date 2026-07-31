@@ -1,26 +1,22 @@
 import { useState } from 'react'
 import {
-  attemptSearch,
   cloakFullyPowered,
   cloakOperational,
   cloakStrength,
   DETECTION_LABELS,
   detectionBy,
-  disengageCloak,
-  engageCloak,
   hasCloak,
   isCloaked,
   mayDecloak,
-  reduceDetection,
   searchDice,
   searchRange,
   withinSearchRange,
   type DetectionLevel,
 } from '../engine/cloaking'
-import { cloakOf, pushLog, type GameState } from '../engine/game'
+import { cloakOf, type GameState } from '../engine/game'
 import { actualRange } from '../engine/geometry'
 import type { ShipState } from '../engine/shipState'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Cloaking Systems (H6). The cloak is switched in Operations step 2A, and the
@@ -81,19 +77,7 @@ export function CloakPanel({ game, ship }: Props) {
               <div className="cloak-actions">
                 <button
                   type="button"
-                  onClick={() =>
-                    act((g) => {
-                      const results = reduceDetection(cloakOf(g, ship)!, g.rng)
-                      for (const r of results) {
-                        pushLog(
-                          g,
-                          `${ship.name} tries to shake ${g.ships.find((s) => s.id === r.searcherId)?.name ?? r.searcherId}` +
-                            ` — ${r.face}${r.reduced ? ', detection drops' : ', no change'} (H6.13).`,
-                        )
-                      }
-                      setError(results.length === 0 ? 'Nobody has a fix to shake off.' : null)
-                    })
-                  }
+                  onClick={() => setError(dispatch({ type: 'reduce-detection', shipId: ship.id }).message)}
                 >
                   Attempt to reduce detection (H6.13)
                 </button>
@@ -101,13 +85,10 @@ export function CloakPanel({ game, ship }: Props) {
                   type="button"
                   disabled={!mayDecloak(own)}
                   title={mayDecloak(own) ? '' : 'The cloak must run for a full phase first (H6.6.7)'}
-                  onClick={() =>
-                    act((g) => {
-                      disengageCloak(cloakOf(g, ship)!)
-                      pushLog(g, `${ship.name} decloaks (H6.7).`)
-                      setError(null)
-                    })
-                  }
+                  onClick={() => {
+                    dispatch({ type: 'decloak', shipId: ship.id })
+                    setError(null)
+                  }}
                 >
                   Decloak (H6.7)
                 </button>
@@ -118,22 +99,7 @@ export function CloakPanel({ game, ship }: Props) {
               type="button"
               disabled={!cloakOperational(ship) || !cloakFullyPowered(ship)}
               title={cloakFullyPowered(ship) ? '' : 'Fill every circle on the CLOAK line first (H6.3.1)'}
-              onClick={() =>
-                act((g) => {
-                  const enemies = g.ships.filter((s) => s.side !== ship.side)
-                  const result = engageCloak(ship, cloakOf(g, ship)!, enemies)
-                  setError(result.reason ?? null)
-                  if (result.ok) {
-                    pushLog(
-                      g,
-                      `${ship.name} engages its cloaking system (H6.6)` +
-                        (result.freeContacts.length
-                          ? ` — ${result.freeContacts.length} enemy within range 8 gains a Contact (H6.6.3).`
-                          : '.'),
-                    )
-                  }
-                })
-              }
+              onClick={() => setError(dispatch({ type: 'engage-cloak', shipId: ship.id }).message)}
             >
               Engage cloak (H6.6)
             </button>
@@ -175,19 +141,7 @@ export function CloakPanel({ game, ship }: Props) {
                         : `Roll ${count} ${color} ${count === 1 ? 'die' : 'dice'}`
                   }
                   onClick={() =>
-                    act((g) => {
-                      const out = attemptSearch(ship, ghost, cloakOf(g, ghost)!, g.rng)
-                      setError(out.reason ?? null)
-                      if (out.faces.length > 0) {
-                        pushLog(
-                          g,
-                          `${ship.name} searches for ${ghost.name}: ${out.faces.join(' ')} — ` +
-                            (out.detected
-                              ? `${DETECTION_LABELS[out.to]} (H6.10).`
-                              : 'no contact.'),
-                        )
-                      }
-                    })
+                    setError(dispatch({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id }).message)
                   }
                 >
                   Search · {count} {color}

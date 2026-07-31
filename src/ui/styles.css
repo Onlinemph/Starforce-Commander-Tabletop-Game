@@ -327,6 +327,30 @@ input:focus-visible {
   margin-left: auto;
 }
 
+/* "Load file" is a label wrapping a hidden file input, dressed as a button. */
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-lcars);
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lc-sand);
+  background: #1b2136;
+  border: 1px solid #33406b;
+  border-radius: 999px;
+  padding: 0.28rem 0.85rem;
+  cursor: pointer;
+}
+.file-chip:hover {
+  background: #26304e;
+  border-color: var(--lc-orange);
+  color: var(--lc-orange);
+}
+.file-chip input {
+  display: none;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(380px, 460px);
@@ -460,6 +484,45 @@ input:focus-visible {
   stroke-width: 1;
   stroke-dasharray: 8 6;
   pointer-events: none;
+}
+.map.is-zoomed {
+  cursor: grab;
+}
+.map.is-zoomed:active {
+  cursor: grabbing;
+}
+
+/* The ghost of a plotted move (Command Segment). */
+.plot-preview {
+  pointer-events: none;
+}
+.plot-path {
+  fill: none;
+  stroke: var(--lc-sand);
+  stroke-width: 1.4;
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+}
+.plot-ghost {
+  fill: none;
+  stroke: var(--lc-sand);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  opacity: 0.8;
+}
+.plot-ghost-bow {
+  fill: var(--lc-sand);
+  opacity: 0.8;
+}
+.plot-label {
+  fill: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.8);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .grid {
   stroke: #1d2a46;

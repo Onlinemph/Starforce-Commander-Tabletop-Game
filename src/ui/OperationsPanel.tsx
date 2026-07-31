@@ -1,17 +1,9 @@
 import { useState } from 'react'
 import {
-  advanceOperationsStep,
-  attemptTractorLock,
-  contestTractor,
   craftName,
   effectiveSpeed,
   maxSystemOf,
-  performScan,
-  performTransport,
-  releaseTractor,
   scanTargets,
-  setMaxSystem,
-  setShieldDown,
   tractorBeamsFree,
   tractorTargets,
   type GameState,
@@ -29,7 +21,7 @@ import {
 import { genSysSetting, undamagedSystemBoxes, type ShipState } from '../engine/shipState'
 import { linksHolding, tractorBeams, tractorPower, type TractorLink } from '../engine/tractor'
 import type { ShieldSide, SystemKind } from '../engine/types'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * The Operations Segment (J1), walked as the five steps the rules print. Each
@@ -72,7 +64,7 @@ export function OperationsPanel({ game, ship }: { game: GameState; ship: ShipSta
         type="button"
         className="chip"
         disabled={index >= OPERATIONS_STEPS.length - 1}
-        onClick={() => act((g) => void advanceOperationsStep(g))}
+        onClick={() => dispatch({ type: 'ops-next-step' })}
       >
         Next step →
       </button>
@@ -99,7 +91,7 @@ function MaxSystem({ game, ship }: { game: GameState; ship: ShipState }) {
           <button
             type="button"
             className={`chip${chosen === null ? ' is-on' : ''}`}
-            onClick={() => act((g) => setMaxSystem(g, ship, null))}
+            onClick={() => dispatch({ type: 'set-max-system', shipId: ship.id, kind: null })}
           >
             none
           </button>
@@ -108,7 +100,7 @@ function MaxSystem({ game, ship }: { game: GameState; ship: ShipState }) {
               key={kind}
               type="button"
               className={`chip${chosen === kind ? ' is-on' : ''}`}
-              onClick={() => act((g) => setMaxSystem(g, ship, kind))}
+              onClick={() => dispatch({ type: 'set-max-system', shipId: ship.id, kind })}
             >
               {kind}
             </button>
@@ -120,7 +112,6 @@ function MaxSystem({ game, ship }: { game: GameState; ship: ShipState }) {
 }
 
 function Shields({
-  game,
   ship,
   onError,
 }: {
@@ -135,7 +126,16 @@ function Shields({
           key={side}
           type="button"
           className={`shield-toggle${ship.shieldsDown[side] ? ' is-down' : ''}`}
-          onClick={() => act(() => onError(setShieldDown(game, ship, side, !ship.shieldsDown[side])))}
+          onClick={() =>
+            onError(
+              dispatch({
+                type: 'set-shield-down',
+                shipId: ship.id,
+                side,
+                down: !ship.shieldsDown[side],
+              }).message,
+            )
+          }
         >
           {side} {ship.shieldsDown[side] ? 'down' : 'up'}
         </button>
@@ -205,15 +205,7 @@ function Tractors({
           className="chip"
           disabled={!targetId || free === 0}
           onClick={() =>
-            act((g) => {
-              const result = attemptTractorLock(g, ship, targetId, beams)
-              onError(
-                result.refusal ??
-                  (result.locked
-                    ? null
-                    : `Lock failed: ${result.total} against ${result.required || 'no L or M'}.`),
-              )
-            })
+            onError(dispatch({ type: 'tractor-lock', shipId: ship.id, targetId, beams }).message)
           }
         >
           Attempt lock
@@ -228,7 +220,9 @@ function Tractors({
               <button
                 type="button"
                 className="chip danger"
-                onClick={() => act((g) => releaseTractor(g, ship.id, link.targetId))}
+                onClick={() =>
+                  dispatch({ type: 'release-tractor', shipId: ship.id, targetId: link.targetId })
+                }
               >
                 release
               </button>
@@ -246,12 +240,7 @@ function Tractors({
           <button
             type="button"
             className="chip"
-            onClick={() =>
-              act((g) => {
-                const result = contestTractor(g, ship.id)
-                onError(result.locked ? 'The beam holds.' : 'Broken free.')
-              })
-            }
+            onClick={() => onError(dispatch({ type: 'contest-tractor', shipId: ship.id }).message)}
           >
             Try to break free
           </button>
@@ -326,12 +315,7 @@ function Transporters({
           className="chip"
           disabled={!targetId}
           onClick={() =>
-            act((g) => {
-              const target = g.ships.find((s) => s.id === targetId)
-              if (!target) return
-              const result = performTransport(g, ship, target, squads)
-              onError(result.refusal)
-            })
+            onError(dispatch({ type: 'transport', shipId: ship.id, targetId, squads }).message)
           }
         >
           Energize
@@ -381,12 +365,7 @@ function Scans({
           type="button"
           className="chip"
           disabled={!targetId}
-          onClick={() =>
-            act((g) => {
-              const result = performScan(g, ship, targetId)
-              onError(result.refusal)
-            })
-          }
+          onClick={() => onError(dispatch({ type: 'scan', shipId: ship.id, targetId }).message)}
         >
           Scan
         </button>

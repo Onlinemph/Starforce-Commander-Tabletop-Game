@@ -1,15 +1,10 @@
 import { useState } from 'react'
-import { pushLog, type GameState } from '../engine/game'
+import type { GameState } from '../engine/game'
 import { actualRange } from '../engine/geometry'
-import {
-  scanCapability,
-  scoutSensorsOn,
-  setScoutAssignment,
-  setScoutSensorActive,
-} from '../engine/scouting'
+import { scanCapability, scoutSensorsOn } from '../engine/scouting'
 import { isScout, scoutSensorsIntact, scoutSensorsPowered, type ShipState } from '../engine/shipState'
 import type { ScoutFunction } from '../engine/types'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Scouting Sensors (H3). Functions are assigned during Resource Allocation and
@@ -41,7 +36,7 @@ export function ScoutSensorPanel({ game, ship, assigning }: Props) {
   const scan = scanCapability(ship)
 
   const assign = (index: number, fn: ScoutFunction, targetId: string | null) =>
-    act((g) => setError(setScoutAssignment(ship, index, fn, targetId, g.ships)))
+    setError(dispatch({ type: 'scout-assign', shipId: ship.id, index, fn, targetId }).message)
 
   return (
     <div className="segment-help scout-panel">
@@ -114,14 +109,11 @@ export function ScoutSensorPanel({ game, ship, assigning }: Props) {
                     disabled={unpowered}
                     title="Activate or deactivate during Operations step 2.E (H3.3.2)"
                     onChange={(e) =>
-                      act((g) => {
-                        setScoutSensorActive(ship, index, e.target.checked)
-                        pushLog(
-                          g,
-                          `${ship.name}: scout sensor ${index + 1} ${
-                            e.target.checked ? 'activated' : 'deactivated'
-                          } (H3.3.2).`,
-                        )
+                      dispatch({
+                        type: 'scout-active',
+                        shipId: ship.id,
+                        index,
+                        active: e.target.checked,
                       })
                     }
                   />

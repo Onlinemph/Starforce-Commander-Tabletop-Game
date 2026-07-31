@@ -1,11 +1,5 @@
 import { useState } from 'react'
-import {
-  fightBoarders,
-  sabotageSquads,
-  setSabotageSquads,
-  shipsUnderBoarding,
-  type GameState,
-} from '../engine/game'
+import { sabotageSquads, shipsUnderBoarding, type GameState } from '../engine/game'
 import {
   boardersAboard,
   boardingSides,
@@ -16,7 +10,7 @@ import {
   CAPTURED_FTL_LOCKOUT,
 } from '../engine/boarding'
 import type { ShipState } from '../engine/shipState'
-import { act } from './store'
+import { dispatch } from './store'
 
 /**
  * Boarding Combat (J6.2). Marines who reached an enemy hull by transporter
@@ -97,9 +91,12 @@ function BoardingAction({ game, target }: { game: GameState; target: ShipState }
                   max={boarders}
                   value={saboteurs}
                   onChange={(e) =>
-                    act((g) =>
-                      setSabotageSquads(g, target, side, Math.min(boarders, Number(e.target.value) || 0)),
-                    )
+                    dispatch({
+                      type: 'set-sabotage',
+                      targetId: target.id,
+                      side,
+                      squads: Math.min(boarders, Number(e.target.value) || 0),
+                    })
                   }
                 />
               </label>
@@ -112,16 +109,7 @@ function BoardingAction({ game, target }: { game: GameState; target: ShipState }
               type="button"
               className="chip"
               onClick={() =>
-                act((g) => {
-                  const outcome = fightBoarders(g, target, side)
-                  setError(
-                    outcome.captured
-                      ? `${target.name} is captured.`
-                      : outcome.repelled
-                        ? 'The boarders are wiped out.'
-                        : `${outcome.attackers.kills} defender(s) and ${outcome.defenders.kills} boarder(s) killed.`,
-                  )
-                })
+                setError(dispatch({ type: 'fight-boarders', targetId: target.id, side }).message)
               }
             >
               Fight it out now

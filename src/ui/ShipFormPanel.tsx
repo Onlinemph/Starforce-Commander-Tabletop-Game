@@ -1,12 +1,6 @@
 import { useState } from 'react'
-import { act } from './store'
-import {
-  armingPointsAvailable,
-  armMount,
-  powerRemaining,
-  setAllocation,
-  totalPowerAvailable,
-} from '../engine/engineering'
+import { dispatch } from './store'
+import { armingPointsAvailable, powerRemaining, totalPowerAvailable } from '../engine/engineering'
 import {
   armorRemaining,
   batteryPower,
@@ -174,11 +168,15 @@ export function ShipFormPanel({ game, ship }: Props) {
                                 : `Needs ${extra} power; ${remaining} left`
                           }
                           onClick={() =>
-                            act(() => {
+                            setRefusal(
                               // Clicking a filled circle empties back to it.
-                              const next = i < filled ? i : i + 1
-                              setRefusal(setAllocation(ship, line.id, next)?.message ?? null)
-                            })
+                              dispatch({
+                                type: 'allocate',
+                                shipId: ship.id,
+                                lineId: line.id,
+                                circles: i < filled ? i : i + 1,
+                              }).message,
+                            )
                           }
                         >
                           {step.value}
@@ -223,7 +221,14 @@ export function ShipFormPanel({ game, ship }: Props) {
                           : `Arcs: ${mount.arcs.join(', ')}`
                       }
                       onClick={() =>
-                        act(() => setRefusal(armMount(ship, weapon.id, index)?.message ?? null))
+                        setRefusal(
+                          dispatch({
+                            type: 'arm-mount',
+                            shipId: ship.id,
+                            weaponId: weapon.id,
+                            mountIndex: index,
+                          }).message,
+                        )
                       }
                     >
                       <span className="mount-arcs">{mount.arcs.join('/')}</span>

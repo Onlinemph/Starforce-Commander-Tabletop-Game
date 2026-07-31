@@ -58,6 +58,18 @@ export function registerCustomForms(forms: ShipForm[]): void {
   CUSTOM_FORMS.splice(0, CUSTOM_FORMS.length, ...forms)
 }
 
+/**
+ * Forms carried inside a saved battle. A save embeds every non-canon form its
+ * fleets reference, so it replays on a machine that has never seen the design —
+ * and these take precedence over the local roster during lookup, so a locally
+ * edited draft cannot quietly change the ships of a battle already underway.
+ */
+const EMBEDDED_FORMS: ShipForm[] = []
+
+export function setEmbeddedForms(forms: ShipForm[]): void {
+  EMBEDDED_FORMS.splice(0, EMBEDDED_FORMS.length, ...forms)
+}
+
 export function customShipForms(): ShipForm[] {
   return CUSTOM_FORMS
 }
@@ -68,7 +80,11 @@ export function allShipForms(): ShipForm[] {
 }
 
 export function shipFormById(id: string): ShipForm | undefined {
-  return SHIP_FORMS.find((f) => f.id === id) ?? CUSTOM_FORMS.find((f) => f.id === id)
+  return (
+    EMBEDDED_FORMS.find((f) => f.id === id) ??
+    SHIP_FORMS.find((f) => f.id === id) ??
+    CUSTOM_FORMS.find((f) => f.id === id)
+  )
 }
 
 export function shipFormsByFaction(faction: string): ShipForm[] {

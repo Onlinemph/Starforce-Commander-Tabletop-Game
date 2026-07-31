@@ -34,7 +34,7 @@ import {
   saveCustomForm,
   useCustomForms,
 } from './customShips'
-import { resetGame } from './store'
+import { newGame } from './store'
 
 /**
  * The ship builder — a digital version of the designers' own `SHIP FORM MASTER`
@@ -152,9 +152,10 @@ export function ShipBuilder({ onClose }: Props) {
 
   const launch = (sideName: string) => {
     saveCustomForm(structuredClone(draft))
-    resetGame('s3.1-the-duel', {
-      forms: { [sideName]: draft.id },
+    newGame({
+      scenarioId: 's3.1-the-duel',
       seed: Math.floor(Math.random() * 1e9),
+      forms: { [sideName]: draft.id },
     })
     onClose()
   }
