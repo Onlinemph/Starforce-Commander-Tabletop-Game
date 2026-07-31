@@ -30,10 +30,12 @@ import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
 import { RemotePanel } from './RemotePanel'
+import { ReplayTheater } from './ReplayTheater'
 import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
   canUndo,
+  currentSave,
   currentSetup,
   dispatch,
   exportBattle,
@@ -58,6 +60,7 @@ export function App() {
   const [building, setBuilding] = useState(false)
   const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [replaying, setReplaying] = useState(false)
   const net = useNet()
   // Subscribing keeps the scenario dropdown live as designs are saved.
   useCustomScenarios()
@@ -190,7 +193,7 @@ export function App() {
         >
           {net.phase === 'connected' ? '● Linked' : 'Remote play'}
         </button>
-        <BattleMenu game={game} />
+        <BattleMenu game={game} onReplay={() => setReplaying(true)} />
       </header>
 
       {picking && (
@@ -205,6 +208,7 @@ export function App() {
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
+      {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
       {linking && <RemotePanel onClose={() => setLinking(false)} />}
 
       {/*
@@ -459,7 +463,7 @@ function battleReport(game: GameState): string {
  * file is small, replays exactly, and carries any custom designs it needs —
  * hand it to another player and they resume your game to the die roll.
  */
-function BattleMenu({ game }: { game: GameState }) {
+function BattleMenu({ game, onReplay }: { game: GameState; onReplay: () => void }) {
   const [note, setNote] = useState<string | null>(null)
 
   const download = (contents: string, filename: string, type: string) => {
@@ -489,6 +493,13 @@ function BattleMenu({ game }: { game: GameState }) {
         title="The battle so far as a readable report — forces, score, and the full log"
       >
         Report
+      </button>
+      <button
+        type="button"
+        onClick={onReplay}
+        title="Watch this battle back from deployment — every action, every die, scrubbed like a tape"
+      >
+        Replay
       </button>
       <label className="chip file-chip" title="Resume a battle from a downloaded file">
         Load file

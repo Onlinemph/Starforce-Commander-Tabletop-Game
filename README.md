@@ -64,6 +64,11 @@ that one fact.
   home screen and, after one visit, plays entirely offline.
 - **Battle reports.** One click writes the battle up as markdown — forces, score, and the full
   log grouped by round.
+- **Replay theater.** *Replay* in the top bar plays any battle back like a tape — the current one,
+  or any battle file. Step by action, jump by round, scrub the timeline, or press play and watch:
+  quiet bookkeeping hurries past, narrated moments hold. The narration is the engine's own log,
+  surfaced as each action lands, and every frame is recomputed from the journal, so what you watch
+  is exactly what the table saw — dice included.
 - **A computer opponent.** Tick *AI* on a side in *Choose forces* and the computer commands that
   force: it allocates power, arms its batteries, plots blind alongside you, fires in Tactical Scan
   order, repairs, presses boarding actions and withdraws its cripples — all through the same action

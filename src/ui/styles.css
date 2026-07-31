@@ -3079,3 +3079,160 @@ button.chip:hover:not(:disabled) {
     position: static;
   }
 }
+
+/* --- Replay theater ------------------------------------------------------ */
+
+.picker.theater {
+  width: min(1600px, 100%);
+  max-height: 94vh;
+}
+
+.picker.theater > header {
+  gap: 0.8rem;
+}
+
+.theater-title {
+  color: var(--accent);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+.picker.theater > header > button[aria-label='Close'] {
+  margin-left: auto;
+}
+
+.theater-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+  min-height: 0;
+}
+
+.theater-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* The board must leave room for the transport controls below it; the svg
+   letterboxes inside its well, dark on dark, so the cap costs nothing. */
+.theater-stage .map {
+  max-height: 68vh;
+}
+
+.theater-status {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+
+.theater-status strong {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.theater-counter {
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.theater-score {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.theater-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.theater-controls > button {
+  min-width: 2.4rem;
+}
+
+.theater-play {
+  min-width: 3rem;
+  font-size: 1rem;
+}
+
+.theater-scrub {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.theater-scrub input[type='range'] {
+  width: 100%;
+}
+
+/* Chapter marks: one tick where each round begins. */
+.theater-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.theater-ticks i {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 12px;
+  transform: translate(-1px, -50%);
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 1px;
+}
+
+.theater-narration {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  background: var(--panel-2);
+  border-left: 5px solid var(--lc-lilac);
+  border-radius: 0 6px 6px 0;
+  padding: 0.7rem 0.8rem;
+}
+
+.theater-narration h3 {
+  margin: 0;
+}
+
+.theater-narration ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+}
+
+.theater-narration li.is-current {
+  color: var(--ink);
+  border-left: 3px solid var(--accent);
+  padding-left: 0.45rem;
+  margin-left: -0.45rem;
+}
+
+.theater-narration li.quiet {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+@media (max-width: 1100px) {
+  .theater-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
