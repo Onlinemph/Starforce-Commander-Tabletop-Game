@@ -121,7 +121,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <h1>StarForce Commander</h1>
-          <span className="subtitle">Digital tabletop · Standard rules · hot-seat</span>
+          <span className="subtitle">Digital tabletop · Standard rules · hot-seat &amp; remote</span>
         </div>
 
         <label className="field inline">

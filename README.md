@@ -58,6 +58,12 @@ that one fact.
   the codes travel over any channel you already share. Once linked, every action syncs live in
   both directions; the host's journal is the authority, so crossed actions heal automatically.
   Works across home networks in most cases (a very strict NAT may refuse the direct path).
+- **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
+  plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
+  measures in the rules' own inches; ship counters carry faction hull art. The site installs to a
+  home screen and, after one visit, plays entirely offline.
+- **Battle reports.** One click writes the battle up as markdown — forces, score, and the full
+  log grouped by round.
 
 ## Hosting it
 
