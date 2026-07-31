@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BLUE, RED, startScenario } from '../data/scenarios'
+import { SHIP_FORMS } from '../data/ships'
 import {
   advanceOperationsStep,
   advanceSegment,
@@ -13,7 +14,13 @@ import {
   launchShuttle,
   probeLaunchers,
   moveSmallCraft,
+  fireAtSmallTarget,
+  impactingHoming,
+  launchHoming,
   performScan,
+  smallTargetsFor,
+  tractorableHoming,
+  tractorIncomingHoming,
   performTransport,
   recoverShuttle,
   releaseTractor,
@@ -33,7 +40,7 @@ import {
   transportRefusal,
   SCAN_RANGE,
 } from './operations'
-import { undamagedSystemBoxes, type ShipState } from './shipState'
+import { blueShieldRemaining, undamagedSystemBoxes, type ShipState } from './shipState'
 import {
   isProbeCapableLauncher,
   isShuttle,
@@ -43,6 +50,8 @@ import {
   probeCapacity,
   recoveryAllowance,
   shuttleCapacity,
+  smallTargetDamage,
+  HELD_TARGET_FACE,
   PROBE_SPEED,
   PROBE_STANDOFF,
   SHUTTLE_SPEED,
@@ -63,7 +72,8 @@ import {
   TRACTOR_RANGE,
   type TractorLink,
 } from './tractor'
-import type { SystemKind } from './types'
+import { arcTo } from './geometry'
+import type { SystemKind, WeaponSystemDef } from './types'
 
 /**
  * Section J: Operations.
@@ -958,5 +968,266 @@ describe('jamming shuttles (J8.4)', () => {
     runTo(game, 'navigation')
     advanceSegment(game)
     expect(game.smallCraft).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E12.4 — shooting at small targets
+// ---------------------------------------------------------------------------
+
+describe('firing at small targets (E12.4)', () => {
+  let game: GameState
+  let attacker: ShipState
+  let carrier: ShipState
+
+  beforeEach(() => {
+    game = duel(4)
+    ;[carrier, attacker] = game.ships
+    grantSystem(carrier, 'SHTL', 1)
+    carrier.shuttlesAboard = 2
+    place(carrier, 18, 18)
+    place(attacker, 18, 20)
+    // Point the attacker at the carrier so its forward arcs bear.
+    attacker.placement = { ...attacker.placement, heading: 0 }
+    launchShuttle(game, carrier)
+  })
+
+  const shuttle = () => game.smallCraft[0]
+
+  it('offers every flying craft as a target (E12.4.1)', () => {
+    const targets = smallTargetsFor(game, attacker)
+    expect(targets.map((t) => t.kind)).toContain('craft')
+    expect(targets.find((t) => t.id === shuttle().id)?.held).toBe(false)
+  })
+
+  it('halves a standard weapon’s damage through degraded fire control (E12.4.4)', () => {
+    const phaser = attacker.form.weapons.find(
+      (w) => !w.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, ''))),
+    )!
+    const index = bearingMount(attacker, phaser)
+    expect(index).toBeGreaterThanOrEqual(0)
+    attacker.mounts[phaser.id][index].armed = phaser.mounts[index].armingCircles
+    const result = fireAtSmallTarget(game, attacker, shuttle().id, phaser.id, index)
+    expect(result.refusal).toBeNull()
+    expect(result.volley!.degraded).toBe(true)
+    expect(result.volley!.damage).toBe(Math.floor(result.volley!.raw / 2))
+  })
+
+  /** The first mount of a weapon whose arcs actually cover the shuttle. */
+  function bearingMount(ship: ShipState, weapon: WeaponSystemDef): number {
+    const arcs = arcTo(ship.placement.position, ship.placement.heading, shuttle().position)
+    return weapon.mounts.findIndex((m) => m.arcs.some((a) => arcs.includes(a)))
+  }
+
+  it('lets a point defense weapon fire normally (E12.4.3)', () => {
+    const pd = attacker.form.weapons.find((w) =>
+      w.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, ''))),
+    )!
+    const index = bearingMount(attacker, pd)
+    expect(index).toBeGreaterThanOrEqual(0)
+    attacker.mounts[pd.id][index].armed = pd.mounts[index].armingCircles
+    const result = fireAtSmallTarget(game, attacker, shuttle().id, pd.id, index)
+    expect(result.refusal).toBeNull()
+    expect(result.volley!.degraded).toBe(false)
+    expect(result.volley!.damage).toBe(result.volley!.raw)
+  })
+
+  it('destroys a shuttle once four points land (E12.5.3)', () => {
+    const craft = shuttle()
+    craft.damage = 3
+    const pd = attacker.form.weapons.find((w) =>
+      w.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, ''))),
+    )!
+    const index = bearingMount(attacker, pd)
+    attacker.mounts[pd.id][index].armed = pd.mounts[index].armingCircles
+    const result = fireAtSmallTarget(game, attacker, craft.id, pd.id, index)
+    // Any hit at all finishes it; a miss leaves it alive.
+    expect(result.destroyed).toBe(result.volley!.damage > 0)
+    expect(game.smallCraft.length).toBe(result.destroyed ? 0 : 1)
+  })
+
+  it('rolls nothing at a target held in its own tractor beam (J3.2.5)', () => {
+    grantSystem(carrier, 'TRAC', 2)
+    game.ops.links.push({
+      id: 'hold',
+      sourceId: carrier.id,
+      targetId: shuttle().id,
+      targetKind: 'small',
+      beams: 1,
+      power: 'nrm',
+    })
+    const weapon = carrier.form.weapons[0]
+    carrier.mounts[weapon.id][0].armed = weapon.mounts[0].armingCircles
+    // Put the shuttle somewhere the mount could never bear on, to prove the
+    // rule shifts it into arc rather than checking one.
+    shuttle().position = { x: carrier.placement.position.x, y: carrier.placement.position.y + 1 }
+
+    const result = fireAtSmallTarget(game, carrier, shuttle().id, weapon.id, 0)
+    expect(result.refusal).toBeNull()
+    expect(result.volley!.automatic).toBe(true)
+    // Every die shows its own maximum, so the same volley twice is identical.
+    const bracket = weapon.brackets[0]
+    expect(result.volley!.faces).toEqual(bracket.dice.map((d) => HELD_TARGET_FACE[d]))
+  })
+
+  it('refuses a target no mount can bear on (E2.2.2)', () => {
+    const weapon = attacker.form.weapons[0]
+    attacker.mounts[weapon.id][0].armed = weapon.mounts[0].armingCircles
+    shuttle().position = { x: attacker.placement.position.x, y: attacker.placement.position.y + 3 }
+    expect(fireAtSmallTarget(game, attacker, shuttle().id, weapon.id, 0).refusal).toMatch(/arc/)
+  })
+
+  it('refuses a weapon that is not armed', () => {
+    const weapon = attacker.form.weapons[0]
+    attacker.mounts[weapon.id][0].armed = 0
+    expect(fireAtSmallTarget(game, attacker, shuttle().id, weapon.id, 0).refusal).toMatch(/not armed/)
+  })
+
+  it('scores the maximum face of every die colour (J3.2.5)', () => {
+    expect(HELD_TARGET_FACE.blue).toBe('M')
+    expect(HELD_TARGET_FACE.green).toBe('H')
+    expect(HELD_TARGET_FACE.yellow).toBe('H')
+    expect(HELD_TARGET_FACE.red).toBe('S')
+  })
+
+  it('halves after modifiers and rounds down (E10.2.3)', () => {
+    // Two mediums is 6 raw, 3 after halving; three is 9 raw, 4 after.
+    expect(smallTargetDamage(['M', 'M'], 0, false).damage).toBe(3)
+    expect(smallTargetDamage(['M', 'M', 'M'], 0, false).damage).toBe(4)
+    expect(smallTargetDamage(['M', 'M', 'M'], 0, true).damage).toBe(9)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// J3.2.2 — tractoring incoming missiles
+// ---------------------------------------------------------------------------
+
+describe('tractor beams against homing weapons (J3.2.2)', () => {
+  /** Give a ship a homing missile, since every printed one is a particle weapon. */
+  function armMissile(ship: ShipState): WeaponSystemDef {
+    const missile: WeaponSystemDef = {
+      id: 'test-missile',
+      name: 'TEST MISSILE',
+      weaponClass: 'missile',
+      mounts: [{ id: 'test-missile-m1', arcs: ['FS', 'FP'], armingCircles: 1, hitBoxes: 1 }],
+      brackets: [
+        { min: 0, max: 6, band: 'green', dice: ['yellow'], endurancePhase: 1 },
+        { min: 0, max: 6, band: 'green', dice: ['yellow'], endurancePhase: 2 },
+      ],
+      traits: ['HOMING 2', 'MISL'],
+    }
+    editForm(ship, {
+      weapons: [...ship.form.weapons, missile],
+      functions: [
+        ...ship.form.functions,
+        {
+          id: 'f-test-missile',
+          label: 'TEST MISSILE',
+          kind: 'weapon',
+          freeValue: 1,
+          steps: [],
+          sequential: true,
+          weaponSystemId: missile.id,
+        },
+      ],
+    })
+    ship.mounts[missile.id] = [{ armed: 1, armedThisRound: 0, damage: 0, ammoUsed: 0 }]
+    return missile
+  }
+
+  function inFlight() {
+    const game = duel(6)
+    const [defender, shooter] = game.ships
+    grantSystem(defender, 'TRAC', 3)
+    setGenSys(defender, 'nrm')
+    place(shooter, 18, 22)
+    place(defender, 18, 18)
+    shooter.placement = { ...shooter.placement, heading: 0 }
+    const missile = armMissile(shooter)
+    launchHoming(game, shooter, missile, 0, defender)
+    const hw = game.homing[0]
+    hw.position = { ...defender.placement.position }
+    hw.phasesFlown = 1
+    // Step 4A only sees weapons that have actually reached their target.
+    hw.impacted = true
+    return { game, defender, shooter, missile, hw }
+  }
+
+  it('offers an incoming missile to the defender’s tractor beams', () => {
+    const { game, defender, hw } = inFlight()
+    expect(tractorableHoming(game, defender).map((h) => h.id)).toContain(hw.id)
+  })
+
+  it('will not catch a particle weapon (E5.4 Step 6)', () => {
+    // Every homing weapon in the printed roster is a plasma torpedo, which is
+    // a particle weapon — so on canon data this rule never fires.
+    const roster = SHIP_FORMS.flatMap((f) => f.weapons).filter((w) =>
+      w.traits.some((t) => t.startsWith('HOMING')),
+    )
+    expect(roster.length).toBeGreaterThan(0)
+    expect(roster.every((w) => w.traits.some((t) => /PARTCL/i.test(t)))).toBe(true)
+    expect(roster.some((w) => w.traits.some((t) => /MISL/i.test(t)))).toBe(false)
+  })
+
+  it('holds a missile so it neither moves nor strikes', () => {
+    const { game, defender, hw } = inFlight()
+    let caught = false
+    for (let i = 0; i < 50 && !caught; i += 1) {
+      caught = tractorIncomingHoming(game, defender, hw.id, 1).locked ?? false
+      if (caught) break
+      game.ops.links.length = 0
+    }
+    expect(caught).toBe(true)
+    expect(hw.tractored).toBe(true)
+    expect(tractorableHoming(game, defender)).not.toContain(hw)
+  })
+
+  it('lets a released missile strike at once, with no defensive fire', () => {
+    const { game, defender, hw } = inFlight()
+    hw.tractored = true
+    game.ops.links.push({
+      id: 'hold',
+      sourceId: defender.id,
+      targetId: hw.id,
+      targetKind: 'small',
+      beams: 1,
+      power: 'nrm',
+    })
+    releaseTractor(game, defender.id, hw.id)
+    // The weapon resolves there and then and comes off the map, whether or not
+    // its single die happens to hit.
+    expect(game.homing).toHaveLength(0)
+    expect(game.log.some((e) => /released and strikes/.test(e.message))).toBe(true)
+    expect(blueShieldRemaining(defender, 'F')).toBeLessThanOrEqual(defender.form.shields.blue.F)
+  })
+
+  it('takes the missile off the impact list while it is held', () => {
+    const { game, defender, hw } = inFlight()
+    expect(impactingHoming(game, defender)).toContain(hw)
+    hw.tractored = true
+    // A held weapon is skipped when the volley is resolved (E5.4 Step 6).
+    expect(game.homing.filter((h) => !h.tractored)).not.toContain(hw)
+  })
+
+  it('removes a missile whose endurance runs out while held', () => {
+    const { game, defender, hw, missile } = inFlight()
+    hw.tractored = true
+    hw.phasesFlown = 0
+    game.ops.links.push({
+      id: 'hold',
+      sourceId: defender.id,
+      targetId: hw.id,
+      targetKind: 'small',
+      beams: 1,
+      power: 'nrm',
+    })
+    // Two endurance boxes, so two phases of being held finishes it.
+    for (let i = 0; i < 2; i += 1) {
+      runTo(game, 'navigation')
+      advanceSegment(game)
+    }
+    expect(missile.brackets.length).toBe(2)
+    expect(game.homing).toHaveLength(0)
+    expect(game.ops.links).toHaveLength(0)
   })
 })

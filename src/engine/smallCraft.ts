@@ -1,7 +1,8 @@
+import { FACE_DAMAGE } from './dice'
 import { actualRange, bearing, distance, translate } from './geometry'
 import { systemPower } from './operations'
 import { genSysSetting, undamagedSystemBoxes, type ShipState } from './shipState'
-import type { Point, SystemKind } from './types'
+import type { DieColor, DieFace, Point, SystemKind } from './types'
 
 /**
  * Small craft (E12) — shuttles (J8) and probes (J7).
@@ -359,16 +360,55 @@ export function probeStillWorks(craft: SmallCraft, target: Point, mother: ShipSt
 }
 
 // ---------------------------------------------------------------------------
-// J3.2.5 — shooting at something you are holding
+// E12.4, J3.2.5 — shooting at a small target
 // ---------------------------------------------------------------------------
 
 /**
- * Damage from one attack die fired at a small target held in your own tractor
- * beam. Every die does its own maximum, so there is nothing to roll (J3.2.5).
+ * The face every die shows when fired at a small target held in your own
+ * tractor beam. There is nothing to roll: the target is shifted into whatever
+ * arc suits and every die does its own maximum (J3.2.5).
  */
-export const HELD_TARGET_DAMAGE: Record<string, number> = {
-  blue: 3, // Medium
-  green: 5, // Heavy
-  yellow: 5, // Heavy
-  red: 5, // Special — the weapon's own special hit, at least a Heavy
+export const HELD_TARGET_FACE: Record<DieColor, DieFace> = {
+  blue: 'M',
+  green: 'H',
+  yellow: 'H',
+  red: 'S',
+}
+
+export interface SmallTargetVolley {
+  faces: DieFace[]
+  /** Damage before degraded fire control halves it. */
+  raw: number
+  damage: number
+  /** Standard weapons must fire at small targets through E10 (E12.4.4). */
+  degraded: boolean
+  /** Held in the firer's own tractor beam, so nothing was rolled (J3.2.5). */
+  automatic: boolean
+}
+
+/**
+ * Damage one mount does to a small target.
+ *
+ * A point defense weapon fires normally and applies its damage in full
+ * (E12.4.3). Anything else must use Degraded Fire Control, which halves the
+ * total and rounds down (E12.4.4, E10.2.3).
+ */
+export function smallTargetDamage(
+  faces: DieFace[],
+  specialDamage: number,
+  pointDefense: boolean,
+  automatic = false,
+): SmallTargetVolley {
+  const raw = faces.reduce(
+    (n, face) => n + (face === 'S' ? specialDamage : FACE_DAMAGE[face as Exclude<DieFace, 'S'>]),
+    0,
+  )
+  const degraded = !pointDefense
+  return {
+    faces,
+    raw,
+    damage: degraded ? Math.floor(raw / 2) : raw,
+    degraded,
+    automatic,
+  }
 }

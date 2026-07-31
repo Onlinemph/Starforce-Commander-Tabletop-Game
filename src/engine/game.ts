@@ -34,7 +34,7 @@ import {
   FIRING_STEPS,
   type FiringStep,
 } from './coordinatedFire'
-import { FACE_DAMAGE, rollDie, Rng } from './dice'
+import { FACE_DAMAGE, rollDice, rollDie, Rng } from './dice'
 import { commitAllocation } from './engineering'
 import {
   alignToLead,
@@ -42,7 +42,7 @@ import {
   pruneFormations,
   type Formation,
 } from './formation'
-import { distance, hasLineOfSight, type CircleObstacle } from './geometry'
+import { arcTo, canBearOn, distance, hasLineOfSight, type CircleObstacle } from './geometry'
 import {
   cloudAt,
   degradedByClouds,
@@ -63,8 +63,11 @@ import {
 import { hasCloak } from './cloaking'
 import {
   applyDefensiveFire,
+  endurance,
   impactShield,
   isHoming,
+  isMissile as isMissileWeapon,
+  tractorHomingWeapon,
   jammingPenalty,
   launchHomingWeapon,
   moveHomingWeapon,
@@ -101,6 +104,9 @@ import {
   PROBE_INFO_PER_PHASE,
   recoveryAllowance,
   recoveryRefusal,
+  smallTargetDamage,
+  HELD_TARGET_FACE,
+  type SmallTargetVolley,
   scuttledJammers,
   type SmallCraft,
   type SmallCraftKind,
@@ -138,6 +144,7 @@ import {
 import type {
   CommandCard,
   Phase,
+  Point,
   Segment,
   ShieldSide,
   SystemKind,
@@ -965,6 +972,7 @@ function runSegmentExit(game: GameState): void {
       applyTurbulence(game)
       logCloakedSpeeds(game)
       moveHomingWeapons(game)
+      expireHeldMissiles(game)
       moveProbes(game)
       scuttleJammers(game)
       // J3.6.2 — a link that has been stretched past its range is broken once
@@ -975,6 +983,7 @@ function runSegmentExit(game: GameState): void {
           const source = shipById(game, link.sourceId)
           pushLog(game, `Tractor lock ${source?.name ?? link.sourceId} → ${link.targetId} broken: ${report.reasons[i]}.`)
         }
+        releaseHeldMissiles(game, report.broken)
       }
       break
     }
@@ -986,6 +995,7 @@ function runSegmentExit(game: GameState): void {
       for (const [i, link] of report.broken.entries()) {
         pushLog(game, `Tractor lock on ${link.targetId} broken: ${report.reasons[i]}.`)
       }
+      releaseHeldMissiles(game, report.broken)
       game.firedThisSegment.clear()
       // Attack markers are removed once all firing is complete (H4.3.1), and
       // the next phase starts the firing sequence again at step 1.
@@ -1204,7 +1214,10 @@ export function powerOf(game: GameState, ship: ShipState, kind: SystemKind) {
 
 // ── J3 Tractor beams ──────────────────────────────────────────────────────
 
-/** Everything a tractor beam may reach for: ships and small craft alike. */
+/**
+ * Everything a tractor beam may reach for: ships, small craft, and missiles in
+ * flight (J3.2.2). Particle weapons cannot be caught (E5.4 Step 6).
+ */
 export function tractorTargets(game: GameState, source: ShipState): Array<ScanTarget & { kind: 'ship' | 'small' }> {
   const targets: Array<ScanTarget & { kind: 'ship' | 'small' }> = []
   for (const ship of activeShips(game)) {
@@ -1215,7 +1228,142 @@ export function tractorTargets(game: GameState, source: ShipState): Array<ScanTa
     if (craftDestroyed(craft)) continue
     targets.push({ id: craft.id, name: craftName(craft), position: craft.position, kind: 'small' })
   }
+  for (const hw of game.homing) {
+    if (hw.destroyed || hw.impacted || hw.tractored) continue
+    if (!homingIsMissile(game, hw)) continue
+    targets.push({ id: hw.id, name: hw.weaponName, position: hw.position, kind: 'small' })
+  }
   return targets
+}
+
+/** The weapon definition behind a homing counter, if its launcher survives. */
+export function homingWeaponDef(game: GameState, hw: HomingWeapon): WeaponSystemDef | undefined {
+  return shipById(game, hw.ownerId)?.form.weapons.find((w) => w.id === hw.weaponId)
+}
+
+/** Only missiles can be held; particle weapons pass straight through (E5.4 Step 6). */
+function homingIsMissile(game: GameState, hw: HomingWeapon): boolean {
+  const def = homingWeaponDef(game, hw)
+  return def ? isMissileWeapon(def) : false
+}
+
+/**
+ * Missiles bearing down on a ship that its tractor beams could catch during
+ * Step 4A of the Combat Segment (J3.2.2). Defensive fire happens first.
+ */
+export function tractorableHoming(game: GameState, defender: ShipState): HomingWeapon[] {
+  return impactingHoming(game, defender).filter(
+    (hw) => !hw.tractored && homingIsMissile(game, hw),
+  )
+}
+
+/**
+ * Catch an incoming missile in a tractor beam (J3.2.2). It stops where it is
+ * and goes nowhere until released, shot away, or out of endurance.
+ */
+export function tractorIncomingHoming(
+  game: GameState,
+  defender: ShipState,
+  homingId: string,
+  beams = 1,
+): TractorAttempt {
+  const hw = game.homing.find((h) => h.id === homingId)
+  if (!hw) return { refusal: 'No such weapon in flight.' }
+  const def = homingWeaponDef(game, hw)
+  if (!def) return { refusal: 'That weapon has no launcher left.' }
+
+  const power = tractorPower(defender, maxSystemOf(game, defender))
+  const refusal = lockRefusal(defender, hw.position, game.ops.links, power, beams)
+  if (refusal) return { refusal }
+
+  const result = lockOnSmall(game.rng, beams)
+  if (!result.locked) {
+    pushLog(game, `${defender.name}: tractor beam misses ${hw.weaponName} (${result.faces.join('')}).`)
+    return { refusal: null, faces: result.faces, locked: false }
+  }
+  const held = tractorHomingWeapon(hw, def)
+  if (held) return { refusal: held }
+  // It was caught on the way in, so it never struck: clear the impact flag or
+  // the Combat Segment would still resolve it this phase (E5.4 Step 6).
+  hw.impacted = false
+
+  game.ops.links.push({
+    id: `${defender.id}->${hw.id}`,
+    sourceId: defender.id,
+    targetId: hw.id,
+    targetKind: 'small',
+    beams,
+    power,
+  })
+  pushLog(game, `${defender.name}: holds ${hw.weaponName} in a tractor beam (J3.2.2).`)
+  return { refusal: null, faces: result.faces, locked: true }
+}
+
+/**
+ * A missile let go of — deliberately or because the beam was shot away —
+ * strikes at once, and the ship gets no defensive fire against it (J3.2.2).
+ */
+function releaseHeldMissiles(game: GameState, links: TractorLink[]): void {
+  const struck: HomingWeapon[] = []
+  for (const link of links) {
+    const hw = game.homing.find((h) => h.id === link.targetId)
+    // Only a weapon this link was actually holding is let go of.
+    if (!hw || hw.destroyed || !hw.tractored) continue
+    hw.tractored = false
+    const target = shipById(game, hw.targetId)
+    const def = homingWeaponDef(game, hw)
+    if (!target || !def) {
+      hw.destroyed = true
+      struck.push(hw)
+      continue
+    }
+    hw.position = { ...target.placement.position }
+    const side = impactShield(hw, target)
+    const volley = resolveHomingVolley([hw], def, side, hw.phasesFlown, 0, game.rng)
+    hw.impacted = true
+    struck.push(hw)
+    pushLog(
+      game,
+      `${hw.weaponName} is released and strikes ${target.name} at once, with no defensive fire (J3.2.2).`,
+    )
+    applyVolley(
+      target,
+      {
+        standard: volley.standard,
+        leak: volley.leak,
+        structurePenetration: volley.structure,
+        side,
+        shieldsInoperative: shipIsCloaked(game, target),
+      },
+      damageContext(game),
+    )
+  }
+  if (struck.length > 0) game.homing = game.homing.filter((hw) => !struck.includes(hw))
+}
+
+/**
+ * A beam may hold a missile only until its endurance runs out, at which point
+ * it is simply removed (J3.2.2).
+ */
+function expireHeldMissiles(game: GameState): void {
+  const expired: HomingWeapon[] = []
+  for (const hw of game.homing) {
+    if (!hw.tractored || hw.destroyed) continue
+    const def = homingWeaponDef(game, hw)
+    if (!def) continue
+    // A held missile burns endurance sitting still, just as it would flying.
+    hw.phasesFlown += 1
+    if (hw.phasesFlown >= endurance(def)) {
+      hw.destroyed = true
+      expired.push(hw)
+      const link = game.ops.links.find((l) => l.targetId === hw.id)
+      if (link) game.ops.links.splice(game.ops.links.indexOf(link), 1)
+      pushLog(game, `${hw.weaponName} reaches the end of its endurance in the tractor beam (J3.2.2).`)
+    }
+  }
+  // Only the ones that just expired come off the map; everything else is left
+  // for the Combat Segment to clear as usual.
+  if (expired.length > 0) game.homing = game.homing.filter((hw) => !expired.includes(hw))
 }
 
 export function craftName(craft: SmallCraft): string {
@@ -1279,6 +1427,7 @@ export function releaseTractor(game: GameState, sourceId: string, targetId: stri
   if (!link) return
   game.ops.links.splice(game.ops.links.indexOf(link), 1)
   pushLog(game, `${shipById(game, sourceId)?.name ?? sourceId}: tractor beam released.`)
+  releaseHeldMissiles(game, [link])
 }
 
 /**
@@ -1559,6 +1708,136 @@ export function launchProbe(
   return null
 }
 
+/** Every small target a ship's weapons could fire at this phase (E12.4.1). */
+export interface SmallTarget {
+  id: string
+  name: string
+  position: Point
+  kind: 'craft' | 'homing'
+  /** Held in the attacker's own tractor beam, so its dice are automatic (J3.2.5). */
+  held: boolean
+}
+
+export function smallTargetsFor(game: GameState, attacker: ShipState): SmallTarget[] {
+  const heldByMe = (id: string) =>
+    game.ops.links.some((l) => l.sourceId === attacker.id && l.targetId === id)
+
+  const targets: SmallTarget[] = game.smallCraft
+    .filter((c) => !craftDestroyed(c))
+    .map((c) => ({
+      id: c.id,
+      name: craftName(c),
+      position: c.position,
+      kind: 'craft' as const,
+      held: heldByMe(c.id),
+    }))
+
+  // E12.3.2 — a homing weapon may not be fired upon during the phase it was
+  // launched, so only counters that have already flown are targets.
+  for (const hw of game.homing) {
+    if (hw.destroyed || hw.impacted || hw.phasesFlown < 1) continue
+    targets.push({
+      id: hw.id,
+      name: hw.weaponName,
+      position: hw.position,
+      kind: 'homing' as const,
+      held: heldByMe(hw.id),
+    })
+  }
+  return targets
+}
+
+export interface SmallTargetResult {
+  refusal: string | null
+  volley?: SmallTargetVolley
+  destroyed?: boolean
+  remaining?: number
+}
+
+/**
+ * Fire one weapon mount at a small target during Offensive Fire (E12.4).
+ *
+ * Point defense weapons fire normally; everything else goes through Degraded
+ * Fire Control (E12.4.3, E12.4.4). A target held in the firer's own tractor
+ * beam needs no roll at all — it is shifted into a convenient arc and every die
+ * does its maximum (J3.2.5).
+ */
+export function fireAtSmallTarget(
+  game: GameState,
+  attacker: ShipState,
+  targetId: string,
+  weaponId: string,
+  mountIndex: number,
+): SmallTargetResult {
+  const target = smallTargetsFor(game, attacker).find((t) => t.id === targetId)
+  if (!target) return { refusal: 'No such small target.' }
+  const weapon = attacker.form.weapons.find((w) => w.id === weaponId)
+  const state = weapon ? attacker.mounts[weapon.id]?.[mountIndex] : undefined
+  if (!weapon || !state) return { refusal: 'No such weapon mount.' }
+  if (!mountIsReady(weapon, mountIndex, state)) return { refusal: `${weapon.name} is not armed.` }
+
+  const range = Math.floor(distance(attacker.placement.position, target.position))
+  const bracket = weapon.brackets.find((b) => range >= b.min && range <= b.max)
+  if (!bracket) return { refusal: `${target.name} is at ${range}", outside ${weapon.name}'s chart.` }
+  // A target held in your own beam is simply shifted into a convenient arc, so
+  // only a free-flying one has to be borne on (J3.2.5, E2.2.2).
+  if (
+    !target.held &&
+    !canBearOn(
+      weapon.mounts[mountIndex].arcs,
+      arcTo(attacker.placement.position, attacker.placement.heading, target.position),
+    )
+  ) {
+    return { refusal: `${target.name} is not in an arc ${weapon.name} can bear on (E2.2.2).` }
+  }
+
+  const pointDefense = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+  const faces = target.held
+    ? bracket.dice.map((die) => HELD_TARGET_FACE[die])
+    : rollDice(bracket.dice, game.rng).map((r) => r.face)
+  const volley = smallTargetDamage(
+    faces,
+    weapon.special?.damage ?? 0,
+    pointDefense,
+    target.held,
+  )
+
+  state.armed = 0
+  state.ammoUsed += 1
+
+  if (target.kind === 'craft') {
+    const craft = game.smallCraft.find((c) => c.id === targetId)!
+    craft.damage += volley.damage
+    const dead = craftDestroyed(craft)
+    if (dead) game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+    pushLog(
+      game,
+      `${attacker.name}: ${weapon.name} hits ${target.name} for ${volley.damage}` +
+        (volley.automatic ? ' (held in its own tractor beam, J3.2.5)' : '') +
+        (volley.degraded ? ` (halved by degraded fire control, ${volley.raw} raw)` : '') +
+        (dead ? ' — destroyed' : ''),
+    )
+    return { refusal: null, volley, destroyed: dead, remaining: dead ? 0 : craft.damage }
+  }
+
+  const hw = game.homing.find((h) => h.id === targetId)!
+  const def = homingWeaponDef(game, hw)
+  const { destroyed } = applyDefensiveFire([hw], def ?? weapon, volley.damage)
+  const dead = destroyed.length > 0
+  if (dead) {
+    const link = game.ops.links.find((l) => l.targetId === hw.id)
+    if (link) game.ops.links.splice(game.ops.links.indexOf(link), 1)
+    game.homing = game.homing.filter((h) => h.id !== hw.id)
+  }
+  pushLog(
+    game,
+    `${attacker.name}: ${weapon.name} puts ${volley.damage} into ${target.name}` +
+      (volley.degraded ? ` (halved by degraded fire control, ${volley.raw} raw)` : '') +
+      (dead ? ' — destroyed' : ''),
+  )
+  return { refusal: null, volley, destroyed: dead }
+}
+
 /** Damage a shuttle or probe (E12.4.3, J7.3.3). */
 export function damageSmallCraft(game: GameState, craftId: string, points: number): void {
   const craft = game.smallCraft.find((c) => c.id === craftId)
@@ -1586,7 +1865,8 @@ function positionOfObject(game: GameState, id: string): { x: number; y: number }
   const feature = game.scenario.terrain.find((t) => t.id === id)
   if (feature) return feature.center
   const craft = game.smallCraft.find((c) => c.id === id)
-  return craft?.position
+  if (craft) return craft.position
+  return game.homing.find((h) => h.id === id && !h.destroyed && !h.impacted)?.position
 }
 
 /** Probes fly during the Navigation Segment (J7.3.2). */

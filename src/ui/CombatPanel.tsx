@@ -19,9 +19,14 @@ import {
   cloakModifiers,
   cloudModifiers,
   impactingHoming,
+  fireAtSmallTarget,
   launchHoming,
   launchProbe,
   probeLaunchers,
+  smallTargetsFor,
+  tractorableHoming,
+  tractorBeamsFree,
+  tractorIncomingHoming,
   resolveHomingImpacts,
   scanTargets,
   currentFiringStep,
@@ -228,10 +233,12 @@ export function CombatPanel({ game, attacker }: Props) {
       )}
 
       {impactingHoming(game, attacker).length > 0 && (
-        <HomingImpacts game={game} target={attacker} />
+        <>
+          <HomingImpacts game={game} target={attacker} />
+          <MissileCatch game={game} defender={attacker} />
+        </>
       )}
       {target && <HomingLaunch attacker={attacker} target={target} />}
-      <ProbeLaunch game={game} attacker={attacker} />
 
       {target && (
         <div className="range-readout">
@@ -390,6 +397,11 @@ export function CombatPanel({ game, attacker }: Props) {
 
       {typeof lastResult === 'string' && <p className="fire-error">{lastResult}</p>}
 
+      {/* Secondary fire options sit below the volley so the main button stays
+          near the top of the panel. */}
+      <SmallTargets game={game} attacker={attacker} />
+      <ProbeLaunch game={game} attacker={attacker} />
+
       {game.coordinatedFire && (
         <button
           type="button"
@@ -542,6 +554,125 @@ function CoordinatedFireBuilder({ game, attacker }: { game: GameState; attacker:
  * Homing weapon launches (E5.2). A launch is not a volley: the weapon goes on
  * the map and flies toward its target over the phases that follow.
  */
+/**
+ * Step 4A — tractor beams may reach out and catch an incoming missile after
+ * defensive fire has been rolled (J3.2.2). Every homing weapon in the printed
+ * roster is a particle weapon, which cannot be held, so this only ever appears
+ * for a missile from a custom design.
+ */
+function MissileCatch({ game, defender }: { game: GameState; defender: ShipState }) {
+  const [error, setError] = useState<string | null>(null)
+  const catchable = tractorableHoming(game, defender)
+  if (catchable.length === 0) return null
+  const free = tractorBeamsFree(game, defender)
+
+  return (
+    <div className="probe-launch">
+      <h4>Tractor beams vs incoming missiles (J3.2.2)</h4>
+      <p className="hint">
+        {free} beam(s) free. A held missile goes nowhere until it is released, shot away, or runs
+        out of endurance — and a released one strikes at once, with no defensive fire.
+      </p>
+      <div className="builder-row wrap">
+        {catchable.map((hw) => (
+          <button
+            key={hw.id}
+            type="button"
+            className="chip"
+            disabled={free < 1}
+            onClick={() => act((g) => setError(tractorIncomingHoming(g, defender, hw.id, 1).refusal))}
+          >
+            catch {hw.weaponName}
+          </button>
+        ))}
+      </div>
+      {error && <p className="fire-error">{error}</p>}
+    </div>
+  )
+}
+
+/**
+ * Firing at shuttles, probes and missiles in flight (E12.4). Point defense
+ * weapons fire normally; everything else has to use Degraded Fire Control,
+ * which halves the damage.
+ */
+function SmallTargets({ game, attacker }: { game: GameState; attacker: ShipState }) {
+  const [error, setError] = useState<string | null>(null)
+  const [targetId, setTargetId] = useState('')
+  const targets = smallTargetsFor(game, attacker)
+  if (targets.length === 0) return null
+
+  const chosen = targets.find((t) => t.id === targetId)
+  const armed = attacker.form.weapons.flatMap((weapon) =>
+    weapon.mounts
+      .map((_, index) => ({ weapon, index }))
+      .filter(({ index }) => {
+        const state = attacker.mounts[weapon.id]?.[index]
+        return state ? mountIsReady(weapon, index, state) : false
+      }),
+  )
+
+  return (
+    <div className="probe-launch">
+      <h4>Small targets (E12.4)</h4>
+      <div className="builder-row wrap">
+        <label className="field">
+          <span>Fire at</span>
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">Choose a counter…</option>
+            {targets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+                {t.held ? ' (held in your beam)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        {chosen &&
+          armed.map(({ weapon, index }) => {
+            const pd = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+            return (
+              <button
+                key={`${weapon.id}-${index}`}
+                type="button"
+                className="chip"
+                title={
+                  pd
+                    ? 'Point defense: full damage (E12.4.3)'
+                    : 'No point defense trait: degraded fire control halves the damage (E12.4.4)'
+                }
+                onClick={() =>
+                  act((g) => {
+                    const result = fireAtSmallTarget(g, attacker, chosen.id, weapon.id, index)
+                    setError(
+                      result.refusal ??
+                        (result.volley
+                          ? `${result.volley.damage} damage${result.destroyed ? ' — destroyed' : ''}` +
+                            (result.volley.automatic ? ' (automatic, J3.2.5)' : '') +
+                            (result.volley.degraded ? ' (halved, E10.2.3)' : '')
+                          : null),
+                    )
+                    if (!result.refusal && result.destroyed) setTargetId('')
+                  })
+                }
+              >
+                {weapon.name} #{index + 1}
+                {pd ? ' · PD' : ' · degraded'}
+              </button>
+            )
+          })}
+      </div>
+      {chosen?.held && (
+        <p className="hint">
+          Held in your own tractor beam: it is shifted into any arc you like and every die does its
+          maximum, so there is nothing to roll (J3.2.5).
+        </p>
+      )}
+      {error && <p className="fire-error">{error}</p>}
+    </div>
+  )
+}
+
 /**
  * Probes go out in the Offensive Fire step alongside homing weapons (J7.2.3).
  * No printed ship carries a dedicated PROB launcher, so in practice a probe

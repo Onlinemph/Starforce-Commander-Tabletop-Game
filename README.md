@@ -72,7 +72,7 @@ hulls, have them priced on the same scale as the printed ones, and fly them the 
 | E9 Precision Targeting | ✅ | Section targeting, attacker's replacement hand, no alternate hits |
 | E10 Degraded Fire Control | ✅ | No targeting, jamming applies, halved damage, no leak |
 | E11.1 Destroying Ships | ✅ | Derelicts and explosions available as optional toggles |
-| E12 Small Targets | ⚠️ | Terminology and degraded-fire rules in place; no small craft to shoot at yet |
+| E12 Small Targets | ⚠️ | Shuttles, probes and missiles are targetable; fighters await a carrier book |
 | F1–F4 Weapons | ✅ | Traits, special hits, `STR+X`, `PD WPN` vs. `PD MODE`, `NoBAT`, `AMMO` |
 | G1 Shields | ✅ | Blue/green boxes, generator rating, raise/lower, repair, reinforce |
 | G2 Hull Armor | ✅ | Absorbs after shields; leak bypasses it |
@@ -378,12 +378,36 @@ speed-8 ship down to 3, and every further ship in the chain costs another point.
 plotting their true speed, and the difference costs no acceleration and causes no stress (J3.4.5) —
 so a towed ship's command card still reads 8 while its counter crawls.
 
+A beam can also reach out and **catch an incoming missile** in Step 4A, after defensive fire has
+been rolled (J3.2.2). A held missile goes nowhere; released, it strikes at once with no defensive
+fire against it; held to the end of its endurance, it simply expires. Worth knowing before you plan
+around it: *every* homing weapon in the printed roster is a plasma torpedo, and particle weapons
+cannot be held at all (E5.4 Step 6). So on canon data this rule never fires — it is there for
+missiles, which only a custom design currently carries.
+
 The defender is not helpless. Each phase they may force the beam to make its lock-on roll again
 (J3.6.1); a link stretched past its range lapses once both ships have moved (J3.6.2); and a lock
 whose last beam has been shot away lets go immediately (J3.6.4). A held ship cannot go to FTL at all
 (J3.4.4). A big enough ship at MAX power can shove its captive an inch in any direction, unless the
 captive has grabbed it back and they are the same size, in which case they simply hold each other in
 place (J3.5.1).
+
+### Shooting at small targets (E12.4)
+
+Shuttles, probes and missiles in flight are counters you can fire on. What matters is whether the
+weapon was built for it:
+
+- A **point defense** weapon (any `PD` trait) fires normally and applies its damage in full
+  (E12.4.3).
+- Anything else must use **Degraded Fire Control**, which totals the damage and halves it, rounding
+  down (E12.4.4, E10.2.3). A phaser can swat a shuttle; it just does half of what it would to a hull.
+
+A homing weapon may not be fired on during the phase it launched (E12.3.2), so only counters that
+have already flown a leg appear as targets.
+
+The exception is a target held in your **own** tractor beam. You shift it into whatever arc suits
+and every die does its own maximum — blue a Medium, green and yellow a Heavy, red its Special — so
+there is nothing to roll at all (J3.2.5).
 
 ### Informational scans (J4)
 
@@ -556,14 +580,12 @@ line — which is exactly what E7.2.5 describes.
 
 ## Known gaps
 
-- **Shooting at small craft** (E12.4, J3.2.5) — shuttles and probes fly, tow, board, jam and can be
-  destroyed, but the Combat Panel does not offer them as weapon targets yet, so the automatic
-  maximum damage a held target takes is defined and unused.
-- **Tractoring incoming homing weapons** (J3.2.2) — a beam may catch a missile in Step 4A of the
-  Combat Segment. The homing weapons and the tractor beams are both implemented; the interception
-  between them is not.
-- **Fighters and carriers** (E12) — the terminology, degraded-fire and point-defense rules are in
-  the engine; only shuttles and probes actually fly.
+- **Fighters and carriers** (E12.1.3) — the terminology, degraded-fire and point-defense rules are
+  in the engine and shuttles and probes fly, but fighters need a carrier book that has not been
+  published. Nothing to do until it exists.
+- **Boarding combat** (J6.2) — marines reach an enemy hull by transporter and by shuttle, and the
+  Boarding Combat Segment is in the sequence of play, but the fight itself resolves through damage
+  control rather than J6.2's own procedure.
 - **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
   the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
   numbered counter have not been imported; scenarios set them directly instead.
