@@ -26,6 +26,8 @@ import { ShipBuilder } from './ShipBuilder'
 import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
+import { useNet } from './net'
+import { RemotePanel } from './RemotePanel'
 import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
@@ -51,6 +53,8 @@ export function App() {
   const [showRings, setShowRings] = useState(false)
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
+  const [linking, setLinking] = useState(false)
+  const net = useNet()
 
   /**
    * Hidden information (B1.9): "Open table" shows everything — right for solo
@@ -165,6 +169,14 @@ export function App() {
         >
           Rematch
         </button>
+        <button
+          type="button"
+          className={net.phase === 'connected' ? 'is-linked' : ''}
+          title="Play this battle against another browser — no server, invite by copy-paste"
+          onClick={() => setLinking(true)}
+        >
+          {net.phase === 'connected' ? '● Linked' : 'Remote play'}
+        </button>
         <BattleMenu />
       </header>
 
@@ -179,6 +191,7 @@ export function App() {
       )}
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
+      {linking && <RemotePanel onClose={() => setLinking(false)} />}
 
       {/*
         The handoff blackout: fully opaque, covering everything, so passing

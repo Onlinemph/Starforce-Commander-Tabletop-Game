@@ -87,6 +87,7 @@ export function dispatch(action: GameAction): ActionOutcome {
   journal.push(action)
   autosave()
   emit()
+  net?.onAction(action, journal.length)
   return outcome
 }
 
@@ -97,6 +98,7 @@ export function newGame(next: GameSetup): void {
   game = buildGame(setup)
   autosave()
   emit()
+  net?.onReplace(saved())
 }
 
 /** The setup of the battle in progress — what "Rematch" rolls a new seed for. */
@@ -122,6 +124,7 @@ export function undo(): void {
   game = replayGame(saved())
   autosave()
   emit()
+  net?.onUndo(journal.length)
 }
 
 // ---------------------------------------------------------------------------
@@ -144,6 +147,77 @@ export function importBattle(text: string): string | null {
   }
   setup = parsed.setup
   journal = parsed.actions
+  autosave()
+  emit()
+  net?.onReplace(saved())
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Remote play (the network's hooks into the journal)
+// ---------------------------------------------------------------------------
+
+/**
+ * Remote play rides the same journal that autosave and undo use: local
+ * mutations are announced through these hooks, and the peer's arrive through
+ * the applyRemote* functions — which never announce, so nothing echoes.
+ */
+export interface NetHooks {
+  onAction(action: GameAction, seq: number): void
+  onUndo(lengthAfter: number): void
+  /** A whole-state replacement: new game, imported battle, corrective sync. */
+  onReplace(saved: SavedGame): void
+}
+
+let net: NetHooks | null = null
+
+export function setNetHooks(hooks: NetHooks | null): void {
+  net = hooks
+}
+
+export function journalLength(): number {
+  return journal.length
+}
+
+/** The current battle record, for the network to ship whole. */
+export function currentSave(): SavedGame {
+  return saved()
+}
+
+/**
+ * Apply an action from the peer. With `force` (the ordering authority's
+ * arrival rule) the action is appended regardless of the sequence number the
+ * sender predicted; without it a mismatch refuses, so the caller can ask for
+ * a corrective sync instead of guessing.
+ */
+export function applyRemoteAction(action: GameAction, seq: number, force: boolean): 'ok' | 'mismatch' {
+  if (!force && seq !== journal.length + 1) return 'mismatch'
+  applyAction(game, action)
+  journal.push(action)
+  autosave()
+  emit()
+  return 'ok'
+}
+
+export function applyRemoteUndo(lengthAfter: number, force: boolean): 'ok' | 'mismatch' {
+  if (!force && lengthAfter !== journal.length - 1) return 'mismatch'
+  if (journal.length === 0) return 'ok'
+  journal = journal.slice(0, -1)
+  game = replayGame(saved())
+  autosave()
+  emit()
+  return 'ok'
+}
+
+/** Adopt the peer's battle wholesale. Returns an error to show, or null. */
+export function applyRemoteSave(save: SavedGame): string | null {
+  try {
+    game = replayGame(save)
+  } catch {
+    return 'The other player’s battle does not replay on this build.'
+  }
+  setup = save.setup
+  journal = save.actions
   autosave()
   emit()
   return null

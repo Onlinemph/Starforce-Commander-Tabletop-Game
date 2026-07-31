@@ -3,7 +3,8 @@
 A browser implementation of **StarForce Commander** (Mariner Games, rulebook v2.6, 2026), a game
 of tactical starship combat by Patrick Doyle.
 
-Local hot-seat, no server, no accounts. All game data is canon: **93 ships** across three factions
+Hot-seat on one screen or **remote play between two browsers** — with no server and no accounts
+either way. Battles autosave on every action, rewind exactly with undo, and travel as small files. All game data is canon: **93 ships** across three factions
 from the Master Ship Book and the Expansion 5 Aurelian Starship Book, the **56-card damage deck**
 and the **attack dice** from the print-and-play components. The Basic Set Standard rules are
 complete, plus **every expansion released** — Formation Maneuvering (C5), Scouting Sensors (H3),
@@ -24,7 +25,7 @@ That is the whole setup. There is no server to start, no database, no API keys a
 the game is a single static page and the rules engine runs in the browser.
 
 ```bash
-npm test             # 477 rules and data-integrity tests
+npm test             # 494 rules and data-integrity tests
 npm run typecheck
 npm run check        # both of the above
 npm run build        # static site in dist/
@@ -32,7 +33,31 @@ npm run serve        # preview the built site on your network at :4173
 ```
 
 To play on a tablet or a second screen, run `npm run dev -- --host` and open the printed LAN
-address. It is still one shared game — hot-seat, both fleets on the same screen.
+address.
+
+## Playing
+
+A battle is **(setup + action journal)**: the engine is deterministic and the dice are seeded, so
+replaying the journal reconstructs the game exactly, rolls included. Everything below falls out of
+that one fact.
+
+- **Autosave.** Every action is saved as it happens. Refresh, close the tab, come back tomorrow —
+  the battle resumes mid-volley.
+- **Undo** takes back the last action by exact replay. Dice included: a rewound volley re-rolls to
+  the same faces.
+- **Battle files.** *Save file* downloads the battle as JSON; *Load file* resumes it — on this
+  machine or any other. Custom ship designs are embedded in the file, so it replays on a browser
+  that has never seen them.
+- **Hidden information (B1.9).** The *Viewing* selector under the map switches between the open
+  table and a per-side view. A side view replaces enemy ship forms with an intel dossier, strips
+  enemy shield strengths and marine counts from the map, shows your own cloaked ships as ghosts
+  the enemy cannot see, and offers *pass the console* — a full blackout while the device changes
+  hands.
+- **Remote play.** *Remote play* in the top bar links two browsers directly over WebRTC — no
+  server, no account. The host creates an invite code, the guest answers with a reply code, and
+  the codes travel over any channel you already share. Once linked, every action syncs live in
+  both directions; the host's journal is the authority, so crossed actions heal automatically.
+  Works across home networks in most cases (a very strict NAT may refuse the direct path).
 
 ## Hosting it
 
