@@ -30,6 +30,10 @@ full Sequence of Play:
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
 
+Plus the **operations systems** of Section J — tractor beams that tow a ship down to a crawl,
+informational scans, transporters landing boarding parties, probes flown out of torpedo tubes, and
+shuttles that launch, fly unplotted, board enemy hulls and jam for their mother ship.
+
 Plus **every expansion**: squadrons flying as one counter, scouts that illuminate and jam for the
 whole fleet, command ships that lend tactical scan, the optional ten-step Coordinated Fire sequence,
 battles fought inside a nebula, and the Aurelian Empire's cloaking ships and homing plasma
@@ -75,7 +79,11 @@ hulls, have them priced on the same scale as the printed ones, and fly them the 
 | H1 Basic Sensors | ✅ | Available by leaving sensor points unallocated |
 | H2 Sensors | ✅ | Targeting, jamming, tactical scan, per-function caps, sensor damage |
 | J1 General Systems | ✅ | NRM/MAX power levels, Operations Segment steps |
-| J3–J8 Operations | ⚠️ | Modelled on the ship form and damageable; interactive use not built |
+| J3 Tractor Beams | ✅ | Lock-on rolls, towing at adjusted speed, displacement, breaking |
+| J4 Sciences | ✅ | Informational scans, cumulative across ships and phases |
+| J5 Transporters | ✅ | Range by power, shields down at both ends, boarding parties |
+| J7 Probes | ✅ | Launched from torpedo tubes, flight, standoff, transmitting |
+| J8 Shuttle Operations | ✅ | Launch, unplotted movement, recovery, boarding, jamming shuttles |
 | J9 Disengagement | ✅ | FTL, leaving the map, range 36, mutual agreement |
 | K Space Terrain | ⚠️ | Planets/moons block line of sight; asteroid transit damage and cover done |
 | S2 Scenario Rules | ✅ | Map types, placement, victory points by damage level |
@@ -340,6 +348,83 @@ for homing weapons, whose range restarts at zero in each endurance box (E5.1.5).
 erratum was found by cross-checking the same weapon across every ship that carries it, and the two
 shield errata by the importer's own box-count validation, which is left strict rather than loosened.
 
+## Section J — Operations
+
+Most of a ship's general systems are used in the **Operations Segment**, and the segment runs as the
+five steps the rules print (J1.2, J1.4), so everyone's shields settle before anyone's tractor beams
+reach out, and beams settle before anyone beams across:
+
+    A · Delayed activation  B · Shields  C · Tractor beams  D · Transporters  E · Everything else
+
+**Power** is the constraint that ties them together. GEN SYS at MAX does not put every system on
+maximum — **one system per combat phase** runs at its maximum level and the rest stay normal
+(J1.1.2). So the panel makes you pick: tractor beams reaching 2 inches instead of 1, or transporters
+reaching 4 instead of 2, or sciences paying double, or a probe in the tube. Not all of them.
+
+### Tractor beams (J3)
+
+Each undamaged `TRAC` box is one beam, and locks are rolled on blue dice — but what counts as a lock
+depends on what you are grabbing:
+
+- **A small target** — a shuttle, a probe — needs any single die to come up L or M (J3.2.1).
+- **A starship** needs the *summed* damage result across every beam committed (miss 0, light 2,
+  medium 3) to equal or beat its size class, doubled at MAX power (J3.3.1). One blue die is worth at
+  most 3, so a single beam can never hold a size-5 cruiser however well it rolls — you have to
+  commit several, and they stay committed until you let go (J3.2.4).
+
+Once linked, both ships travel at an **adjusted speed** from the Tractor Link Speed Adjustment Chart,
+which is where the rule earns its place: being tied to something two size classes larger takes a
+speed-8 ship down to 3, and every further ship in the chain costs another point. The ships keep
+plotting their true speed, and the difference costs no acceleration and causes no stress (J3.4.5) —
+so a towed ship's command card still reads 8 while its counter crawls.
+
+The defender is not helpless. Each phase they may force the beam to make its lock-on roll again
+(J3.6.1); a link stretched past its range lapses once both ships have moved (J3.6.2); and a lock
+whose last beam has been shot away lets go immediately (J3.6.4). A held ship cannot go to FTL at all
+(J3.4.4). A big enough ship at MAX power can shove its captive an inch in any direction, unless the
+captive has grabbed it back and they are the same size, in which case they simply hold each other in
+place (J3.5.1).
+
+### Informational scans (J4)
+
+A scan is worth **a point per science box at normal power, two at maximum, plus a point per sensor
+point on Tactical Scan** (J4.2.2). Points are cumulative across phases *and across every friendly
+unit*, so three ships scanning the same object pool their findings (J4.2.3).
+
+Range is effective, not actual: 8 inches or less — but a scout illuminating the target pulls it into
+reach (H3.4, J4.2.1). Terrain is scannable too.
+
+### Transporters (J5)
+
+One marine squad or landing party per undamaged `TRAN` box per phase, at 2 inches or 4 at MAX
+(J5.1.2, J5.2.2). Shields must be down **at both ends** (J5.1.3), which is what makes beaming a
+decision rather than a free action. Squads landed on a friendly hull reinforce it; squads landed on
+an enemy become boarders for the Boarding Combat Segment (J6).
+
+### Probes (J7)
+
+No printed ship in the roster carries a dedicated `PROB` launcher, which is exactly the case J7.1.3
+covers: probes fly from **torpedo and missile tubes**, and loading one costs the tube its full
+arming cycle (J7.2.2). A probe runs 16 inches in the Navigation Segment and stops 4 short of its
+target; if it cannot close that far in one flight it is lost. On station it feeds back a point of
+information a phase, while its target stays inside the 4-inch bubble and its mother ship inside 36
+(J7.3). Any hit at all destroys it.
+
+### Shuttles (J8)
+
+Two shuttles per undamaged `SHTL` box, one launch a phase, into the aft arc within an inch (J8.1.5,
+J8.2.1). A launched shuttle has spent its activation for that phase. Thereafter it moves up to 3
+inches a phase in **any direction regardless of facing**, unplotted and ignoring stress (J8.2.3) —
+the only thing on the map that does not plot its movement.
+
+- **Landing** needs its ship moving forward slower than the shuttle and holding that speed (J8.2.4).
+  One a phase; two at MAX power, and the second needs a spare tractor beam (J8.1.3).
+- **Boarding an enemy** needs the target slower than the shuttle, at least one shield down, and no
+  more than its size class in shuttles that phase (J8.2.6).
+- **Jamming shuttles** need GEN SYS at MAX and a mother ship at speed 3 or less. One lends its own
+  ship a single point of jamming — only its own ship, only one point however many are flying, and it
+  self-destructs the moment its ship outruns it or dies (J8.4).
+
 ## Force composition
 
 Every scenario prints a force, and that is what **Choose forces** opens with. From there you compose
@@ -471,10 +556,14 @@ line — which is exactly what E7.2.5 describes.
 
 ## Known gaps
 
-- **Small craft** (E12, J8) — the terminology, degraded-fire and point-defense rules are in the
-  engine, but there are no shuttles or fighters to fly yet.
-- **Operations systems** (J3–J8) — tractor beams, transporters, sciences, probes and shuttle bays are
-  on the ship form and take damage correctly, but are not interactively usable.
+- **Shooting at small craft** (E12.4, J3.2.5) — shuttles and probes fly, tow, board, jam and can be
+  destroyed, but the Combat Panel does not offer them as weapon targets yet, so the automatic
+  maximum damage a held target takes is defined and unused.
+- **Tractoring incoming homing weapons** (J3.2.2) — a beam may catch a missile in Step 4A of the
+  Combat Segment. The homing weapons and the tractor beams are both implemented; the interception
+  between them is not.
+- **Fighters and carriers** (E12) — the terminology, degraded-fire and point-defense rules are in
+  the engine; only shuttles and probes actually fly.
 - **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
   the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
   numbered counter have not been imported; scenarios set them directly instead.
@@ -514,6 +603,9 @@ src/
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement
     fleet.ts       Force composition and ship availability (S2.5)
+    operations.ts  Operations Segment, informational scans, transporters (J1, J4, J5)
+    tractor.ts     Tractor beams: locks, towing, displacement (J3)
+    smallCraft.ts  Shuttles and probes (E12, J7, J8)
     shipBuilder.ts The designers' point-value model and design validation
     game.ts        Sequence of play, terrain, victory points
   data/            Game content — all canon, all machine-imported

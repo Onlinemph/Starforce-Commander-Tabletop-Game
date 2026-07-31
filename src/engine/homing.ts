@@ -1,6 +1,6 @@
 import { hasTrait, traitValue } from './combat'
 import { FACE_DAMAGE, rollDice, type DieRoll, type Rng } from './dice'
-import { actualRange, arcTo, distance, shieldsFacing, translate } from './geometry'
+import { actualRange, arcTo, bearing, distance, shieldsFacing, translate } from './geometry'
 import type { ShipState } from './shipState'
 import type { Arc, Placement, Point, RangeBracketDef, ShieldSide, WeaponSystemDef } from './types'
 
@@ -220,10 +220,6 @@ export function moveHomingWeapon(
   const heading = bearing(hw.position, target.placement.position)
   hw.position = translate(hw.position, heading, leg)
   return { impact: false, flown: leg, expired: false }
-}
-
-function bearing(from: Point, to: Point): number {
-  return (Math.atan2(to.x - from.x, from.y - to.y) * 180) / Math.PI
 }
 
 /** Shield struck by an impact, drawn from the weapon's counter (E5.4 Step 2). */

@@ -71,7 +71,54 @@ import {
   resolveHomingVolley,
   type HomingWeapon,
 } from './homing'
+import {
+  addInfoPoints,
+  OPERATIONS_STEPS,
+  scanRefusal,
+  scanYield,
+  systemPower,
+  transport,
+  transportRefusal,
+  type InfoLedger,
+  type OperationsStep,
+  type ScanTarget,
+} from './operations'
 import { scoutSupportFor, type ScoutSupport } from './scouting'
+import {
+  craftOf,
+  dockingRefusal,
+  isDestroyed as craftDestroyed,
+  jammingFromShuttles,
+  launchPosition,
+  launchRefusal,
+  jammingLaunchRefusal,
+  moveProbe,
+  moveRefusal,
+  isProbeCapableLauncher,
+  probeLaunchRefusal,
+  probeStillWorks,
+  torpedoProbeRefusal,
+  PROBE_INFO_PER_PHASE,
+  recoveryAllowance,
+  recoveryRefusal,
+  scuttledJammers,
+  type SmallCraft,
+  type SmallCraftKind,
+} from './smallCraft'
+import {
+  adjustedSpeed,
+  beamsAvailable,
+  contestLink,
+  isLinked,
+  ftlBlockedBy,
+  linkBetween,
+  lockOnSmall,
+  lockOnStarship,
+  lockRefusal,
+  pruneLinks,
+  tractorPower,
+  type TractorLink,
+} from './tractor'
 import {
   disengagementOptions,
   executeMovement,
@@ -219,6 +266,49 @@ export interface LogEntry {
   message: string
 }
 
+/**
+ * Everything the Operations Segment tracks (Section J). Grouped rather than
+ * spread across GameState because it all resets together on the same clocks:
+ * some per phase, some per round.
+ */
+export interface OperationsState {
+  /** Where in Steps A–E the segment currently is (J1.2.1). */
+  step: OperationsStep
+  /** The one system each ship runs at maximum this phase (J1.1.2). */
+  maxSystem: Record<string, SystemKind | null>
+  /** Tractor beam links in force (J3). */
+  links: TractorLink[]
+  /** Information points gathered, by side and object (J4.2.3). */
+  info: InfoLedger
+  /** `shipId:objectId` pairs already scanned this phase (J4.1.4). */
+  scannedThisPhase: Set<string>
+  /** Marine squads beamed this phase, per ship (J5.2.2). */
+  transportedThisPhase: Record<string, number>
+  /** Ships that launched a shuttle this phase (J8.1.2). */
+  launchedThisPhase: Set<string>
+  /** Shuttles recovered this phase, per ship (J8.1.2, J8.1.3). */
+  recoveredThisPhase: Record<string, number>
+  /** Shuttles that docked onto each ship this phase (J8.2.6). */
+  dockedThisPhase: Record<string, number>
+  /** Probes launched this round, per ship (J7.2.1). */
+  probesThisRound: Record<string, number>
+}
+
+export function newOperationsState(): OperationsState {
+  return {
+    step: OPERATIONS_STEPS[0],
+    maxSystem: {},
+    links: [],
+    info: {},
+    scannedThisPhase: new Set(),
+    transportedThisPhase: {},
+    launchedThisPhase: new Set(),
+    recoveredThisPhase: {},
+    dockedThisPhase: {},
+    probesThisRound: {},
+  }
+}
+
 export interface GameState {
   scenario: Scenario
   round: number
@@ -256,6 +346,10 @@ export interface GameState {
   homing: HomingWeapon[]
   /** E5.10 jamming against homing weapons is optional; off by default. */
   jammingVsHoming: boolean
+  /** Section J operations: tractor beams, scans, transporters, flight ops. */
+  ops: OperationsState
+  /** Shuttles and probes on the map (E12, J7, J8). */
+  smallCraft: SmallCraft[]
   options: DestructionOptions
 }
 
@@ -331,6 +425,8 @@ export function createGame(args: {
     cloaks,
     homing: [],
     jammingVsHoming: args.jammingVsHoming ?? false,
+    ops: newOperationsState(),
+    smallCraft: [],
     options,
   }
   for (const ship of game.ships) beginRound(ship)
@@ -378,9 +474,20 @@ export function cloakModifiers(
   }
 }
 
-/** Scout targeting and area jamming applying to one volley (H3.4, H3.5). */
+/**
+ * Scout targeting and area jamming applying to one volley (H3.4, H3.5), plus
+ * the single point a jamming shuttle lends the ship that launched it (J8.4.1).
+ */
 export function scoutSupport(game: GameState, attacker: ShipState, target: ShipState): ScoutSupport {
-  return scoutSupportFor(attacker, target, game.ships)
+  const support = scoutSupportFor(attacker, target, game.ships)
+  const fromShuttle = jammingFromShuttles(game.smallCraft, target)
+  if (fromShuttle > 0) {
+    support.jamming += fromShuttle
+    support.jammingFrom = support.jammingFrom
+      ? `${support.jammingFrom} + jamming shuttle`
+      : 'jamming shuttle'
+  }
+  return support
 }
 
 /** The formation a ship is flying in, if any (C5). */
@@ -838,7 +945,15 @@ function runSegmentExit(game: GameState): void {
       for (const ship of activeShips(game)) {
         const card = game.orders[ship.id]
         if (!card || ship.derelict) continue
-        const result = executeMovement(ship, card)
+        // A ship in a tractor link still plots its true speed but travels at
+        // the adjusted one, and the difference costs no acceleration and
+        // causes no stress (J3.3.4, J3.4.5).
+        const towed = isLinked(ship.id, game.ops.links)
+        const result = executeMovement(
+          ship,
+          card,
+          towed ? adjustedSpeed(ship, game.ops.links, game.ships, card.speed) : undefined,
+        )
         if (result.illegal) pushLog(game, `${ship.name}: illegal plot — ${result.illegal}`)
         if (result.stress > 0) pushLog(game, `${ship.name}: +${result.stress} stress from maneuver.`)
         applyTerrainDamage(game, ship, result.path)
@@ -850,10 +965,27 @@ function runSegmentExit(game: GameState): void {
       applyTurbulence(game)
       logCloakedSpeeds(game)
       moveHomingWeapons(game)
+      moveProbes(game)
+      scuttleJammers(game)
+      // J3.6.2 — a link that has been stretched past its range is broken once
+      // both ships have moved.
+      {
+        const report = pruneLinks(game.ops.links, game.ships, (id) => positionOfObject(game, id))
+        for (const [i, link] of report.broken.entries()) {
+          const source = shipById(game, link.sourceId)
+          pushLog(game, `Tractor lock ${source?.name ?? link.sourceId} → ${link.targetId} broken: ${report.reasons[i]}.`)
+        }
+      }
       break
     }
 
-    case 'combat':
+    case 'combat': {
+      // J3.6.4 — a lock whose last tractor beam has been shot away lets go at
+      // once, as does one whose ship has just been destroyed.
+      const report = pruneLinks(game.ops.links, game.ships, (id) => positionOfObject(game, id))
+      for (const [i, link] of report.broken.entries()) {
+        pushLog(game, `Tractor lock on ${link.targetId} broken: ${report.reasons[i]}.`)
+      }
       game.firedThisSegment.clear()
       // Attack markers are removed once all firing is complete (H4.3.1), and
       // the next phase starts the firing sequence again at step 1.
@@ -861,9 +993,28 @@ function runSegmentExit(game: GameState): void {
       game.firingStepIndex = 0
       game.coordinatedGroup = null
       break
+    }
+
+    case 'operations':
+      // Transmitting probes report in during Step E (J7.3.3), and Steps A-E
+      // start again from the top next phase (J1.2.1).
+      gatherProbeInfo(game)
+      game.ops.step = OPERATIONS_STEPS[0]
+      break
+
+    case 'flight-operations':
+      // Activation markers come off once every craft has had its turn (J8.2.2).
+      for (const craft of game.smallCraft) craft.activated = false
+      break
 
     case 'delayed-action':
       game.shieldChangedThisPhase.clear()
+      game.ops.scannedThisPhase.clear()
+      game.ops.transportedThisPhase = {}
+      game.ops.launchedThisPhase.clear()
+      game.ops.recoveredThisPhase = {}
+      game.ops.dockedThisPhase = {}
+      game.ops.maxSystem = {}
       advanceCloakPhases(game)
       break
 
@@ -882,7 +1033,9 @@ function runSegmentExit(game: GameState): void {
           ship,
           enemiesOf(game, ship),
           game.scenario.bounds,
-          !cloudStatus(game, ship).ftlBlocked, // K4.2.7
+          // K4.2.7 shuts FTL down inside a cloud; J3.4.4 does the same to a
+          // ship held in someone else's tractor beam.
+          !cloudStatus(game, ship).ftlBlocked && !ftlBlockedBy(ship.id, game.ops.links),
         )
         // Leaving a fixed map is automatic (J9.2.4); the rest are voluntary and
         // are triggered from the UI before this segment ends.
@@ -996,6 +1149,8 @@ function startNewRound(game: GameState): void {
   // re-designated each round (H5.1.6); the previous choice is left in place as
   // a default the player may change.
   for (const state of Object.values(game.command)) state.assignments = []
+  // One probe per launcher per round (J7.2.1).
+  game.ops.probesThisRound = {}
   pruneFormations(game.formations, game.ships)
   for (const ship of activeShips(game)) beginRound(ship)
   pushLog(game, `— Round ${game.round} —`)
@@ -1019,6 +1174,469 @@ export function setShieldDown(game: GameState, ship: ShipState, side: ShieldSide
   game.shieldChangedThisPhase.add(key)
   pushLog(game, `${ship.name}: ${side} shield ${down ? 'lowered' : 'raised'}.`)
   return null
+}
+
+// ---------------------------------------------------------------------------
+// Section J — Operations
+// ---------------------------------------------------------------------------
+
+/** Advance Steps A–E of the Operations Segment (J1.2.1). */
+export function advanceOperationsStep(game: GameState): boolean {
+  const index = OPERATIONS_STEPS.indexOf(game.ops.step)
+  if (index >= OPERATIONS_STEPS.length - 1) return false
+  game.ops.step = OPERATIONS_STEPS[index + 1]
+  return true
+}
+
+/** The one system this ship is running at MAX power this phase (J1.1.2). */
+export function maxSystemOf(game: GameState, ship: ShipState): SystemKind | null {
+  return game.ops.maxSystem[ship.id] ?? null
+}
+
+export function setMaxSystem(game: GameState, ship: ShipState, kind: SystemKind | null): void {
+  game.ops.maxSystem[ship.id] = kind
+  pushLog(game, kind ? `${ship.name}: ${kind} at MAX power this phase.` : `${ship.name}: no system at MAX.`)
+}
+
+export function powerOf(game: GameState, ship: ShipState, kind: SystemKind) {
+  return systemPower(ship, kind, maxSystemOf(game, ship))
+}
+
+// ── J3 Tractor beams ──────────────────────────────────────────────────────
+
+/** Everything a tractor beam may reach for: ships and small craft alike. */
+export function tractorTargets(game: GameState, source: ShipState): Array<ScanTarget & { kind: 'ship' | 'small' }> {
+  const targets: Array<ScanTarget & { kind: 'ship' | 'small' }> = []
+  for (const ship of activeShips(game)) {
+    if (ship.id === source.id) continue
+    targets.push({ id: ship.id, name: ship.name, position: ship.placement.position, kind: 'ship' })
+  }
+  for (const craft of game.smallCraft) {
+    if (craftDestroyed(craft)) continue
+    targets.push({ id: craft.id, name: craftName(craft), position: craft.position, kind: 'small' })
+  }
+  return targets
+}
+
+export function craftName(craft: SmallCraft): string {
+  const label = craft.kind === 'probe' ? 'Probe' : craft.kind === 'jamming-shuttle' ? 'Jammer' : 'Shuttle'
+  return `${label} ${craft.id.split('-').pop()}`
+}
+
+export interface TractorAttempt {
+  refusal: string | null
+  faces?: string[]
+  total?: number
+  required?: number
+  locked?: boolean
+}
+
+/**
+ * Attempt a tractor lock during Step C (J3.2.1, J3.3.1). A starship needs the
+ * summed damage result to beat its size class; a small target needs any one die
+ * to come up L or M.
+ */
+export function attemptTractorLock(
+  game: GameState,
+  source: ShipState,
+  targetId: string,
+  beams: number,
+): TractorAttempt {
+  const target = tractorTargets(game, source).find((t) => t.id === targetId)
+  if (!target) return { refusal: 'No such target.' }
+  const power = tractorPower(source, maxSystemOf(game, source))
+  const refusal = lockRefusal(source, target.position, game.ops.links, power, beams)
+  if (refusal) return { refusal }
+
+  const result =
+    target.kind === 'ship'
+      ? lockOnStarship(game.rng, beams, power, shipById(game, targetId)!.form.sizeClass)
+      : lockOnSmall(game.rng, beams)
+
+  const detail =
+    target.kind === 'ship'
+      ? `${result.total} against size class ${result.required}`
+      : result.faces.join('')
+  if (result.locked) {
+    game.ops.links.push({
+      id: `${source.id}->${targetId}`,
+      sourceId: source.id,
+      targetId,
+      targetKind: target.kind,
+      beams,
+      power,
+    })
+    pushLog(game, `${source.name}: tractor lock on ${target.name} (${detail}).`)
+  } else {
+    pushLog(game, `${source.name}: tractor lock on ${target.name} failed (${detail}).`)
+  }
+  return { refusal: null, faces: result.faces, total: result.total, required: result.required, locked: result.locked }
+}
+
+/** Release a lock during Step C (J3.6.3). */
+export function releaseTractor(game: GameState, sourceId: string, targetId: string): void {
+  const link = linkBetween(game.ops.links, sourceId, targetId)
+  if (!link) return
+  game.ops.links.splice(game.ops.links.indexOf(link), 1)
+  pushLog(game, `${shipById(game, sourceId)?.name ?? sourceId}: tractor beam released.`)
+}
+
+/**
+ * The held ship makes the beam prove itself again (J3.6.1). A failed roll
+ * breaks the link there and then.
+ */
+export function contestTractor(game: GameState, targetId: string): TractorAttempt {
+  const target = shipById(game, targetId)
+  const link = game.ops.links.find((l) => l.targetId === targetId && l.targetKind === 'ship')
+  if (!target || !link) return { refusal: 'Nothing is holding that ship.' }
+  const result = contestLink(game.rng, link, target)
+  if (!result.locked) {
+    game.ops.links.splice(game.ops.links.indexOf(link), 1)
+    pushLog(game, `${target.name} breaks free of the tractor beam (${result.total} v ${result.required}).`)
+  } else {
+    pushLog(game, `${target.name} fails to break the tractor beam (${result.total} v ${result.required}).`)
+  }
+  return { refusal: null, faces: result.faces, total: result.total, required: result.required, locked: result.locked }
+}
+
+/** Speed a ship actually travels at, after any tractor links (J3.3.4). */
+export function effectiveSpeed(game: GameState, ship: ShipState): number {
+  return adjustedSpeed(ship, game.ops.links, game.ships)
+}
+
+export function tractorBeamsFree(game: GameState, ship: ShipState): number {
+  return beamsAvailable(ship, game.ops.links)
+}
+
+// ── J4 Informational scans ────────────────────────────────────────────────
+
+/** Everything a ship may gather information on (J4.2). */
+export function scanTargets(game: GameState, ship: ShipState): ScanTarget[] {
+  const targets: ScanTarget[] = []
+  for (const other of activeShips(game)) {
+    if (other.id === ship.id) continue
+    targets.push({ id: other.id, name: other.name, position: other.placement.position })
+  }
+  for (const feature of game.scenario.terrain) {
+    targets.push({ id: feature.id, name: feature.name, position: feature.center })
+  }
+  return targets
+}
+
+export interface ScanOutcome {
+  refusal: string | null
+  gained?: number
+  total?: number
+}
+
+/** Gather information on an object during Step E (J4.2.2). */
+export function performScan(game: GameState, ship: ShipState, targetId: string): ScanOutcome {
+  const target = scanTargets(game, ship).find((t) => t.id === targetId)
+  if (!target) return { refusal: 'No such object.' }
+  const key = `${ship.id}:${targetId}`
+  if (game.ops.scannedThisPhase.has(key)) {
+    return { refusal: `${ship.name} has already scanned ${target.name} this phase (J1.1.1).` }
+  }
+
+  // Targeting support may pull a distant object into scanning range (J4.2.1).
+  const other = shipById(game, targetId)
+  const range = other
+    ? effectiveRangeTo(game, ship, other)
+    : distance(ship.placement.position, target.position)
+  const refusal = scanRefusal(
+    ship,
+    target,
+    Math.floor(range),
+    terrainObstacles(game.scenario.terrain),
+    maxSystemOf(game, ship),
+  )
+  if (refusal) return { refusal }
+
+  const yielded = scanYield(ship, maxSystemOf(game, ship), ship.sensors.tacticalScan)
+  addInfoPoints(game.ops.info, ship.side, targetId, yielded.total)
+  game.ops.scannedThisPhase.add(key)
+  pushLog(
+    game,
+    `${ship.name}: scans ${target.name} for ${yielded.total} info point(s) ` +
+      `(${yielded.fromSciences} sciences at ${yielded.power.toUpperCase()}, ${yielded.fromSensors} sensors).`,
+  )
+  return { refusal: null, gained: yielded.total, total: game.ops.info[ship.side][targetId] }
+}
+
+/** Effective range for scanning: actual range less any targeting support (H2.3.3). */
+function effectiveRangeTo(game: GameState, ship: ShipState, target: ShipState): number {
+  const support = scoutSupport(game, ship, target)
+  const actual = distance(ship.placement.position, target.placement.position)
+  return Math.max(0, actual - (ship.sensors.targeting + support.targeting))
+}
+
+// ── J5 Transporters ───────────────────────────────────────────────────────
+
+export interface TransportOutcome {
+  refusal: string | null
+  squads?: number
+}
+
+/** Beam marine squads during Step D (J5.2). */
+export function performTransport(
+  game: GameState,
+  from: ShipState,
+  to: ShipState,
+  squads: number,
+): TransportOutcome {
+  const used = game.ops.transportedThisPhase[from.id] ?? 0
+  const refusal = transportRefusal({
+    from,
+    to,
+    squads,
+    usedThisPhase: used,
+    maxSystem: maxSystemOf(game, from),
+  })
+  if (refusal) return { refusal }
+  transport(from, to, squads)
+  game.ops.transportedThisPhase[from.id] = used + squads
+  pushLog(
+    game,
+    from.side === to.side
+      ? `${from.name}: beams ${squads} marine squad(s) to ${to.name}.`
+      : `${from.name}: beams ${squads} marine squad(s) aboard ${to.name} (J6).`,
+  )
+  return { refusal: null, squads }
+}
+
+// ── J7/J8 Small craft ─────────────────────────────────────────────────────
+
+let craftCounter = 0
+
+/** Launch a shuttle during Step A of Flight Operations (J8.2.1). */
+export function launchShuttle(
+  game: GameState,
+  ship: ShipState,
+  kind: SmallCraftKind = 'shuttle',
+  marines = 0,
+): string | null {
+  const refusal =
+    launchRefusal(ship, game.smallCraft, game.ops.launchedThisPhase.has(ship.id)) ??
+    (kind === 'jamming-shuttle' ? jammingLaunchRefusal(ship) : null)
+  if (refusal) return refusal
+  if (marines > ship.marineSquads) return `${ship.name} has only ${ship.marineSquads} marine squad(s).`
+
+  craftCounter += 1
+  ship.shuttlesAboard -= 1
+  ship.marineSquads -= marines
+  game.smallCraft.push({
+    id: `craft-${craftCounter}`,
+    kind,
+    side: ship.side,
+    motherId: ship.id,
+    position: launchPosition(ship),
+    damage: 0,
+    // A launched shuttle counts as having activated for the phase (J8.2.1).
+    activated: true,
+    marines: marines || undefined,
+  })
+  game.ops.launchedThisPhase.add(ship.id)
+  pushLog(game, `${ship.name}: launches a ${kind === 'jamming-shuttle' ? 'jamming shuttle' : 'shuttle'}.`)
+  return null
+}
+
+/** Move an activated shuttle (J8.2.3). Movement is free-form, not plotted. */
+export function moveSmallCraft(game: GameState, craftId: string, to: { x: number; y: number }): string | null {
+  const craft = game.smallCraft.find((c) => c.id === craftId)
+  if (!craft) return 'No such craft.'
+  const refusal = moveRefusal(craft, to)
+  if (refusal) return refusal
+  craft.position = to
+  craft.activated = true
+  return null
+}
+
+/** Land a shuttle back aboard a friendly ship (J8.2.4). */
+export function recoverShuttle(game: GameState, craftId: string, ship: ShipState): string | null {
+  const craft = game.smallCraft.find((c) => c.id === craftId)
+  if (!craft) return 'No such craft.'
+  const card = game.orders[ship.id]
+  const speedChanged = card ? card.accel !== 0 : false
+  const refusal = recoveryRefusal(craft, ship, speedChanged)
+  if (refusal) return refusal
+  const done = game.ops.recoveredThisPhase[ship.id] ?? 0
+  const allowance = recoveryAllowance(ship, maxSystemOf(game, ship), tractorBeamsFree(game, ship))
+  if (done >= allowance) {
+    return `${ship.name} may recover ${allowance} shuttle(s) this phase (J8.1.2, J8.1.3).`
+  }
+  game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+  ship.shuttlesAboard += 1
+  ship.marineSquads += craft.marines ?? 0
+  game.ops.recoveredThisPhase[ship.id] = done + 1
+  pushLog(game, `${ship.name}: recovers a shuttle.`)
+  return null
+}
+
+/** Land or dock a shuttle on an enemy ship to deliver marines (J8.2.6). */
+export function dockShuttle(game: GameState, craftId: string, ship: ShipState): string | null {
+  const craft = game.smallCraft.find((c) => c.id === craftId)
+  if (!craft) return 'No such craft.'
+  const docked = game.ops.dockedThisPhase[ship.id] ?? 0
+  const refusal = dockingRefusal(craft, ship, docked, effectiveSpeed(game, ship))
+  if (refusal) return refusal
+  craft.dockedTo = ship.id
+  craft.position = ship.placement.position
+  game.ops.dockedThisPhase[ship.id] = docked + 1
+  if (craft.marines) {
+    ship.boarders[craft.side] = (ship.boarders[craft.side] ?? 0) + craft.marines
+    craft.marines = undefined
+  }
+  pushLog(game, `${craftName(craft)} docks with ${ship.name} (J8.2.6).`)
+  return null
+}
+
+/** Torpedo and missile mounts that are armed and could carry a probe (J7.1.3). */
+export function probeLaunchers(
+  ship: ShipState,
+): Array<{ weaponId: string; mountIndex: number; label: string }> {
+  const out: Array<{ weaponId: string; mountIndex: number; label: string }> = []
+  for (const weapon of ship.form.weapons) {
+    if (!isProbeCapableLauncher(weapon.weaponClass)) continue
+    weapon.mounts.forEach((_, index) => {
+      const state = ship.mounts[weapon.id]?.[index]
+      if (state && mountIsReady(weapon, index, state)) {
+        out.push({ weaponId: weapon.id, mountIndex: index, label: `${weapon.name} #${index + 1}` })
+      }
+    })
+  }
+  return out
+}
+
+/**
+ * Launch a probe during the Offensive Fire step (J7.2.3).
+ *
+ * With no `launcher` this uses a dedicated PROB launcher at MAX power (J7.2.1).
+ * Given a torpedo mount it loads a probe there instead, which costs the tube
+ * its full arming cycle (J7.2.2) — the path every printed ship must use, since
+ * none of them carries a dedicated launcher.
+ */
+export function launchProbe(
+  game: GameState,
+  ship: ShipState,
+  targetId: string,
+  launcher?: { weaponId: string; mountIndex: number },
+): string | null {
+  const launched = game.ops.probesThisRound[ship.id] ?? 0
+  let refusal: string | null
+  if (launcher) {
+    const weapon = ship.form.weapons.find((w) => w.id === launcher.weaponId)
+    const state = weapon ? ship.mounts[weapon.id]?.[launcher.mountIndex] : undefined
+    refusal = !weapon || !state
+      ? 'No such launcher.'
+      : torpedoProbeRefusal(
+          ship,
+          weapon.weaponClass,
+          mountIsReady(weapon, launcher.mountIndex, state),
+          launched,
+        )
+    if (!refusal && state) state.armed = 0
+  } else {
+    refusal = probeLaunchRefusal(ship, launched, maxSystemOf(game, ship))
+  }
+  if (refusal) return refusal
+  const target = scanTargets(game, ship).find((t) => t.id === targetId)
+  if (!target) return 'No such object to probe.'
+
+  craftCounter += 1
+  game.smallCraft.push({
+    id: `craft-${craftCounter}`,
+    kind: 'probe',
+    side: ship.side,
+    motherId: ship.id,
+    position: launchPosition(ship),
+    damage: 0,
+    activated: true,
+    targetId,
+    transmitting: false,
+  })
+  game.ops.probesThisRound[ship.id] = launched + 1
+  pushLog(game, `${ship.name}: launches a probe at ${target.name}.`)
+  return null
+}
+
+/** Damage a shuttle or probe (E12.4.3, J7.3.3). */
+export function damageSmallCraft(game: GameState, craftId: string, points: number): void {
+  const craft = game.smallCraft.find((c) => c.id === craftId)
+  if (!craft) return
+  craft.damage += points
+  if (craftDestroyed(craft)) {
+    game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+    pushLog(game, `${craftName(craft)} destroyed.`)
+  }
+}
+
+/** Total jamming a ship gets from its own jamming shuttles (J8.4.1). */
+export function shuttleJamming(game: GameState, ship: ShipState): number {
+  return jammingFromShuttles(game.smallCraft, ship)
+}
+
+/** Shuttles and probes belonging to a ship that are still flying. */
+export function craftLaunchedBy(game: GameState, ship: ShipState): SmallCraft[] {
+  return craftOf(game.smallCraft, ship.id)
+}
+
+function positionOfObject(game: GameState, id: string): { x: number; y: number } | undefined {
+  const ship = game.ships.find((s) => s.id === id && !s.destroyed && !s.disengaged)
+  if (ship) return ship.placement.position
+  const feature = game.scenario.terrain.find((t) => t.id === id)
+  if (feature) return feature.center
+  const craft = game.smallCraft.find((c) => c.id === id)
+  return craft?.position
+}
+
+/** Probes fly during the Navigation Segment (J7.3.2). */
+function moveProbes(game: GameState): void {
+  for (const craft of [...game.smallCraft]) {
+    if (craft.kind !== 'probe') continue
+    const target = craft.targetId ? positionOfObject(game, craft.targetId) : undefined
+    if (!target) {
+      game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+      pushLog(game, `${craftName(craft)} loses its target and is removed (J7.3.2).`)
+      continue
+    }
+    if (craft.transmitting) {
+      const mother = shipById(game, craft.motherId)
+      if (!probeStillWorks(craft, target, mother)) {
+        game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+        pushLog(game, `${craftName(craft)} loses contact and ceases to function (J7.3.2).`)
+      }
+      continue
+    }
+    const step = moveProbe(craft, target)
+    craft.position = step.position
+    if (step.arrived) {
+      craft.transmitting = true
+      pushLog(game, `${craftName(craft)} arrives on station and begins transmitting (J7.3.2).`)
+    } else if (step.lost) {
+      game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+      pushLog(game, `${craftName(craft)} cannot close on its target and is lost (J7.3.2).`)
+    }
+  }
+}
+
+/** Transmitting probes feed information back during Step E (J7.3.3). */
+export function gatherProbeInfo(game: GameState): void {
+  for (const craft of game.smallCraft) {
+    if (craft.kind !== 'probe' || !craft.transmitting || !craft.targetId) continue
+    const target = positionOfObject(game, craft.targetId)
+    const mother = shipById(game, craft.motherId)
+    if (!target || !probeStillWorks(craft, target, mother)) continue
+    addInfoPoints(game.ops.info, craft.side, craft.targetId, PROBE_INFO_PER_PHASE)
+    pushLog(game, `${craftName(craft)}: +${PROBE_INFO_PER_PHASE} info point (J7.3.3).`)
+  }
+}
+
+/** Jamming shuttles that can no longer keep up scuttle themselves (J8.4.2). */
+function scuttleJammers(game: GameState): void {
+  for (const craft of scuttledJammers(game.smallCraft, game.ships)) {
+    game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+    pushLog(game, `${craftName(craft)} self-destructs to avoid capture (J8.4.2).`)
+  }
 }
 
 // ---------------------------------------------------------------------------

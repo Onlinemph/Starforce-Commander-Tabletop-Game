@@ -37,6 +37,11 @@ export function translate(p: Point, heading: number, distance: number): Point {
   return { x: p.x + v.x * distance, y: p.y + v.y * distance }
 }
 
+/** Compass bearing in degrees from one point to another, clockwise from up. */
+export function bearing(from: Point, to: Point): number {
+  return (Math.atan2(to.x - from.x, from.y - to.y) * 180) / Math.PI
+}
+
 export function distance(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y)
 }

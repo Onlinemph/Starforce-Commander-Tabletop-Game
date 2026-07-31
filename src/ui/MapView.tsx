@@ -168,6 +168,55 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         )
       })}
 
+      {/* Tractor beam links (J3) — a line between the beam and what it holds. */}
+      {game.ops.links.map((link) => {
+        const source = game.ships.find((s) => s.id === link.sourceId)
+        const target =
+          game.ships.find((s) => s.id === link.targetId)?.placement.position ??
+          game.smallCraft.find((c) => c.id === link.targetId)?.position
+        if (!source || !target) return null
+        return (
+          <line
+            key={link.id}
+            x1={source.placement.position.x * SCALE}
+            y1={source.placement.position.y * SCALE}
+            x2={target.x * SCALE}
+            y2={target.y * SCALE}
+            className="tractor-link"
+          />
+        )
+      })}
+
+      {/* Shuttles and probes (E12, J7, J8) — half-inch counters. */}
+      {game.smallCraft.map((craft) => (
+        <g key={craft.id} className={`small-craft small-craft-${craft.kind}`}>
+          {craft.kind === 'probe' ? (
+            <circle
+              cx={craft.position.x * SCALE}
+              cy={craft.position.y * SCALE}
+              r={0.25 * SCALE}
+              className="craft-counter"
+            />
+          ) : (
+            <rect
+              x={craft.position.x * SCALE - 0.25 * SCALE}
+              y={craft.position.y * SCALE - 0.25 * SCALE}
+              width={0.5 * SCALE}
+              height={0.5 * SCALE}
+              className="craft-counter"
+            />
+          )}
+          <text
+            x={craft.position.x * SCALE}
+            y={craft.position.y * SCALE + 0.25 * SCALE + 9}
+            className="craft-label"
+            textAnchor="middle"
+          >
+            {craft.kind === 'probe' ? 'PROBE' : craft.kind === 'jamming-shuttle' ? 'JAM' : 'SHTL'}
+          </text>
+        </g>
+      ))}
+
       {/*
         Only the lead ship's counter stays on the map when ships fly in
         formation (C5.1.3), so members are drawn as a strength badge on the

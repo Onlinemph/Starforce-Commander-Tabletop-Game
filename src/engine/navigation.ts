@@ -119,8 +119,18 @@ export interface MovementResult extends ManeuverResult {
 /**
  * Execute a plotted maneuver during the Navigation Segment (A3.3.3).
  * Speed changes take effect now, not when plotted (C1.2.4).
+ *
+ * `towedSpeed` is the adjusted speed of a ship in a tractor link (J3.3.4). The
+ * ship keeps plotting — and keeps — its true speed, and the acceleration it
+ * paid for still counts against the round; only the distance it actually covers
+ * and the turn template it may use come from the adjusted figure (J3.4.1,
+ * J3.4.5).
  */
-export function executeMovement(ship: ShipState, card: CommandCard): MovementResult {
+export function executeMovement(
+  ship: ShipState,
+  card: CommandCard,
+  towedSpeed?: number,
+): MovementResult {
   const errors = validatePlot(ship, card)
   const mustGoStraight = errors.some((e) => e.fallbackToStraight)
 
@@ -133,25 +143,30 @@ export function executeMovement(ship: ShipState, card: CommandCard): MovementRes
   ship.speed = speed
   ship.accelUsedThisRound += Math.abs(card.accel)
 
+  const travel =
+    towedSpeed === undefined
+      ? speed
+      : Math.sign(speed) * Math.min(Math.abs(speed), Math.abs(towedSpeed))
+
   const maneuver = mustGoStraight ? 'straight' : card.maneuver
   const result = applyManeuver({
     start: ship.placement,
-    speed,
+    speed: travel,
     maneuver,
     direction: card.direction,
-    turnTemplate: turnTemplateAt(ship, speed),
+    turnTemplate: turnTemplateAt(ship, travel),
     halfSlide: card.halfSlide,
   })
 
   ship.placement = result.end
 
   // Stress from the maneuver itself (C3.1.2).
-  const stress = maneuverStress(maneuver, speed)
+  const stress = maneuverStress(maneuver, travel)
   ship.stressMarkers += stress
   if (maneuver === 'em-90' || maneuver === 'em-180') ship.emergencyTurnUsed = true
   if (ship.emergencyStopPhases > 0) ship.emergencyStopPhases -= 1
 
-  return { ...result, speed, stress }
+  return { ...result, speed: travel, stress }
 }
 
 // ---------------------------------------------------------------------------

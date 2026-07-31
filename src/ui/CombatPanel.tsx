@@ -20,7 +20,10 @@ import {
   cloudModifiers,
   impactingHoming,
   launchHoming,
+  launchProbe,
+  probeLaunchers,
   resolveHomingImpacts,
+  scanTargets,
   currentFiringStep,
   damageContext,
   declareCoordinatedFire,
@@ -228,6 +231,7 @@ export function CombatPanel({ game, attacker }: Props) {
         <HomingImpacts game={game} target={attacker} />
       )}
       {target && <HomingLaunch attacker={attacker} target={target} />}
+      <ProbeLaunch game={game} attacker={attacker} />
 
       {target && (
         <div className="range-readout">
@@ -538,6 +542,60 @@ function CoordinatedFireBuilder({ game, attacker }: { game: GameState; attacker:
  * Homing weapon launches (E5.2). A launch is not a volley: the weapon goes on
  * the map and flies toward its target over the phases that follow.
  */
+/**
+ * Probes go out in the Offensive Fire step alongside homing weapons (J7.2.3).
+ * No printed ship carries a dedicated PROB launcher, so in practice a probe
+ * rides out of a torpedo tube that has paid its full arming cost (J7.1.3).
+ */
+function ProbeLaunch({ game, attacker }: { game: GameState; attacker: ShipState }) {
+  const [error, setError] = useState<string | null>(null)
+  const [objectId, setObjectId] = useState('')
+  const launchers = probeLaunchers(attacker)
+  const objects = scanTargets(game, attacker)
+  if (launchers.length === 0 || objects.length === 0) return null
+
+  return (
+    <div className="probe-launch">
+      <h4>Probes (J7)</h4>
+      <div className="builder-row wrap">
+        <label className="field">
+          <span>Probe</span>
+          <select value={objectId} onChange={(e) => setObjectId(e.target.value)}>
+            <option value="">Choose an object…</option>
+            {objects.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {launchers.map((l) => (
+          <button
+            key={`${l.weaponId}-${l.mountIndex}`}
+            type="button"
+            className="chip"
+            disabled={!objectId}
+            title="Loading a probe costs the tube its full arming cycle (J7.2.2)"
+            onClick={() =>
+              act((g) =>
+                setError(
+                  launchProbe(g, attacker, objectId, {
+                    weaponId: l.weaponId,
+                    mountIndex: l.mountIndex,
+                  }),
+                ),
+              )
+            }
+          >
+            from {l.label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="fire-error">{error}</p>}
+    </div>
+  )
+}
+
 function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipState }) {
   const [error, setError] = useState<string | null>(null)
   const launchers = attacker.form.weapons.filter(isHoming)

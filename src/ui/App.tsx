@@ -9,13 +9,11 @@ import {
   PHASE_SEGMENTS,
   pushLog,
   SEGMENT_LABELS,
-  setShieldDown,
   victoryPoints,
   type GameState,
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
-import type { ShieldSide } from '../engine/types'
 import { CloakPanel } from './CloakPanel'
 import { CloudPanel } from './CloudPanel'
 import { CombatPanel } from './CombatPanel'
@@ -27,6 +25,8 @@ import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ShipBuilder } from './ShipBuilder'
 import { FleetPicker } from './FleetPicker'
+import { FlightOpsPanel } from './FlightOpsPanel'
+import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
 import { act, resetGame, useGame } from './store'
 
@@ -265,12 +265,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
       case 'combat':
         return <CombatPanel game={game} attacker={ship} />
       case 'flight-operations':
-        return (
-          <div className="segment-help">
-            <h3>Flight Operations (A3.3.5)</h3>
-            <p>Small craft launch and activate here. Shuttle operations are not yet implemented.</p>
-          </div>
-        )
+        return <FlightOpsPanel game={game} ship={ship} />
       default:
         return (
           <div className="segment-help">
@@ -318,45 +313,6 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
 }
 
 /** Operations Segment steps A–E (A3.3.2). */
-function OperationsPanel({ ship }: { game: GameState; ship: ShipState }) {
-  const [error, setError] = useState<string | null>(null)
-  return (
-    <div className="segment-help">
-      <h3>Operations (A3.3.2)</h3>
-      <ol className="ops-steps">
-        <li>A — Activate systems with an activation delay (none in the Standard rules).</li>
-        <li>
-          B — Raise or lower shields:
-          <div className="shield-toggles">
-            {(['F', 'P', 'S', 'A'] as ShieldSide[]).map((side) => (
-              <button
-                key={side}
-                type="button"
-                className={`shield-toggle${ship.shieldsDown[side] ? ' is-down' : ''}`}
-                onClick={() =>
-                  act((g) => setError(setShieldDown(g, ship, side, !ship.shieldsDown[side])))
-                }
-              >
-                {side} {ship.shieldsDown[side] ? 'down' : 'up'}
-              </button>
-            ))}
-          </div>
-        </li>
-        <li>
-          C — Activate or deactivate tractor beams (J3). A cloaked ship may use none, and none may
-          be locked onto it (H6.4.7).
-        </li>
-        <li>D — Activate transporters (J5).</li>
-        <li>E — Other systems, including informational scans (J4.2) and searches for cloaked ships (H6.9.2).</li>
-      </ol>
-      {error && <p className="fire-error">{error}</p>}
-      <p className="hint">
-        A shield may be raised or lowered once per phase, but never both in the same phase (G1.1.5).
-      </p>
-    </div>
-  )
-}
-
 function DisengagementPanel({ game, ship }: { game: GameState; ship: ShipState }) {
   const enemies = game.ships.filter((s) => s.side !== ship.side && !s.destroyed && !s.disengaged)
   // A nebula shuts the FTL drive down, including as a way out (K4.2.7).
