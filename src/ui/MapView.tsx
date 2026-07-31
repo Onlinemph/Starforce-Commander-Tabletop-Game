@@ -520,8 +520,74 @@ function polar(cx: number, cy: number, r: number, headingDeg: number) {
 }
 
 /**
- * A ship counter: 1.5 inches square (A2.1), with the bow marked and a shield
- * strength readout on each facing.
+ * Hull silhouettes, one visual language per faction — the printed counters
+ * carry ship art, and a square with a triangle was a poor stand-in for it.
+ * Every glyph is drawn nose-up in a 100-unit box (−50..50 on both axes) and
+ * scaled to the counter, so the bow marks the ship's heading exactly where
+ * the old bow triangle did. Purely cosmetic: the counter square below it is
+ * still the 1.5-inch footprint the rules move and measure (A2.1).
+ */
+type Silhouette = 'union' | 'vallari' | 'aurelian' | 'generic'
+
+function silhouetteFor(faction: string): Silhouette {
+  if (/union/i.test(faction)) return 'union'
+  if (/vallari/i.test(faction)) return 'vallari'
+  if (/aurelian/i.test(faction)) return 'aurelian'
+  return 'generic'
+}
+
+function ShipGlyph({ kind }: { kind: Silhouette }) {
+  switch (kind) {
+    // Union: saucer forward, engineering hull aft, twin outboard nacelles.
+    case 'union':
+      return (
+        <>
+          <path className="glyph-pylon" d="M -7 8 L -19 22 M 7 8 L 19 22" />
+          <rect className="glyph-hull" x={-25} y={14} width={9} height={32} rx={4.5} />
+          <rect className="glyph-hull" x={16} y={14} width={9} height={32} rx={4.5} />
+          <rect className="glyph-trim" x={-24} y={15.5} width={7} height={7} rx={3.5} />
+          <rect className="glyph-trim" x={17} y={15.5} width={7} height={7} rx={3.5} />
+          <path className="glyph-hull" d="M -6 -8 L 6 -8 L 9 18 Q 0 25 -9 18 Z" />
+          <ellipse className="glyph-hull" cx={0} cy={-21} rx={21} ry={18} />
+          <circle className="glyph-glass" cx={0} cy={-25} r={4} />
+        </>
+      )
+    // Vallari: a swept-wing raptor, all edges and intent.
+    case 'vallari':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -47 L 9 -18 L 40 14 L 32 25 L 10 10 L 8 26 L 15 41 L 0 32 L -15 41 L -8 26 L -10 10 L -32 25 L -40 14 L -9 -18 Z"
+          />
+          <path className="glyph-trim" d="M 0 -34 L 4 -20 L 0 -12 L -4 -20 Z" />
+        </>
+      )
+    // Aurelian: a smooth crescent dart, built to vanish.
+    case 'aurelian':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -46 C 10 -24 16 -2 36 27 C 22 16 10 14 0 19 C -10 14 -22 16 -36 27 C -16 -2 -10 -24 0 -46 Z"
+          />
+          <path className="glyph-trim" d="M 0 -30 L 3 4 L 0 12 L -3 4 Z" />
+        </>
+      )
+    // Anything from the builder without a known faction: a plain wedge.
+    default:
+      return (
+        <>
+          <path className="glyph-hull" d="M 0 -44 L 24 26 L 12 20 L 0 33 L -12 20 L -24 26 Z" />
+          <circle className="glyph-glass" cx={0} cy={-14} r={4} />
+        </>
+      )
+  }
+}
+
+/**
+ * A ship counter: 1.5 inches square (A2.1), with the hull silhouette showing
+ * the bow and a shield strength readout on each facing.
  */
 function ShipToken({
   ship,
@@ -542,7 +608,13 @@ function ShipToken({
   const size = 1.5 * SCALE
   const cx = ship.placement.position.x * SCALE
   const cy = ship.placement.position.y * SCALE
-  const sideClass = ship.side.startsWith('Blue') ? 'blue' : 'red'
+  // The third side of the Aurelian Raid keeps the purple the fleet picker
+  // already gives it, so map and picker agree on who is who.
+  const sideClass = ship.side.startsWith('Blue')
+    ? 'blue'
+    : ship.side.startsWith('Aurelian')
+      ? 'aurelian'
+      : 'red'
 
   const shieldLabel = (side: 'F' | 'S' | 'A' | 'P') => {
     const green = greenShieldRemaining(ship, side)
@@ -561,8 +633,18 @@ function ShipToken({
       aria-label={`${ship.name}, speed ${ship.speed}`}
     >
       <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-base" />
-      {/* Bow marker */}
-      <path d={`M 0 ${-size / 2 - 6} L ${-5} ${-size / 2 + 2} L 5 ${-size / 2 + 2} Z`} className="ship-bow" />
+
+      {/*
+        The hull, scaled so bigger size classes fill more of their counter —
+        a size-7 dreadnought should loom over a size-2 corvette. The glyph's
+        nose is the bow, replacing the old bow triangle.
+      */}
+      <g
+        className="ship-glyph"
+        transform={`scale(${(size / 100) * Math.min(0.72 + 0.05 * ship.form.sizeClass, 1.05)})`}
+      >
+        <ShipGlyph kind={silhouetteFor(ship.form.faction)} />
+      </g>
 
       {/*
         Shield strength on each facing, printed just outside the counter. The

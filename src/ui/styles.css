@@ -580,11 +580,53 @@ input:focus-visible {
   stroke: var(--red);
   filter: drop-shadow(0 0 4px rgba(255, 92, 92, 0.55));
 }
-.ship-blue .ship-bow {
+.ship-aurelian .ship-base {
+  stroke: var(--lc-lilac);
+  filter: drop-shadow(0 0 4px rgba(204, 153, 204, 0.55));
+}
+/* The hull silhouette. Strokes are in screen pixels, not glyph units, so a
+   corvette's outline is as crisp as a dreadnought's despite the scaling. */
+.ship-glyph {
+  pointer-events: none;
+}
+.glyph-hull {
+  fill: #222b40;
+  stroke: rgba(200, 216, 245, 0.5);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ship-blue .glyph-hull {
+  stroke: rgba(122, 183, 255, 0.9);
+}
+.ship-red .glyph-hull {
+  stroke: rgba(255, 122, 122, 0.9);
+}
+.ship-aurelian .glyph-hull {
+  stroke: rgba(214, 173, 214, 0.9);
+}
+/* Trim — nacelle caps, canopy strakes — carries the side colour. */
+.glyph-trim {
+  fill: var(--ink-dim);
+}
+.ship-blue .glyph-trim {
   fill: var(--blue);
 }
-.ship-red .ship-bow {
+.ship-red .glyph-trim {
   fill: var(--red);
+}
+.ship-aurelian .glyph-trim {
+  fill: var(--lc-lilac);
+}
+.glyph-glass {
+  fill: #cfe3ff;
+  opacity: 0.85;
+}
+.glyph-pylon {
+  fill: none;
+  stroke: rgba(200, 216, 245, 0.45);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
 }
 .ship.is-selected .ship-base {
   fill: rgba(23, 38, 58, 0.95);
