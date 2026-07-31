@@ -13,6 +13,26 @@ import {
 } from '../engine/shipState'
 import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
+import { DENSITY_STATS } from '../data/terrainCounters'
+
+/**
+ * The asteroid photographs from the Print and Play counter sheet, bundled and
+ * hashed by Vite. They sit on black, and the map is nearly black, so a screen
+ * blend melts the backgrounds away.
+ */
+const ROCK_ART = Object.entries(
+  import.meta.glob('../assets/asteroids/r*.png', { eager: true, query: '?url', import: 'default' }),
+)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, url]) => url as string)
+
+/** The printed density colours (K2.1.2). */
+const DENSITY_COLOR: Record<string, string> = {
+  light: '#4aa8ff',
+  medium: '#57c46f',
+  high: '#ffb020',
+  extreme: '#ff4d4d',
+}
 
 /**
  * The play surface (A2.9). Rendered at 1 inch = `SCALE` pixels so every
@@ -318,6 +338,14 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       {/* Terrain (Section K) */}
       {game.scenario.terrain.map((feature) => (
         <g key={feature.id} className={`terrain-group terrain-group-${feature.kind}`}>
+          {/* The printed counter's values, on hover (K2.1.1). */}
+          {feature.kind === 'asteroid-field' && feature.safeSpeed !== undefined && (
+            <title>
+              {`${feature.name} — ${feature.density ? DENSITY_STATS[feature.density].label + ' density' : 'asteroid field'}\n` +
+                `SPD ${feature.safeSpeed} · DMG ${feature.damageDie ?? '—'} die · ` +
+                `CVR ${feature.cover ?? 0} · SCAN ${feature.scan ?? '—'}`}
+            </title>
+          )}
           {isWorld(feature.kind) && (
             /* A halo of scattered light, so a world reads as lit from a star
                rather than as a flat disc. */
@@ -333,6 +361,11 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             cy={feature.center.y * SCALE}
             r={feature.radius * SCALE}
             className={`terrain terrain-${feature.kind}`}
+            style={
+              feature.density
+                ? { stroke: DENSITY_COLOR[feature.density] }
+                : undefined
+            }
           />
           {isWorld(feature.kind) && (
             /* The night side. Offset the same way for every world so the whole
@@ -354,11 +387,14 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
           )}
           <text
             x={feature.center.x * SCALE}
-            y={feature.center.y * SCALE}
+            y={feature.center.y * SCALE - (feature.kind === 'asteroid-field' ? feature.radius * SCALE + 5 : 0)}
             className="terrain-label"
             textAnchor="middle"
           >
             {feature.name}
+            {feature.kind === 'asteroid-field' && feature.safeSpeed !== undefined
+              ? ` · SPD ${feature.safeSpeed}`
+              : ''}
           </text>
         </g>
       ))}
@@ -630,32 +666,46 @@ function SpaceDefs() {
 }
 
 /**
- * Individual rocks inside an asteroid field's radius (K3). Decoration over the
- * real circle — the circle is still what the rules measure against.
+ * The rocks inside an asteroid field, drawn with the photographs from the
+ * printed counter sheet. Decoration over the real circle — the circle is
+ * still what the rules measure against.
  */
 function AsteroidScatter({ cx, cy, r, seed }: { cx: number; cy: number; r: number; seed: string }) {
   const rocks = useMemo(() => {
     let n = 0
     for (let i = 0; i < seed.length; i++) n = (n * 31 + seed.charCodeAt(i)) | 0
     const rng = new Rng(n ^ 0x1d3f)
-    return Array.from({ length: Math.max(14, Math.round(r / 3)) }, () => {
+    const count = Math.max(4, Math.round(r / 9))
+    return Array.from({ length: count }, (_, i) => {
       // Square-rooted radius so rocks spread evenly over the area, not bunched
-      // at the middle.
-      const d = Math.sqrt(rng.next()) * r * 0.92
+      // at the middle. The first rock is the big one, near the middle.
+      const d = (i === 0 ? 0.25 : 0.35 + Math.sqrt(rng.next()) * 0.55) * r
       const a = rng.next() * Math.PI * 2
+      const size = i === 0 ? r * (0.7 + rng.next() * 0.3) : r * (0.2 + rng.next() * 0.3)
       return {
         x: cx + Math.cos(a) * d,
         y: cy + Math.sin(a) * d,
-        size: 1 + rng.next() * 2.6,
-        o: 0.3 + rng.next() * 0.5,
+        size,
+        art: ROCK_ART[rng.int(ROCK_ART.length)],
+        rotate: rng.next() * 360,
       }
     })
   }, [cx, cy, r, seed])
 
+  if (ROCK_ART.length === 0) return null
   return (
     <g className="asteroid-rocks">
       {rocks.map((rock, i) => (
-        <circle key={i} cx={rock.x} cy={rock.y} r={rock.size} opacity={rock.o} />
+        <image
+          key={i}
+          href={rock.art}
+          x={rock.x - rock.size / 2}
+          y={rock.y - rock.size / 2}
+          width={rock.size}
+          height={rock.size}
+          transform={`rotate(${rock.rotate} ${rock.x} ${rock.y})`}
+          preserveAspectRatio="xMidYMid meet"
+        />
       ))}
     </g>
   )

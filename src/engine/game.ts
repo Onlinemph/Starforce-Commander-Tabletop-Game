@@ -43,7 +43,7 @@ import {
   pruneFormations,
   type Formation,
 } from './formation'
-import { arcTo, canBearOn, distance, hasLineOfSight, type CircleObstacle } from './geometry'
+import { arcTo, canBearOn, distance, distanceToSegment, hasLineOfSight, type CircleObstacle } from './geometry'
 import {
   cloudAt,
   degradedByClouds,
@@ -183,8 +183,46 @@ export interface Terrain {
   damageDie?: 'blue' | 'green' | 'yellow' | 'red'
   /** Asteroid fields only: defender rerolls granted as cover (K2.1.8). */
   cover?: number
+  /** Asteroid fields only: printed density, which colours the counter (K2.1.2). */
+  density?: 'light' | 'medium' | 'high' | 'extreme'
   /** Gas clouds only: information points needed to find a hidden unit (K5.2.3). */
   scan?: number
+}
+
+/**
+ * "Whenever any part of a unit's base overlaps the counter" (K2.1.4): the
+ * designer's note says to treat the terrain counter as 3/4 inch larger all
+ * round, which is exactly half a 1.5-inch ship base.
+ */
+export const BASE_OVERLAP = 0.75
+
+/** Asteroid fields whose counter this ship's base overlaps (K2.1.4). */
+export function asteroidFieldsAt(terrain: Terrain[], position: { x: number; y: number }): Terrain[] {
+  return terrain.filter(
+    (t) =>
+      t.kind === 'asteroid-field' &&
+      Math.hypot(position.x - t.center.x, position.y - t.center.y) <= t.radius + BASE_OVERLAP,
+  )
+}
+
+/**
+ * Defender rerolls from asteroid cover (K2.1.8): each field whose counter the
+ * line of sight crosses, or that either ship overlaps, adds its printed cover
+ * diamonds. Cumulative across every field involved.
+ */
+export function asteroidCoverRerolls(game: GameState, attacker: ShipState, target: ShipState): number {
+  const a = attacker.placement.position
+  const b = target.placement.position
+  let total = 0
+  for (const feature of game.scenario.terrain) {
+    if (feature.kind !== 'asteroid-field' || !feature.cover) continue
+    const involved =
+      Math.hypot(a.x - feature.center.x, a.y - feature.center.y) <= feature.radius + BASE_OVERLAP ||
+      Math.hypot(b.x - feature.center.x, b.y - feature.center.y) <= feature.radius + BASE_OVERLAP ||
+      distanceToSegment(feature.center, a, b) < feature.radius
+    if (involved) total += feature.cover
+  }
+  return total
 }
 
 export function terrainObstacles(terrain: Terrain[]): CircleObstacle[] {
@@ -2023,7 +2061,11 @@ function applyTerrainDamage(game: GameState, ship: ShipState, path: Array<{ x: n
   applyCloudDamage(game, ship)
   for (const feature of game.scenario.terrain) {
     if (feature.kind !== 'asteroid-field') continue
-    const entered = path.some((p) => Math.hypot(p.x - feature.center.x, p.y - feature.center.y) <= feature.radius)
+    // Any part of the 1.5-inch base overlapping counts, so the counter is
+    // effectively 3/4 inch larger all round (K2.1.4).
+    const entered = path.some(
+      (p) => Math.hypot(p.x - feature.center.x, p.y - feature.center.y) <= feature.radius + BASE_OVERLAP,
+    )
     if (!entered) continue
 
     const over = Math.abs(ship.speed) - (feature.safeSpeed ?? 0)

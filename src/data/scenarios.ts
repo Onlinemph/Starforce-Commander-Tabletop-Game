@@ -1,5 +1,7 @@
 import { MAX_SHIPS_PER_SIDE } from '../engine/fleet'
-import { createGame, type GameState, type Scenario } from '../engine/game'
+import { createGame, type GameState, type Scenario, type Terrain } from '../engine/game'
+import { DIE_FACES, Rng } from '../engine/dice'
+import { ASTEROID_COUNTERS, DENSITY_STATS } from './terrainCounters'
 import type { MapBounds } from '../engine/navigation'
 import { createShip, type ShipState } from '../engine/shipState'
 import type { Point, ShipForm } from '../engine/types'
@@ -241,6 +243,14 @@ export interface SetupOptions {
    * Overrides `forms` and the scenario's printed force (S2.5.1).
    */
   fleets?: Partial<Record<string, string[]>>
+  /**
+   * Random asteroid terrain (K1.1): 'roll' rolls the yellow die on the K1.1
+   * chart, a number places exactly that many counters. Fields are drawn from
+   * the 26 printed counters and placed at least 3 inches apart (K1.2.2),
+   * deterministically from the seed — so a save or a remote peer rebuilds the
+   * same field.
+   */
+  terrain?: 'roll' | number
 }
 
 /**
@@ -553,9 +563,19 @@ export function printedForce(scenarioId: string, side: string): string[] {
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
   const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
+  // The scenario is cloned so generated terrain never leaks into the module's
+  // shared definition — and the game's own RNG is left untouched, so a battle
+  // with terrain rolls the same combat dice as one without.
+  const scenario: Scenario = {
+    ...entry.scenario,
+    terrain: [
+      ...entry.scenario.terrain,
+      ...rollAsteroidTerrain(entry.scenario, options.terrain, options.seed ?? 0),
+    ],
+  }
   return createGame({
-    scenario: entry.scenario,
-    ships: deploy(entry.sides, entry.scenario.bounds, options),
+    scenario,
+    ships: deploy(entry.sides, scenario.bounds, options),
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
     options: {
@@ -563,4 +583,74 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
       explosions: options.explosions ?? false,
     },
   })
+}
+
+/**
+ * Random asteroid terrain (K1.1, K1.2), from the printed counter set.
+ *
+ * K1.1 rolls one yellow die: Miss — none, Light — 4, Medium — 6, Heavy — 8
+ * counters. The tabletop game then has players alternate placing them by hand
+ * (K1.2.1); here placement is drawn from the setup seed instead, honouring
+ * the 3-inch separation (K1.2.2) and keeping out of the deployment bands.
+ */
+function rollAsteroidTerrain(
+  scenario: Scenario,
+  choice: 'roll' | number | undefined,
+  seed: number,
+): Terrain[] {
+  if (choice === undefined || choice === 0) return []
+  const rng = new Rng((seed ^ 0x7e22a1) >>> 0)
+
+  let count: number
+  if (choice === 'roll') {
+    const face = DIE_FACES.yellow[rng.int(6)]
+    count = face === '-' ? 0 : face === 'L' ? 4 : face === 'M' ? 6 : 8
+  } else {
+    count = Math.max(0, Math.min(12, Math.floor(choice)))
+  }
+  if (count === 0) return []
+
+  const counters = rng.shuffle([...ASTEROID_COUNTERS]).slice(0, count)
+  const { width, height } = scenario.bounds
+  const placed: Terrain[] = []
+
+  for (const counter of counters) {
+    const stats = DENSITY_STATS[counter.density]
+    let radius = 1.8 + rng.next() * 0.9
+    let spot: Point | null = null
+    // Two passes: at full size within the middle band first; if the board is
+    // too crowded for that, once more smaller and with a wider band, so the
+    // K1.1 count is honoured whenever the geometry allows it at all.
+    for (let pass = 0; pass < 2 && !spot; pass++) {
+      if (pass === 1) radius = 1.5
+      // Keep clear of the deployment bands along the north and south edges.
+      const xMin = radius + 2
+      const xMax = width - radius - 2
+      const yMin = radius + (pass === 0 ? 7 : 5)
+      const yMax = height - radius - (pass === 0 ? 7 : 5)
+      for (let attempt = 0; attempt < 300 && !spot; attempt++) {
+        const p = { x: xMin + rng.next() * (xMax - xMin), y: yMin + rng.next() * (yMax - yMin) }
+        const clear = [...scenario.terrain, ...placed].every(
+          (t) => Math.hypot(p.x - t.center.x, p.y - t.center.y) >= t.radius + radius + 3,
+        )
+        if (clear) spot = p
+      }
+    }
+    // A board genuinely too crowded to satisfy K1.2.2 takes fewer counters.
+    if (!spot) continue
+
+    placed.push({
+      id: `asteroid-${counter.id}`,
+      kind: 'asteroid-field',
+      name: `Asteroids #${counter.id}`,
+      center: spot,
+      radius,
+      density: counter.density,
+      safeSpeed: stats.spd,
+      damageDie: stats.dmgDie,
+      cover: stats.cover,
+      scan: stats.scan,
+    })
+  }
+  return placed
 }

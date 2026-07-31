@@ -21,6 +21,8 @@ export interface GameSetup {
   forms?: Partial<Record<string, string>>
   /** A whole force per side, one form id per hull (S2.5.1). */
   fleets?: Partial<Record<string, string[]>>
+  /** Random asteroid terrain (K1.1): 'roll' or an exact counter count. */
+  terrain?: 'roll' | number
   /**
    * Every non-canon form the fleets reference, embedded whole, so the battle
    * replays on a machine that has never seen the design.
@@ -43,6 +45,7 @@ export function buildGame(setup: GameSetup): GameState {
     coordinatedFire: setup.coordinatedFire ?? false,
     forms: setup.forms,
     fleets: setup.fleets,
+    terrain: setup.terrain,
   })
 }
 

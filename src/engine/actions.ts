@@ -19,6 +19,8 @@ import {
   advanceFiringStep,
   advanceOperationsStep,
   advanceSegment,
+  asteroidCoverRerolls,
+  asteroidFieldsAt,
   attackAllowed,
   attemptTractorLock,
   cloakModifiers,
@@ -335,6 +337,12 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
           ...terrain,
           degradedFireControl: action.degraded || terrain.degradedFireControl,
           obstacles: terrainObstacles(game.scenario.terrain),
+          // Asteroid cover rerolls (K2.1.8) and the in-field exemption from
+          // the low-speed penalty (K2.2.1).
+          defenderCoverRerolls: asteroidCoverRerolls(game, attacker, target),
+          lowSpeedNegated:
+            terrain.lowSpeedNegated ||
+            asteroidFieldsAt(game.scenario.terrain, target.placement.position).length > 0,
         },
         damageContext(game),
         game.rng,

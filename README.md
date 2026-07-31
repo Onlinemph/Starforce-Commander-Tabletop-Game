@@ -140,6 +140,13 @@ of S2.5.4.
 And a **ship builder**, built on the designers' own costing spreadsheet, so you can design your own
 hulls, have them priced on the same scale as the printed ones, and fly them the same afternoon.
 
+And the **printed terrain**: all 26 asteroid field counters from the Print and Play sheet, with
+their densities, safe speeds, damage dice, cover diamonds and SCAN values (K2.1) — drawn on the map
+with the sheet's own asteroid photography. Pick a terrain option in *Choose forces* and the K1.1
+chart rolls the field count, with counters placed three inches apart (K1.2.2), deterministically
+from the battle seed. Transit damage, defender cover rerolls (K2.1.8) and the in-field low-speed
+exemption (K2.2.1) all apply at the table.
+
 ## Rules coverage
 
 | Section | Status | Notes |
@@ -722,9 +729,6 @@ line — which is exactly what E7.2.5 describes.
 - **Fighters and carriers** (E12.1.3) — the terminology, degraded-fire and point-defense rules are
   in the engine and shuttles and probes fly, but fighters need a carrier book that has not been
   published. Nothing to do until it exists.
-- **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
-  the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
-  numbered counter have not been imported; scenarios set them directly instead.
 - **Scenarios** (S3) — two of the six printed missions, The Duel (S3.1) and Orbital Ambush (S3.3),
   plus three written to exercise the expansions: the Squadron Engagement, Nebula Patrol and the
   Aurelian Raid. S3.2, S3.4, S3.5 and S3.6 are straightforward to add.

@@ -702,8 +702,9 @@ input:focus-visible {
   stroke-dasharray: 5 5;
   stroke-width: 1;
 }
-.asteroid-rocks circle {
-  fill: #a08a63;
+/* Real rock photographs on black; screen-blending melts the black away. */
+.asteroid-rocks image {
+  mix-blend-mode: screen;
   pointer-events: none;
 }
 /* Gas clouds are soft-edged and translucent, not solid bodies (K5). */

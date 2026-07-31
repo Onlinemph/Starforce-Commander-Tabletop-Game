@@ -75,6 +75,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   )
   const [year, setYear] = useState(latestYear)
   const [budget, setBudget] = useState<number | null>(null)
+  const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -115,6 +116,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       scenarioId: scenario,
       seed: Math.floor(Math.random() * 1e9),
       fleets: Object.fromEntries(sides.map((s) => [s, fleetFormIds(fleets[s] ?? [])])),
+      terrain: terrain === 'none' ? undefined : terrain,
     })
     onClose()
   }
@@ -160,6 +162,25 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               max={9999}
               onChange={(e) => setYear(Number(e.target.value) || latestYear)}
             />
+          </label>
+          <label
+            className="field tiny"
+            title="K1.1 — asteroid fields from the printed counter sheet, on top of the scenario's own terrain. 'Roll' rolls the yellow die: miss none, L 4, M 6, H 8."
+          >
+            <span>Terrain</span>
+            <select
+              value={String(terrain)}
+              onChange={(e) => {
+                const v = e.target.value
+                setTerrain(v === 'none' || v === 'roll' ? v : (Number(v) as 4 | 6 | 8))
+              }}
+            >
+              <option value="none">Open space</option>
+              <option value="roll">Roll (K1.1)</option>
+              <option value="4">4 fields</option>
+              <option value="6">6 fields</option>
+              <option value="8">8 fields</option>
+            </select>
           </label>
           <label className="field tiny">
             <span>Point budget</span>

@@ -13,6 +13,8 @@ import {
   mayFireAlone,
 } from '../engine/coordinatedFire'
 import {
+  asteroidCoverRerolls,
+  asteroidFieldsAt,
   attackAllowed,
   cloakModifiers,
   cloudModifiers,
@@ -105,6 +107,10 @@ export function CombatPanel({ game, attacker }: Props) {
         )
       : null
   const targetArcs = target ? arcTo(attacker.placement.position, attacker.placement.heading, target.placement.position) : []
+  // Asteroid cover (K2.1.8) and the in-field low-speed exemption (K2.2.1).
+  const cover = target ? asteroidCoverRerolls(game, attacker, target) : 0
+  const targetInField =
+    target !== null && asteroidFieldsAt(game.scenario.terrain, target.placement.position).length > 0
   const shieldOptions = target
     ? shieldsFacing(attacker.placement.position, target.placement.position, target.placement.heading)
     : []
@@ -225,8 +231,18 @@ export function CombatPanel({ game, attacker }: Props) {
           )}
           <span>Firing arc {targetArcs.join(' or ')}</span>
           <span>Strikes {shieldOptions.join(' or ')} shield</span>
-          {target.speed === 0 && !clouds.lowSpeedNegated && (
+          {target.speed === 0 && !clouds.lowSpeedNegated && !targetInField && (
             <span className="chip chip-warn">Low-speed penalty (C1.5)</span>
+          )}
+          {cover > 0 && (
+            <span className="chip chip-scout" title="K2.1.8 — the defender rerolls this many attack dice">
+              Asteroid cover: {cover} reroll{cover === 1 ? '' : 's'}
+            </span>
+          )}
+          {targetInField && target.speed === 0 && (
+            <span className="chip chip-scout" title="K2.2.1 — no low-speed penalty inside an asteroid field">
+              In the rocks — no low-speed penalty
+            </span>
           )}
           {clouds.degradedFireControl && (
             <span className="chip chip-warn" title="K4.2.6, K5.2.5">
