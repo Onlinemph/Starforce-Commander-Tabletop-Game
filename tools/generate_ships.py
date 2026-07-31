@@ -21,7 +21,10 @@ if os.path.exists('aurelian_raw.json'):
         _s['book'] = 'aurelian'
         S.append(_s)
 
-M = [m for m in json.load(open('msl.json')) if not m.get('future')]
+# Rows flagged for a later expansion stay in the matching pool: a few of them
+# already have forms in this book, and dropping the row made the fuzzy match
+# hand the form its predecessor's point value.
+M = json.load(open('msl.json'))
 
 for _s in S:
     _s['strCount'] = sum(1 for e in _s['structure'] if e['kind'] == 'box')
