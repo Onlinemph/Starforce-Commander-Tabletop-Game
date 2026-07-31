@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { positionIsHidden } from '../engine/cloaking'
 import { formationOf } from '../engine/formation'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
 import type { GameState } from '../engine/game'
@@ -124,13 +125,59 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         </g>
       )}
 
+      {/* Homing weapons in flight (E5.1.9) — 3/4-inch counters. */}
+      {game.homing.map((hw) => (
+        <g key={hw.id} className={`homing homing-${hw.side === game.ships[0]?.side ? 'blue' : 'red'}`}>
+          <rect
+            x={hw.position.x * SCALE - (0.375 * SCALE)}
+            y={hw.position.y * SCALE - (0.375 * SCALE)}
+            width={0.75 * SCALE}
+            height={0.75 * SCALE}
+            className="homing-counter"
+          />
+          {/* The white dot is the counter's position for range and movement. */}
+          <circle cx={hw.position.x * SCALE} cy={hw.position.y * SCALE} r={1.5} className="homing-dot" />
+        </g>
+      ))}
+
+      {/*
+        A cloaked, undetected ship leaves only a datum behind — the spot it was
+        last seen (H6.2.2).
+      */}
+      {Object.entries(game.cloaks).map(([id, cloak]) => {
+        if (!positionIsHidden(cloak)) return null
+        const ship = game.ships.find((s) => s.id === id)
+        if (!ship || ship.destroyed || ship.disengaged) return null
+        return (
+          <g key={`datum-${id}`} className="datum">
+            <circle
+              cx={cloak.datum.position.x * SCALE}
+              cy={cloak.datum.position.y * SCALE}
+              r={0.75 * SCALE}
+              className="datum-ring"
+            />
+            <text
+              x={cloak.datum.position.x * SCALE}
+              y={cloak.datum.position.y * SCALE + 4}
+              className="datum-label"
+              textAnchor="middle"
+            >
+              DATUM
+            </text>
+          </g>
+        )
+      })}
+
       {/*
         Only the lead ship's counter stays on the map when ships fly in
         formation (C5.1.3), so members are drawn as a strength badge on the
-        lead rather than as counters stacked in the same square.
+        lead rather than as counters stacked in the same square. A cloaked ship
+        that has not been detected is not drawn at all (H6.2.2).
       */}
       {game.ships
         .filter((ship) => {
+          const cloak = game.cloaks[ship.id]
+          if (cloak && positionIsHidden(cloak)) return false
           const formation = formationOf(game.formations, ship.id)
           return !formation || formation.leadId === ship.id
         })

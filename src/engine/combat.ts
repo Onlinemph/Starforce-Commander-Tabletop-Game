@@ -138,6 +138,12 @@ export interface VolleyRequest {
   scoutSupport?: ScoutSupport
   /** Target is inside a nebula or gas cloud, so its shields do nothing (K4.2.1). */
   targetShieldsInoperative?: boolean
+  /** The attacker has its own cloak engaged, which locks its weapons (H6.4.2). */
+  attackerCloaked?: boolean
+  /** Why the target cannot be fired at, if the cloaking rules forbid it (H6.14). */
+  targetUnshootable?: string
+  /** The target has its cloak engaged, which bars precision targeting (H6.4.11). */
+  targetCloaked?: boolean
   /**
    * Working SCNC boxes on the attacker, for the precision-targeting hand
    * (E9.2.2). Defaults to its undamaged boxes; a nebula can switch them off
@@ -186,6 +192,14 @@ export function resolveVolley(
   const { attacker, target, mode } = request
 
   if (attacker.destroyed || attacker.derelict) return { ok: false, reason: 'Attacker cannot fire.' }
+  // H6.4.2: a cloaked ship cannot fire at all.
+  if (request.attackerCloaked) {
+    return { ok: false, reason: `${attacker.name} is cloaked and may not fire (H6.4.2).` }
+  }
+  // H6.14.1/2: an undetected ship, or one held only as a Contact, is unshootable.
+  if (request.targetUnshootable) {
+    return { ok: false, reason: request.targetUnshootable }
+  }
   if (target.destroyed || target.disengaged) return { ok: false, reason: 'Target is no longer in play.' }
   if (request.mounts.length === 0) return { ok: false, reason: 'No weapons selected.' }
 
@@ -227,6 +241,10 @@ export function resolveVolley(
     // H4.6.2: too much interference from the other ships' fire.
     if (request.coordinated) {
       return { ok: false, reason: 'Ships using Coordinated Fire may not use precision targeting (H4.6.2).' }
+    }
+    // H6.4.11: never against a cloaked ship, whatever the detection level.
+    if (request.targetShieldsInoperative && request.targetCloaked) {
+      return { ok: false, reason: 'Precision targeting may not be used against a cloaked ship (H6.4.11).' }
     }
   }
   if (mode === 'proximity' && request.degradedFireControl) {

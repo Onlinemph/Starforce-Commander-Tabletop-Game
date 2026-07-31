@@ -16,6 +16,18 @@ import {
   type CommandState,
 } from './command'
 import {
+  bestDetection,
+  cloakEffects,
+  damageSearchDice,
+  firingPermission,
+  isCloaked,
+  newCloakState,
+  positionIsHidden,
+  speedSearchDice,
+  type CloakEffects,
+  type CloakState,
+} from './cloaking'
+import {
   checkOneAttackPerPhase,
   attackKey,
   validateCoordinatedFire,
@@ -30,7 +42,7 @@ import {
   pruneFormations,
   type Formation,
 } from './formation'
-import type { CircleObstacle } from './geometry'
+import { distance, hasLineOfSight, type CircleObstacle } from './geometry'
 import {
   cloudAt,
   degradedByClouds,
@@ -48,6 +60,17 @@ import {
   type CloudFeature,
   type NebulaEffects,
 } from './nebula'
+import { hasCloak } from './cloaking'
+import {
+  applyDefensiveFire,
+  impactShield,
+  isHoming,
+  jammingPenalty,
+  launchHomingWeapon,
+  moveHomingWeapon,
+  resolveHomingVolley,
+  type HomingWeapon,
+} from './homing'
 import { scoutSupportFor, type ScoutSupport } from './scouting'
 import {
   disengagementOptions,
@@ -58,13 +81,21 @@ import {
 import {
   beginRound,
   damageLevel,
+  mountIsReady,
   structureRemaining,
   structureTotal,
   undamagedSystemBoxes,
   VICTORY_FRACTION,
   type ShipState,
 } from './shipState'
-import type { CommandCard, Phase, Segment, ShieldSide, SystemKind } from './types'
+import type {
+  CommandCard,
+  Phase,
+  Segment,
+  ShieldSide,
+  SystemKind,
+  WeaponSystemDef,
+} from './types'
 
 /**
  * Game orchestration: the Sequence of Play (A3) and everything that hangs off
@@ -219,6 +250,12 @@ export interface GameState {
   coordinatedGroup: CoordinatedGroup | null
   /** Ships flying as one counter (C5). */
   formations: Formation[]
+  /** Cloak state per ship, for ships that carry one (H6). */
+  cloaks: Record<string, CloakState>
+  /** Homing weapons in flight (E5). */
+  homing: HomingWeapon[]
+  /** E5.10 jamming against homing weapons is optional; off by default. */
+  jammingVsHoming: boolean
   options: DestructionOptions
 }
 
@@ -249,6 +286,8 @@ export function createGame(args: {
   options?: DestructionOptions
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
+  /** Play with the optional jamming-versus-homing rules (E5.10). */
+  jammingVsHoming?: boolean
 }): GameState {
   const rng = new Rng(args.seed ?? 0x5f04ce)
   const options = args.options ?? STANDARD_DESTRUCTION
@@ -265,6 +304,12 @@ export function createGame(args: {
     state.commandShipId = flagship?.id ?? null
     command[side] = state
   }
+  // Every ship that carries a cloak gets a hidden track, disengaged (H6.1).
+  const cloaks: Record<string, CloakState> = {}
+  for (const ship of args.ships) {
+    if (hasCloak(ship)) cloaks[ship.id] = newCloakState(ship.placement)
+  }
+
   const game: GameState = {
     scenario: args.scenario,
     round: 1,
@@ -283,6 +328,9 @@ export function createGame(args: {
     attackedThisPhase: new Set(),
     coordinatedGroup: null,
     formations: [],
+    cloaks,
+    homing: [],
+    jammingVsHoming: args.jammingVsHoming ?? false,
     options,
   }
   for (const ship of game.ships) beginRound(ship)
@@ -304,6 +352,29 @@ export function damageContext(game: GameState): DamageContext {
     // takes the blast on the aft shield (E11.3.2, E11.3.4, C5).
     ships: game.ships,
     formations: game.formations,
+  }
+}
+
+/**
+ * Cloaking restrictions on one volley (H6.4.2, H6.4.11, H6.14), ready to spread
+ * into a `VolleyRequest` alongside `cloudModifiers`.
+ */
+export function cloakModifiers(
+  game: GameState,
+  attacker: ShipState,
+  target: ShipState,
+): { attackerCloaked: boolean; targetCloaked: boolean; targetUnshootable?: string } {
+  // Aiming a ship at itself is how the UI asks "may I fire at all?" before a
+  // target is chosen; its own cloak still answers.
+  const targetCloak = target.id === attacker.id ? undefined : game.cloaks[target.id]
+  const cloaked = isCloaked(targetCloak)
+  const permission = cloaked
+    ? firingPermission(targetCloak!, attacker.id)
+    : { mayFire: true, degraded: false, reason: undefined }
+  return {
+    attackerCloaked: shipIsCloaked(game, attacker),
+    targetCloaked: cloaked,
+    ...(permission.mayFire ? {} : { targetUnshootable: permission.reason }),
   }
 }
 
@@ -362,10 +433,17 @@ export function cloudModifiers(
   target: ShipState,
 ): { degradedFireControl: boolean; lowSpeedNegated: boolean; targetShieldsInoperative: boolean } {
   const conditions = cloudConditions(game.scenario)
+  const cloak = game.cloaks[target.id]
+  const cloaked = isCloaked(cloak)
   return {
-    degradedFireControl: degradedByClouds(conditions, attacker, target),
+    // A Track is enough to shoot at a cloaked ship, but only through degraded
+    // fire control (H6.14.3).
+    degradedFireControl:
+      degradedByClouds(conditions, attacker, target) ||
+      (cloaked && bestDetection(cloak!) === 2),
     lowSpeedNegated: lowSpeedPenaltyNegated(conditions, target),
-    targetShieldsInoperative: shieldsInoperative(conditions, target),
+    // A cloaked ship's shields are down whatever the terrain (H6.4.1).
+    targetShieldsInoperative: shieldsInoperative(conditions, target) || cloaked,
   }
 }
 
@@ -377,6 +455,53 @@ export function cloudModifiers(
 export function workingSystemBoxes(game: GameState, ship: ShipState, kind: SystemKind): number {
   if (systemIsHampered(cloudConditions(game.scenario), ship, kind)) return 0
   return undamagedSystemBoxes(ship, kind)
+}
+
+// ---------------------------------------------------------------------------
+// Cloaking (H6)
+// ---------------------------------------------------------------------------
+
+export function cloakOf(game: GameState, ship: ShipState): CloakState | undefined {
+  return game.cloaks[ship.id]
+}
+
+export function shipIsCloaked(game: GameState, ship: ShipState): boolean {
+  return isCloaked(game.cloaks[ship.id])
+}
+
+/** What the cloak is currently costing this ship (H6.4). */
+export function cloakEffectsOn(game: GameState, ship: ShipState): CloakEffects {
+  return cloakEffects(game.cloaks[ship.id])
+}
+
+/**
+ * Where a ship is drawn. An undetected cloaked ship shows only its datum — the
+ * spot it was last seen (H6.2.2) — while a detected one is back on the map.
+ */
+export function displayPlacement(game: GameState, ship: ShipState) {
+  const cloak = game.cloaks[ship.id]
+  return cloak && positionIsHidden(cloak) ? cloak.datum : ship.placement
+}
+
+/** Detection level the enemy as a whole has on a cloaked ship (H6.2). */
+export function detectionLevelOf(game: GameState, ship: ShipState): number {
+  const cloak = game.cloaks[ship.id]
+  return cloak && cloak.engaged ? bestDetection(cloak) : 3
+}
+
+/**
+ * Bonus search rolls a cloaked ship hands its hunters this segment (H6.15).
+ * Speed above 2 and every four points of damage each grant dice.
+ */
+export function bonusSearchDice(game: GameState, ship: ShipState, damageTaken = 0): number {
+  const cloak = game.cloaks[ship.id]
+  if (!cloak?.engaged) return 0
+  return speedSearchDice(ship.speed) + damageSearchDice(damageTaken)
+}
+
+/** Nebulae blind cloaks: all the restrictions, none of the benefit (H6.8.11). */
+export function cloakSuppressedByTerrain(game: GameState, ship: ShipState): boolean {
+  return underCloudEffects(cloudConditions(game.scenario), ship)
 }
 
 // ---------------------------------------------------------------------------
@@ -540,6 +665,124 @@ export function victoryPoints(game: GameState): Record<string, number> {
 }
 
 // ---------------------------------------------------------------------------
+// Homing weapons (E5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Launch a homing weapon during the Offensive Fire step (E5.2). Returns an
+ * error message when the launch is illegal, in which case nothing is launched.
+ */
+export function launchHoming(
+  game: GameState,
+  launcher: ShipState,
+  weapon: WeaponSystemDef,
+  mountIndex: number,
+  target: ShipState,
+  maxSpeed?: number,
+): string | null {
+  if (!isHoming(weapon)) return `${weapon.name} is not a homing weapon (F1.10).`
+  // H6.4.2: a cloaked ship may not launch.
+  if (shipIsCloaked(game, launcher)) {
+    return `${launcher.name} is cloaked and may not launch homing weapons (H6.4.2).`
+  }
+  // H6.2 / E5.2.2: you need at least a Track on a cloaked target.
+  const targetCloak = game.cloaks[target.id]
+  if (isCloaked(targetCloak) && bestDetection(targetCloak!) < 2) {
+    return `${launcher.name} has no Track or Lock on ${target.name} (E5.2.2).`
+  }
+  const state = launcher.mounts[weapon.id]?.[mountIndex]
+  const mount = weapon.mounts[mountIndex]
+  if (!state || !mount) return 'Unknown weapon mount.'
+  if (!mountIsReady(weapon, mountIndex, state)) return `${weapon.name} is not fully armed (E4.2.3).`
+
+  // E5.2.1: planets block a launch, but clouds and asteroids do not.
+  const blockers = terrainObstacles(game.scenario.terrain.filter((t) => t.kind === 'planet' || t.kind === 'moon'))
+  if (!hasLineOfSight(launcher.placement.position, target.placement.position, blockers)) {
+    return 'A planet blocks the line of sight to the target (E5.2.1, K3.1.3).'
+  }
+
+  const arc = mount.arcs[0]
+  game.homing.push(launchHomingWeapon({ launcher, weapon, target, arc, maxSpeed }))
+  state.armed = Math.max(0, state.armed - mount.armingCircles)
+  if (mount.ammo !== undefined) state.ammoUsed += 1
+  pushLog(game, `${launcher.name} launches ${weapon.name} at ${target.name} (E5.2).`)
+  return null
+}
+
+/** Homing weapons that have reached a given ship and are waiting to resolve. */
+export function impactingHoming(game: GameState, target: ShipState): HomingWeapon[] {
+  return game.homing.filter((hw) => hw.targetId === target.id && hw.impacted && !hw.destroyed)
+}
+
+/**
+ * Resolve every homing weapon that has reached its target (E5.4). Each shield
+ * struck is a separate volley (E5.4 Step 3), and point defense damage assigned
+ * to a volley is passed in per shield.
+ */
+export function resolveHomingImpacts(
+  game: GameState,
+  target: ShipState,
+  pointDefenseBySide: Partial<Record<ShieldSide, number>> = {},
+): void {
+  const arrived = impactingHoming(game, target)
+  if (arrived.length === 0) return
+
+  const bySide = new Map<ShieldSide, HomingWeapon[]>()
+  for (const hw of arrived) {
+    const side = impactShield(hw, target)
+    if (!bySide.has(side)) bySide.set(side, [])
+    bySide.get(side)!.push(hw)
+  }
+
+  const conditions = cloudConditions(game.scenario)
+  for (const [side, group] of bySide) {
+    const owner = shipById(game, group[0].ownerId)
+    const def = owner?.form.weapons.find((w) => w.id === group[0].weaponId)
+    if (!def) continue
+
+    // Step 4: point defense fire, then Step 5 assigns it to the weapons.
+    const defensive = pointDefenseBySide[side] ?? 0
+    if (defensive > 0) {
+      const { destroyed } = applyDefensiveFire(group, def, defensive)
+      if (destroyed.length > 0) {
+        pushLog(game, `${target.name}'s point defense destroys ${destroyed.length} incoming weapon(s) (E5.4 Step 5).`)
+      }
+    }
+
+    const survivors = group.filter((hw) => !hw.destroyed && !hw.tractored)
+    if (survivors.length === 0) continue
+
+    const range = Math.floor(distance(survivors[0].position, target.placement.position))
+    const volley = resolveHomingVolley(survivors, def, side, survivors[0].phasesFlown, range, game.rng)
+    if (volley.standard === 0 && volley.leak === 0 && volley.structure === 0) {
+      pushLog(game, `${def.name} is worn down to nothing before it strikes (F1.16.2).`)
+      continue
+    }
+
+    pushLog(
+      game,
+      `${def.name} strikes ${target.name}'s ${side} shield for ${volley.standard} damage` +
+        (volley.leak ? `, ${volley.leak} leak` : '') +
+        (volley.absorbed ? ` (reduced by ${volley.absorbed} points of defensive fire)` : ''),
+    )
+    applyVolley(
+      target,
+      {
+        standard: volley.standard,
+        leak: volley.leak,
+        structurePenetration: volley.structure,
+        side,
+        shieldsInoperative:
+          shieldsInoperative(conditions, target) || shipIsCloaked(game, target),
+      },
+      damageContext(game),
+    )
+  }
+
+  game.homing = game.homing.filter((hw) => !hw.impacted && !hw.destroyed)
+}
+
+// ---------------------------------------------------------------------------
 // Segment transitions (A3)
 // ---------------------------------------------------------------------------
 
@@ -605,6 +848,8 @@ function runSegmentExit(game: GameState): void {
       pruneFormations(game.formations, game.ships)
       for (const formation of game.formations) alignToLead(formation, game.ships)
       applyTurbulence(game)
+      logCloakedSpeeds(game)
+      moveHomingWeapons(game)
       break
     }
 
@@ -619,6 +864,7 @@ function runSegmentExit(game: GameState): void {
 
     case 'delayed-action':
       game.shieldChangedThisPhase.clear()
+      advanceCloakPhases(game)
       break
 
     case 'stress-check': {
@@ -673,6 +919,64 @@ function applyFormationOrders(game: GameState): void {
       card.speed = lead.speed
     }
   }
+}
+
+/**
+ * Per-phase cloak bookkeeping (H6.6.7, H6.7.7): a cloak must stay on for a full
+ * phase once engaged and off for one before it may be re-engaged, so both
+ * counters tick at the end of every combat phase.
+ */
+function advanceCloakPhases(game: GameState): void {
+  for (const cloak of Object.values(game.cloaks)) {
+    if (cloak.engaged) cloak.phasesCloaked += 1
+    else if (cloak.phasesUncloaked !== Infinity) cloak.phasesUncloaked += 1
+    // A searcher may climb one level per segment, so the marker clears with the
+    // phase (H6.15.1).
+    cloak.raisedThisSegment = []
+  }
+}
+
+/**
+ * A cloaked, undetected ship records its speed for each phase instead of
+ * moving on the map; that log is what it replays from its datum when it is
+ * finally found (H6.5.4, H6.8.4).
+ */
+function logCloakedSpeeds(game: GameState): void {
+  for (const ship of activeShips(game)) {
+    const cloak = game.cloaks[ship.id]
+    if (cloak && positionIsHidden(cloak)) cloak.speedLog.push(ship.speed)
+  }
+}
+
+/**
+ * Homing weapons move immediately after their target does (E5.3.1, E5.3.3).
+ * Impacts are held over to the Combat Segment, where the target may answer with
+ * point defense first (E5.1.7).
+ */
+function moveHomingWeapons(game: GameState): void {
+  for (const hw of game.homing) {
+    if (hw.destroyed || hw.impacted) continue
+    const target = shipById(game, hw.targetId)
+    const owner = shipById(game, hw.ownerId)
+    if (!target || target.destroyed || target.disengaged) {
+      hw.destroyed = true
+      continue
+    }
+    const def = owner?.form.weapons.find((w) => w.id === hw.weaponId)
+    if (!def) {
+      hw.destroyed = true
+      continue
+    }
+    const penalty = game.jammingVsHoming && owner ? jammingPenalty(target, owner) : 0
+    const result = moveHomingWeapon(hw, def, target, penalty)
+    if (result.expired) {
+      hw.destroyed = true
+      pushLog(game, `${hw.weaponName} runs out of endurance and is removed (E5.1.6).`)
+    } else if (result.impact) {
+      pushLog(game, `${hw.weaponName} closes on ${target.name}'s ${result.side} shield (E5.4).`)
+    }
+  }
+  game.homing = game.homing.filter((hw) => !hw.destroyed)
 }
 
 function runSegmentEnter(game: GameState): void {

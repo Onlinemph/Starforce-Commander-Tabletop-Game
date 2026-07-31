@@ -16,7 +16,11 @@ import {
 import {
   advanceFiringStep,
   attackAllowed,
+  cloakModifiers,
   cloudModifiers,
+  impactingHoming,
+  launchHoming,
+  resolveHomingImpacts,
   currentFiringStep,
   damageContext,
   declareCoordinatedFire,
@@ -29,8 +33,10 @@ import {
   type GameState,
 } from '../engine/game'
 import { actualRange, arcTo, canBearOn, effectiveRange, shieldsFacing } from '../engine/geometry'
+import { endurance, impactShield, isHoming, speedInPhase } from '../engine/homing'
 import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
+import type { ShieldSide } from '../engine/types'
 import { act } from './store'
 
 /**
@@ -87,6 +93,11 @@ export function CombatPanel({ game, attacker }: Props) {
   const clouds = target
     ? cloudModifiers(game, attacker, target)
     : { degradedFireControl: false, lowSpeedNegated: false, targetShieldsInoperative: false }
+  // Cloaking bars fire outright below Track level and locks a cloaked ship's
+  // own weapons (H6.4.2, H6.14).
+  // The attacker's own cloak locks its weapons whether or not it has picked a
+  // target yet, so that half is computed against itself (H6.4.2).
+  const cloak = cloakModifiers(game, attacker, target ?? attacker)
   const degradedNow = degraded || clouds.degradedFireControl
   const actual = target ? actualRange(attacker.placement.position, target.placement.position) : null
   const effective =
@@ -128,6 +139,7 @@ export function CombatPanel({ game, attacker }: Props) {
           precisionSection: mode === 'precision' ? section : undefined,
           coordinated: inGroup,
           scoutSupport: scoutSupport(g, attacker, target),
+          ...cloakModifiers(g, attacker, target),
           // A nebula can switch the sciences off, shrinking the precision hand
           // (K4.2.4, E9.2.2).
           attackerSciences: workingSystemBoxes(g, attacker, 'SCNC'),
@@ -207,6 +219,15 @@ export function CombatPanel({ game, attacker }: Props) {
       )}
 
       {attackBlocked && <p className="fire-error">{attackBlocked}</p>}
+      {cloak.targetUnshootable && <p className="fire-error">{cloak.targetUnshootable}</p>}
+      {cloak.attackerCloaked && (
+        <p className="fire-error">{attacker.name} is cloaked and may not fire (H6.4.2).</p>
+      )}
+
+      {impactingHoming(game, attacker).length > 0 && (
+        <HomingImpacts game={game} target={attacker} />
+      )}
+      {target && <HomingLaunch attacker={attacker} target={target} />}
 
       {target && (
         <div className="range-readout">
@@ -342,6 +363,8 @@ export function CombatPanel({ game, attacker }: Props) {
             !target ||
             selected.size === 0 ||
             attackBlocked !== null ||
+            cloak.attackerCloaked ||
+            cloak.targetUnshootable !== undefined ||
             (game.coordinatedFire && !mayFire)
           }
           onClick={fire}
@@ -506,6 +529,103 @@ function CoordinatedFireBuilder({ game, attacker }: { game: GameState; attacker:
       <p className="hint">
         Each ship needs Tactical Scan at least equal to the number of ships firing together (H4.5.1),
         and the group fires on the step set by its highest level (H4.5.5).
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Homing weapon launches (E5.2). A launch is not a volley: the weapon goes on
+ * the map and flies toward its target over the phases that follow.
+ */
+function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipState }) {
+  const [error, setError] = useState<string | null>(null)
+  const launchers = attacker.form.weapons.filter(isHoming)
+  if (launchers.length === 0) return null
+
+  return (
+    <div className="homing-launch">
+      <h4>Homing weapons (E5.2)</h4>
+      <div className="weapon-picker">
+        {launchers.map((weapon) =>
+          weapon.mounts.map((mount, index) => {
+            const state = attacker.mounts[weapon.id][index]
+            const ready = mountIsReady(weapon, index, state)
+            return (
+              <button
+                key={`${weapon.id}|${index}`}
+                type="button"
+                className={`weapon-pick${ready ? '' : ' is-disabled'}`}
+                disabled={!ready}
+                title={
+                  ready
+                    ? `Endurance ${endurance(weapon)} phases, ${speedInPhase(weapon, 1)}" on the first leg`
+                    : 'Not fully armed (E4.2.3)'
+                }
+                onClick={() => act((g) => setError(launchHoming(g, attacker, weapon, index, target)))}
+              >
+                <span>
+                  Launch {weapon.name} #{index + 1}
+                </span>
+                <em>
+                  {endurance(weapon)} phases · {mount.arcs.join('/')}
+                </em>
+              </button>
+            )
+          }),
+        )}
+      </div>
+      {error && <p className="fire-error">{error}</p>}
+    </div>
+  )
+}
+
+/**
+ * Homing weapons that have reached this ship and are waiting to be resolved
+ * (E5.4). The defender assigns point defense damage per shield struck, since
+ * each shield is its own volley (E5.4 Step 3).
+ */
+function HomingImpacts({ game, target }: { game: GameState; target: ShipState }) {
+  const [pd, setPd] = useState<Partial<Record<ShieldSide, number>>>({})
+  const arrived = impactingHoming(game, target)
+
+  const bySide = new Map<ShieldSide, number>()
+  for (const hw of arrived) {
+    const side = impactShield(hw, target)
+    bySide.set(side, (bySide.get(side) ?? 0) + 1)
+  }
+
+  return (
+    <div className="homing-impacts">
+      <h4>Incoming homing weapons (E5.4)</h4>
+      {[...bySide].map(([side, count]) => (
+        <label key={side} className="field inline">
+          <span>
+            {count} on the {side} shield — point defense damage
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={pd[side] ?? 0}
+            onChange={(e) => setPd((prev) => ({ ...prev, [side]: Number(e.target.value) }))}
+          />
+        </label>
+      ))}
+      <button
+        type="button"
+        className="primary"
+        onClick={() =>
+          act((g) => {
+            resolveHomingImpacts(g, target, pd)
+            setPd({})
+          })
+        }
+      >
+        Resolve impacts
+      </button>
+      <p className="hint">
+        Every three points of point defense damage takes one point off a particle weapon&apos;s
+        warhead; a missile is destroyed outright once it has taken its `MISL X` (F1.16.2, F13.2).
       </p>
     </div>
   )

@@ -16,6 +16,7 @@ import {
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
+import { CloakPanel } from './CloakPanel'
 import { CloudPanel } from './CloudPanel'
 import { CombatPanel } from './CombatPanel'
 import { CommandCardPanel } from './CommandCardPanel'
@@ -244,6 +245,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
         return (
           <>
             <OperationsPanel game={game} ship={ship} />
+            <CloakPanel game={game} ship={ship} />
             <ScoutSensorPanel game={game} ship={ship} assigning={false} />
           </>
         )
@@ -337,9 +339,12 @@ function OperationsPanel({ ship }: { game: GameState; ship: ShipState }) {
             ))}
           </div>
         </li>
-        <li>C — Activate or deactivate tractor beams (J3).</li>
+        <li>
+          C — Activate or deactivate tractor beams (J3). A cloaked ship may use none, and none may
+          be locked onto it (H6.4.7).
+        </li>
         <li>D — Activate transporters (J5).</li>
-        <li>E — Other systems, including informational scans (J4.2).</li>
+        <li>E — Other systems, including informational scans (J4.2) and searches for cloaked ships (H6.9.2).</li>
       </ol>
       {error && <p className="fire-error">{error}</p>}
       <p className="hint">

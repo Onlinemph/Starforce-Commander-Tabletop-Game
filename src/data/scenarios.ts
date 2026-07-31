@@ -179,6 +179,46 @@ export const NEBULA_PATROL: Scenario = {
 }
 
 // ---------------------------------------------------------------------------
+// Aurelian Raid (Expansion 5)
+// ---------------------------------------------------------------------------
+
+export const AURELIAN = 'Aurelian Empire'
+
+/**
+ * A cloaked Aurelian strike against a Union patrol.
+ *
+ * Expansion 5 prints no scenario, and its two rules pull in opposite
+ * directions: the Aurelian ships open cloaked and unseen (H6), while their
+ * plasma torpedoes are slow homing weapons the Union can shoot down on the way
+ * in (E5). The Aurelian has to decloak to shoot at all (H6.4.2), so the whole
+ * battle turns on picking the moment.
+ */
+export const AURELIAN_RAID: Scenario = {
+  id: 'exp5-aurelian-raid',
+  name: 'Aurelian Raid (Expansion 5)',
+  background:
+    'An Aurelian pair slides toward a Union patrol under cloak. Their plasma torpedoes hit ' +
+    'hard but take phases to arrive, and a cloaked ship cannot fire at all — so the raiders ' +
+    'must uncloak inside knife range and accept the answering broadside.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [],
+  objectives: {
+    [BLUE]: 'Find the raiders before their torpedoes are in the air, and destroy them.',
+    [AURELIAN]: 'Close under cloak, decloak, and break the patrol.',
+  },
+  specialRules: [
+    'Aurelian ships may engage their cloaks in Operations step 2A. While cloaked they cannot ' +
+      'fire, their shields are down, and their position is unknown — only a datum marks where ' +
+      'they were last seen (H6.2.2, H6.4).',
+    'Union ships search in Operations step 2E, climbing Contact → Track → Target Lock. A Track ' +
+      'allows degraded fire, a Lock allows normal fire (H6.14).',
+    'Plasma torpedoes are homing particle weapons: they fly one leg per phase and can be worn ' +
+      'down by point defense on the way in, one point of damage for every three (E5, F1.16).',
+  ],
+  victory: 'Victory points are earned from damage levels inflicted (S2.8.4).',
+}
+
+// ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
 
@@ -317,6 +357,7 @@ export const SCENARIOS: Array<{
   { scenario: ORBITAL_AMBUSH, makeShips: ambushShips },
   { scenario: SQUADRON_ENGAGEMENT, makeShips: squadronShips },
   { scenario: NEBULA_PATROL, makeShips: nebulaShips },
+  { scenario: AURELIAN_RAID, makeShips: aurelianShips },
 ]
 
 /** Two ships a side, entering the nebula at the safe speed of 2 (K4.2.2). */
@@ -352,6 +393,51 @@ function nebulaShips(options: SetupOptions): ShipState[] {
       name: RED_NAMES[1],
       form: VALLARI_CRUISER,
       placement: { position: { x: 3, y: 24 }, heading: facingToHeading(1) },
+      speed: 2,
+    }),
+  ]
+}
+
+/** Vessel names for the Aurelian raiders. */
+const AURELIAN_NAMES = ['A.I.S. Nocturne', 'A.I.S. Umbra']
+
+/** A Union patrol against a cloaked Aurelian pair. */
+function aurelianShips(options: SetupOptions): ShipState[] {
+  const raider = shipFormById('aurelian-tonitrus-i-class-heavy-cruiser')
+  const escort = shipFormById('aurelian-acipter-i-class-destroyer')
+  return [
+    createShip({
+      id: 'blue-1',
+      side: BLUE,
+      name: BLUE_NAMES[0],
+      form: pickForm(options.forms?.[BLUE], YORKTOWN),
+      placement: { position: { x: 30, y: 16 }, heading: facingToHeading(6) },
+      speed: 3,
+    }),
+    createShip({
+      id: 'blue-2',
+      side: BLUE,
+      name: BLUE_NAMES[1],
+      form: YORKTOWN,
+      placement: { position: { x: 32, y: 21 }, heading: facingToHeading(6) },
+      speed: 3,
+    }),
+    createShip({
+      id: 'aur-1',
+      side: AURELIAN,
+      name: AURELIAN_NAMES[0],
+      form: pickForm(options.forms?.[AURELIAN], raider ?? VALLARI_CRUISER),
+      // Cloaked ships crawl: speed 2 or less, or they give themselves away
+      // (H6.4.6, H6.15.2).
+      placement: { position: { x: 6, y: 14 }, heading: facingToHeading(2) },
+      speed: 2,
+    }),
+    createShip({
+      id: 'aur-2',
+      side: AURELIAN,
+      name: AURELIAN_NAMES[1],
+      form: escort ?? VALLARI_CRUISER,
+      placement: { position: { x: 4, y: 23 }, heading: facingToHeading(2) },
       speed: 2,
     }),
   ]

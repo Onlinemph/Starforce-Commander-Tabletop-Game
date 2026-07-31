@@ -3,17 +3,18 @@
 A browser implementation of **StarForce Commander** (Mariner Games, rulebook v2.6, 2026), a game
 of tactical starship combat by Patrick Doyle.
 
-Local hot-seat, no server, no accounts. All game data is canon: **72 ships** through Expansion 3 from
-the Master Ship Book, the **56-card damage deck** and the **attack dice** from the print-and-play
-components. The Basic Set Standard rules are complete, plus **Expansions 1, 2 and 3** — Formation
-Maneuvering (C5), Scouting Sensors (H3), Command Systems (H5), nebulae and gas clouds (K4, K5), and,
-behind a toggle, the optional Coordinated Fire rules (H4). The rules engine is a standalone TypeScript library with no UI dependencies, so it can
+Local hot-seat, no server, no accounts. All game data is canon: **93 ships** across three factions
+from the Master Ship Book and the Expansion 5 Aurelian Starship Book, the **56-card damage deck**
+and the **attack dice** from the print-and-play components. The Basic Set Standard rules are
+complete, plus **every expansion released** — Formation Maneuvering (C5), Scouting Sensors (H3),
+Command Systems (H5), nebulae and gas clouds (K4, K5), cloaking (H6), homing weapons (E5), and,
+behind toggles, the optional Coordinated Fire (H4) and jamming-versus-homing (E5.10) rules. The rules engine is a standalone TypeScript library with no UI dependencies, so it can
 later be driven by a networked client or an AI opponent without change.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # 245 rules and data-integrity tests
+npm test           # 312 rules and data-integrity tests
 npm run typecheck
 npm run build
 ```
@@ -29,14 +30,15 @@ full Sequence of Play:
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
 
-Plus **Expansions 1, 2 and 3**: squadrons flying as one counter, scouts that illuminate and jam for
-the whole fleet, command ships that lend tactical scan, the optional ten-step Coordinated Fire
-sequence, and battles fought inside a nebula. See below.
+Plus **every expansion**: squadrons flying as one counter, scouts that illuminate and jam for the
+whole fleet, command ships that lend tactical scan, the optional ten-step Coordinated Fire sequence,
+battles fought inside a nebula, and the Aurelian Empire's cloaking ships and homing plasma
+torpedoes. See below.
 
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
 
-**Forces** are chosen from the full Master Ship Book roster — 37 Union and 35 Vallari ships, from the
+**Forces** are chosen from the full roster — 37 Union, 35 Vallari and 21 Aurelian ships, from the
 V-2N Flanker scout to the UNION III dreadnought — with the point values, availability and
 introduction years the Master Ship List prints.
 
@@ -82,6 +84,10 @@ introduction years the Master Ship List prints.
 | E11.3 Ship Explosions *(optional)* | ✅ | Excess-damage check, range-1 blast, aft shield for stacked ships |
 | **K4 Nebula** *(Expansion 3)* | ✅ | All eight Common Nebula Effects, plus optional turbulence |
 | **K5 Gas Clouds** *(Expansion 3)* | ✅ | Counters, safe speed 1, transit damage, all four degraded-fire cases |
+| **E5 Homing Weapons** *(Expansion 5)* | ✅ | Launch, per-phase flight, endurance, point defense, tractors, head-on and overflight |
+| **F5 Plasma Torpedoes** *(Expansion 5)* | ✅ | Imported as homing particle weapons with per-phase bonus damage |
+| **F1.13 / F1.16 Missile & Particle** *(Expansion 5)* | ✅ | `MISL X` destruction thresholds; particle damage worn down one point per three |
+| **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
 
 Optional rules (B2.5 full batteries, C3.6 evasive maneuvers, C3.7 reverse movement, C3.8 emergency
 stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6 boarding) are partly implemented in
@@ -214,6 +220,76 @@ A **Nebula Patrol** scenario ships with it: two patrols a side, a nebula over th
 gas clouds inside it (K4.1.2 allows exactly that). With no shields, a crawl for a safe speed and
 every shot degraded, it plays nothing like open space.
 
+## Expansion 5 — the Aurelian Empire
+
+The largest expansion by far: a third faction, cloaking, homing weapons, and the two weapon traits
+they depend on. Sections E12 and F1–F4 in its table of contents are v2.6 reprints of chapters the
+base rulebook already carries.
+
+### H6 Cloaking Systems
+
+The rule's core idea is that **an undetected cloaked ship has no position**. Its counter comes off
+the map and a *datum* marks where it was last seen; the owning player tracks only power, speed, and
+how many phases it has gone unseen (H6.1). When it decloaks or is found, it replays that speed log
+forward from the datum, one phase at a time, using only gentle maneuvers (H6.8).
+
+Searching climbs a four-rung ladder, and each enemy ship climbs it separately (H6.9.3):
+
+| Level | What the searcher may do |
+| --- | --- |
+| 0 Undetected | Nothing — the ship cannot be fired at (H6.14.1) |
+| 1 Contact | Position known too vaguely to shoot (H6.14.2) |
+| 2 Track | Fire, but only through Degraded Fire Control (H6.14.3) |
+| 3 Target Lock | Fire normally — though the shields stay down (H6.14.4) |
+
+A search compares the searcher's targeting against the cloaked ship's *jamming*, which is
+re-purposed as extra power to the cloak while it runs (H6.4.5). More targeting rolls at least two
+dice plus one per point of the difference beyond that, equal targeting rolls one, and less targeting
+cannot search at all (H6.10.2). Any `H` climbs exactly one rung however many are rolled, and a
+searcher may only climb one rung per segment (H6.10.3, H6.15.1). Once a searcher holds a Track it
+switches from green dice to yellow, which hit twice as often (H6.12.3). The cloaked ship answers by
+rolling one blue die per searcher that holds a fix, dropping a rung on an `M` (H6.13).
+
+All eleven cloaking effects are in force while the cloak runs (H6.4): shields down, weapons and
+homing launches locked, no scans, no targeting, no tractors or transporters in either direction, no
+command points lent, and no precision targeting against it at any detection level. Engaging the
+cloak within 8 inches of an enemy hands that enemy a free Contact (H6.6.3); the cloak must run for a
+full phase before it can come off and stay off for one before it can go back on (H6.6.7, H6.7.7).
+Speed above 2, and every four points of damage taken, grant the hunters bonus search rolls
+(H6.15.2, H6.15.3).
+
+### E5 Homing Weapons
+
+A homing weapon is a counter on the map that flies one leg per phase. Its firing chart is divided
+into thick red boxes — the same boxes the importer reads off the page — and E5.1.5 makes each one a
+phase of flight: the widest bracket in box *n* is how far it travels during phase *n*, and the
+bracket the target actually falls into decides the dice. The launch phase costs no endurance
+(E5.1.6), and a weapon that outlives its last box is removed.
+
+Impacts resolve through E5.4: the shield is read from the line between the counter and the target,
+both arcs of that shield may answer with point defense, and each shield struck is its own volley.
+The two weapon traits then diverge sharply:
+
+- **`MISL X`** (F1.13) — a missile dies once it has taken X points, and partial damage does nothing
+  at all. Point defense either kills it or wastes its shots.
+- **`PARTCL`** (F1.16) — a particle weapon is never stopped, only worn down: every three points it
+  absorbs takes one point off its warhead, eating standard damage first, then leak, then `STR +X`.
+  Wear all three to zero and the volley fizzles out entirely.
+
+Tractor beams can hold a missile but never a particle weapon (E5.4 Step 6). The two awkward
+geometry cases are handled: a weapon dead ahead of a target moving at least as fast as the range
+resolves **before** the target moves, so it strikes the bow rather than being overtaken (E5.9.1),
+and a target that flies over a counter is hit as it passes (E5.9.2). E5.10's optional jamming rule —
+which slows a homing weapon from its second leg onward rather than shortening its range — is behind
+a flag.
+
+### Playing it
+
+An **Aurelian Raid** scenario ships with the expansion: two cloaked Aurelians against a Union
+patrol. The tension the rules create is real — a cloaked ship cannot fire at all, so the raiders
+have to pick the moment to decloak, while their plasma torpedoes take phases to arrive and can be
+ground down by point defense on the way in.
+
 ## Ship data
 
 `src/data/ships.json` holds all 72 forms, machine-extracted from the **Master Ship Book** (all ships
@@ -249,12 +325,17 @@ Type-51 Gravitic Disruptor's full firing chart (E3.2.1).
 
 One transcription conflict in the source is corrected at import and recorded on the ship's `notes`:
 
-| Ship | Weapon | Printed | Used |
-| --- | --- | --- | --- |
-| V-6N Savage-class Light Cruiser | G-YAGUS A/MAT Torpedo | `0-4  5-10  9-15  16-20` | `9-15` read as `11-15` |
+| Ship | Problem | Resolution |
+| --- | --- | --- |
+| V-6N Savage-class Light Cruiser | G-YAGUS A/MAT Torpedo prints `0-4  5-10  9-15  16-20` — the third bracket overlaps the second | Read as `11-15` so the chart is continuous |
+| Invictus I-class Dreadnought | Its RP-B Medium Plasma Torpedo prints the disruptor's trait line, `PREC 1, PD MODE, ATMO` | Restored to `HOMING 3, PARTCL, NoBAT, FTL`, which the same weapon reads on all eight other ships that carry it, and which F5.4 gives as standard |
+| Passer II-class Frigate | Prints `FWD SHIELD 6` but draws 7 forward boxes | Printed strengths used; the box count is recorded |
+| Corvus I-class Destroyer | Prints `AFT SHIELD 12` but draws 10 aft boxes | Printed strengths used; the box count is recorded |
 
-The third bracket overlaps the second as printed; every other weapon in the book has a continuous
-chart, and a test enforces that.
+Every other weapon in the books has a continuous chart, and a test enforces that — with an exception
+for homing weapons, whose range restarts at zero in each endurance box (E5.1.5). The Invictus
+erratum was found by cross-checking the same weapon across every ship that carries it, and the two
+shield errata by the importer's own box-count validation, which is left strict rather than loosened.
 
 ## Damage deck and dice
 
@@ -293,8 +374,10 @@ line — which is exactly what E7.2.5 describes.
   are straightforward to add.
 - **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
   points (H3.6), but the scan procedure itself is not interactive.
-- **Expansions 4 and 5** — not yet supplied. Expansion 4 is the Master Ship Book, already imported
-  in full. Expansions 1 (C5, H3), 2 (H4, H5) and 3 (K4, K5) are done.
+- **Every published expansion is implemented.** 1 (C5, H3), 2 (H4, H5), 3 (K4, K5), 4 (the Master
+  Ship Book, imported in full) and 5 (E5, F5, H6, and the Aurelian roster).
+- **Hidden units** (K6) and **base rotation** (C4.3) are placeholders in the source itself, reserved
+  for a future expansion.
 
 ## Architecture
 
@@ -309,6 +392,8 @@ src/
     command.ts     Command Systems: lending tactical scan (H5)
     coordinatedFire.ts  The ten-step firing sequence (H4, optional)
     formation.ts   Formation maneuvering: joining, leading, flying as one (C5)
+    cloaking.ts    Cloaking systems: detection levels, searching, datums (H6)
+    homing.ts      Homing weapons: flight, endurance, impact, point defense (E5)
     nebula.ts      Nebulae and gas clouds (K4, K5)
     scouting.ts    Scouting sensors: illumination, area jamming, scans (H3)
     combat.ts      Volley resolution, rerolls, fire modes
@@ -316,7 +401,7 @@ src/
     navigation.ts  Plot validation, movement, stress checks, disengagement
     game.ts        Sequence of play, terrain, victory points
   data/            Game content — all canon, all machine-imported
-    ships.json     72 ship forms from the Master Ship Book
+    ships.json     93 ship forms: the Master Ship Book plus the Aurelian book
     damageDeck.json  The 56-card damage deck from the component sheets
     scenarios.ts   Section S scenarios and force setup
 tools/             Importers that regenerate the JSON from the source PDFs

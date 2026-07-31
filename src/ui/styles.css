@@ -1392,3 +1392,91 @@ input[type='number'] {
 .cloud-effects strong {
   color: var(--ink);
 }
+
+/* ── Expansion 5: cloaking (H6) and homing weapons (E5) ──────────────────── */
+
+.homing-counter {
+  fill: #3a2233;
+  stroke: #ff8ad6;
+  stroke-width: 1.5;
+}
+.homing-dot {
+  fill: #ffffff;
+}
+
+/* A datum is where a cloaked ship was last seen, not where it is (H6.2.2). */
+.datum-ring {
+  fill: none;
+  stroke: var(--ink-dim);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+}
+.datum-label {
+  fill: var(--ink-dim);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.cloak-panel h4 {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.cloak-detection {
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0;
+  font-size: 0.74rem;
+}
+.cloak-detection li {
+  padding: 0.12rem 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-dim);
+}
+.cloak-detection li.level-2 strong {
+  color: var(--warn);
+}
+.cloak-detection li.level-3 strong {
+  color: var(--danger);
+}
+.cloak-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.cloak-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+  padding: 0.2rem 0;
+  border-top: 1px solid var(--line);
+}
+.cloak-target em {
+  color: var(--ink-dim);
+  font-style: normal;
+  font-size: 0.66rem;
+}
+
+.homing-launch,
+.homing-impacts {
+  border-top: 1px solid var(--line);
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+}
+.homing-launch h4,
+.homing-impacts h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ff8ad6;
+}
+.homing-launch .weapon-pick em {
+  font-style: normal;
+  font-size: 0.64rem;
+  color: var(--ink-dim);
+}
