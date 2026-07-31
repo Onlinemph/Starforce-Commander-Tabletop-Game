@@ -64,6 +64,13 @@ that one fact.
   home screen and, after one visit, plays entirely offline.
 - **Battle reports.** One click writes the battle up as markdown — forces, score, and the full
   log grouped by round.
+- **A computer opponent.** Tick *AI* on a side in *Choose forces* and the computer commands that
+  force: it allocates power, arms its batteries, plots blind alongside you, fires in Tactical Scan
+  order, repairs, presses boarding actions and withdraws its cripples — all through the same action
+  journal as a human, so saves, undo, replay and remote play treat its orders like anyone else's.
+  It reads only what an opponent across the table could see: never your form, your power, or your
+  arming. Launching a test flight from the ship builder now gets you an AI adversary
+  automatically.
 
 ## Hosting it
 

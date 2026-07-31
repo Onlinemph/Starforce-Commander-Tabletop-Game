@@ -8,6 +8,7 @@ import {
   type SavedGame,
 } from '../data/savedGame'
 import { applyAction, type ActionOutcome, type GameAction } from '../engine/actions'
+import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
 import type { GameState } from '../engine/game'
 
 /**
@@ -83,11 +84,16 @@ function restore(): GameState {
 
 /** Apply an action, journal it, autosave, notify. The only way state changes. */
 export function dispatch(action: GameAction): ActionOutcome {
+  // Before the human closes a segment, the AI settles anything it was still
+  // waiting on — a firing slot later in the Tactical Scan order, above all —
+  // so a segment never ends with its guns silent.
+  if (action.type === 'advance-segment') driveAi(true)
   const outcome = applyAction(game, action)
   journal.push(action)
   autosave()
   emit()
   net?.onAction(action, journal.length)
+  driveAi()
   return outcome
 }
 
@@ -96,9 +102,11 @@ export function newGame(next: GameSetup): void {
   setup = withEmbeddedForms(next)
   journal = []
   game = buildGame(setup)
+  aiMemo = createAiMemo()
   autosave()
   emit()
   net?.onReplace(saved())
+  driveAi()
 }
 
 /** The setup of the battle in progress — what "Rematch" rolls a new seed for. */
@@ -122,6 +130,9 @@ export function undo(): void {
   if (journal.length === 0) return
   journal = journal.slice(0, -1)
   game = replayGame(saved())
+  // The rewound action may have been the AI's; a fresh memo lets it owe the
+  // duty again instead of remembering having done it in an unmade past.
+  aiMemo = createAiMemo()
   autosave()
   emit()
   net?.onUndo(journal.length)
@@ -147,9 +158,11 @@ export function importBattle(text: string): string | null {
   }
   setup = parsed.setup
   journal = parsed.actions
+  aiMemo = createAiMemo()
   autosave()
   emit()
   net?.onReplace(saved())
+  driveAi()
   return null
 }
 
@@ -192,10 +205,12 @@ export function currentSave(): SavedGame {
  */
 export function applyRemoteAction(action: GameAction, seq: number, force: boolean): 'ok' | 'mismatch' {
   if (!force && seq !== journal.length + 1) return 'mismatch'
+  if (action.type === 'advance-segment') driveAi(true)
   applyAction(game, action)
   journal.push(action)
   autosave()
   emit()
+  driveAi()
   return 'ok'
 }
 
@@ -224,6 +239,54 @@ export function applyRemoteSave(save: SavedGame): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// The AI driver
+// ---------------------------------------------------------------------------
+
+/**
+ * When a setup names AI sides, the computer's orders are folded in after every
+ * action: the driver asks the captain what it owes, dispatches it through the
+ * same journal as everything else, and repeats until the captain is content.
+ * Idempotent duties make the loop safe; the guard makes it finite regardless.
+ */
+let aiMemo: AiMemo = createAiMemo()
+let aiSuppressed = false
+
+/** In remote play only the host drives the AI — the guest gets its actions over the wire. */
+export function suppressAi(on: boolean): void {
+  aiSuppressed = on
+  if (!on) driveAi()
+}
+
+let driving = false
+
+function driveAi(closing = false): void {
+  if (driving || aiSuppressed) return
+  const sides = (setup.aiSides ?? []).filter((side) => game.ships.some((s) => s.side === side))
+  if (sides.length === 0) return
+  driving = true
+  try {
+    let changed = false
+    for (let guard = 0; guard < 300; guard++) {
+      const batch = aiNextActions(game, sides, aiMemo, closing)
+      if (batch.length === 0) break
+      for (const action of batch) {
+        applyAction(game, action)
+        journal.push(action)
+        net?.onAction(action, journal.length)
+        changed = true
+      }
+      closing = false
+    }
+    if (changed) {
+      autosave()
+      emit()
+    }
+  } finally {
+    driving = false
+  }
+}
+
+// ---------------------------------------------------------------------------
 // React
 // ---------------------------------------------------------------------------
 
@@ -240,3 +303,8 @@ export function useGame(): GameState {
   )
   return game
 }
+
+// A restored battle may owe AI duties (a save from before the AI finished a
+// segment, or one made as a suppressed remote guest). Settle up once the
+// module is fully initialised.
+queueMicrotask(() => driveAi())

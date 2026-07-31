@@ -157,6 +157,8 @@ export function ShipBuilder({ onClose }: Props) {
       scenarioId: 's3.1-the-duel',
       seed: Math.floor(Math.random() * 1e9),
       forms: { [sideName]: draft.id },
+      // A test flight deserves an opponent that shoots back.
+      aiSides: [sideName === BLUE ? RED : BLUE],
     })
     onClose()
   }

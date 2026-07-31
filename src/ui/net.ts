@@ -8,6 +8,7 @@ import {
   currentSave,
   journalLength,
   setNetHooks,
+  suppressAi,
 } from './store'
 
 /**
@@ -138,6 +139,8 @@ function attach(ch: RTCDataChannel, role: NetRole): void {
   channel = ch
   ch.onopen = () => {
     set({ phase: 'connected', role, code: null, error: null })
+    // One driver per battle: the guest receives AI actions over the wire.
+    suppressAi(role === 'guest')
     // The host's battle is the one both ends start from.
     if (role === 'host') send({ kind: 'sync', saved: currentSave() })
     setNetHooks({
@@ -244,6 +247,7 @@ export async function joinInvite(code: string): Promise<void> {
 
 export function hangUp(error: string | null = null): void {
   setNetHooks(null)
+  suppressAi(false)
   channel?.close()
   pc?.close()
   channel = null

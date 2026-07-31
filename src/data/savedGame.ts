@@ -23,6 +23,8 @@ export interface GameSetup {
   fleets?: Partial<Record<string, string[]>>
   /** Random asteroid terrain (K1.1): 'roll' or an exact counter count. */
   terrain?: 'roll' | number
+  /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
+  aiSides?: string[]
   /**
    * Every non-canon form the fleets reference, embedded whole, so the battle
    * replays on a machine that has never seen the design.

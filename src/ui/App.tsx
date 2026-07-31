@@ -359,7 +359,10 @@ function StatusRail({ game }: { game: GameState }) {
       {sides.map((side, i) => (
         <div key={side} className={`rail-block rail-${tones[i % tones.length]}`}>
           <b>{game.ships.filter((s) => s.side === side && !s.destroyed && !s.disengaged).length}</b>
-          <span>{side}</span>
+          <span>
+            {side}
+            {(currentSetup().aiSides ?? []).includes(side) ? ' · AI' : ''}
+          </span>
         </div>
       ))}
       <div className="rail-fill" aria-hidden="true">

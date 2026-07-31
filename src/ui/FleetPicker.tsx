@@ -76,6 +76,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [year, setYear] = useState(latestYear)
   const [budget, setBudget] = useState<number | null>(null)
   const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
+  const [aiSides, setAiSides] = useState<Set<string>>(new Set())
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -112,11 +113,13 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const empty = sides.some((side) => fleetSize(fleets[side] ?? []) === 0)
 
   const start = () => {
+    const ai = sides.filter((s) => aiSides.has(s))
     newGame({
       scenarioId: scenario,
       seed: Math.floor(Math.random() * 1e9),
       fleets: Object.fromEntries(sides.map((s) => [s, fleetFormIds(fleets[s] ?? [])])),
       terrain: terrain === 'none' ? undefined : terrain,
+      aiSides: ai.length > 0 ? ai : undefined,
     })
     onClose()
   }
@@ -260,6 +263,15 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
                 year={year}
                 budget={budget}
                 problems={problems.filter((p) => p.side === side)}
+                ai={aiSides.has(side)}
+                onAi={(on) =>
+                  setAiSides((current) => {
+                    const next = new Set(current)
+                    if (on) next.add(side)
+                    else next.delete(side)
+                    return next
+                  })
+                }
                 onAdjust={(formId, delta) => adjust(side, formId, delta)}
                 onReset={() =>
                   setFleets((current) => ({ ...current, [side]: printedFleets(scenario)[side] }))
@@ -296,6 +308,8 @@ function ForceList({
   year,
   budget,
   problems,
+  ai,
+  onAi,
   onAdjust,
   onReset,
 }: {
@@ -305,6 +319,8 @@ function ForceList({
   year: number
   budget: number | null
   problems: ReturnType<typeof validateFleets>
+  ai: boolean
+  onAi: (on: boolean) => void
   onAdjust: (formId: string, delta: number) => void
   onReset: () => void
 }) {
@@ -318,6 +334,10 @@ function ForceList({
           {total} PV · {hulls}/{MAX_SHIPS_PER_SIDE} hulls
           {budget !== null && ` · ${budget - total >= 0 ? `${budget - total} left` : 'over budget'}`}
         </span>
+        <label className="checkbox" title="The computer commands this force — it allocates, plots, fires and repairs on its own as you play through the segments">
+          <input type="checkbox" checked={ai} onChange={(e) => onAi(e.target.checked)} />
+          AI
+        </label>
         <button type="button" className="chip" onClick={onReset}>
           printed force
         </button>
