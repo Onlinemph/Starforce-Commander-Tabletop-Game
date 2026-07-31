@@ -3236,3 +3236,227 @@ button.chip:hover:not(:disabled) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --- Battle effects ------------------------------------------------------ */
+
+/*
+ * Weapon fire and damage, derived from the action journal. Every element
+ * animates once, offset by --fx-delay so a volley's mounts fire in sequence.
+ * All keyframes open at opacity 0: with `both` fill that keeps a delayed
+ * effect invisible until its moment.
+ */
+
+.fx-layer {
+  pointer-events: none;
+}
+
+/* Beams draw tip-first from the attacker: pathLength=1 makes the dash math
+   identical at any range. */
+.fx-beam {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  opacity: 0;
+  animation: fx-beam 0.55s ease-out both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+
+.fx-phaser {
+  stroke: #ff9548;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px rgba(255, 149, 72, 0.9));
+}
+
+.fx-generic {
+  stroke: #dfe6ff;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 3px rgba(223, 230, 255, 0.8));
+}
+
+@keyframes fx-beam {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  45% {
+    stroke-dashoffset: 0;
+  }
+  75% {
+    stroke-dashoffset: 0;
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+/* Disruptors are pulses marching down the line, not a solid beam. */
+.fx-disruptor {
+  fill: none;
+  stroke: #6dff8f;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 0.09 0.08;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(109, 255, 143, 0.9));
+  animation: fx-disruptor 0.55s linear both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+
+@keyframes fx-disruptor {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: -0.4;
+    opacity: 0;
+  }
+}
+
+/* Torpedoes travel: the group is positioned at the muzzle inline, and the
+   circles ride a translate whose distance arrives in custom properties. */
+.fx-torpedo circle {
+  opacity: 0;
+  animation: fx-torpedo 0.42s linear both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+
+.fx-torpedo-glow {
+  fill: rgba(255, 210, 94, 0.45);
+  filter: drop-shadow(0 0 6px rgba(255, 210, 94, 0.9));
+}
+
+.fx-torpedo-core {
+  fill: #fff2c9;
+}
+
+@keyframes fx-torpedo {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fx-dx, 0), var(--fx-dy, 0));
+    opacity: 0;
+  }
+}
+
+/* A shield strike ripples outward in the screens' own blue. */
+.fx-shield-ring {
+  fill: rgba(105, 183, 255, 0.1);
+  stroke: #69b7ff;
+  stroke-width: 2;
+  opacity: 0;
+  animation: fx-shield 0.55s ease-out both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+
+.fx-shield-ring.is-late {
+  animation-delay: calc(var(--fx-delay, 0ms) + 150ms);
+}
+
+@keyframes fx-shield {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+/* A hull hit: white flash, fireball, sparks thrown clear. */
+.fx-hull-flash {
+  fill: #ffffff;
+  opacity: 0;
+  animation: fx-flash 0.3s ease-out both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+
+@keyframes fx-flash {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.fx-hull-fire {
+  fill: #ff7a2a;
+  opacity: 0;
+  animation: fx-fire 0.6s ease-out both;
+  animation-delay: calc(var(--fx-delay, 0ms) + 60ms);
+}
+
+@keyframes fx-fire {
+  0% {
+    transform: scale(0.25);
+    opacity: 0;
+    fill: #ffd9a0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+    fill: #c43a10;
+  }
+}
+
+.fx-spark {
+  stroke: #ffcf7d;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.25 0.75;
+  opacity: 0;
+  animation: fx-spark 0.5s ease-out both;
+  animation-delay: calc(var(--fx-delay, 0ms) + 40ms);
+}
+
+@keyframes fx-spark {
+  0% {
+    stroke-dashoffset: 0.25;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -0.75;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-layer {
+    display: none;
+  }
+}

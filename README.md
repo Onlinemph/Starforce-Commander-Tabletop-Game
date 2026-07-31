@@ -62,6 +62,12 @@ that one fact.
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a
   home screen and, after one visit, plays entirely offline.
+- **Weapon fire you can see.** Volleys play on the map as they resolve: phasers as drawn beams,
+  gravitic disruptors as pulses marching down the line, torpedoes as projectiles in flight — then
+  a blue ripple when the shields take the volley, or a flash-and-sparks burst when damage gets
+  through to the hull. The effects are derived from the same action journal as everything else,
+  so the AI's fire, a remote opponent's fire, and every volley in the replay theater all animate
+  identically. Honors `prefers-reduced-motion`.
 - **Battle reports.** One click writes the battle up as markdown — forces, score, and the full
   log grouped by round.
 - **Replay theater.** *Replay* in the top bar plays any battle back like a tape — the current one,

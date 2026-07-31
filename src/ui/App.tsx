@@ -34,6 +34,7 @@ import { ReplayTheater } from './ReplayTheater'
 import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
+  activeFx,
   canUndo,
   currentSave,
   currentSetup,
@@ -254,6 +255,7 @@ export function App() {
               rangeRings={rangeRings}
               viewSide={viewSide}
               rulerMode={rulerMode}
+              fx={activeFx()}
             />
 
             <div className="map-controls">

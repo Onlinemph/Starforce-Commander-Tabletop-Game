@@ -3,6 +3,7 @@ import { actionLabel, buildTimeline, replayPrefix } from '../data/replay'
 import { parseSavedGame, type SavedGame } from '../data/savedGame'
 import { applyAction } from '../engine/actions'
 import { PHASE_LABELS, SEGMENT_LABELS, victoryPoints, type GameState } from '../engine/game'
+import { fxAfter, fxBefore, type BattleFx } from './fx'
 import { MapView } from './MapView'
 
 /**
@@ -45,16 +46,27 @@ export function ReplayTheater({ initial, onClose }: Props) {
    * jump replays the prefix, which is the undo mechanism doing a new job.
    */
   const cache = useRef<{ saved: SavedGame; index: number; game: GameState } | null>(null)
+  // Weapon fire replays too: stepping through a volley derives the same
+  // effects the live table showed, kept briefly so bursts overlap naturally.
+  const fxRef = useRef<Array<BattleFx & { born: number }>>([])
   const game = useMemo(() => {
     const c = cache.current
     if (c && c.saved === saved) {
       if (c.index === index) return c.game
       if (index === c.index + 1) {
-        applyAction(c.game, saved.actions[c.index])
+        const action = saved.actions[c.index]
+        const pre = fxBefore(c.game, action)
+        const outcome = applyAction(c.game, action)
+        const born = Date.now()
+        fxRef.current = [
+          ...fxRef.current.filter((f) => born - f.born < 4500),
+          ...[...pre, ...fxAfter(c.game, action, outcome)].map((f) => ({ ...f, born })),
+        ]
         cache.current = { saved, index, game: c.game }
         return c.game
       }
     }
+    fxRef.current = []
     const rebuilt = replayPrefix(saved, index)
     cache.current = { saved, index, game: rebuilt }
     return rebuilt
@@ -157,6 +169,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
               rangeRings={[]}
               viewSide={null}
               rulerMode={false}
+              fx={fxRef.current}
             />
 
             <div className="theater-controls">

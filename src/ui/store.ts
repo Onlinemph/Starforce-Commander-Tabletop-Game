@@ -10,6 +10,7 @@ import {
 import { applyAction, type ActionOutcome, type GameAction } from '../engine/actions'
 import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
 import type { GameState } from '../engine/game'
+import { fxAfter, fxBefore, type BattleFx } from './fx'
 
 /**
  * The store journals every action it applies, so the battle on screen is
@@ -37,6 +38,46 @@ function emit(): void {
 function subscribe(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
+}
+
+// ---------------------------------------------------------------------------
+// Battle visuals
+// ---------------------------------------------------------------------------
+
+/**
+ * Ephemeral weapon-fire and damage effects, queued as actions land and pruned
+ * once played. When several volleys arrive in one synchronous burst — an AI
+ * closing a segment fires everything at once — each volley is pushed back
+ * behind the one before it, so the barrage reads as sequential fire.
+ */
+let fxQueue: BattleFx[] = []
+let fxBase = 0
+let fxBaseReset = false
+let fxPrune: ReturnType<typeof setTimeout> | null = null
+
+export function activeFx(): BattleFx[] {
+  return fxQueue
+}
+
+function queueFx(...groups: BattleFx[][]): void {
+  const batch = groups.flat()
+  if (batch.length === 0) return
+  fxQueue = [...fxQueue, ...batch.map((fx) => ({ ...fx, delay: fx.delay + fxBase }))]
+  const span = Math.max(...batch.map((fx) => fx.delay)) + 700
+  // Stagger later volleys of the same burst, but never queue a minute of it.
+  fxBase = Math.min(fxBase + span, 3600)
+  if (!fxBaseReset) {
+    fxBaseReset = true
+    queueMicrotask(() => {
+      fxBase = 0
+      fxBaseReset = false
+    })
+  }
+  if (fxPrune) clearTimeout(fxPrune)
+  fxPrune = setTimeout(() => {
+    fxQueue = []
+    emit()
+  }, fxBase + 4500)
 }
 
 // ---------------------------------------------------------------------------
@@ -82,14 +123,27 @@ function restore(): GameState {
 // The mutation boundary
 // ---------------------------------------------------------------------------
 
+/**
+ * The one place an action becomes part of the battle: fx snapshot, apply,
+ * journal. Every path — the human, the AI driver, the remote peer — funnels
+ * through here, so weapon fire flashes on the map no matter who pulled the
+ * trigger.
+ */
+function applyJournaled(action: GameAction): ActionOutcome {
+  const pre = fxBefore(game, action)
+  const outcome = applyAction(game, action)
+  journal.push(action)
+  queueFx(pre, fxAfter(game, action, outcome))
+  return outcome
+}
+
 /** Apply an action, journal it, autosave, notify. The only way state changes. */
 export function dispatch(action: GameAction): ActionOutcome {
   // Before the human closes a segment, the AI settles anything it was still
   // waiting on — a firing slot later in the Tactical Scan order, above all —
   // so a segment never ends with its guns silent.
   if (action.type === 'advance-segment') driveAi(true)
-  const outcome = applyAction(game, action)
-  journal.push(action)
+  const outcome = applyJournaled(action)
   autosave()
   emit()
   net?.onAction(action, journal.length)
@@ -206,8 +260,7 @@ export function currentSave(): SavedGame {
 export function applyRemoteAction(action: GameAction, seq: number, force: boolean): 'ok' | 'mismatch' {
   if (!force && seq !== journal.length + 1) return 'mismatch'
   if (action.type === 'advance-segment') driveAi(true)
-  applyAction(game, action)
-  journal.push(action)
+  applyJournaled(action)
   autosave()
   emit()
   driveAi()
@@ -270,8 +323,7 @@ function driveAi(closing = false): void {
       const batch = aiNextActions(game, sides, aiMemo, closing, setup.aiDifficulty ?? 'captain')
       if (batch.length === 0) break
       for (const action of batch) {
-        applyAction(game, action)
-        journal.push(action)
+        applyJournaled(action)
         net?.onAction(action, journal.length)
         changed = true
       }

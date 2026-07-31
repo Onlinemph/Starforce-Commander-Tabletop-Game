@@ -14,6 +14,7 @@ import {
 import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
+import type { BattleFx } from './fx'
 
 /**
  * The asteroid photographs from the Print and Play counter sheet, bundled and
@@ -141,6 +142,8 @@ interface Props {
   viewSide: string | null
   /** Drag-to-measure in rulebook inches (E1.1). */
   rulerMode: boolean
+  /** Weapon fire and damage flashes, derived from the action stream. */
+  fx?: BattleFx[]
 }
 
 export interface RangeRing {
@@ -149,7 +152,7 @@ export interface RangeRing {
   band: 'green' | 'max'
 }
 
-export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide, rulerMode }: Props) {
+export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide, rulerMode, fx = [] }: Props) {
   const { width, height } = game.scenario.bounds
   const w = width * SCALE
   const h = height * SCALE
@@ -565,6 +568,23 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             onSelect={select}
           />
         ))}
+
+      {/*
+        Weapon fire and damage, played over the counters as the actions that
+        caused them land. Purely cosmetic: the layer is click-through, derived
+        from the journal, and gone in a few seconds.
+      */}
+      {fx.length > 0 && (
+        <g className="fx-layer" aria-hidden="true">
+          {fx.map((effect) =>
+            effect.kind === 'shot' ? (
+              <ShotFx key={effect.id} fx={effect} />
+            ) : (
+              <ImpactFx key={effect.id} fx={effect} />
+            ),
+          )}
+        </g>
+      )}
 
       {/*
         Plot preview: while orders are being written, the selected ship shows
@@ -983,6 +1003,86 @@ function ShipToken({
           {ship.derelict ? ' · DERELICT' : ''}
         </text>
       </g>
+    </g>
+  )
+}
+
+/**
+ * One shot in flight. Phasers and disruptors are beams — drawn tip-first with
+ * `pathLength=1` so the dash animation is length-independent — while
+ * torpedoes are a projectile carried by a CSS translate whose distance rides
+ * in custom properties. All timing lives in the stylesheet; the component
+ * only sets geometry and the stagger delay.
+ */
+function ShotFx({ fx }: { fx: Extract<BattleFx, { kind: 'shot' }> }) {
+  const x1 = fx.from.x * SCALE
+  const y1 = fx.from.y * SCALE
+  const x2 = fx.to.x * SCALE
+  const y2 = fx.to.y * SCALE
+  const delay = `${fx.delay}ms`
+
+  if (fx.weapon === 'torpedo') {
+    return (
+      <g
+        className="fx-torpedo"
+        style={
+          {
+            transform: `translate(${x1}px, ${y1}px)`,
+            '--fx-dx': `${x2 - x1}px`,
+            '--fx-dy': `${y2 - y1}px`,
+            '--fx-delay': delay,
+          } as React.CSSProperties
+        }
+      >
+        <circle r={4.5} className="fx-torpedo-glow" />
+        <circle r={2.2} className="fx-torpedo-core" />
+      </g>
+    )
+  }
+
+  return (
+    <line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      pathLength={1}
+      className={`fx-beam fx-${fx.weapon}`}
+      style={{ '--fx-delay': delay } as React.CSSProperties}
+    />
+  )
+}
+
+/** The landing: a shield ripple, or a hull flash with a spark burst. */
+function ImpactFx({ fx }: { fx: Extract<BattleFx, { kind: 'impact' }> }) {
+  const cx = fx.at.x * SCALE
+  const cy = fx.at.y * SCALE
+  const style = { '--fx-delay': `${fx.delay}ms` } as React.CSSProperties
+
+  if (fx.impact === 'shield') {
+    return (
+      <g className="fx-shield" style={{ transform: `translate(${cx}px, ${cy}px)`, ...style }}>
+        <circle r={16} className="fx-shield-ring" />
+        <circle r={16} className="fx-shield-ring is-late" />
+      </g>
+    )
+  }
+
+  return (
+    <g className="fx-hull" style={{ transform: `translate(${cx}px, ${cy}px)`, ...style }}>
+      <circle r={12} className="fx-hull-fire" />
+      <circle r={5} className="fx-hull-flash" />
+      {[0, 60, 120, 180, 240, 300].map((deg) => (
+        <line
+          key={deg}
+          x1={0}
+          y1={0}
+          x2={22 * Math.cos((deg * Math.PI) / 180)}
+          y2={22 * Math.sin((deg * Math.PI) / 180)}
+          pathLength={1}
+          className="fx-spark"
+        />
+      ))}
     </g>
   )
 }
