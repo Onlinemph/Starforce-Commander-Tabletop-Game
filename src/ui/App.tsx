@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { SCENARIOS } from '../data/scenarios'
+import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
   cloudStatus,
@@ -22,7 +22,9 @@ import { FormationPanel } from './FormationPanel'
 import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
+import { ScenarioDesigner } from './ScenarioDesigner'
 import { ShipBuilder } from './ShipBuilder'
+import { useCustomScenarios } from './customScenarios'
 import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
@@ -54,8 +56,11 @@ export function App() {
   const [rulerMode, setRulerMode] = useState(false)
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
+  const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
   const net = useNet()
+  // Subscribing keeps the scenario dropdown live as designs are saved.
+  useCustomScenarios()
 
   /**
    * Hidden information (B1.9): "Open table" shows everything — right for solo
@@ -137,7 +142,7 @@ export function App() {
               setTargetId(null)
             }}
           >
-            {SCENARIOS.map(({ scenario }) => (
+            {allScenarioEntries().map(({ scenario }) => (
               <option key={scenario.id} value={scenario.id}>
                 {scenario.name}
               </option>
@@ -162,6 +167,13 @@ export function App() {
         </button>
         <button type="button" onClick={() => setBuilding(true)} title="Design a ship on the designers' own point model">
           Ship builder
+        </button>
+        <button
+          type="button"
+          onClick={() => setDesigning(true)}
+          title="Lay out a battle of your own: map, terrain, sides and fleets"
+        >
+          Scenario designer
         </button>
         <button
           type="button"
@@ -192,6 +204,7 @@ export function App() {
       )}
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
+      {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {linking && <RemotePanel onClose={() => setLinking(false)} />}
 
       {/*

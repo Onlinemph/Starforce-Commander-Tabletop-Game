@@ -548,21 +548,122 @@ export const SCENARIOS: Array<{ scenario: Scenario; sides: SideSetup[] }> = [
   { scenario: AURELIAN_RAID, sides: AURELIAN_SIDES },
 ]
 
+// ---------------------------------------------------------------------------
+// Custom scenarios (the scenario designer's output)
+// ---------------------------------------------------------------------------
+
+/**
+ * A scenario as data, with none of the printed set's closures — everything a
+ * battle file can carry, so a save that references a designed scenario
+ * replays on a machine that has never seen it.
+ */
+export interface CustomScenario {
+  id: string
+  name: string
+  background: string
+  victory: string
+  specialRules?: string[]
+  bounds: MapBounds
+  /** The whole play area is inside a nebula (K4.1.1). */
+  nebula?: boolean
+  terrain: Terrain[]
+  sides: Array<{
+    side: string
+    objective: string
+    /** Compass facing 1–8 (S2.5.2): 8 is north, 2 east, 4 south, 6 west. */
+    facing: number
+    /** Announced deployment speed (S2.4.1). */
+    speed: number
+    /** Where the first ship sets up; the rest extend along `spread`. */
+    anchor: Point
+    spread: Point
+    /** The printed force, as form ids (S2.5.1). */
+    force: string[]
+  }>
+}
+
+/** Ship-name pools by deployment order, so the log reads like a battle. */
+const NAME_POOLS = [BLUE_NAMES, RED_NAMES, AURELIAN_NAMES]
+
+/** Give a designed scenario the same shape the printed ones have. */
+export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; sides: SideSetup[] } {
+  const scenario: Scenario = {
+    id: custom.id,
+    name: custom.name,
+    background: custom.background,
+    bounds: custom.bounds,
+    terrain: custom.terrain,
+    objectives: Object.fromEntries(custom.sides.map((s) => [s.side, s.objective])),
+    specialRules: custom.specialRules?.length ? custom.specialRules : undefined,
+    victory: custom.victory,
+    nebula: custom.nebula || undefined,
+  }
+  const sides: SideSetup[] = custom.sides.map((s, i) => ({
+    side: s.side,
+    facing: s.facing,
+    speed: s.speed,
+    anchor: s.anchor,
+    pattern: [{ x: 0, y: 0 }],
+    spread: s.spread,
+    names: NAME_POOLS[i % NAME_POOLS.length],
+    defaults: () => s.force.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f)),
+  }))
+  return { scenario, sides }
+}
+
+/** Designed scenarios from the designer's store (file plus local drafts). */
+const CUSTOM_ENTRIES: Array<{ scenario: Scenario; sides: SideSetup[] }> = []
+const CUSTOM_SOURCES: CustomScenario[] = []
+
+export function registerCustomScenarios(customs: CustomScenario[]): void {
+  CUSTOM_SOURCES.splice(0, CUSTOM_SOURCES.length, ...customs)
+  CUSTOM_ENTRIES.splice(0, CUSTOM_ENTRIES.length, ...customs.map(toScenarioEntry))
+}
+
+export function customScenarioById(id: string): CustomScenario | undefined {
+  return EMBEDDED_SOURCE?.id === id ? EMBEDDED_SOURCE : CUSTOM_SOURCES.find((c) => c.id === id)
+}
+
+/**
+ * The scenario riding inside a loaded battle file. It wins the lookup for its
+ * id, so a local draft with the same name cannot quietly change a battle
+ * already underway — exactly the embedded-forms rule.
+ */
+let EMBEDDED_SOURCE: CustomScenario | null = null
+let EMBEDDED_ENTRY: { scenario: Scenario; sides: SideSetup[] } | null = null
+
+export function setEmbeddedScenario(custom: CustomScenario | null): void {
+  EMBEDDED_SOURCE = custom
+  EMBEDDED_ENTRY = custom ? toScenarioEntry(custom) : null
+}
+
+function entryFor(scenarioId: string): { scenario: Scenario; sides: SideSetup[] } {
+  if (EMBEDDED_ENTRY && EMBEDDED_ENTRY.scenario.id === scenarioId) return EMBEDDED_ENTRY
+  return (
+    SCENARIOS.find((s) => s.scenario.id === scenarioId) ??
+    CUSTOM_ENTRIES.find((s) => s.scenario.id === scenarioId) ??
+    SCENARIOS[0]
+  )
+}
+
+/** Every scenario a player can pick: the printed set, then the designed ones. */
+export function allScenarioEntries(): Array<{ scenario: Scenario; sides: SideSetup[] }> {
+  return [...SCENARIOS, ...CUSTOM_ENTRIES]
+}
+
 /** The sides a scenario is fought between, in deployment order. */
 export function scenarioSides(scenarioId: string): string[] {
-  const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
-  return entry.sides.map((s) => s.side)
+  return entryFor(scenarioId).sides.map((s) => s.side)
 }
 
 /** The force a scenario prints for a side, as form ids (S2.5.1). */
 export function printedForce(scenarioId: string, side: string): string[] {
-  const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
-  const setup = entry.sides.find((s) => s.side === side)
+  const setup = entryFor(scenarioId).sides.find((s) => s.side === side)
   return setup ? setup.defaults().map((f) => f.id) : []
 }
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
-  const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
+  const entry = entryFor(scenarioId)
   // The scenario is cloned so generated terrain never leaks into the module's
   // shared definition — and the game's own RNG is left untouched, so a battle
   // with terrain rolls the same combat dice as one without.

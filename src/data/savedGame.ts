@@ -3,7 +3,13 @@ import type { AiDifficulty } from '../engine/ai'
 import type { GameState } from '../engine/game'
 import type { ShipForm } from '../engine/types'
 import { SHIP_FORMS, setEmbeddedForms, shipFormById } from './ships'
-import { startScenario } from './scenarios'
+import {
+  customScenarioById,
+  SCENARIOS,
+  setEmbeddedScenario,
+  startScenario,
+  type CustomScenario,
+} from './scenarios'
 
 /**
  * A battle is (setup + actions), nothing more.
@@ -29,6 +35,11 @@ export interface GameSetup {
   /** How sharp the computer's captains are. Default 'captain'. */
   aiDifficulty?: AiDifficulty
   /**
+   * A designed scenario, embedded whole when `scenarioId` names one — so the
+   * battle replays on a machine that has never seen the design.
+   */
+  customScenario?: CustomScenario
+  /**
    * Every non-canon form the fleets reference, embedded whole, so the battle
    * replays on a machine that has never seen the design.
    */
@@ -45,6 +56,7 @@ export interface SavedGame {
 /** Build the round-zero game a setup describes. */
 export function buildGame(setup: GameSetup): GameState {
   setEmbeddedForms(setup.customForms ?? [])
+  setEmbeddedScenario(setup.customScenario ?? null)
   return startScenario(setup.scenarioId, {
     seed: setup.seed,
     coordinatedFire: setup.coordinatedFire ?? false,
@@ -66,8 +78,9 @@ export function replayGame(saved: SavedGame): GameState {
 }
 
 /**
- * Fill in `customForms` for a setup: every referenced form that is not in the
- * canon roster travels with the save.
+ * Fill in everything a save must carry to replay elsewhere: every referenced
+ * non-canon ship form, and the designed scenario itself when the setup names
+ * one — embedded whole, exactly like the forms.
  */
 export function withEmbeddedForms(setup: GameSetup): GameSetup {
   const ids = new Set<string>()
@@ -82,7 +95,19 @@ export function withEmbeddedForms(setup: GameSetup): GameSetup {
     const form = setup.customForms?.find((f) => f.id === id) ?? shipFormById(id)
     if (form) custom.push(structuredClone(form))
   }
-  return custom.length > 0 ? { ...setup, customForms: custom } : { ...setup, customForms: undefined }
+
+  const builtIn = SCENARIOS.some((s) => s.scenario.id === setup.scenarioId)
+  const scenario = builtIn
+    ? undefined
+    : setup.customScenario?.id === setup.scenarioId
+      ? setup.customScenario
+      : customScenarioById(setup.scenarioId)
+
+  return {
+    ...setup,
+    customForms: custom.length > 0 ? custom : undefined,
+    customScenario: scenario ? structuredClone(scenario) : undefined,
+  }
 }
 
 /** Parse a battle file, or say what is wrong with it. */

@@ -2958,3 +2958,124 @@ button.chip:hover:not(:disabled) {
   opacity: 0.32;
   border-style: dashed;
 }
+
+/* --- Scenario designer --------------------------------------------------- */
+
+.picker.designer {
+  width: min(1600px, 100%);
+}
+
+.designer-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) 300px;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.designer-map-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.designer-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.designer-tools > span {
+  color: var(--ink-dim);
+  margin-right: 0.2rem;
+}
+
+.designer-tools .chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06080f;
+}
+
+.designer-map {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.designer-map .terrain-label {
+  pointer-events: none;
+}
+
+.designer-terrain {
+  cursor: grab;
+}
+
+.designer-terrain.is-selected circle {
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 5px rgba(255, 210, 100, 0.7));
+}
+
+.designer-selected {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--panel-2);
+  border-left: 5px solid var(--lc-sand);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.82rem;
+}
+
+.designer-props {
+  min-width: 0;
+}
+
+.designer-force {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.designer-force .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chip-x {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.chip-x:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+
+@media (max-width: 1250px) {
+  .designer-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .designer-map-pane {
+    position: static;
+  }
+}

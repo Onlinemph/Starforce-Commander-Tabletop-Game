@@ -155,6 +155,12 @@ of S2.5.4.
 And a **ship builder**, built on the designers' own costing spreadsheet, so you can design your own
 hulls, have them priced on the same scale as the printed ones, and fly them the same afternoon.
 
+And a **scenario designer**: lay out a battle of your own on a live map — click to place the printed
+asteroid counters, planets, moons and gas clouds; drop each side's deployment anchor and set its
+compass facing, speed, objective and fleet — with the K1.2 placement rules checked as you design.
+A finished design appears in the scenario list like the printed ones, and a battle file embeds the
+whole design, so a save plays on a machine that has never seen it.
+
 And the **printed terrain**: all 26 asteroid field counters from the Print and Play sheet, with
 their densities, safe speeds, damage dice, cover diamonds and SCAN values (K2.1) — drawn on the map
 with the sheet's own asteroid photography. Pick a terrain option in *Choose forces* and the K1.1
@@ -789,6 +795,7 @@ src/
   data/            Game content — all canon, all machine-imported
     ships.json     93 ship forms: the Master Ship Book plus the Aurelian book
     customShips.json  Designs made in the ship builder, bundled with the site
+    customScenarios.json  Battles made in the scenario designer, bundled the same way
     damageDeck.json  The 56-card damage deck from the component sheets
     scenarios.ts   Section S scenarios and force setup
 tools/             Importers that regenerate the JSON from the source PDFs
@@ -813,8 +820,15 @@ structure-and-DC-rating track, the sublight drive table, and the Master Ship Lis
 
 ### Adding scenarios
 
-Write a `Scenario` plus a function returning its starting ships, and add both to `SCENARIOS` in
-`src/data/scenarios.ts`. Facings use the scenario compass rose (S2.5.2) via `facingToHeading`.
+Use the **Scenario designer** in the top bar: lay the map out, save, and **Download
+customScenarios.json** — commit that file over `src/data/customScenarios.json` and the design ships
+with the site, exactly like the ship builder's `customShips.json` workflow. Until it is committed a
+design is a draft in that one browser; either way it appears in the scenario list and in **Choose
+forces**, and any battle file embeds the whole design so a save opens anywhere.
+
+To add one in code, write a `Scenario` plus a function returning its starting ships, and add both to
+`SCENARIOS` in `src/data/scenarios.ts`. Facings use the scenario compass rose (S2.5.2) via
+`facingToHeading`.
 
 ## Design decisions worth knowing
 

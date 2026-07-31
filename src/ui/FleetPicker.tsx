@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { allShipForms } from '../data/ships'
-import { printedForce, scenarioSides, SCENARIOS } from '../data/scenarios'
+import { allScenarioEntries, printedForce, scenarioSides } from '../data/scenarios'
 import {
   availabilityIn,
   AVAILABILITY_RULE,
@@ -13,6 +13,7 @@ import {
 } from '../engine/fleet'
 import type { Availability, ShipForm } from '../engine/types'
 import { useCustomForms } from './customShips'
+import { useCustomScenarios } from './customScenarios'
 import { newGame } from './store'
 
 /**
@@ -55,6 +56,8 @@ function printedFleets(scenarioId: string): Fleets {
 
 export function FleetPicker({ scenarioId, onClose }: Props) {
   const custom = useCustomForms()
+  // Keeps the scenario list current when a design is saved mid-session.
+  useCustomScenarios()
   const roster = useMemo(() => allShipForms(), [custom])
   const byId = useMemo(() => new Map(roster.map((f) => [f.id, f])), [roster])
 
@@ -151,7 +154,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
           <label className="field">
             <span>Scenario</span>
             <select value={scenario} onChange={(e) => changeScenario(e.target.value)}>
-              {SCENARIOS.map(({ scenario: s }) => (
+              {allScenarioEntries().map(({ scenario: s }) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
