@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { act } from './store'
 import {
   armingPointsAvailable,
@@ -38,6 +39,14 @@ interface Props {
 
 export function ShipFormPanel({ game, ship }: Props) {
   const allocating = game.phase === 'engineering' && game.segment === 'resource-allocation'
+  /**
+   * Why the last click was refused. Allocation and arming both have rules that
+   * can turn a click down — not enough power, arming points already spent, a
+   * slow-arming diamond — and a button that silently does nothing reads as a
+   * broken game rather than a rule.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const remaining = powerRemaining(ship)
 
   return (
     <div className="ship-form">
@@ -114,10 +123,20 @@ export function ShipFormPanel({ game, ship }: Props) {
         </div>
       </section>
 
+      {allocating && refusal && (
+        <p className="alloc-error" role="status">
+          {refusal}
+        </p>
+      )}
+
       <section className="form-section">
         <h3>
           Functions / Power Level
-          {allocating && <span className="chip">{powerRemaining(ship)} of {totalPowerAvailable(ship)} power left</span>}
+          {allocating && (
+            <span className={`chip${remaining === 0 ? ' chip-warn' : ''}`}>
+              {remaining} of {totalPowerAvailable(ship)} power left
+            </span>
+          )}
         </h3>
         <table className="functions">
           <tbody>
@@ -128,28 +147,44 @@ export function ShipFormPanel({ game, ship }: Props) {
                   <th>{line.label}</th>
                   <td className="circles">
                     {line.freeValue > 0 && <span className="circle is-free" title="Free power (B2.2.3)">{line.freeValue}</span>}
-                    {line.steps.map((step, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        className={`circle${i < filled ? ' is-filled' : ''}`}
-                        disabled={!allocating}
-                        title={
-                          step.powerCost > 1
-                            ? `${step.powerCost} power → ${step.value}`
-                            : `1 power → ${step.value}`
-                        }
-                        onClick={() =>
-                          act(() => {
-                            // Clicking a filled circle empties back to it.
-                            const next = i < filled ? i : i + 1
-                            setAllocation(ship, line.id, next)
-                          })
-                        }
-                      >
-                        {step.value}
-                      </button>
-                    ))}
+                    {line.steps.map((step, i) => {
+                      // Cost of filling up to and including this circle, less
+                      // whatever the line already holds.
+                      const costToHere = line.steps
+                        .slice(0, i + 1)
+                        .reduce((n, s) => n + s.powerCost, 0)
+                      const alreadyOnLine = line.steps
+                        .slice(0, filled)
+                        .reduce((n, s) => n + s.powerCost, 0)
+                      const extra = costToHere - alreadyOnLine
+                      const affordable = i < filled || extra <= remaining
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          className={`circle${i < filled ? ' is-filled' : ''}${
+                            allocating && !affordable ? ' is-unaffordable' : ''
+                          }`}
+                          disabled={!allocating}
+                          title={
+                            i < filled
+                              ? `Click to take the power back off, down to ${step.value}`
+                              : affordable
+                                ? `${extra} power → ${step.value}`
+                                : `Needs ${extra} power; ${remaining} left`
+                          }
+                          onClick={() =>
+                            act(() => {
+                              // Clicking a filled circle empties back to it.
+                              const next = i < filled ? i : i + 1
+                              setRefusal(setAllocation(ship, line.id, next)?.message ?? null)
+                            })
+                          }
+                        >
+                          {step.value}
+                        </button>
+                      )
+                    })}
                   </td>
                   <td className="line-value">{lineValue(ship, line.id)}</td>
                 </tr>
@@ -187,7 +222,9 @@ export function ShipFormPanel({ game, ship }: Props) {
                           ? 'Spend one arming point on this mount (E4.2.2)'
                           : `Arcs: ${mount.arcs.join(', ')}`
                       }
-                      onClick={() => act(() => armMount(ship, weapon.id, index))}
+                      onClick={() =>
+                        act(() => setRefusal(armMount(ship, weapon.id, index)?.message ?? null))
+                      }
                     >
                       <span className="mount-arcs">{mount.arcs.join('/')}</span>
                       <span className="arming">

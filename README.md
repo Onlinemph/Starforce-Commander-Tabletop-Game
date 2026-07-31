@@ -79,6 +79,8 @@ full Sequence of Play:
 
 - **Engineering Phase** — secret resource allocation across every FUNCTIONS line, weapon arming
   (including slow-arming diamonds), shield repair and reinforcement, batteries, and damage control.
+  A circle the ship cannot afford is drawn out of reach, and a click the rules turn down says why
+  rather than doing nothing.
 - **Three Combat Phases** — command-card plotting, the Operations Segment steps A–E, simultaneous
   movement with real turn-template geometry, and the Combat Segment with Tactical Scan firing order.
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.

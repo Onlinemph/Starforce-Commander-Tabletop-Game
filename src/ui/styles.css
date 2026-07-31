@@ -2199,3 +2199,21 @@ input[type='number'] {
   font-style: normal;
   color: var(--warn);
 }
+
+/* A refused allocation or arming click, explained (B2.2, E4.2). */
+.alloc-error {
+  margin: 0 0 0.6rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--warn);
+  border-radius: 5px;
+  background: rgba(255, 176, 32, 0.09);
+  color: var(--warn);
+  font-size: 0.8rem;
+}
+
+/* A circle the ship cannot currently afford: still readable, plainly out of
+   reach, so a click that does nothing is never a surprise. */
+.circle.is-unaffordable {
+  opacity: 0.32;
+  border-style: dashed;
+}

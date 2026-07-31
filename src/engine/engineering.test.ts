@@ -361,3 +361,71 @@ describe('damage control (B3)', () => {
     throw new Error('no successful repair in 40 seeds')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Refusals
+// ---------------------------------------------------------------------------
+
+/**
+ * Every one of these turns a click down. The UI shows the message, because a
+ * button that silently does nothing reads as a broken game rather than a rule —
+ * which is exactly how weapon allocation looked before the messages existed.
+ */
+describe('why an allocation is refused', () => {
+  it('says so when the ship has no power left (B2.2.1)', () => {
+    const ship = makeShip()
+    expect(spendEverything(ship)).toBe(0)
+    const line = YORKTOWN.functions.find((l) => (ship.allocation[l.id] ?? 0) < l.steps.length)!
+    const error = setAllocation(ship, line.id, (ship.allocation[line.id] ?? 0) + 1)
+    expect(error?.message).toBe('Not enough power available.')
+    // And the refusal leaves the allocation exactly as it was.
+    expect(powerRemaining(ship)).toBe(0)
+  })
+
+  it('says so when arming points are already spent on mounts (E4.2.7)', () => {
+    const ship = makeShip()
+    expect(setAllocation(ship, PHASER_LINE.id, 1)).toBeNull()
+    expect(armMount(ship, PHASER.id, 0)).toBeNull()
+    expect(armMount(ship, PHASER.id, 1)).toBeNull()
+
+    const error = setAllocation(ship, PHASER_LINE.id, 0)
+    expect(error?.message).toMatch(/2 arming point\(s\) already spent/)
+    // The power stays on the line rather than half-reverting.
+    expect(ship.allocation[PHASER_LINE.id]).toBe(1)
+  })
+
+  it('says so when a slow-arming diamond blocks the next circle (E4.2.8)', () => {
+    const ship = makeShip()
+    expect(TORPEDO.mounts[0].roundGates?.[0]).toBe(true)
+    expect(setAllocation(ship, TORP_LINE.id, 1)).toBeNull()
+
+    expect(armMount(ship, TORPEDO.id, 0)).toBeNull()
+    const error = armMount(ship, TORPEDO.id, 0)
+    expect(error?.message).toMatch(/E4\.2\.8/)
+  })
+
+  it('says so when the mount is already full', () => {
+    const ship = makeShip()
+    setAllocation(ship, PHASER_LINE.id, 2)
+    const circles = PHASER.mounts[0].armingCircles
+    for (let i = 0; i < circles; i += 1) expect(armMount(ship, PHASER.id, 0)).toBeNull()
+    expect(armMount(ship, PHASER.id, 0)?.message).toMatch(/already fully armed/)
+  })
+
+  it('says so when the weapon has no arming points left', () => {
+    const ship = makeShip()
+    // Free power alone gives this line one arming point.
+    expect(armingPointsAvailable(ship, PHASER.id)).toBe(PHASER_LINE.freeValue)
+    expect(armMount(ship, PHASER.id, 0)).toBeNull()
+    expect(armMount(ship, PHASER.id, 1)?.message).toMatch(/No arming points remaining/)
+  })
+
+  it('never refuses without leaving the ship untouched', () => {
+    const ship = makeShip()
+    const before = JSON.stringify({ alloc: ship.allocation, mounts: ship.mounts })
+    setAllocation(ship, PHASER_LINE.id, 99)
+    armMount(ship, PHASER.id, 99)
+    armMount(ship, 'no-such-weapon', 0)
+    expect(JSON.stringify({ alloc: ship.allocation, mounts: ship.mounts })).toBe(before)
+  })
+})
