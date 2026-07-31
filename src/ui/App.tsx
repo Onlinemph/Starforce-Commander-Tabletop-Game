@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BLUE, RED, SCENARIOS } from '../data/scenarios'
+import { SCENARIOS } from '../data/scenarios'
 import {
   activeShips,
   advanceSegment,
@@ -26,7 +26,7 @@ import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ShipBuilder } from './ShipBuilder'
-import { ShipPicker } from './ShipPicker'
+import { FleetPicker } from './FleetPicker'
 import { ShipFormPanel } from './ShipFormPanel'
 import { act, resetGame, useGame } from './store'
 
@@ -125,12 +125,8 @@ export function App() {
       </header>
 
       {picking && (
-        <ShipPicker
+        <FleetPicker
           scenarioId={game.scenario.id}
-          current={{
-            [BLUE]: game.ships.find((s) => s.side === BLUE)?.form.id,
-            [RED]: game.ships.find((s) => s.side === RED)?.form.id,
-          }}
           onClose={() => {
             setPicking(false)
             setTargetId(null)

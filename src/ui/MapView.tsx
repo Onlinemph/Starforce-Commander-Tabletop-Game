@@ -301,7 +301,9 @@ function ShipToken({
             ×{formationSize}
           </text>
         )}
-        <text y={size / 2 + 30} className="ship-name" textAnchor="middle">
+        {/* Close under the hull, so a line-abreast fleet's labels do not land
+            on the next ship's counter. */}
+        <text y={size / 2 + 13} className="ship-name" textAnchor="middle">
           {ship.name} · spd {ship.speed}
           {formationSize > 1 ? ` · formation of ${formationSize}` : ''}
           {ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : ''}

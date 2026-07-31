@@ -1,6 +1,8 @@
+import { MAX_SHIPS_PER_SIDE } from '../engine/fleet'
 import { createGame, type GameState, type Scenario } from '../engine/game'
+import type { MapBounds } from '../engine/navigation'
 import { createShip, type ShipState } from '../engine/shipState'
-import type { ShipForm } from '../engine/types'
+import type { Point, ShipForm } from '../engine/types'
 import { shipFormById, VALLARI_CRUISER, YORKTOWN } from './ships'
 
 /**
@@ -229,225 +231,331 @@ export interface SetupOptions {
   /** E11.2 / E11.3 optional rules, off by default in the Standard game. */
   derelicts?: boolean
   explosions?: boolean
-  /** Ship form ids to field, keyed by side — lets players pick from the roster. */
+  /**
+   * A single ship form id per side — the quick pick that swaps a scenario's
+   * flagship without changing the rest of the printed force.
+   */
   forms?: Partial<Record<string, string>>
+  /**
+   * A whole force per side, as one form id per hull, in the order they deploy.
+   * Overrides `forms` and the scenario's printed force (S2.5.1).
+   */
+  fleets?: Partial<Record<string, string[]>>
+}
+
+/**
+ * Where one side sets up, and how a force of any size fits into its zone
+ * (S2.5.2, S2.5.3).
+ *
+ * `pattern` holds the exact offsets the scenario prints for its own force, so
+ * a battle fought as written deploys exactly as written. Ships beyond that —
+ * which only happens when a player composes their own force — continue from
+ * the last printed ship along `spread`, staying inside the map.
+ */
+interface SideSetup {
+  side: string
+  /** Compass facing (S2.5.2). */
+  facing: number
+  speed: number
+  anchor: Point
+  pattern: Point[]
+  spread: Point
+  names: string[]
+  /** The force the scenario prints. */
+  defaults: () => ShipForm[]
 }
 
 /** Vessel names for the ships players field, so the log reads like a battle. */
-const BLUE_NAMES = ['U.S.S. Yorktown', 'U.S.S. Endeavour', 'U.S.S. Hood']
-const RED_NAMES = ['V.I.S. Karnath', 'V.I.S. Vashtar', 'V.I.S. Draketh']
+const BLUE_NAMES = [
+  'U.S.S. Yorktown',
+  'U.S.S. Endeavour',
+  'U.S.S. Hood',
+  'U.S.S. Valiant',
+  'U.S.S. Kearsarge',
+  'U.S.S. Intrepid',
+  'U.S.S. Resolute',
+  'U.S.S. Vanguard',
+]
+const RED_NAMES = [
+  'V.I.S. Karnath',
+  'V.I.S. Vashtar',
+  'V.I.S. Draketh',
+  'V.I.S. Morlach',
+  'V.I.S. Tarrus',
+  'V.I.S. Zhaggo',
+  'V.I.S. Kethra',
+  'V.I.S. Ordran',
+]
+const AURELIAN_NAMES = [
+  'A.I.S. Nocturne',
+  'A.I.S. Umbra',
+  'A.I.S. Vesper',
+  'A.I.S. Tenebrae',
+  'A.I.S. Aquilo',
+  'A.I.S. Silentium',
+  'A.I.S. Noctilucent',
+  'A.I.S. Penumbra',
+]
 
 function pickForm(id: string | undefined, fallback: ShipForm): ShipForm {
   return (id ? shipFormById(id) : undefined) ?? fallback
 }
 
-function duelShips(options: SetupOptions): ShipState[] {
-  return [
-    createShip({
-      id: 'blue-1',
-      side: BLUE,
-      name: BLUE_NAMES[0],
-      form: pickForm(options.forms?.[BLUE], YORKTOWN),
-      // FAC 6 is west, so Blue's setup zone is the eastern edge (S3.1).
-      placement: { position: { x: 33, y: 18 }, heading: facingToHeading(6) },
-      speed: 4,
-    }),
-    createShip({
-      id: 'red-1',
-      side: RED,
-      name: RED_NAMES[0],
-      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
-      // FAC 2 is east, so Red's setup zone is the western edge (S3.1).
-      placement: { position: { x: 3, y: 18 }, heading: facingToHeading(2) },
-      speed: 4,
-    }),
-  ]
+/** The forms this side actually fields, once the player has had their say. */
+function forceFor(setup: SideSetup, options: SetupOptions): ShipForm[] {
+  const chosen = options.fleets?.[setup.side]
+  if (chosen && chosen.length > 0) {
+    const forms = chosen.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f))
+    if (forms.length > 0) return forms.slice(0, MAX_SHIPS_PER_SIDE)
+  }
+  const printed = setup.defaults()
+  const pick = options.forms?.[setup.side]
+  return pick ? [pickForm(pick, printed[0]), ...printed.slice(1)] : printed
 }
 
-function ambushShips(options: SetupOptions): ShipState[] {
-  return [
-    createShip({
-      id: 'blue-1',
-      side: BLUE,
-      name: BLUE_NAMES[0],
-      form: pickForm(options.forms?.[BLUE], YORKTOWN),
-      // In orbit north of the colony, coasting south (facing 4) at low speed.
-      placement: { position: { x: 18, y: 8 }, heading: facingToHeading(4) },
-      speed: 1,
-    }),
-    createShip({
-      id: 'red-1',
-      side: RED,
-      name: RED_NAMES[0],
-      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
-      // Coming around the far side of the planet on an intercept (facing 8).
-      placement: { position: { x: 18, y: 28 }, heading: facingToHeading(8) },
-      speed: 4,
-    }),
-  ]
+/** Counters are 1.5 inches across, so ranks and files are spaced past that. */
+const RANK_SPACING = 1.9
+/** Keep a ship's centre point this far inside the map edge (S2.5.3). */
+const EDGE_MARGIN = 1.5
+
+/**
+ * Offset of the `index`-th ship from its side's anchor.
+ *
+ * Inside the scenario's own pattern this is exact, so a battle fought as
+ * written deploys as written. Past it, ships extend the line along `spread`
+ * until the line would run off the map, then fold into a second rank behind
+ * the first — a setup zone is only so big (S2.5.3).
+ */
+function offsetFor(setup: SideSetup, index: number, bounds: MapBounds): Point {
+  const last = setup.pattern.length - 1
+  if (index <= last) return setup.pattern[index]
+
+  const base = setup.pattern[last]
+  const onMap = (x: number, y: number) =>
+    x >= EDGE_MARGIN &&
+    x <= bounds.width - EDGE_MARGIN &&
+    y >= EDGE_MARGIN &&
+    y <= bounds.height - EDGE_MARGIN
+
+  let columns = 1
+  while (
+    columns < MAX_SHIPS_PER_SIDE &&
+    onMap(
+      setup.anchor.x + base.x + setup.spread.x * (columns + 1),
+      setup.anchor.y + base.y + setup.spread.y * (columns + 1),
+    )
+  ) {
+    columns += 1
+  }
+
+  // Ranks build up behind the line, away from where the side is heading.
+  const heading = (facingToHeading(setup.facing) * Math.PI) / 180
+  const behind = { x: -Math.sin(heading) * RANK_SPACING, y: Math.cos(heading) * RANK_SPACING }
+
+  const n = index - last
+  const column = ((n - 1) % columns) + 1
+  const rank = Math.floor((n - 1) / columns)
+  return {
+    x: base.x + setup.spread.x * column + behind.x * rank,
+    y: base.y + setup.spread.y * column + behind.y * rank,
+  }
 }
+
+function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): ShipState[] {
+  const ships: ShipState[] = []
+  const clamp = (v: number, max: number) =>
+    Math.min(max - EDGE_MARGIN, Math.max(EDGE_MARGIN, v))
+  for (const setup of setups) {
+    const prefix = setup.side.split(' ')[0].toLowerCase()
+    forceFor(setup, options).forEach((form, i) => {
+      const offset = offsetFor(setup, i, bounds)
+      ships.push(
+        createShip({
+          id: `${prefix}-${i + 1}`,
+          side: setup.side,
+          name: setup.names[i] ?? `${setup.names[0]} ${i + 1}`,
+          form,
+          placement: {
+            position: {
+              x: clamp(setup.anchor.x + offset.x, bounds.width),
+              y: clamp(setup.anchor.y + offset.y, bounds.height),
+            },
+            heading: facingToHeading(setup.facing),
+          },
+          speed: setup.speed,
+        }),
+      )
+    })
+  }
+  return ships
+}
+
+const O = (x: number, y: number): Point => ({ x, y })
+
+// S3.1 — Blue faces 6 (west) from the eastern edge, Red faces 2 from the west.
+const DUEL_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 6,
+    speed: 4,
+    anchor: O(33, 18),
+    pattern: [O(0, 0)],
+    spread: O(0, 2),
+    names: BLUE_NAMES,
+    defaults: () => [YORKTOWN],
+  },
+  {
+    side: RED,
+    facing: 2,
+    speed: 4,
+    anchor: O(3, 18),
+    pattern: [O(0, 0)],
+    spread: O(0, 2),
+    names: RED_NAMES,
+    defaults: () => [VALLARI_CRUISER],
+  },
+]
+
+// S3.3 — Blue is in orbit north of the colony coasting south; Red comes around
+// the far side of the planet on an intercept.
+const AMBUSH_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 4,
+    speed: 1,
+    anchor: O(18, 8),
+    pattern: [O(0, 0)],
+    spread: O(2, 0),
+    names: BLUE_NAMES,
+    defaults: () => [YORKTOWN],
+  },
+  {
+    side: RED,
+    facing: 8,
+    speed: 4,
+    anchor: O(18, 28),
+    pattern: [O(0, 0)],
+    spread: O(2, 0),
+    names: RED_NAMES,
+    defaults: () => [VALLARI_CRUISER],
+  },
+]
 
 /**
  * Flagship at the point, the other two trailing off each quarter. Every pair is
  * inside the 2-inch joining range of C5.1.2, so whichever ship the turn rate
  * picks as lead (C5.1.1), the rest can join it.
  */
-const SQUADRON_VEE = [
-  { back: 0, side: 0 },
-  { back: 1.5, side: -0.8 },
-  { back: 1.5, side: 0.8 },
-]
-
-/**
- * Three ships a side — flagship, line ship, scout. The player's picked form is
- * used for the flagship; the rest keep the printed squadron.
- */
-function squadronShips(options: SetupOptions): ShipState[] {
-  const blueFlag = shipFormById('union-yorktown-iiic-class-command-cruiser') ?? YORKTOWN
-  const redFlag = shipFormById('vallari-v-7e-raider-class-command-cruiser') ?? VALLARI_CRUISER
-  const blueScout = shipFormById('union-hermes-i-class-scout') ?? YORKTOWN
-  const redScout = shipFormById('vallari-v-5q-spectra-class-heavy-scout') ?? VALLARI_CRUISER
-
-  const ships: ShipState[] = []
-  // Blue enters from the east on facing 6, Red from the west on facing 2, as in
-  // the neutral setup of S3.1.
-  const blueForms = [pickForm(options.forms?.[BLUE], blueFlag), YORKTOWN, blueScout]
-  const redForms = [pickForm(options.forms?.[RED], redFlag), VALLARI_CRUISER, redScout]
-
-  blueForms.forEach((form, i) => {
-    ships.push(
-      createShip({
-        id: `blue-${i + 1}`,
-        side: BLUE,
-        name: BLUE_NAMES[i],
-        form,
-        // A tight vee, every ship within range 1 of every other, so the
-        // squadron may form up in the first Command Segment (C5.1.2).
-        placement: {
-          position: { x: 32 + SQUADRON_VEE[i].back, y: 18 + SQUADRON_VEE[i].side },
-          heading: facingToHeading(6),
-        },
-        speed: 4,
-      }),
-    )
-  })
-  redForms.forEach((form, i) => {
-    ships.push(
-      createShip({
-        id: `red-${i + 1}`,
-        side: RED,
-        name: RED_NAMES[i],
-        form,
-        placement: {
-          position: { x: 4 - SQUADRON_VEE[i].back, y: 18 + SQUADRON_VEE[i].side },
-          heading: facingToHeading(2),
-        },
-        speed: 4,
-      }),
-    )
-  })
-  return ships
-}
-
-export const SCENARIOS: Array<{
-  scenario: Scenario
-  makeShips: (options: SetupOptions) => ShipState[]
-}> = [
-  { scenario: THE_DUEL, makeShips: duelShips },
-  { scenario: ORBITAL_AMBUSH, makeShips: ambushShips },
-  { scenario: SQUADRON_ENGAGEMENT, makeShips: squadronShips },
-  { scenario: NEBULA_PATROL, makeShips: nebulaShips },
-  { scenario: AURELIAN_RAID, makeShips: aurelianShips },
+const SQUADRON_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 6,
+    speed: 4,
+    anchor: O(32, 18),
+    pattern: [O(0, 0), O(1.5, -0.8), O(1.5, 0.8)],
+    spread: O(0, 1.8),
+    names: BLUE_NAMES,
+    defaults: () => [
+      shipFormById('union-yorktown-iiic-class-command-cruiser') ?? YORKTOWN,
+      YORKTOWN,
+      shipFormById('union-hermes-i-class-scout') ?? YORKTOWN,
+    ],
+  },
+  {
+    side: RED,
+    facing: 2,
+    speed: 4,
+    anchor: O(4, 18),
+    pattern: [O(0, 0), O(-1.5, -0.8), O(-1.5, 0.8)],
+    spread: O(0, 1.8),
+    names: RED_NAMES,
+    defaults: () => [
+      shipFormById('vallari-v-7e-raider-class-command-cruiser') ?? VALLARI_CRUISER,
+      VALLARI_CRUISER,
+      shipFormById('vallari-v-5q-spectra-class-heavy-scout') ?? VALLARI_CRUISER,
+    ],
+  },
 ]
 
 /** Two ships a side, entering the nebula at the safe speed of 2 (K4.2.2). */
-function nebulaShips(options: SetupOptions): ShipState[] {
-  return [
-    createShip({
-      id: 'blue-1',
-      side: BLUE,
-      name: BLUE_NAMES[0],
-      form: pickForm(options.forms?.[BLUE], YORKTOWN),
-      placement: { position: { x: 31, y: 8 }, heading: facingToHeading(5) },
-      speed: 2,
-    }),
-    createShip({
-      id: 'blue-2',
-      side: BLUE,
-      name: BLUE_NAMES[1],
-      form: YORKTOWN,
-      placement: { position: { x: 33, y: 12 }, heading: facingToHeading(5) },
-      speed: 2,
-    }),
-    createShip({
-      id: 'red-1',
-      side: RED,
-      name: RED_NAMES[0],
-      form: pickForm(options.forms?.[RED], VALLARI_CRUISER),
-      placement: { position: { x: 5, y: 28 }, heading: facingToHeading(1) },
-      speed: 2,
-    }),
-    createShip({
-      id: 'red-2',
-      side: RED,
-      name: RED_NAMES[1],
-      form: VALLARI_CRUISER,
-      placement: { position: { x: 3, y: 24 }, heading: facingToHeading(1) },
-      speed: 2,
-    }),
-  ]
-}
-
-/** Vessel names for the Aurelian raiders. */
-const AURELIAN_NAMES = ['A.I.S. Nocturne', 'A.I.S. Umbra']
+const NEBULA_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 5,
+    speed: 2,
+    anchor: O(31, 8),
+    pattern: [O(0, 0), O(2, 4)],
+    spread: O(0, 2.6),
+    names: BLUE_NAMES,
+    defaults: () => [YORKTOWN, YORKTOWN],
+  },
+  {
+    side: RED,
+    facing: 1,
+    speed: 2,
+    anchor: O(5, 28),
+    pattern: [O(0, 0), O(-2, -4)],
+    spread: O(0, -2.6),
+    names: RED_NAMES,
+    defaults: () => [VALLARI_CRUISER, VALLARI_CRUISER],
+  },
+]
 
 /** A Union patrol against a cloaked Aurelian pair. */
-function aurelianShips(options: SetupOptions): ShipState[] {
-  const raider = shipFormById('aurelian-tonitrus-i-class-heavy-cruiser')
-  const escort = shipFormById('aurelian-acipter-i-class-destroyer')
-  return [
-    createShip({
-      id: 'blue-1',
-      side: BLUE,
-      name: BLUE_NAMES[0],
-      form: pickForm(options.forms?.[BLUE], YORKTOWN),
-      placement: { position: { x: 30, y: 16 }, heading: facingToHeading(6) },
-      speed: 3,
-    }),
-    createShip({
-      id: 'blue-2',
-      side: BLUE,
-      name: BLUE_NAMES[1],
-      form: YORKTOWN,
-      placement: { position: { x: 32, y: 21 }, heading: facingToHeading(6) },
-      speed: 3,
-    }),
-    createShip({
-      id: 'aur-1',
-      side: AURELIAN,
-      name: AURELIAN_NAMES[0],
-      form: pickForm(options.forms?.[AURELIAN], raider ?? VALLARI_CRUISER),
-      // Cloaked ships crawl: speed 2 or less, or they give themselves away
-      // (H6.4.6, H6.15.2).
-      placement: { position: { x: 6, y: 14 }, heading: facingToHeading(2) },
-      speed: 2,
-    }),
-    createShip({
-      id: 'aur-2',
-      side: AURELIAN,
-      name: AURELIAN_NAMES[1],
-      form: escort ?? VALLARI_CRUISER,
-      placement: { position: { x: 4, y: 23 }, heading: facingToHeading(2) },
-      speed: 2,
-    }),
-  ]
+const AURELIAN_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 6,
+    speed: 3,
+    anchor: O(30, 16),
+    pattern: [O(0, 0), O(2, 5)],
+    spread: O(0, 2.6),
+    names: BLUE_NAMES,
+    defaults: () => [YORKTOWN, YORKTOWN],
+  },
+  {
+    side: AURELIAN,
+    // Cloaked ships crawl: speed 2 or less, or they give themselves away
+    // (H6.4.6, H6.15.2).
+    facing: 2,
+    speed: 2,
+    anchor: O(6, 14),
+    pattern: [O(0, 0), O(-2, 9)],
+    spread: O(0, 2.6),
+    names: AURELIAN_NAMES,
+    defaults: () => [
+      shipFormById('aurelian-tonitrus-i-class-heavy-cruiser') ?? VALLARI_CRUISER,
+      shipFormById('aurelian-acipter-i-class-destroyer') ?? VALLARI_CRUISER,
+    ],
+  },
+]
+
+export const SCENARIOS: Array<{ scenario: Scenario; sides: SideSetup[] }> = [
+  { scenario: THE_DUEL, sides: DUEL_SIDES },
+  { scenario: ORBITAL_AMBUSH, sides: AMBUSH_SIDES },
+  { scenario: SQUADRON_ENGAGEMENT, sides: SQUADRON_SIDES },
+  { scenario: NEBULA_PATROL, sides: NEBULA_SIDES },
+  { scenario: AURELIAN_RAID, sides: AURELIAN_SIDES },
+]
+
+/** The sides a scenario is fought between, in deployment order. */
+export function scenarioSides(scenarioId: string): string[] {
+  const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
+  return entry.sides.map((s) => s.side)
+}
+
+/** The force a scenario prints for a side, as form ids (S2.5.1). */
+export function printedForce(scenarioId: string, side: string): string[] {
+  const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
+  const setup = entry.sides.find((s) => s.side === side)
+  return setup ? setup.defaults().map((f) => f.id) : []
 }
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
   const entry = SCENARIOS.find((s) => s.scenario.id === scenarioId) ?? SCENARIOS[0]
   return createGame({
     scenario: entry.scenario,
-    ships: entry.makeShips(options),
+    ships: deploy(entry.sides, entry.scenario.bounds, options),
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
     options: {

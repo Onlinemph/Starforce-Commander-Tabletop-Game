@@ -38,9 +38,9 @@ torpedoes. See below.
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
 
-**Forces** are chosen from the full roster — 37 Union, 35 Vallari and 21 Aurelian ships, from the
-V-2N Flanker scout to the UNION III dreadnought — with the point values, availability and
-introduction years the Master Ship List prints.
+**Forces** are composed from the full roster — 37 Union, 35 Vallari and 21 Aurelian ships, from the
+V-2N Flanker scout to the UNION III dreadnought — to a point budget, under the availability limits
+of S2.5.4.
 
 And a **ship builder**, built on the designers' own costing spreadsheet, so you can design your own
 hulls, have them priced on the same scale as the printed ones, and fly them the same afternoon.
@@ -340,6 +340,33 @@ for homing weapons, whose range restarts at zero in each endurance box (E5.1.5).
 erratum was found by cross-checking the same weapon across every ship that carries it, and the two
 shield errata by the importer's own box-count validation, which is left strict rather than loosened.
 
+## Force composition
+
+Every scenario prints a force, and that is what **Choose forces** opens with. From there you compose
+your own: pick hulls from the roster, set a point budget, and field up to eight ships a side.
+
+The interesting part is **S2.5.4 ship availability**, which is enforced live:
+
+- **Common** — no limit.
+- **Uncommon** — at most 40% of a force by point value, *but you may always have one*, however
+  expensive. The cap only bites when you add a second.
+- **Rare** — at most 20% of a force by point value, with no exemption for the first. "These ships are
+  valuable and rarely travel alone", so a lone rare hull is an illegal force — it needs an escort.
+- **Unique** — one in the whole battle, counted across both sides.
+
+Availability is not fixed to what the form prints. A class is **Rare in its first year of service,
+Uncommon in its second and Common from its third**, and never more available than its printed
+maximum. So the picker has a **battle year**: set it to 3660 and the Yorktown III is a rare new
+design, set it to 3700 and it is a common workhorse. Set it before a class enters service and you
+cannot field it at all. The roster shows each ship's effective rarity for the year you picked.
+
+An illegal force blocks **Start battle**, with one escape hatch: a scenario's own force composition
+overrides S2.5.4 (S2.5.1), so a "fight anyway" checkbox appears whenever a rule is broken.
+
+Composed forces deploy into the scenario's own setup zone. A scenario's printed force keeps its
+printed placement exactly; ships beyond it extend the line and fold into a second rank when the line
+would run off the map (S2.5.3).
+
 ## Ship builder
 
 The designers sent through their own design spreadsheet, `1. SHIP FORM MASTER FEDERATION V38` — the
@@ -441,8 +468,9 @@ line — which is exactly what E7.2.5 describes.
   numbered counter have not been imported; scenarios set them directly instead.
 - **Hidden units** (K6) — the rule is a placeholder in Expansion 3 itself ("we will add Hidden Units
   in a future expansion"). Gas clouds carry their SCAN value ready for it.
-- **Scenarios** (S3) — The Duel, Orbital Ambush, the Squadron Engagement and Nebula Patrol; the rest
-  are straightforward to add.
+- **Scenarios** (S3) — two of the six printed missions, The Duel (S3.1) and Orbital Ambush (S3.3),
+  plus three written to exercise the expansions: the Squadron Engagement, Nebula Patrol and the
+  Aurelian Raid. S3.2, S3.4, S3.5 and S3.6 are straightforward to add.
 - **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
   points (H3.6), but the scan procedure itself is not interactive.
 - **Every published expansion is implemented.** 1 (C5, H3), 2 (H4, H5), 3 (K4, K5), 4 (the Master
@@ -470,6 +498,7 @@ src/
     combat.ts      Volley resolution, rerolls, fire modes
     engineering.ts Resource allocation, arming, damage control
     navigation.ts  Plot validation, movement, stress checks, disengagement
+    fleet.ts       Force composition and ship availability (S2.5)
     shipBuilder.ts The designers' point-value model and design validation
     game.ts        Sequence of play, terrain, victory points
   data/            Game content — all canon, all machine-imported

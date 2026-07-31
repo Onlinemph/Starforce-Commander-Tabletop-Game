@@ -304,6 +304,11 @@ input[type='number'] {
 .ship-name {
   fill: var(--ink);
   font-size: 10px;
+  /* A halo keeps names legible when a fleet is packed into a setup zone. */
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .map-controls {
@@ -1082,10 +1087,14 @@ input[type='number'] {
 .picker-red {
   border-color: rgba(255, 92, 92, 0.5);
 }
+/* Expansion 5's third side gets the Aurelian purple. */
+.picker-aurelian {
+  border-color: rgba(150, 100, 220, 0.6);
+}
 
 .roster {
   overflow-y: auto;
-  max-height: 40vh;
+  max-height: 46vh;
   margin-top: 0.5rem;
 }
 .roster h4 {
@@ -1855,6 +1864,165 @@ input[type='number'] {
 
 @media (max-width: 1100px) {
   .builder-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Fleet picker -------------------------------------------------------- */
+
+.picker.fleet-picker {
+  width: min(1400px, 100%);
+}
+
+.fleet-body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.fleet-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fleet-side-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+}
+
+.fleet-side-tabs .chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #05202a;
+  font-weight: 600;
+}
+
+.fleet-sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.fleet-side {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+}
+
+.fleet-side > header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.fleet-side > header h3 {
+  margin: 0;
+}
+
+.fleet-total {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-empty {
+  margin: 0.3rem 0;
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+}
+
+.fleet-list {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fleet-list li {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.fleet-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fleet-count b {
+  min-width: 1.1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.fleet-name em {
+  font-style: normal;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fleet-points {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rarity-common {
+  color: var(--ink-dim);
+}
+.rarity-uncommon {
+  color: var(--green);
+}
+.rarity-rare {
+  color: var(--yellow);
+}
+.rarity-unique {
+  color: var(--accent);
+}
+.rarity-unavailable {
+  color: var(--danger);
+}
+
+.fleet-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.roster-row:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .fleet-body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
