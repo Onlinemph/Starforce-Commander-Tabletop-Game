@@ -25,6 +25,7 @@ import { MapView, type RangeRing } from './MapView'
 import { ShipBuilder } from './ShipBuilder'
 import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
+import { IntelPanel } from './IntelPanel'
 import { OperationsPanel } from './OperationsPanel'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
@@ -38,6 +39,9 @@ import {
   useGame,
 } from './store'
 
+/** Which side's player is holding the console. Survives a refresh mid-handoff. */
+const VIEW_KEY = 'sfc.view-side.v1'
+
 export function App() {
   const game = useGame()
   const ships = activeShips(game)
@@ -48,7 +52,31 @@ export function App() {
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
 
+  /**
+   * Hidden information (B1.9): "Open table" shows everything — right for solo
+   * play and refereeing — while a side view hides enemy ship forms, redacts
+   * their counters, and offers a blackout handoff between players. Hot-seat is
+   * honor-system by nature; the view makes honesty the path of least effort.
+   */
+  const sides = [...new Set(game.ships.map((s) => s.side))]
+  const [rawView, setRawView] = useState<string | null>(
+    () => (typeof localStorage === 'undefined' ? null : localStorage.getItem(VIEW_KEY)) || null,
+  )
+  const viewSide = rawView !== null && sides.includes(rawView) ? rawView : null
+  const setViewSide = (side: string | null) => {
+    setRawView(side)
+    try {
+      if (side) localStorage.setItem(VIEW_KEY, side)
+      else localStorage.removeItem(VIEW_KEY)
+    } catch {
+      // Storage failures only cost persistence of the view, never the game.
+    }
+  }
+  /** A blackout while the device changes hands, so nothing leaks in passing. */
+  const [handoff, setHandoff] = useState<string | null>(null)
+
   const selected = game.ships.find((s) => s.id === selectedId) ?? ships[0] ?? null
+  const enemySelected = viewSide !== null && selected !== null && selected.side !== viewSide
 
   /**
    * Two rings per weapon rather than one per bracket: the outer edge of its
@@ -152,6 +180,33 @@ export function App() {
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
 
+      {/*
+        The handoff blackout: fully opaque, covering everything, so passing
+        the device between players shows the incoming commander nothing of the
+        outgoing one's screen.
+      */}
+      {handoff && (
+        <div className="handoff-backdrop" role="dialog" aria-label="Console handoff">
+          <div className="handoff-card">
+            <h2>Console passing to {handoff}</h2>
+            <p>
+              Hand the device over. {handoff}&apos;s commander takes the console when ready — the
+              previous view is gone until it is chosen again.
+            </p>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setViewSide(handoff)
+                setHandoff(null)
+              }}
+            >
+              Take command as {handoff}
+            </button>
+          </div>
+        </div>
+      )}
+
       <StatusRail game={game} />
 
       <div className="lcars-stage">
@@ -166,9 +221,44 @@ export function App() {
               onSelect={onSelect}
               showArcs={showArcs}
               rangeRings={rangeRings}
+              viewSide={viewSide}
             />
 
             <div className="map-controls">
+              <div className="view-chips" title="B1.9 — ship forms are hidden information. A side view shows only what that commander may see.">
+                <span>Viewing</span>
+                <button
+                  type="button"
+                  className={`chip${viewSide === null ? ' is-on' : ''}`}
+                  onClick={() => setViewSide(null)}
+                >
+                  Open table
+                </button>
+                {sides.map((side) => (
+                  <button
+                    key={side}
+                    type="button"
+                    className={`chip${viewSide === side ? ' is-on' : ''}`}
+                    onClick={() => setViewSide(side)}
+                  >
+                    {side}
+                  </button>
+                ))}
+                {viewSide !== null &&
+                  sides
+                    .filter((side) => side !== viewSide)
+                    .map((side) => (
+                      <button
+                        key={`pass-${side}`}
+                        type="button"
+                        className="chip"
+                        title="Blank the screen, hand the device over, and let the next player take command"
+                        onClick={() => setHandoff(side)}
+                      >
+                        ⇄ pass to {side}
+                      </button>
+                    ))}
+              </div>
               <label className="checkbox">
                 <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
                 Firing arcs
@@ -202,8 +292,15 @@ export function App() {
           </section>
 
           <section className="control-column">
-            {selected && <SegmentControls game={game} ship={selected} />}
-            {selected && <ShipFormPanel game={game} ship={selected} />}
+            {selected && enemySelected && viewSide && (
+              <IntelPanel game={game} ship={selected} viewSide={viewSide} />
+            )}
+            {selected && !enemySelected && (
+              <>
+                <SegmentControls game={game} ship={selected} />
+                <ShipFormPanel game={game} ship={selected} />
+              </>
+            )}
           </section>
         </main>
 

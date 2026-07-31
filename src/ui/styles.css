@@ -492,6 +492,87 @@ input:focus-visible {
   cursor: grabbing;
 }
 
+/* ── Hidden information (B1.9): side views and the console handoff ───────── */
+
+.view-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+}
+.view-chips > span {
+  font-family: var(--font-lcars);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.view-chips .chip.is-on {
+  background: var(--lc-sky);
+  border-color: var(--lc-sky);
+  color: #04121f;
+  font-weight: 700;
+}
+
+/* Fully opaque: nothing behind it may leak while the device changes hands. */
+.handoff-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.handoff-card {
+  max-width: 26rem;
+  padding: 1.2rem 1.5rem;
+  background: var(--panel);
+  border-left: 8px solid var(--lc-orange);
+  border-radius: 0 8px 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.handoff-card h2 {
+  margin: 0;
+  color: var(--lc-orange);
+}
+.handoff-card p {
+  color: var(--ink-dim);
+}
+
+.intel-panel {
+  border-left-color: var(--lc-sky);
+}
+.intel-facts {
+  display: flex;
+  gap: 1rem;
+  margin: 0.4rem 0 0.6rem;
+  flex-wrap: wrap;
+}
+.intel-facts dt {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.intel-facts dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* A cloaked ship, drawn only on its own commander's view (H6.2.2). */
+.ship.is-cloaked {
+  opacity: 0.55;
+}
+.ship.is-cloaked .ship-base {
+  stroke-dasharray: 5 4;
+}
+
 /* The ghost of a plotted move (Command Segment). */
 .plot-preview {
   pointer-events: none;

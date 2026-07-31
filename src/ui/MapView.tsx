@@ -113,6 +113,12 @@ interface Props {
   showArcs: boolean
   /** Range rings for the selected ship's weapons (E1.2). */
   rangeRings: RangeRing[]
+  /**
+   * The side whose player is looking (B1.9), or null for the open table.
+   * A side view sees its own cloaked ships ghosted, and enemy counters
+   * redacted down to what the physical table would show.
+   */
+  viewSide: string | null
 }
 
 export interface RangeRing {
@@ -121,7 +127,7 @@ export interface RangeRing {
   band: 'green' | 'max'
 }
 
-export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings }: Props) {
+export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide }: Props) {
   const { width, height } = game.scenario.bounds
   const w = width * SCALE
   const h = height * SCALE
@@ -464,7 +470,10 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       {game.ships
         .filter((ship) => {
           const cloak = game.cloaks[ship.id]
-          if (cloak && positionIsHidden(cloak)) return false
+          // A cloaked, undetected ship is off the table (H6.2.2) — except to
+          // its own commander, who tracks it in secret. The open table hides
+          // it from everyone, since both players share that screen.
+          if (cloak && positionIsHidden(cloak) && ship.side !== viewSide) return false
           const formation = formationOf(game.formations, ship.id)
           return !formation || formation.leadId === ship.id
         })
@@ -477,6 +486,8 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             formationSize={
               (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1
             }
+            cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
+            redacted={viewSide !== null && ship.side !== viewSide}
             onSelect={select}
           />
         ))}
@@ -488,9 +499,13 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         Only the ship whose card is on screen is previewed, so nothing an
         opponent has plotted leaks onto the shared map.
       */}
-      {game.segment === 'command' && selected && !selected.destroyed && !selected.disengaged && (
-        <PlotPreview game={game} ship={selected} />
-      )}
+      {game.segment === 'command' &&
+        selected &&
+        !selected.destroyed &&
+        !selected.disengaged &&
+        (viewSide === null || selected.side === viewSide) && (
+          <PlotPreview game={game} ship={selected} />
+        )}
 
       {/* Corner falloff, drawn last and click-through, to seat the board in
           the surrounding chrome. */}
@@ -741,6 +756,8 @@ function ShipToken({
   selected,
   targeted,
   formationSize,
+  cloaked,
+  redacted,
   onSelect,
 }: {
   ship: ShipState
@@ -748,6 +765,10 @@ function ShipToken({
   targeted: boolean
   /** Ships sharing this counter, including the lead (C5.1.3). */
   formationSize: number
+  /** Cloaked but drawn anyway — only its own commander's view does this. */
+  cloaked: boolean
+  /** An enemy counter in a side view: hide what the table would not show. */
+  redacted: boolean
   onSelect: (id: string) => void
 }) {
   if (ship.destroyed || ship.disengaged) return null
@@ -764,26 +785,32 @@ function ShipToken({
       : 'red'
 
   const shieldLabel = (side: 'F' | 'S' | 'A' | 'P') => {
+    if (ship.shieldsDown[side]) return '—'
+    // Strengths are printed on the hidden form (B1.9); an enemy counter shows
+    // only that the shield is up.
+    if (redacted) return ''
     const green = greenShieldRemaining(ship, side)
     const blue = blueShieldRemaining(ship, side)
-    if (ship.shieldsDown[side]) return '—'
     return green > 0 ? `${blue}+${green}` : `${blue}`
   }
 
   return (
     <g
-      className={`ship ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}`}
+      className={`ship ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}${cloaked ? ' is-cloaked' : ''}`}
       transform={`translate(${cx} ${cy}) rotate(${ship.placement.heading})`}
       onClick={() => onSelect(ship.id)}
       role="button"
       tabIndex={0}
       aria-label={`${ship.name}, speed ${ship.speed}`}
     >
-      {/* The browser's native hover tooltip — glanceable state without a click. */}
+      {/* The browser's native hover tooltip — glanceable state without a click.
+          Marine strength is hidden information, so a redacted counter keeps it. */}
       <title>
         {`${ship.name} — ${ship.form.name}\n` +
           `speed ${ship.speed} · heading ${Math.round(ship.placement.heading)}° · ${damageLevel(ship)}\n` +
-          `stress ${ship.stressMarkers} · marines ${ship.marineSquads}` +
+          `stress ${ship.stressMarkers}` +
+          (redacted ? '' : ` · marines ${ship.marineSquads}`) +
+          (cloaked ? '\nCLOAKED — visible only to you' : '') +
           (ship.derelict ? '\nDERELICT' : '') +
           (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : '')}
       </title>
