@@ -2,6 +2,7 @@ import { hasTrait, traitValue } from './combat'
 import type {
   DieColor,
   FunctionLineDef,
+  ScoutSensorDef,
   ShieldSide,
   ShipForm,
   SystemKind,
@@ -621,6 +622,12 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
     if (!form.functions.some((l) => l.weaponSystemId === weapon.id)) {
       error(`${label} has no arming line in FUNCTIONS (E4.2.6).`)
     }
+    // The designers price the printed `AMMO X` trait, not the shot count on the
+    // mount, so a limited weapon without the trait is costed as unlimited.
+    const shots = weapon.mounts.find((m) => m.ammo !== undefined)?.ammo
+    if (shots !== undefined && !weapon.traits.some((t) => /^AMMO/i.test(t))) {
+      warn(`${label} is limited to ${shots} shots but carries no AMMO trait, so it is priced as if it had unlimited ammunition (F1.2).`)
+    }
   }
 
   const unknownTraits = form.weapons
@@ -628,6 +635,23 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
     .filter((t) => t && traitModifier(t) === 0 && !/^PREC/i.test(t) && !/^SPCL/i.test(t))
   for (const trait of [...new Set(unknownTraits)]) {
     warn(`Trait "${trait}" is not in the designers' cost table, so it is priced at zero.`)
+  }
+
+  // A special system the FUNCTIONS block cannot power is unusable in play.
+  if ((form.scoutSensor?.sensors ?? 0) > 0 && !form.functions.some((l) => l.label.startsWith('SCOUT SEN'))) {
+    error('The scout sensor block has no SCOUT SEN line to power it (H3.2.1).')
+  }
+  if (systemBoxes(form, 'CLOAK') > 0 && !form.functions.some((l) => l.label === 'CLOAK')) {
+    error('The cloaking system has no CLOAK line to power it (H6.3.1).')
+  }
+
+  // E5.1.5 — a homing weapon's brackets sit in thick red endurance boxes, one
+  // per phase of flight. Without them the weapon has nowhere to fly.
+  for (const weapon of form.weapons) {
+    if (!hasTrait(weapon, 'HOMING')) continue
+    if (!weapon.brackets.some((b) => b.endurancePhase !== undefined)) {
+      error(`${weapon.name || 'A homing weapon'} has no endurance boxes on its chart (E5.1.5).`)
+    }
   }
 
   // E8.5.4 — one entry per sublight drive box, each the speed that box drops
@@ -770,6 +794,73 @@ export function blankForm(id: string): ShipForm {
     availability: 'common',
     notes: 'Custom design.',
   }
+}
+
+/**
+ * Keep the FUNCTIONS lines that special systems depend on in step with the rest
+ * of the form.
+ *
+ * A scout sensor block is powered by its SCOUT SEN line and a cloak by its
+ * CLOAK line, and the engine finds both by label. A form carrying the block but
+ * not the line is not a ship with a broken sensor — it is a ship whose sensors
+ * can never be switched on, so the builder maintains the pair rather than
+ * leaving a player to notice mid-battle.
+ *
+ * A line that already reaches the sensor count is left exactly as it is. Some
+ * printed scouts buy two sensors with their first power point — the KNOX II has
+ * four sensors on three circles — and that is a design choice, not an error to
+ * normalise away. Only a line that cannot reach the count is rebuilt, at one
+ * sensor per power point.
+ */
+export function syncSpecialLines(form: ShipForm): void {
+  const drop = (id: string) => {
+    form.functions = form.functions.filter((l) => l.id !== id)
+  }
+
+  const sensors = form.scoutSensor?.sensors ?? 0
+  const scout = form.functions.find((l) => l.id === 'scout-sen')
+  if (sensors > 0) {
+    const steps = Array.from({ length: sensors }, (_, i) => ({ powerCost: 1, value: i + 1 }))
+    if (!scout) {
+      form.functions.push({
+        id: 'scout-sen',
+        label: 'SCOUT SEN',
+        kind: 'special',
+        freeValue: 0,
+        steps,
+        sequential: true,
+      })
+    } else if ((scout.steps[scout.steps.length - 1]?.value ?? scout.freeValue) !== sensors) {
+      scout.steps = steps
+    }
+  } else if (scout) {
+    drop('scout-sen')
+  }
+
+  const cloakBoxes = systemBoxes(form, 'CLOAK')
+  const cloak = form.functions.find((l) => l.id === 'cloak')
+  if (cloakBoxes > 0 && !cloak) {
+    // H6.3.1 — a cloak needs every circle on the line filled, so the number of
+    // circles is what the cloak costs to run.
+    form.functions.push({
+      id: 'cloak',
+      label: 'CLOAK',
+      kind: 'special',
+      freeValue: 0,
+      steps: [
+        { powerCost: 1, value: 1 },
+        { powerCost: 1, value: 2 },
+      ],
+      sequential: true,
+    })
+  } else if (cloakBoxes === 0 && cloak) {
+    drop('cloak')
+  }
+}
+
+/** A scout sensor block at the strength the smallest printed scouts carry. */
+export function blankScoutSensor(): ScoutSensorDef {
+  return { sensors: 2, damageBoxes: 2, targetingRange: 18, jammingRange: 6, scanRange: 18 }
 }
 
 /** A new weapon system, plus the FUNCTIONS line that arms it (E4.2.6). */

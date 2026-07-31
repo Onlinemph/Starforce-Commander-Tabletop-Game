@@ -3,9 +3,11 @@ import { BLUE, RED } from '../data/scenarios'
 import { SHIP_FORMS } from '../data/ships'
 import {
   blankForm,
+  blankScoutSensor,
   blankWeapon,
   impliedSpecialModifier,
   pointValue,
+  syncSpecialLines,
   TRAIT_MODIFIERS,
   validateDesign,
   type PointBreakdown,
@@ -86,11 +88,15 @@ export function ShipBuilder({ onClose }: Props) {
   const problems = useMemo(() => validateDesign(draft), [draft])
   const blocking = problems.filter((p) => p.severity === 'error')
 
-  /** Every edit goes through here, so the draft is never mutated in place. */
+  /**
+   * Every edit goes through here, so the draft is never mutated in place and
+   * the FUNCTIONS lines a scout block or cloak needs are always present.
+   */
   const edit = (mutate: (form: ShipForm) => void) =>
     setDraft((current) => {
       const next = structuredClone(current)
       mutate(next)
+      syncSpecialLines(next)
       return next
     })
 
@@ -217,6 +223,7 @@ export function ShipBuilder({ onClose }: Props) {
             <Sublight draft={draft} edit={edit} />
             <Defenses draft={draft} edit={edit} />
             <Systems draft={draft} edit={edit} />
+            <ScoutSensors draft={draft} edit={edit} />
             <Structure draft={draft} edit={edit} />
             <Weapons draft={draft} edit={edit} />
             <Functions draft={draft} edit={edit} />
@@ -363,6 +370,12 @@ function Identity({ draft, edit }: { draft: ShipForm; edit: Edit }) {
           value={draft.marineSquads}
           max={64}
           onChange={(n) => edit((f) => void (f.marineSquads = n))}
+        />
+        <Num
+          label="Shuttles"
+          value={draft.shuttles}
+          max={40}
+          onChange={(n) => edit((f) => void (f.shuttles = n))}
         />
         <Num
           label="Year"
@@ -736,6 +749,68 @@ function Systems({ draft, edit }: { draft: ShipForm; edit: Edit }) {
   )
 }
 
+function ScoutSensors({ draft, edit }: { draft: ShipForm; edit: Edit }) {
+  const block = draft.scoutSensor
+  return (
+    <Section title="Scout sensors" hint="H3.1.1">
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={Boolean(block)}
+          onChange={(e) =>
+            edit((f) => {
+              f.scoutSensor = e.target.checked ? blankScoutSensor() : undefined
+            })
+          }
+        />
+        This ship carries a scout sensor block
+      </label>
+      {block && (
+        <>
+          <div className="builder-row wrap">
+            <Num
+              label="Sensors"
+              value={block.sensors}
+              min={1}
+              max={8}
+              onChange={(n) => edit((f) => void (f.scoutSensor!.sensors = n))}
+            />
+            <Num
+              label="Damage boxes"
+              value={block.damageBoxes}
+              max={8}
+              onChange={(n) => edit((f) => void (f.scoutSensor!.damageBoxes = n))}
+            />
+            <Num
+              label="Targeting"
+              value={block.targetingRange}
+              max={48}
+              onChange={(n) => edit((f) => void (f.scoutSensor!.targetingRange = n))}
+            />
+            <Num
+              label="Jamming"
+              value={block.jammingRange}
+              max={48}
+              onChange={(n) => edit((f) => void (f.scoutSensor!.jammingRange = n))}
+            />
+            <Num
+              label="Scan"
+              value={block.scanRange}
+              max={48}
+              onChange={(n) => edit((f) => void (f.scoutSensor!.scanRange = n))}
+            />
+          </div>
+          <p className="builder-hint">
+            Each sensor illuminates a target for the whole fleet (H3.4), jams within its radius
+            (H3.5) or runs a full scan (H3.6) — one job each, chosen during Resource Allocation.
+            Changing the sensor count rebuilds the SCOUT SEN line at one sensor per power point.
+          </p>
+        </>
+      )}
+    </Section>
+  )
+}
+
 function Structure({ draft, edit }: { draft: ShipForm; edit: Edit }) {
   return (
     <Section title="Structural integrity" hint="B1.8, B3.1.2">
@@ -835,6 +910,10 @@ function WeaponEditor({
   const w = (mutate: (weapon: WeaponSystemDef, form: ShipForm) => void) =>
     edit((f) => mutate(f.weapons[index], f))
 
+  // A homing weapon's chart is read one endurance box at a time, so its
+  // brackets carry the phase of flight they belong to (E5.1.5).
+  const homing = weapon.traits.some((t) => /^HOMING/i.test(t))
+
   return (
     <div className="weapon-editor">
       <div className="builder-row">
@@ -903,6 +982,7 @@ function WeaponEditor({
             <th>Arming</th>
             <th>Boxes</th>
             <th>Slow arm</th>
+            <th>Ammo</th>
             <th />
           </tr>
         </thead>
@@ -965,6 +1045,15 @@ function WeaponEditor({
                 </label>
               </td>
               <td>
+                {/* F1.2 — blank means unlimited shots, which is the norm. */}
+                <Num
+                  label=""
+                  value={mount.ammo ?? 0}
+                  max={99}
+                  onChange={(n) => w((weap) => void (weap.mounts[mi].ammo = n === 0 ? undefined : n))}
+                />
+              </td>
+              <td>
                 <button
                   type="button"
                   className="chip danger"
@@ -996,10 +1085,14 @@ function WeaponEditor({
         + mount
       </button>
 
-      <p className="builder-hint">Firing chart — ranges in inches, dice per mount (E3.2.1).</p>
+      <p className="builder-hint">
+        Firing chart — ranges in inches, dice per mount (E3.2.1).
+        {homing && ' Phase is the endurance box each bracket sits in (E5.1.5).'}
+      </p>
       <table className="builder-table">
         <thead>
           <tr>
+            {homing && <th>Phase</th>}
             <th>From</th>
             <th>To</th>
             <th>Band</th>
@@ -1013,6 +1106,18 @@ function WeaponEditor({
         <tbody>
           {weapon.brackets.map((bracket, bi) => (
             <tr key={bi}>
+              {homing && (
+                <td>
+                  <Num
+                    label=""
+                    value={bracket.endurancePhase ?? 0}
+                    max={9}
+                    onChange={(n) =>
+                      w((weap) => void (weap.brackets[bi].endurancePhase = n === 0 ? undefined : n))
+                    }
+                  />
+                </td>
+              )}
               <td>
                 <Num
                   label=""
@@ -1091,8 +1196,16 @@ function WeaponEditor({
           onClick={() =>
             w((weap) => {
               const last = weap.brackets[weap.brackets.length - 1]
-              const min = last ? last.max + 1 : 0
-              weap.brackets.push({ min, max: min + 3, band: 'black', dice: ['blue'] })
+              // A homing weapon's range restarts each phase; a direct-fire
+              // chart continues from the last bracket (E3.2.1, E5.1.5).
+              const min = homing ? 0 : last ? last.max + 1 : 0
+              weap.brackets.push({
+                min,
+                max: min + 3,
+                band: homing ? 'green' : 'black',
+                dice: ['blue'],
+                ...(homing ? { endurancePhase: (last?.endurancePhase ?? 0) + 1 } : {}),
+              })
             })
           }
         >

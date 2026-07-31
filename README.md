@@ -374,10 +374,17 @@ tool they cost ships with. `src/engine/shipBuilder.ts` is a transcription of its
 **Ship builder** in the top bar is a front end for it.
 
 You can start from a blank hull or copy any canon ship, edit every part of the form — reactors,
-sublight drive and its damage table, shields, armor, systems, the structure track, weapons down to
-individual mounts and firing-chart brackets, and the FUNCTIONS power levels — and watch the point
-value move as you do. Designs are saved in the browser, export and import as JSON, and appear in
-**Choose forces** alongside the canon roster, so a custom hull can be flown immediately.
+sublight drive and its damage table, shields, armor, systems, the scout sensor block, the structure
+track, weapons down to individual mounts and firing-chart brackets, and the FUNCTIONS power levels —
+and watch the point value move as you do. Designs are saved in the browser, export and import as
+JSON, and appear in **Choose forces** alongside the canon roster, so a custom hull can be flown
+immediately.
+
+Special systems keep their own power lines in step. A scout sensor block needs a SCOUT SEN line to
+switch its sensors on (H3.2.1) and a cloak needs a CLOAK line to run (H6.3.1); the engine finds both
+by label, so the builder maintains the pair rather than letting you save a ship whose sensors can
+never be powered. Where a printed form already does something clever — the KNOX II buys two of its
+four sensors with a single power point — that is left alone rather than normalised away.
 
 ### How a ship is priced
 
@@ -429,11 +436,16 @@ The design is validated against the rules as you edit, and an illegal ship canno
   deliberately lets you exceed them so the rule can explain itself rather than silently clamping.
 - Every weapon has a mount, a firing chart, an arc, arming circles, damage boxes (E2.2.2, E4.2.2,
   E8.3.1) and an arming line in FUNCTIONS (E4.2.6).
-- Firing charts run continuously, except for homing weapons, whose range restarts each phase
+- Firing charts run continuously, except for homing weapons, whose range restarts each phase — and a
+  homing weapon must say which endurance box each bracket sits in, or it has nowhere to fly
   (E3.2.1, E5.1.5).
+- A scout sensor block has a SCOUT SEN line and a cloak has a CLOAK line (H3.2.1, H6.3.1).
 - One damaged-speed entry per sublight drive box (E8.5.4), and a turn row for every speed (C2.2.2).
-- Warnings for anything no printed ship does: no weapons, a Damage Control Rating of zero, or a
-  weapon trait the designers never priced.
+- At least one FUNCTIONS line the ship can actually afford to power (B2.2).
+- Warnings for anything no printed ship does: no weapons, a Damage Control Rating of zero, a weapon
+  trait the designers never priced, or a shot limit with no matching `AMMO` trait — the model prices
+  the printed trait, not the number on the mount, so without it a limited weapon costs full price
+  (F1.2).
 
 ## Damage deck and dice
 

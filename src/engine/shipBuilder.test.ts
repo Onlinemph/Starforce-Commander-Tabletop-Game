@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { SHIP_FORMS, shipFormById } from '../data/ships'
 import {
   blankForm,
+  blankScoutSensor,
   blankWeapon,
   bracketDamage,
   impliedSpecialModifier,
   pointValue,
   redDieAverage,
   traitModifier,
+  syncSpecialLines,
   validateDesign,
   POWER_MULTIPLIER,
   REFERENCE_POWER,
@@ -250,6 +252,17 @@ describe('design validation', () => {
     expect(pointValue(form).totalOffense).toBeGreaterThan(0)
   })
 
+  it('flags a shot limit the point model cannot see', () => {
+    const form = blankForm('x')
+    const { weapon, line } = blankWeapon('w1')
+    weapon.mounts[0].ammo = 6
+    form.weapons.push(weapon)
+    form.functions.push(line)
+    expect(validateDesign(form).some((p) => p.message.includes('F1.2'))).toBe(true)
+    weapon.traits = ['AMMO 6']
+    expect(validateDesign(form).some((p) => p.message.includes('F1.2'))).toBe(false)
+  })
+
   it('flags a trait the designers never priced', () => {
     const form = blankForm('x')
     const { weapon, line } = blankWeapon('w1')
@@ -257,6 +270,17 @@ describe('design validation', () => {
     form.weapons.push(weapon)
     form.functions.push(line)
     expect(validateDesign(form).some((p) => p.message.includes('CHRONITON'))).toBe(true)
+  })
+
+  it('demands endurance boxes on a homing weapon’s chart', () => {
+    const form = blankForm('x')
+    const { weapon, line } = blankWeapon('w1')
+    weapon.traits = ['HOMING 3']
+    form.weapons.push(weapon)
+    form.functions.push(line)
+    expect(validateDesign(form).some((p) => p.message.includes('E5.1.5'))).toBe(true)
+    for (const [i, bracket] of weapon.brackets.entries()) bracket.endurancePhase = i + 1
+    expect(validateDesign(form).some((p) => p.message.includes('E5.1.5'))).toBe(false)
   })
 
   it('does not complain about a homing weapon’s restarting firing chart', () => {
@@ -269,5 +293,90 @@ describe('design validation', () => {
     form.weapons.push(structuredClone(homing!))
     form.functions.push({ ...line, id: 'f-h', weaponSystemId: homing!.id })
     expect(validateDesign(form).some((p) => /firing chart has a gap/.test(p.message))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Special systems and their FUNCTIONS lines
+// ---------------------------------------------------------------------------
+
+describe('special systems', () => {
+  it('gives a new scout block a SCOUT SEN line to power it', () => {
+    const form = blankForm('x')
+    form.scoutSensor = blankScoutSensor()
+    syncSpecialLines(form)
+    const line = form.functions.find((l) => l.label.startsWith('SCOUT SEN'))!
+    expect(line).toBeDefined()
+    expect(line.steps).toHaveLength(form.scoutSensor.sensors)
+    expect(validateDesign(form).some((p) => p.message.includes('H3.2.1'))).toBe(false)
+  })
+
+  it('rebuilds the SCOUT SEN line when the sensor count changes', () => {
+    const form = blankForm('x')
+    form.scoutSensor = blankScoutSensor()
+    syncSpecialLines(form)
+    form.scoutSensor.sensors = 5
+    syncSpecialLines(form)
+    const line = form.functions.find((l) => l.id === 'scout-sen')!
+    expect(line.steps.map((s) => s.value)).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it('takes the SCOUT SEN line away with the block', () => {
+    const form = blankForm('x')
+    form.scoutSensor = blankScoutSensor()
+    syncSpecialLines(form)
+    form.scoutSensor = undefined
+    syncSpecialLines(form)
+    expect(form.functions.some((l) => l.id === 'scout-sen')).toBe(false)
+  })
+
+  it('gives a cloak its CLOAK line, and takes it back', () => {
+    const form = blankForm('x')
+    form.systems.push({ kind: 'CLOAK', label: 'Cloaking System', boxes: 1 })
+    syncSpecialLines(form)
+    const line = form.functions.find((l) => l.label === 'CLOAK')!
+    expect(line.steps.length).toBeGreaterThan(0)
+    expect(validateDesign(form).some((p) => p.message.includes('H6.3.1'))).toBe(false)
+    form.systems = form.systems.filter((g) => g.kind !== 'CLOAK')
+    syncSpecialLines(form)
+    expect(form.functions.some((l) => l.label === 'CLOAK')).toBe(false)
+  })
+
+  it('flags a scout block or cloak that nothing can power', () => {
+    const scout = blankForm('x')
+    scout.scoutSensor = blankScoutSensor()
+    expect(validateDesign(scout).some((p) => p.message.includes('H3.2.1'))).toBe(true)
+
+    const cloaked = blankForm('y')
+    cloaked.systems.push({ kind: 'CLOAK', label: 'Cloaking System', boxes: 1 })
+    expect(validateDesign(cloaked).some((p) => p.message.includes('H6.3.1'))).toBe(true)
+  })
+
+  it('keeps a printed line that already reaches the sensor count', () => {
+    // The KNOX II buys two sensors with its first power point: four sensors on
+    // three circles. Rebuilding that at one-per-point would be a silent edit.
+    const knox = structuredClone(shipFormById('union-knox-ii-class-survey-cruiser')!)
+    expect(knox.scoutSensor!.sensors).toBe(4)
+    const before = knox.functions.find((l) => l.id === 'scout-sen')!.steps.length
+    expect(before).toBe(3)
+    syncSpecialLines(knox)
+    expect(knox.functions.find((l) => l.id === 'scout-sen')!.steps).toHaveLength(before)
+  })
+
+  it('leaves every printed scout and cloaked ship alone', () => {
+    for (const form of SHIP_FORMS) {
+      const before = JSON.stringify(form.functions)
+      const copy = structuredClone(form)
+      syncSpecialLines(copy)
+      expect(JSON.stringify(copy.functions), form.name).toBe(before)
+    }
+  })
+
+  it('prices a scout block into the design', () => {
+    const plain = blankForm('x')
+    const scout = blankForm('x')
+    scout.scoutSensor = blankScoutSensor()
+    syncSpecialLines(scout)
+    expect(pointValue(scout).points).toBeGreaterThan(pointValue(plain).points)
   })
 })
