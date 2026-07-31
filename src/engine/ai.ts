@@ -4,12 +4,15 @@ import {
   asteroidFieldsAt,
   cloakOf,
   cloudStatus,
+  impactingHoming,
   shipsUnderBoarding,
+  tractorableHoming,
   tacticalScanOf,
   terrainObstacles,
+  tractorBeamsFree,
   type GameState,
 } from './game'
-import { isCloaked } from './cloaking'
+import { cloakFullyPowered, cloakOperational, isCloaked, mayDecloak } from './cloaking'
 import {
   armingPointsAvailable,
   powerRemaining,
@@ -38,6 +41,9 @@ import {
   type ShipState,
 } from './shipState'
 import { boardingSides } from './boarding'
+import { endurance, isHoming, speedInPhase } from './homing'
+import { transportCapacity, transporterRange } from './operations'
+import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, TurnDirection } from './types'
 
 /**
@@ -68,6 +74,29 @@ export function createAiMemo(): AiMemo {
   return { done: new Set() }
 }
 
+/**
+ * How sharp the captain is. Lower settings are not dumber doctrine so much as
+ * a fallible officer: the ensign does not lead targets, sometimes takes the
+ * second-best plot, shoots whatever is closest, and never touches the exotic
+ * systems. The admiral uses everything the fleet carries.
+ */
+export type AiDifficulty = 'ensign' | 'captain' | 'admiral'
+
+/**
+ * Deterministic noise for the fallible officer: a hash of the decision point,
+ * not a die roll — the game's RNG is never consumed, so a battle with an AI
+ * rolls the same combat dice as one without, and replays stay exact.
+ */
+function jitter(...parts: Array<string | number>): number {
+  const text = parts.join('|')
+  let h = 2166136261
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return ((h >>> 0) % 1000) / 1000
+}
+
 /** Ships the AI commands that are still in the fight. */
 function ownShips(game: GameState, sides: string[]): ShipState[] {
   return game.ships.filter(
@@ -90,19 +119,22 @@ export function aiNextActions(
   sides: string[],
   memo: AiMemo,
   closing = false,
+  difficulty: AiDifficulty = 'captain',
 ): GameAction[] {
   const fleet = ownShips(game, sides)
   if (fleet.length === 0) return []
 
   switch (game.segment) {
     case 'resource-allocation':
-      return planAllocation(game, fleet, memo)
+      return planAllocation(game, fleet, memo, difficulty)
     case 'damage-control':
       return planDamageControl(game, fleet, memo)
     case 'command':
-      return planOrders(game, fleet)
+      return planOrders(game, fleet, difficulty)
+    case 'operations':
+      return planOperations(game, fleet, memo, difficulty)
     case 'combat':
-      return planFiring(game, fleet, memo, closing)
+      return planFiring(game, fleet, memo, closing, difficulty)
     case 'boarding-combat':
       return planBoarding(game, sides, memo)
     case 'disengagement':
@@ -112,11 +144,25 @@ export function aiNextActions(
   }
 }
 
+/** Cloak doctrine (H6): vanish to cross the gulf or to nurse wounds. */
+function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
+  if (difficulty === 'ensign' || !cloakOperational(ship)) return false
+  const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
+  const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
+  const far = !enemy || actualRange(ship.placement.position, enemy.placement.position) > preferredRange(ship) + 8
+  return hurt || far
+}
+
 // ---------------------------------------------------------------------------
 // Resource Allocation (B2): weapons first, then eyes, then legs
 // ---------------------------------------------------------------------------
 
-function planAllocation(game: GameState, fleet: ShipState[], memo: AiMemo): GameAction[] {
+function planAllocation(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  difficulty: AiDifficulty,
+): GameAction[] {
   const actions: GameAction[] = []
 
   for (const ship of fleet) {
@@ -156,10 +202,21 @@ function planAllocation(game: GameState, fleet: ShipState[], memo: AiMemo): Game
       })
     }
 
+    // A cloak is all or nothing (H6.3.1), and it comes before the guns it
+    // will lock anyway (H6.4.2).
+    if (wantsCloak(game, ship, difficulty)) {
+      const cloakLine = ship.form.functions.find((l) => l.label === 'CLOAK')
+      if (cloakLine) fill(cloakLine.id, cloakLine.steps.length)
+    }
     // Weapons full — the auto-arm rule then spends the points (E4.2.2).
     for (const line of byKind('weapon')) if (weaponAlive(line)) fill(line.id, line.steps.length)
-    // The special line powers a scout sensor block or a cloak; cloak doctrine
-    // is not this captain's yet, but scout sensors earn their power.
+    // Scout sensors earn their power: they illuminate for the whole fleet (H3.4).
+    if (difficulty !== 'ensign' && ship.form.scoutSensor) {
+      const scoutLine = ship.form.functions.find(
+        (l) => l.kind === 'special' && /SCOUT/i.test(l.label),
+      )
+      if (scoutLine) fill(scoutLine.id, scoutLine.steps.length)
+    }
     for (const line of byKind('sensor')) fill(line.id, Math.min(2, line.steps.length))
     for (const line of byKind('accel')) fill(line.id, 1)
     if (ship.stressMarkers > 0) for (const line of byKind('sif')) fill(line.id, 1)
@@ -183,6 +240,18 @@ function planAllocation(game: GameState, fleet: ShipState[], memo: AiMemo): Game
 
   const arming: GameAction[] = []
   for (const ship of fleet) {
+    // Scout sensors are assigned during Resource Allocation and hold for the
+    // round (H3.2.2): first sensor illuminates the nearest enemy, the rest jam.
+    if (ship.form.scoutSensor && ship.scoutAssignments.length > 0) {
+      const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
+      ship.scoutAssignments.forEach((assignment, index) => {
+        const fn = index === 0 && enemy ? 'targeting' : 'jamming'
+        const targetId = fn === 'targeting' ? (enemy?.id ?? null) : null
+        if (assignment.function !== fn || assignment.targetId !== targetId) {
+          arming.push({ type: 'scout-assign', shipId: ship.id, index, fn, targetId })
+        }
+      })
+    }
     for (const weapon of ship.form.weapons) {
       let points = armingPointsAvailable(ship, weapon.id)
       let index = 0
@@ -258,7 +327,7 @@ interface Candidate {
   accel: number
 }
 
-function planOrders(game: GameState, fleet: ShipState[]): GameAction[] {
+function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficulty): GameAction[] {
   const actions: GameAction[] = []
 
   for (const ship of fleet) {
@@ -267,7 +336,7 @@ function planOrders(game: GameState, fleet: ShipState[]): GameAction[] {
     const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
     const enemy = nearest(ship, enemies)
 
-    const plan = enemy ? bestPlot(game, ship, card, enemy) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
+    const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
     if (card.maneuver !== plan.maneuver || card.direction !== plan.direction) {
       actions.push({ type: 'plot-maneuver', shipId: ship.id, maneuver: plan.maneuver, direction: plan.direction })
     }
@@ -310,14 +379,24 @@ function nearest(ship: ShipState, enemies: ShipState[]): ShipState | null {
   return best
 }
 
-function bestPlot(game: GameState, ship: ShipState, card: CommandCard, enemy: ShipState): Candidate {
+function bestPlot(
+  game: GameState,
+  ship: ShipState,
+  card: CommandCard,
+  enemy: ShipState,
+  difficulty: AiDifficulty,
+): Candidate {
   const ideal = preferredRange(ship)
   // Assume the enemy holds course — the same guess a human plotter makes.
+  // The ensign aims at where the enemy is, not where it will be.
   const ev = headingVector(enemy.placement.heading)
-  const predicted = {
-    x: enemy.placement.position.x + ev.x * enemy.speed,
-    y: enemy.placement.position.y + ev.y * enemy.speed,
-  }
+  const predicted =
+    difficulty === 'ensign'
+      ? enemy.placement.position
+      : {
+          x: enemy.placement.position.x + ev.x * enemy.speed,
+          y: enemy.placement.position.y + ev.y * enemy.speed,
+        }
 
   const maneuvers: Array<[Maneuver, TurnDirection | null, number]> = [
     ['straight', null, 0],
@@ -338,6 +417,8 @@ function bestPlot(game: GameState, ship: ShipState, card: CommandCard, enemy: Sh
 
   let best: Candidate = { maneuver: 'straight', direction: null, accel: 0 }
   let bestScore = -Infinity
+  let second: Candidate = best
+  let secondScore = -Infinity
 
   for (const [maneuver, direction, stressCost] of maneuvers) {
     // Stress the ship cannot cancel is a real cost; near the rating, avoid it.
@@ -384,19 +465,167 @@ function bestPlot(game: GameState, ship: ShipState, card: CommandCard, enemy: Sh
       }
 
       if (score > bestScore) {
+        second = best
+        secondScore = bestScore
         bestScore = score
         best = { maneuver, direction, accel }
+      } else if (score > secondScore) {
+        secondScore = score
+        second = { maneuver, direction, accel }
       }
     }
   }
+  // The fallible officer: sometimes the second-best plot looked right.
+  if (difficulty === 'ensign' && secondScore > -Infinity) {
+    if (jitter('plot', game.round, game.phase, ship.id) < 0.4) return second
+  }
   return best
+}
+
+// ---------------------------------------------------------------------------
+// Operations (J1, H6): cloaks, searches, beams, and the marines' commute
+// ---------------------------------------------------------------------------
+
+function planOperations(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  difficulty: AiDifficulty,
+): GameAction[] {
+  const key = `ops:${game.round}:${game.phase}:${fleet[0].side}`
+  if (memo.done.has(key)) return []
+  memo.done.add(key)
+  if (difficulty === 'ensign') return []
+
+  const actions: GameAction[] = []
+  for (const ship of fleet) {
+    const cloak = cloakOf(game, ship)
+    const cloaked = Boolean(cloak && isCloaked(cloak))
+    const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
+    const range = enemy ? actualRange(ship.placement.position, enemy.placement.position) : Infinity
+
+    // Cloak doctrine (H6.6, H6.7): vanish while crossing or wounded; come out
+    // shooting once the guns are in their bracket.
+    if (cloak && !cloaked && cloakFullyPowered(ship) && wantsCloak(game, ship, difficulty)) {
+      actions.push({ type: 'engage-cloak', shipId: ship.id })
+    } else if (cloak && cloaked && mayDecloak(cloak)) {
+      const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
+      if (!hurt && range <= preferredRange(ship) + 2) {
+        actions.push({ type: 'decloak', shipId: ship.id })
+      }
+    }
+
+    // Hunt the ghosts: one search attempt per ship per phase (H6.9.2).
+    if (!cloaked) {
+      const ghost = enemiesOf(game, ship).find((e) => positionHidden(game, e))
+      if (ghost) actions.push({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id })
+    }
+
+    // A missile in the tractor beam's reach is a missile that never lands (J3.2.2).
+    if (game.homing.length > 0 && tractorBeamsFree(game, ship) > 0) {
+      const missile = tractorableHoming(game, ship)[0]
+      if (missile) {
+        actions.push({ type: 'catch-missile', shipId: ship.id, homingId: missile.id, beams: 1 })
+      }
+    }
+
+    // Assigned scout sensors switch on in step 2.E (H3.3.2).
+    if (ship.form.scoutSensor) {
+      ship.scoutAssignments.forEach((assignment, index) => {
+        if (!assignment.active) {
+          actions.push({ type: 'scout-active', shipId: ship.id, index, active: true })
+        }
+      })
+    }
+
+    if (difficulty !== 'admiral') continue
+
+    // The admiral's tricks. A crippled enemy alongside is a prize: drag it
+    // with the beams (J3), or drop shields and put the marines aboard (J5).
+    const cripple = enemiesOf(game, ship).find(
+      (e) => !positionHidden(game, e) && damageLevel(e) === 'crippled',
+    )
+    if (cripple) {
+      const captureRange = actualRange(ship.placement.position, cripple.placement.position)
+      const beams = tractorBeamsFree(game, ship)
+      if (beams > 0 && captureRange <= 1) {
+        actions.push({ type: 'tractor-lock', shipId: ship.id, targetId: cripple.id, beams })
+      }
+      if (
+        !cloaked &&
+        transportCapacity(ship) > 0 &&
+        ship.marineSquads >= 2 &&
+        captureRange <= transporterRange(ship, null)
+      ) {
+        // Beaming needs every own shield down (J5.1.3) — a risk worth a hull.
+        for (const side of SHIELD_SIDES) {
+          if (!ship.shieldsDown[side]) {
+            actions.push({ type: 'set-shield-down', shipId: ship.id, side, down: true })
+          }
+        }
+        actions.push({
+          type: 'transport',
+          shipId: ship.id,
+          targetId: cripple.id,
+          squads: Math.min(transportCapacity(ship), ship.marineSquads - 1),
+        })
+        continue
+      }
+    }
+
+    // Housekeeping: shields dropped for last phase's business go back up.
+    if (!cloaked) {
+      for (const side of SHIELD_SIDES) {
+        if (ship.shieldsDown[side]) {
+          actions.push({ type: 'set-shield-down', shipId: ship.id, side, down: false })
+        }
+      }
+    }
+  }
+  return actions
 }
 
 // ---------------------------------------------------------------------------
 // Combat (E6.2): fire in Tactical Scan order, focus the hurt
 // ---------------------------------------------------------------------------
 
-function planFiring(game: GameState, fleet: ShipState[], memo: AiMemo, closing: boolean): GameAction[] {
+function planFiring(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  closing: boolean,
+  difficulty: AiDifficulty,
+): GameAction[] {
+  // Defensive duties come first, whoever holds the firing slot: incoming
+  // homing weapons are shot at by the point defense (E12.4) and then resolved
+  // (E5.4) — an unresolved impact would simply wait forever.
+  const defensive: GameAction[] = []
+  for (const ship of fleet) {
+    const incoming = impactingHoming(game, ship)
+    if (incoming.length === 0) continue
+    const key = `pd:${game.round}:${game.phase}:${ship.id}`
+    if (memo.done.has(key)) continue
+    memo.done.add(key)
+
+    if (difficulty !== 'ensign') {
+      const used = new Set<string>()
+      for (const hw of incoming) {
+        const pd = readyPointDefenseMount(ship, used)
+        if (!pd) break
+        used.add(`${pd.weaponId}|${pd.mountIndex}`)
+        defensive.push({
+          type: 'fire-small-target',
+          attackerId: ship.id,
+          targetId: hw.id,
+          weaponId: pd.weaponId,
+          mountIndex: pd.mountIndex,
+        })
+      }
+    }
+    defensive.push({ type: 'resolve-homing-impacts', shipId: ship.id, pointDefense: {} })
+  }
+  if (defensive.length > 0) return defensive
+
   // Coordinated Fire (H4) has its own strict step machine; this captain plays
   // the base game's sequence and simply passes under H4 rather than misfire.
   if (game.coordinatedFire) {
@@ -429,7 +658,10 @@ function planFiring(game: GameState, fleet: ShipState[], memo: AiMemo, closing: 
       actions.push({ type: 'pass-fire', shipId: ship.id })
       continue
     }
-    const volley = bestVolley(game, ship)
+    // Armed homing weapons go out first (E5.2): they fly on their own and the
+    // direct-fire batteries still get their volley.
+    if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo))
+    const volley = bestVolley(game, ship, difficulty)
     if (volley) {
       memo.done.add(attemptKey)
       actions.push(volley)
@@ -440,9 +672,70 @@ function planFiring(game: GameState, fleet: ShipState[], memo: AiMemo, closing: 
   return actions
 }
 
-function bestVolley(game: GameState, ship: ShipState): GameAction | null {
+/** A ready mount whose weapon carries a point-defense trait (E12.4.3). */
+function readyPointDefenseMount(
+  ship: ShipState,
+  used: Set<string>,
+): { weaponId: string; mountIndex: number } | null {
+  for (const weapon of ship.form.weapons) {
+    if (!weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))) continue
+    for (let i = 0; i < weapon.mounts.length; i++) {
+      if (used.has(`${weapon.id}|${i}`)) continue
+      if (mountIsReady(weapon, i, ship.mounts[weapon.id][i])) {
+        return { weaponId: weapon.id, mountIndex: i }
+      }
+    }
+  }
+  return null
+}
+
+/** Total distance a homing weapon covers over its whole endurance (E5.3). */
+function totalFlight(weapon: Parameters<typeof endurance>[0]): number {
+  let total = 0
+  for (let phase = 1; phase <= endurance(weapon); phase++) total += speedInPhase(weapon, phase)
+  return total
+}
+
+/** Launch every armed homing mount at the best target within flight range. */
+function homingLaunches(game: GameState, ship: ShipState, memo: AiMemo): GameAction[] {
+  const actions: GameAction[] = []
+  for (const weapon of ship.form.weapons.filter(isHoming)) {
+    const reach = totalFlight(weapon)
+    weapon.mounts.forEach((_, mountIndex) => {
+      const key = `hl:${game.round}:${game.phase}:${ship.id}:${weapon.id}:${mountIndex}`
+      if (memo.done.has(key)) return
+      if (!mountIsReady(weapon, mountIndex, ship.mounts[weapon.id][mountIndex])) return
+      const target = nearest(
+        ship,
+        enemiesOf(game, ship).filter(
+          (e) =>
+            !positionHidden(game, e) &&
+            actualRange(ship.placement.position, e.placement.position) <= reach,
+        ),
+      )
+      if (!target) return
+      memo.done.add(key)
+      actions.push({
+        type: 'launch-homing',
+        shipId: ship.id,
+        weaponId: weapon.id,
+        mountIndex,
+        targetId: target.id,
+      })
+    })
+  }
+  return actions
+}
+
+function bestVolley(game: GameState, ship: ShipState, difficulty: AiDifficulty): GameAction | null {
   const obstacles = terrainObstacles(game.scenario.terrain)
-  let best: { targetId: string; mounts: Array<{ weaponId: string; mountIndex: number }>; score: number } | null = null
+  let best: {
+    targetId: string
+    mounts: Array<{ weaponId: string; mountIndex: number }>
+    score: number
+    allRed: boolean
+    range: number
+  } | null = null
 
   for (const enemy of enemiesOf(game, ship)) {
     if (positionHidden(game, enemy)) continue
@@ -454,7 +747,10 @@ function bestVolley(game: GameState, ship: ShipState): GameAction | null {
 
     const mounts: Array<{ weaponId: string; mountIndex: number }> = []
     let score = 0
+    let allRed = true
     for (const weapon of ship.form.weapons) {
+      // Homing weapons launch (E5.2); they are not part of a volley.
+      if (isHoming(weapon)) continue
       weapon.mounts.forEach((mount, mountIndex) => {
         const state = ship.mounts[weapon.id][mountIndex]
         if (!mountIsReady(weapon, mountIndex, state)) return
@@ -463,16 +759,23 @@ function bestVolley(game: GameState, ship: ShipState): GameAction | null {
         if (!bracket) return
         mounts.push({ weaponId: weapon.id, mountIndex })
         score += bracket.bracket.dice.length + (bracket.bracket.bonus ?? 0)
+        if (bracket.bracket.band !== 'red') allRed = false
       })
     }
     if (mounts.length === 0) continue
 
-    // Prefer finishing what is already burning.
+    // Prefer finishing what is already burning. The admiral leans harder.
     const level = damageLevel(enemy)
-    score += level === 'crippled' ? 3 : level === 'heavy' ? 2 : level === 'moderate' ? 1 : 0
+    const focus = difficulty === 'admiral' ? 2 : 1
+    score += focus * (level === 'crippled' ? 3 : level === 'heavy' ? 2 : level === 'moderate' ? 1 : 0)
 
-    if (!best || score > best.score || (score === best.score && enemy.id < best.targetId)) {
-      best = { targetId: enemy.id, mounts, score }
+    const better =
+      difficulty === 'ensign'
+        ? // The ensign shoots whatever is closest and calls it gunnery.
+          !best || actual < best.range || (actual === best.range && enemy.id < best.targetId)
+        : !best || score > best.score || (score === best.score && enemy.id < best.targetId)
+    if (better) {
+      best = { targetId: enemy.id, mounts, score, allRed, range: actual }
     }
   }
 
@@ -482,7 +785,9 @@ function bestVolley(game: GameState, ship: ShipState): GameAction | null {
     attackerId: ship.id,
     targetId: best.targetId,
     mounts: best.mounts,
-    mode: 'standard',
+    // At extreme range the admiral fires proximity-fused: rerolled blanks and
+    // half damage beat full damage that never lands (E3.3).
+    mode: difficulty === 'admiral' && best.allRed ? 'proximity' : 'standard',
     degraded: false,
   }
 }

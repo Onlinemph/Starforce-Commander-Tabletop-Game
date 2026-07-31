@@ -71,6 +71,14 @@ that one fact.
   It reads only what an opponent across the table could see: never your form, your power, or your
   arming. Launching a test flight from the ship builder now gets you an AI adversary
   automatically.
+- **Three AI levels.** *Ensign* does not lead targets, sometimes takes the second-best plot,
+  shoots whatever is closest and never touches the exotic systems. *Captain* plays the full
+  doctrine: Aurelian ships cloak to cross the gulf and decloak into their firing bracket, homing
+  torpedoes fly at anything in flight range, scouts illuminate for the fleet, point defense
+  answers incoming missiles and tractor beams pluck them from the sky. *Admiral* adds tractor
+  captures, marines beamed onto crippled hulls behind deliberately dropped shields,
+  proximity-fused fire at extreme range and harder focus — in self-play it beats the ensign
+  three duels in four across a season with the hulls swapped each game.
 
 ## Hosting it
 

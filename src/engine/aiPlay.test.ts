@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
-import { aiNextActions, createAiMemo, type AiMemo } from './ai'
+import { aiNextActions, createAiMemo, type AiDifficulty, type AiMemo } from './ai'
 import { activeShips, victoryPoints, type GameState } from './game'
 import { damageLevel, structureRemaining } from './shipState'
 
@@ -17,11 +17,12 @@ interface Driver {
   journal: GameAction[]
   memo: AiMemo
   sides: string[]
+  difficulty?: AiDifficulty
 }
 
 function drive(d: Driver, closing = false): void {
   for (let guard = 0; guard < 300; guard++) {
-    const batch = aiNextActions(d.game, d.sides, d.memo, closing)
+    const batch = aiNextActions(d.game, d.sides, d.memo, closing, d.difficulty ?? 'captain')
     if (batch.length === 0) return
     for (const action of batch) {
       applyAction(d.game, action)
@@ -38,12 +39,19 @@ function overFor(game: GameState): boolean {
 }
 
 /** Play a battle to a decision or a round cap, the way the store would. */
-function selfPlay(scenarioId: string, seed: number, sides: string[], rounds = 14): Driver {
+function selfPlay(
+  scenarioId: string,
+  seed: number,
+  sides: string[],
+  rounds = 14,
+  difficulty: AiDifficulty = 'captain',
+): Driver {
   const d: Driver = {
     game: startScenario(scenarioId, { seed }),
     journal: [],
     memo: createAiMemo(),
     sides,
+    difficulty,
   }
   drive(d)
   for (let steps = 0; steps < 400; steps++) {
@@ -111,6 +119,69 @@ describe('AI self-play', () => {
     }
     expect(dt.game.round).toBeGreaterThan(1)
     expect(d.game.round).toBeGreaterThan(1)
+  })
+
+  it('every difficulty fights a clean duel', () => {
+    for (const difficulty of ['ensign', 'captain', 'admiral'] as const) {
+      const d = selfPlay('s3.1-the-duel', 42, ['Blue Force', 'Red Force'], 8, difficulty)
+      expect(d.journal.some((a) => a.type === 'fire-volley')).toBe(true)
+      expect(d.game.round).toBeGreaterThan(1)
+    }
+  })
+
+  it('difficulties actually differ: the ensign fights a different battle', () => {
+    const captain = selfPlay('s3.1-the-duel', 42, ['Blue Force', 'Red Force'], 6, 'captain')
+    const ensign = selfPlay('s3.1-the-duel', 42, ['Blue Force', 'Red Force'], 6, 'ensign')
+    expect(JSON.stringify(captain.journal)).not.toBe(JSON.stringify(ensign.journal))
+  })
+
+  it('the Aurelians cloak, hunt, decloak and loose their homing torpedoes', () => {
+    const d = selfPlay('exp5-aurelian-raid', 3, ['Blue Force', 'Aurelian Empire'], 12)
+    const types = new Set(d.journal.map((a) => a.type))
+    expect(types.has('engage-cloak')).toBe(true)
+    expect(types.has('decloak')).toBe(true)
+    expect(types.has('cloak-search')).toBe(true)
+    expect(types.has('launch-homing')).toBe(true)
+    // The Union side answers what arrives: point defense against the incoming
+    // torpedoes, then the impacts resolved — never left hanging.
+    expect(types.has('fire-small-target')).toBe(true)
+    expect(types.has('resolve-homing-impacts')).toBe(true)
+  })
+
+  it('the admiral beats the ensign across a season of duels', () => {
+    // One duel proves the dice; a season proves the doctrine. Each seed is
+    // played twice with the hulls swapped, so neither captain owns the
+    // stronger ship. Deterministic, so this is an exact count, not a flake.
+    const margin = (seed: number, blueDiff: AiDifficulty, redDiff: AiDifficulty): number => {
+      const game = startScenario('s3.1-the-duel', { seed })
+      const blue: Driver = { game, journal: [], memo: createAiMemo(), sides: ['Blue Force'], difficulty: blueDiff }
+      const red: Driver = { game, journal: [], memo: createAiMemo(), sides: ['Red Force'], difficulty: redDiff }
+      const both = (closing: boolean) => {
+        drive(blue, closing)
+        drive(red, closing)
+      }
+      both(false)
+      for (let steps = 0; steps < 400; steps++) {
+        if (overFor(game) || game.round > 12) break
+        both(true)
+        applyAction(game, { type: 'advance-segment' })
+        both(false)
+      }
+      const health = (side: string) => {
+        const ship = game.ships.find((s) => s.side === side)!
+        return ship.destroyed ? -1 : ship.disengaged ? 0 : structureRemaining(ship)
+      }
+      return health('Blue Force') - health('Red Force')
+    }
+
+    let admiralWins = 0
+    let games = 0
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      games += 2
+      if (margin(seed, 'admiral', 'ensign') > 0) admiralWins++
+      if (margin(seed, 'ensign', 'admiral') < 0) admiralWins++
+    }
+    expect(admiralWins).toBeGreaterThan(games / 2)
   })
 
   it('the idempotence contract holds: asking twice owes nothing new', () => {

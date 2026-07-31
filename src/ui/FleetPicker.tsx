@@ -77,6 +77,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [budget, setBudget] = useState<number | null>(null)
   const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
   const [aiSides, setAiSides] = useState<Set<string>>(new Set())
+  const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('captain')
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -120,6 +121,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       fleets: Object.fromEntries(sides.map((s) => [s, fleetFormIds(fleets[s] ?? [])])),
       terrain: terrain === 'none' ? undefined : terrain,
       aiSides: ai.length > 0 ? ai : undefined,
+      aiDifficulty: ai.length > 0 ? aiDifficulty : undefined,
     })
     onClose()
   }
@@ -185,6 +187,22 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               <option value="8">8 fields</option>
             </select>
           </label>
+          {[...aiSides].some((s) => sides.includes(s)) && (
+            <label
+              className="field tiny"
+              title="Ensign: does not lead targets, sometimes takes the second-best plot, shoots whatever is closest, no exotic systems. Captain: full doctrine — cloaks, homing weapons, point defense, scouts. Admiral: adds tractor captures, boarding actions, proximity fire and harder focus."
+            >
+              <span>AI level</span>
+              <select
+                value={aiDifficulty}
+                onChange={(e) => setAiDifficulty(e.target.value as 'ensign' | 'captain' | 'admiral')}
+              >
+                <option value="ensign">Ensign</option>
+                <option value="captain">Captain</option>
+                <option value="admiral">Admiral</option>
+              </select>
+            </label>
+          )}
           <label className="field tiny">
             <span>Point budget</span>
             <input

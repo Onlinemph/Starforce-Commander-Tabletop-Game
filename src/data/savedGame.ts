@@ -1,4 +1,5 @@
 import { applyAction, type GameAction } from '../engine/actions'
+import type { AiDifficulty } from '../engine/ai'
 import type { GameState } from '../engine/game'
 import type { ShipForm } from '../engine/types'
 import { SHIP_FORMS, setEmbeddedForms, shipFormById } from './ships'
@@ -25,6 +26,8 @@ export interface GameSetup {
   terrain?: 'roll' | number
   /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
   aiSides?: string[]
+  /** How sharp the computer's captains are. Default 'captain'. */
+  aiDifficulty?: AiDifficulty
   /**
    * Every non-canon form the fleets reference, embedded whole, so the battle
    * replays on a machine that has never seen the design.
