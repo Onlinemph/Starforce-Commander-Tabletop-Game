@@ -478,17 +478,20 @@ line — which is exactly what E7.2.5 describes.
 - **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
   the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
   numbered counter have not been imported; scenarios set them directly instead.
-- **Hidden units** (K6) — the rule is a placeholder in Expansion 3 itself ("we will add Hidden Units
-  in a future expansion"). Gas clouds carry their SCAN value ready for it.
 - **Scenarios** (S3) — two of the six printed missions, The Duel (S3.1) and Orbital Ambush (S3.3),
   plus three written to exercise the expansions: the Squadron Engagement, Nebula Patrol and the
   Aurelian Raid. S3.2, S3.4, S3.5 and S3.6 are straightforward to add.
 - **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
   points (H3.6), but the scan procedure itself is not interactive.
-- **Every published expansion is implemented.** 1 (C5, H3), 2 (H4, H5), 3 (K4, K5), 4 (the Master
-  Ship Book, imported in full) and 5 (E5, F5, H6, and the Aurelian roster).
-- **Hidden units** (K6) and **base rotation** (C4.3) are placeholders in the source itself, reserved
-  for a future expansion.
+- **Expansion 6** — the Master Ship List carries ten classes flagged for it with point values but no
+  printed form yet: the Invictus II, Aquila Bellum VI, Tonitrus IV and V, Defensor Alatus II, III
+  and IV, Corvus II, and Passer III and IV. Nothing to do until the book exists.
+- **Hidden units** (K6) and **base rotation** (C4.3) are placeholders in the source itself — "we will
+  add Hidden Units in a future expansion" — so there is nothing to implement. Gas clouds already
+  carry their SCAN value ready for it.
+
+**Every published expansion is implemented**: 1 (C5, H3), 2 (H4, H5), 3 (K4, K5), 4 (the Master
+Ship Book, imported in full) and 5 (E5, F5, H6, and the Aurelian roster).
 
 ## Architecture
 
