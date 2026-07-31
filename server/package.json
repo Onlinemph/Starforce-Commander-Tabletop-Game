@@ -1,0 +1,13 @@
+{
+  "name": "sfc-matches",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Persistent online match service for the StarForce Commander digital tabletop",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.0"
+  }
+}

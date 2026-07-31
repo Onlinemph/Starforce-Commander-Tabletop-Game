@@ -3460,3 +3460,115 @@ button.chip:hover:not(:disabled) {
     display: none;
   }
 }
+
+/* --- Online match lobby --------------------------------------------------- */
+
+.picker.online-panel {
+  width: min(860px, 100%);
+}
+
+.online-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  overflow: auto;
+}
+
+.online-intro {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+}
+
+.online-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.online-card {
+  background: var(--panel-2);
+  border-left: 5px solid var(--lc-sky);
+  border-radius: 0 6px 6px 0;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.online-card + .online-card,
+.online-columns > .online-card:last-child {
+  border-left-color: var(--lc-salmon);
+}
+
+.online-card h3 {
+  margin: 0;
+}
+
+.online-card p {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+}
+
+.online-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.online-code {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.online-code strong {
+  color: var(--accent);
+  font-size: 1.5rem;
+  letter-spacing: 0.14em;
+}
+
+.online-phase {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--warn);
+}
+
+.online-phase[data-phase='connected'] {
+  color: var(--green);
+}
+
+.online-sides {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.online-sides .chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06080f;
+}
+
+.online-hint {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+}
+
+.online-error {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 760px) {
+  .online-columns {
+    grid-template-columns: 1fr;
+  }
+}

@@ -29,6 +29,8 @@ import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
+import { useOnline } from './online'
+import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
 import { ReplayTheater } from './ReplayTheater'
 import { OperationsPanel } from './OperationsPanel'
@@ -61,8 +63,10 @@ export function App() {
   const [building, setBuilding] = useState(false)
   const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [lobby, setLobby] = useState(false)
   const [replaying, setReplaying] = useState(false)
   const net = useNet()
+  const online = useOnline()
   // Subscribing keeps the scenario dropdown live as designs are saved.
   useCustomScenarios()
 
@@ -194,6 +198,18 @@ export function App() {
         >
           {net.phase === 'connected' ? '● Linked' : 'Remote play'}
         </button>
+        <button
+          type="button"
+          className={online.phase === 'connected' ? 'is-linked' : ''}
+          title="Persistent online matches: password-gated, they survive everyone leaving and reconnect after a refresh"
+          onClick={() => setLobby(true)}
+        >
+          {online.phase === 'connected'
+            ? `● ${online.matchId}`
+            : online.phase === 'reconnecting' || online.phase === 'connecting'
+              ? '… Online'
+              : 'Online'}
+        </button>
         <BattleMenu game={game} onReplay={() => setReplaying(true)} />
       </header>
 
@@ -210,6 +226,7 @@ export function App() {
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
+      {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
       {linking && <RemotePanel onClose={() => setLinking(false)} />}
 
       {/*
