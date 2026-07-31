@@ -51,6 +51,7 @@ export function App() {
   const [targetId, setTargetId] = useState<string | null>(null)
   const [showArcs, setShowArcs] = useState(true)
   const [showRings, setShowRings] = useState(false)
+  const [rulerMode, setRulerMode] = useState(false)
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
   const [linking, setLinking] = useState(false)
@@ -177,7 +178,7 @@ export function App() {
         >
           {net.phase === 'connected' ? '● Linked' : 'Remote play'}
         </button>
-        <BattleMenu />
+        <BattleMenu game={game} />
       </header>
 
       {picking && (
@@ -235,6 +236,7 @@ export function App() {
               showArcs={showArcs}
               rangeRings={rangeRings}
               viewSide={viewSide}
+              rulerMode={rulerMode}
             />
 
             <div className="map-controls">
@@ -279,6 +281,10 @@ export function App() {
               <label className="checkbox">
                 <input type="checkbox" checked={showRings} onChange={(e) => setShowRings(e.target.checked)} />
                 Range rings
+              </label>
+              <label className="checkbox" title="Drag on the map to measure in rulebook inches (E1.1)">
+                <input type="checkbox" checked={rulerMode} onChange={(e) => setRulerMode(e.target.checked)} />
+                Ruler
               </label>
               <div className="ship-tabs">
                 {game.ships.map((ship) => (
@@ -377,22 +383,80 @@ const PHASE_CODES: Record<GameState['phase'], string> = {
 }
 
 /**
+ * The battle so far, written up: forces, the running score, and the log the
+ * engine has been keeping all along — grouped by round, ready to paste into
+ * a forum thread or keep as the campaign record.
+ */
+function battleReport(game: GameState): string {
+  const lines: string[] = []
+  lines.push(`# ${game.scenario.name} — battle report`)
+  lines.push('')
+  lines.push(`Round ${game.round}, ${PHASE_LABELS[game.phase]}, ${SEGMENT_LABELS[game.segment]}.`)
+  lines.push('')
+
+  lines.push('## Forces')
+  lines.push('')
+  for (const side of [...new Set(game.ships.map((s) => s.side))]) {
+    lines.push(`### ${side}`)
+    lines.push('')
+    for (const ship of game.ships.filter((s) => s.side === side)) {
+      const status = ship.destroyed
+        ? 'destroyed'
+        : ship.disengaged
+          ? 'disengaged'
+          : ship.capturedBy
+            ? `captured by ${ship.capturedBy}`
+            : damageLevel(ship) === 'none'
+              ? 'undamaged'
+              : `${damageLevel(ship)} damage`
+      lines.push(`- **${ship.name}** — ${ship.form.name} (${status})`)
+    }
+    lines.push('')
+  }
+
+  lines.push('## Score')
+  lines.push('')
+  lines.push('| Side | Victory points |')
+  lines.push('| --- | --- |')
+  for (const [side, points] of Object.entries(victoryPoints(game))) {
+    lines.push(`| ${side} | ${points} |`)
+  }
+  lines.push('')
+
+  lines.push('## Log')
+  let round = 0
+  for (const entry of game.log) {
+    if (entry.round !== round) {
+      round = entry.round
+      lines.push('')
+      lines.push(`### Round ${round}`)
+      lines.push('')
+    }
+    lines.push(`- *${SEGMENT_LABELS[entry.segment]}* — ${entry.message}`)
+  }
+  lines.push('')
+  return lines.join('\n')
+}
+
+/**
  * The battle file, in and out. A battle is (setup + action journal), so the
  * file is small, replays exactly, and carries any custom designs it needs —
  * hand it to another player and they resume your game to the die roll.
  */
-function BattleMenu() {
+function BattleMenu({ game }: { game: GameState }) {
   const [note, setNote] = useState<string | null>(null)
 
-  const save = () => {
-    const blob = new Blob([exportBattle()], { type: 'application/json' })
+  const download = (contents: string, filename: string, type: string) => {
+    const blob = new Blob([contents], { type })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'starforce-battle.json'
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const save = () => download(exportBattle(), 'starforce-battle.json', 'application/json')
 
   const load = async (file: File) => {
     setNote(importBattle(await file.text()) ?? 'Battle loaded.')
@@ -402,6 +466,13 @@ function BattleMenu() {
     <>
       <button type="button" onClick={save} title="Download this battle as a file — setup, every action, and any custom ship designs">
         Save file
+      </button>
+      <button
+        type="button"
+        onClick={() => download(battleReport(game), 'starforce-report.md', 'text/markdown')}
+        title="The battle so far as a readable report — forces, score, and the full log"
+      >
+        Report
       </button>
       <label className="chip file-chip" title="Resume a battle from a downloaded file">
         Load file

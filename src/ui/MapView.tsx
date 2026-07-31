@@ -119,6 +119,8 @@ interface Props {
    * redacted down to what the physical table would show.
    */
   viewSide: string | null
+  /** Drag-to-measure in rulebook inches (E1.1). */
+  rulerMode: boolean
 }
 
 export interface RangeRing {
@@ -127,7 +129,7 @@ export interface RangeRing {
   band: 'green' | 'max'
 }
 
-export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide }: Props) {
+export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide, rulerMode }: Props) {
   const { width, height } = game.scenario.bounds
   const w = width * SCALE
   const h = height * SCALE
@@ -171,11 +173,23 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
   }
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (rulerMode) {
+      const at = toBoard(e)
+      setRuler({ ax: at.x, ay: at.y, bx: at.x, by: at.y })
+      measuring.current = true
+      svgRef.current?.setPointerCapture(e.pointerId)
+      return
+    }
     if (view.zoom === 1) return
     drag.current = { x: e.clientX, y: e.clientY, moved: false }
     svgRef.current?.setPointerCapture(e.pointerId)
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (measuring.current) {
+      const at = toBoard(e)
+      setRuler((r) => (r ? { ...r, bx: at.x, by: at.y } : r))
+      return
+    }
     const d = drag.current
     if (!d) return
     const rect = svgRef.current!.getBoundingClientRect()
@@ -186,6 +200,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
     setView((v) => clampView({ x: v.x - dx, y: v.y - dy, zoom: v.zoom }, fullW, fullH))
   }
   const onPointerUp = () => {
+    measuring.current = false
     // A drag that moved should not also read as a ship click.
     if (drag.current?.moved) suppressClick.current = true
     drag.current = null
@@ -196,8 +211,32 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       suppressClick.current = false
       return
     }
+    if (rulerMode) return
     onSelect(id)
   }
+
+  /**
+   * Headings for animation. Ship state normalizes headings to 0–360, but a
+   * transition from 350° to 10° must turn 20° through north, not 340° back
+   * through south — so each counter keeps an unwrapped display heading that
+   * always moves by the short way round.
+   */
+  const displayHeadings = useRef(new Map<string, number>())
+  const continuousHeading = (id: string, target: number): number => {
+    const prev = displayHeadings.current.get(id)
+    if (prev === undefined) {
+      displayHeadings.current.set(id, target)
+      return target
+    }
+    const delta = ((target - prev + 540) % 360) - 180
+    const next = prev + delta
+    displayHeadings.current.set(id, next)
+    return next
+  }
+
+  /** The ruler: press to anchor, drag to measure, release to leave it up. */
+  const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null)
+  const measuring = useRef(false)
 
   const grid = useMemo(() => {
     const lines: React.ReactElement[] = []
@@ -215,7 +254,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
   return (
     <svg
-      className={`map${view.zoom > 1 ? ' is-zoomed' : ''}`}
+      className={`map${view.zoom > 1 ? ' is-zoomed' : ''}${rulerMode ? ' is-ruler' : ''}`}
       ref={svgRef}
       viewBox={viewBox}
       role="img"
@@ -371,16 +410,20 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
       {/* Homing weapons in flight (E5.1.9) — 3/4-inch counters. */}
       {game.homing.map((hw) => (
-        <g key={hw.id} className={`homing homing-${hw.side === game.ships[0]?.side ? 'blue' : 'red'}`}>
+        <g
+          key={hw.id}
+          className={`homing map-mover homing-${hw.side === game.ships[0]?.side ? 'blue' : 'red'}`}
+          style={{ transform: `translate(${hw.position.x * SCALE}px, ${hw.position.y * SCALE}px)` }}
+        >
           <rect
-            x={hw.position.x * SCALE - (0.375 * SCALE)}
-            y={hw.position.y * SCALE - (0.375 * SCALE)}
+            x={-0.375 * SCALE}
+            y={-0.375 * SCALE}
             width={0.75 * SCALE}
             height={0.75 * SCALE}
             className="homing-counter"
           />
           {/* The white dot is the counter's position for range and movement. */}
-          <circle cx={hw.position.x * SCALE} cy={hw.position.y * SCALE} r={1.5} className="homing-dot" />
+          <circle cx={0} cy={0} r={1.5} className="homing-dot" />
         </g>
       ))}
 
@@ -433,29 +476,23 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
       {/* Shuttles and probes (E12, J7, J8) — half-inch counters. */}
       {game.smallCraft.map((craft) => (
-        <g key={craft.id} className={`small-craft small-craft-${craft.kind}`}>
+        <g
+          key={craft.id}
+          className={`small-craft map-mover small-craft-${craft.kind}`}
+          style={{ transform: `translate(${craft.position.x * SCALE}px, ${craft.position.y * SCALE}px)` }}
+        >
           {craft.kind === 'probe' ? (
-            <circle
-              cx={craft.position.x * SCALE}
-              cy={craft.position.y * SCALE}
-              r={0.25 * SCALE}
-              className="craft-counter"
-            />
+            <circle cx={0} cy={0} r={0.25 * SCALE} className="craft-counter" />
           ) : (
             <rect
-              x={craft.position.x * SCALE - 0.25 * SCALE}
-              y={craft.position.y * SCALE - 0.25 * SCALE}
+              x={-0.25 * SCALE}
+              y={-0.25 * SCALE}
               width={0.5 * SCALE}
               height={0.5 * SCALE}
               className="craft-counter"
             />
           )}
-          <text
-            x={craft.position.x * SCALE}
-            y={craft.position.y * SCALE + 0.25 * SCALE + 9}
-            className="craft-label"
-            textAnchor="middle"
-          >
+          <text x={0} y={0.25 * SCALE + 9} className="craft-label" textAnchor="middle">
             {craft.kind === 'probe' ? 'PROBE' : craft.kind === 'jamming-shuttle' ? 'JAM' : 'SHTL'}
           </text>
         </g>
@@ -488,6 +525,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             }
             cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
             redacted={viewSide !== null && ship.side !== viewSide}
+            displayHeading={continuousHeading(ship.id, ship.placement.heading)}
             onSelect={select}
           />
         ))}
@@ -506,6 +544,24 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         (viewSide === null || selected.side === viewSide) && (
           <PlotPreview game={game} ship={selected} />
         )}
+
+      {/* The ruler: a measured line in the rules' own inches (E1.1). */}
+      {rulerMode && ruler && (
+        <g className="ruler" aria-hidden="true">
+          <line x1={ruler.ax} y1={ruler.ay} x2={ruler.bx} y2={ruler.by} />
+          <circle cx={ruler.ax} cy={ruler.ay} r={3} />
+          <circle cx={ruler.bx} cy={ruler.by} r={3} />
+          <text
+            x={(ruler.ax + ruler.bx) / 2}
+            y={(ruler.ay + ruler.by) / 2 - 8}
+            textAnchor="middle"
+            className="ruler-label"
+          >
+            {Math.floor(Math.hypot(ruler.bx - ruler.ax, ruler.by - ruler.ay) / SCALE)}&quot; (
+            {(Math.hypot(ruler.bx - ruler.ax, ruler.by - ruler.ay) / SCALE).toFixed(1)})
+          </text>
+        </g>
+      )}
 
       {/* Corner falloff, drawn last and click-through, to seat the board in
           the surrounding chrome. */}
@@ -758,6 +814,7 @@ function ShipToken({
   formationSize,
   cloaked,
   redacted,
+  displayHeading,
   onSelect,
 }: {
   ship: ShipState
@@ -769,6 +826,8 @@ function ShipToken({
   cloaked: boolean
   /** An enemy counter in a side view: hide what the table would not show. */
   redacted: boolean
+  /** Unwrapped heading, so a CSS transition always turns the short way. */
+  displayHeading: number
   onSelect: (id: string) => void
 }) {
   if (ship.destroyed || ship.disengaged) return null
@@ -796,8 +855,10 @@ function ShipToken({
 
   return (
     <g
-      className={`ship ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}${cloaked ? ' is-cloaked' : ''}`}
-      transform={`translate(${cx} ${cy}) rotate(${ship.placement.heading})`}
+      className={`ship map-mover ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}${cloaked ? ' is-cloaked' : ''}`}
+      /* A style transform, not an attribute, so the Navigation reveal can
+         animate it: ships glide along their plots instead of teleporting. */
+      style={{ transform: `translate(${cx}px, ${cy}px) rotate(${displayHeading}deg)` }}
       onClick={() => onSelect(ship.id)}
       role="button"
       tabIndex={0}
@@ -841,7 +902,11 @@ function ShipToken({
           ['P', -size / 2 - 12, 4],
         ] as const
       ).map(([side, x, y]) => (
-        <g key={side} transform={`translate(${x} ${y}) rotate(${-ship.placement.heading})`}>
+        <g
+          key={side}
+          className="map-mover"
+          style={{ transform: `translate(${x}px, ${y}px) rotate(${-displayHeading}deg)` }}
+        >
           <text className="ship-shield" textAnchor="middle">
             {shieldLabel(side)}
           </text>
@@ -849,7 +914,7 @@ function ShipToken({
       ))}
 
       {/* Counter-rotate so labels stay upright regardless of ship heading. */}
-      <g transform={`rotate(${-ship.placement.heading})`}>
+      <g className="map-mover" style={{ transform: `rotate(${-displayHeading}deg)` }}>
         {formationSize > 1 && (
           <text x={size / 2 - 3} y={-size / 2 + 11} className="ship-formation" textAnchor="end">
             ×{formationSize}

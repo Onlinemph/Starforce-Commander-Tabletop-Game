@@ -776,6 +776,44 @@ input:focus-visible {
 .ship {
   cursor: pointer;
 }
+/*
+  The Navigation reveal, animated: everything positioned by a style transform
+  glides to its new place instead of teleporting, which is the only way a
+  human can read six simultaneous moves. The unwrapped display heading in
+  MapView keeps every turn going the short way round.
+*/
+.map-mover {
+  transition: transform 900ms cubic-bezier(0.45, 0.05, 0.25, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-mover {
+    transition: none;
+  }
+}
+
+/* The ruler (E1.1 — ranges round down, so both figures are shown). */
+.ruler line {
+  stroke: var(--lc-sand);
+  stroke-width: 1.6;
+  stroke-dasharray: 2 4;
+}
+.ruler circle {
+  fill: var(--lc-sand);
+}
+.ruler-label {
+  fill: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.map.is-ruler {
+  cursor: crosshair;
+}
 .ship-base {
   fill: rgba(8, 12, 22, 0.9);
   stroke: var(--ink-dim);

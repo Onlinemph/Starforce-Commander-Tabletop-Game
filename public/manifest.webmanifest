@@ -1,0 +1,14 @@
+{
+  "name": "StarForce Commander — Digital Tabletop",
+  "short_name": "StarForce",
+  "description": "Tactical starship combat in the browser. Full Standard rules, 93 canon ships, hot-seat or serverless remote play.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#05060b",
+  "theme_color": "#05060b",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
