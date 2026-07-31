@@ -2147,3 +2147,31 @@ input[type='number'] {
 .probe-launch h4 {
   margin-bottom: 0.4rem;
 }
+
+/* --- Boarding combat ----------------------------------------------------- */
+
+.boarding-action {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.6rem;
+  background: var(--panel-2);
+}
+
+.boarding-action > header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.boarding-side + .boarding-side {
+  border-top: 1px solid var(--line);
+  padding-top: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.boarding-side .hint em {
+  font-style: normal;
+  color: var(--warn);
+}

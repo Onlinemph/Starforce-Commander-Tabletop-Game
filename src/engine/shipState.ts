@@ -108,6 +108,8 @@ export interface ShipState {
   destroyed: boolean
   disengaged: boolean
   capturedBy: string | null
+  /** Round the ship was captured, which gates its FTL drive (J6.2.5). */
+  capturedRound: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +187,7 @@ export function createShip(args: {
     destroyed: false,
     disengaged: false,
     capturedBy: null,
+    capturedRound: null,
   }
 }
 

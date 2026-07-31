@@ -14,6 +14,7 @@ import {
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
+import { BoardingPanel } from './BoardingPanel'
 import { CloakPanel } from './CloakPanel'
 import { CloudPanel } from './CloudPanel'
 import { CombatPanel } from './CombatPanel'
@@ -293,6 +294,8 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
           </p>
         </div>
       )
+    case 'boarding-combat':
+      return <BoardingPanel game={game} ship={ship} />
     case 'disengagement':
       return (
         <>

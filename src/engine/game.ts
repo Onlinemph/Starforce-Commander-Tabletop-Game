@@ -1,5 +1,6 @@
 import {
   applyVolley,
+  drawAndResolve,
   autoChoices,
   newDeck,
   setDestructionOptions,
@@ -60,6 +61,14 @@ import {
   type CloudFeature,
   type NebulaEffects,
 } from './nebula'
+import {
+  boardersAboard,
+  boardingSides,
+  capturedFtlAvailable,
+  capturedRefusal,
+  resolveBoarding,
+  type BoardingOutcome,
+} from './boarding'
 import { hasCloak } from './cloaking'
 import {
   applyDefensiveFire,
@@ -299,6 +308,8 @@ export interface OperationsState {
   dockedThisPhase: Record<string, number>
   /** Probes launched this round, per ship (J7.2.1). */
   probesThisRound: Record<string, number>
+  /** `shipId:side` → squads attacking the ship instead of its marines (J6.2.4). */
+  sabotage: Record<string, number>
 }
 
 export function newOperationsState(): OperationsState {
@@ -313,6 +324,7 @@ export function newOperationsState(): OperationsState {
     recoveredThisPhase: {},
     dockedThisPhase: {},
     probesThisRound: {},
+    sabotage: {},
   }
 }
 
@@ -726,6 +738,9 @@ export function declareCoordinatedFire(
  * game places no such limit.
  */
 export function attackAllowed(game: GameState, attacker: ShipState, target: ShipState): string | null {
+  // J6.2.5 — a captured ship ceases to perform any actions or functions.
+  const captured = capturedRefusal(attacker, 'fire')
+  if (captured) return captured
   if (!game.coordinatedFire) return null
   return checkOneAttackPerPhase(attacker.side, target, game.attackedThisPhase)
 }
@@ -1028,6 +1043,10 @@ function runSegmentExit(game: GameState): void {
       advanceCloakPhases(game)
       break
 
+    case 'boarding-combat':
+      resolveAllBoarding(game)
+      break
+
     case 'stress-check': {
       const ctx = damageContext(game)
       for (const ship of activeShips(game)) {
@@ -1044,8 +1063,11 @@ function runSegmentExit(game: GameState): void {
           enemiesOf(game, ship),
           game.scenario.bounds,
           // K4.2.7 shuts FTL down inside a cloud; J3.4.4 does the same to a
-          // ship held in someone else's tractor beam.
-          !cloudStatus(game, ship).ftlBlocked && !ftlBlockedBy(ship.id, game.ops.links),
+          // ship held in someone else's tractor beam; and a captured ship must
+          // wait ten rounds before its captors can jump it out (J6.2.5).
+          !cloudStatus(game, ship).ftlBlocked &&
+            !ftlBlockedBy(ship.id, game.ops.links) &&
+            capturedFtlAvailable(ship, game.round),
         )
         // Leaving a fixed map is automatic (J9.2.4); the rest are voluntary and
         // are triggered from the UI before this segment ends.
@@ -1480,6 +1502,8 @@ export interface ScanOutcome {
 
 /** Gather information on an object during Step E (J4.2.2). */
 export function performScan(game: GameState, ship: ShipState, targetId: string): ScanOutcome {
+  const captured = capturedRefusal(ship, 'scan')
+  if (captured) return { refusal: captured }
   const target = scanTargets(game, ship).find((t) => t.id === targetId)
   if (!target) return { refusal: 'No such object.' }
   const key = `${ship.id}:${targetId}`
@@ -1917,6 +1941,77 @@ function scuttleJammers(game: GameState): void {
     game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
     pushLog(game, `${craftName(craft)} self-destructs to avoid capture (J8.4.2).`)
   }
+}
+
+// ---------------------------------------------------------------------------
+// J6 — Boarding combat
+// ---------------------------------------------------------------------------
+
+/** Ships with enemy marines aboard, awaiting the Boarding Combat Segment. */
+export function shipsUnderBoarding(game: GameState): ShipState[] {
+  return activeShips(game).filter((ship) => boardersAboard(ship) > 0)
+}
+
+/**
+ * How many attacking squads are going after the ship rather than its defenders
+ * this round (J6.2.4). Set during the Boarding Combat Segment; cleared with it.
+ */
+export function setSabotageSquads(game: GameState, ship: ShipState, side: string, squads: number): void {
+  game.ops.sabotage[`${ship.id}:${side}`] = Math.max(0, squads)
+}
+
+export function sabotageSquads(game: GameState, ship: ShipState, side: string): number {
+  return game.ops.sabotage[`${ship.id}:${side}`] ?? 0
+}
+
+/**
+ * One round of boarding combat aboard a ship (J6.2.2), including any squads
+ * that chose to wreck the ship instead of fighting its marines (J6.2.4).
+ */
+export function fightBoarders(game: GameState, ship: ShipState, side: string): BoardingOutcome {
+  const outcome = resolveBoarding(ship, side, game.rng, sabotageSquads(game, ship, side))
+
+  pushLog(
+    game,
+    `${ship.name}: boarding combat — ${outcome.attackers.dice} attacking die/dice ` +
+      `(${outcome.attackers.faces.join('') || '—'}) kill ${outcome.attackers.kills}, ` +
+      `${outcome.defenders.dice} defending (${outcome.defenders.faces.join('') || '—'}) kill ${outcome.defenders.kills}.`,
+  )
+  if (outcome.attackers.squads > outcome.attackers.dice || outcome.defenders.squads > outcome.defenders.dice) {
+    pushLog(game, `${ship.name}: tight quarters cap the larger force's dice (J6.2.3).`)
+  }
+
+  // J6.2.4 — sabotage lands as ordinary damage cards, except that anything
+  // reaching the structure track is simply lost.
+  if (outcome.sabotage.damage > 0) {
+    pushLog(
+      game,
+      `${ship.name}: ${outcome.sabotage.squads} squad(s) attack the ship for ${outcome.sabotage.damage} damage (J6.2.4).`,
+    )
+    drawAndResolve(ship, outcome.sabotage.damage, { ...damageContext(game), marineAttack: true })
+  }
+
+  if (outcome.captured) {
+    ship.capturedBy = side
+    ship.capturedRound = game.round
+    pushLog(game, `${ship.name} is captured by ${side} (J6.2.5).`)
+  } else if (outcome.repelled) {
+    pushLog(game, `${ship.name}: the boarding action is repelled (J6.2.2 item 3).`)
+  } else {
+    pushLog(game, `${ship.name}: boarders hold on and the fight runs into the next round.`)
+  }
+  return outcome
+}
+
+/** Resolve every boarding action still running, in the Final Phase (J6.2.1). */
+function resolveAllBoarding(game: GameState): void {
+  for (const ship of shipsUnderBoarding(game)) {
+    for (const side of boardingSides(ship)) {
+      if (ship.destroyed || ship.capturedBy === side) continue
+      fightBoarders(game, ship, side)
+    }
+  }
+  game.ops.sabotage = {}
 }
 
 // ---------------------------------------------------------------------------

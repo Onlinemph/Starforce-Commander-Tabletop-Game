@@ -31,8 +31,9 @@ full Sequence of Play:
 - **Final Phase** — stress checks, disengagement, and victory-point scoring.
 
 Plus the **operations systems** of Section J — tractor beams that tow a ship down to a crawl,
-informational scans, transporters landing boarding parties, probes flown out of torpedo tubes, and
-shuttles that launch, fly unplotted, board enemy hulls and jam for their mother ship.
+informational scans, transporters landing boarding parties, marines fighting through a ship's
+corridors until it is captured, probes flown out of torpedo tubes, and shuttles that launch, fly
+unplotted, board enemy hulls and jam for their mother ship.
 
 Plus **every expansion**: squadrons flying as one counter, scouts that illuminate and jam for the
 whole fleet, command ships that lend tactical scan, the optional ten-step Coordinated Fire sequence,
@@ -82,6 +83,7 @@ hulls, have them priced on the same scale as the printed ones, and fly them the 
 | J3 Tractor Beams | ✅ | Lock-on rolls, towing at adjusted speed, displacement, breaking |
 | J4 Sciences | ✅ | Informational scans, cumulative across ships and phases |
 | J5 Transporters | ✅ | Range by power, shields down at both ends, boarding parties |
+| J6 Marine Squads | ✅ | Boarding combat, tight quarters, sabotage, capture (J6.3 is optional) |
 | J7 Probes | ✅ | Launched from torpedo tubes, flight, standoff, transmitting |
 | J8 Shuttle Operations | ✅ | Launch, unplotted movement, recovery, boarding, jamming shuttles |
 | J9 Disengagement | ✅ | FTL, leaving the map, range 36, mutual agreement |
@@ -100,10 +102,11 @@ hulls, have them priced on the same scale as the printed ones, and fly them the 
 | **F1.13 / F1.16 Missile & Particle** *(Expansion 5)* | ✅ | `MISL X` destruction thresholds; particle damage worn down one point per three |
 | **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
 
-Optional rules (B2.5 full batteries, C3.6 evasive maneuvers, C3.7 reverse movement, C3.8 emergency
-stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6 boarding) are partly implemented in
-the engine — reverse movement, emergency stop, derelicts and explosions all work — but are not yet
-surfaced as UI toggles beyond the destruction options.
+Optional rules (B2.5 full batteries, B3.4 repelling boarders, C3.6 evasive maneuvers, C3.7 reverse
+movement, C3.8 emergency stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6.3 arming
+the crew) are partly implemented in the engine — reverse movement, emergency stop, repelling
+boarders, derelicts and explosions all work — but are not yet surfaced as UI toggles beyond the
+destruction options.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 
@@ -425,6 +428,31 @@ One marine squad or landing party per undamaged `TRAN` box per phase, at 2 inche
 decision rather than a free action. Squads landed on a friendly hull reinforce it; squads landed on
 an enemy become boarders for the Boarding Combat Segment (J6).
 
+### Boarding combat (J6)
+
+Marines get aboard by transporter (J5) or by shuttle (J8.2.6); once there, they fight in the
+**Boarding Combat Segment** of the Final Phase. Both sides roll one blue die per squad and a Light
+hit kills one enemy squad — misses and Mediums do nothing at all. Both sides roll at once, so an
+even fight can wipe out everyone and leave the ship in nobody's hands.
+
+**Tight quarters (J6.2.3)** is what makes the rule interesting. Once one side outnumbers the other
+two to one, no more than two squads may set about any one enemy squad — so sixteen marines facing
+two boarders still only bring four dice, and a small boarding party can hold a corridor for a very
+long time.
+
+Instead of fighting, an attacking squad may go after **the ship itself** (J6.2.4): one die each, a
+damage point per Light hit, applied by drawing damage cards — except that anything reaching the
+structure track is simply lost. Marines wreck systems; they do not scuttle a hull.
+
+Kill every defender and you **capture the ship** (J6.2.5). A captured ship ceases to perform any
+actions or functions: no firing, no scanning, no operations. It keeps its engines but may only fly
+straight or make Standard turns, though it can still change speed. It may disengage at sublight
+immediately, but its captors cannot jump it to FTL until ten rounds after the capture.
+
+J6.3, arming the general crew to repel boarders, is an optional rule and is not implemented. B3.4,
+spending damage control dice to kill a boarding squad, is also optional but was already in the
+Damage Control Segment.
+
 ### Probes (J7)
 
 No printed ship in the roster carries a dedicated `PROB` launcher, which is exactly the case J7.1.3
@@ -583,9 +611,6 @@ line — which is exactly what E7.2.5 describes.
 - **Fighters and carriers** (E12.1.3) — the terminology, degraded-fire and point-defense rules are
   in the engine and shuttles and probes fly, but fighters need a carrier book that has not been
   published. Nothing to do until it exists.
-- **Boarding combat** (J6.2) — marines reach an enemy hull by transporter and by shuttle, and the
-  Boarding Combat Segment is in the sequence of play, but the fight itself resolves through damage
-  control rather than J6.2's own procedure.
 - **Terrain** (K) — planets, moons, asteroid fields, nebulae and gas clouds are all implemented, but
   the printed terrain counters are raster art, so the individual SPD/DMG/CVR/SCAN values on each
   numbered counter have not been imported; scenarios set them directly instead.
@@ -626,6 +651,7 @@ src/
     navigation.ts  Plot validation, movement, stress checks, disengagement
     fleet.ts       Force composition and ship availability (S2.5)
     operations.ts  Operations Segment, informational scans, transporters (J1, J4, J5)
+    boarding.ts    Boarding combat, sabotage and captured ships (J6.2)
     tractor.ts     Tractor beams: locks, towing, displacement (J3)
     smallCraft.ts  Shuttles and probes (E12, J7, J8)
     shipBuilder.ts The designers' point-value model and design validation

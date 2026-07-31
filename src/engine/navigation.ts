@@ -1,3 +1,4 @@
+import { maneuverAllowedWhenCaptured } from './boarding'
 import { drawCard, resolveCard, type DamageContext } from './damage'
 import { applyManeuver, maneuverStress, type ManeuverResult } from './geometry'
 import {
@@ -40,6 +41,15 @@ export function emergencyTurnPowered(ship: ShipState): boolean {
 export function validatePlot(ship: ShipState, card: CommandCard): PlotError[] {
   const errors: PlotError[] = []
   const accel = Math.abs(card.accel)
+
+  // A captured ship keeps its engines but little else: forward movement and
+  // Standard turns only, though it may still change speed (J6.2.5 item 1).
+  if (ship.capturedBy !== null && !maneuverAllowedWhenCaptured(card.maneuver)) {
+    errors.push({
+      message: `A captured ship may only fly straight or make Standard turns (J6.2.5).`,
+      fallbackToStraight: true,
+    })
+  }
 
   // Per-phase acceleration limit (C1.2.5).
   if (accel > ship.form.sublight.maxAccelPerPhase) {
