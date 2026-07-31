@@ -26,8 +26,11 @@ import type {
 import {
   customFormId,
   deleteCustomForm,
-  exportCustomForms,
+  draftCount,
   importCustomForms,
+  isFileForm,
+  isUnsavedDraft,
+  rosterFileContents,
   saveCustomForm,
   useCustomForms,
 } from './customShips'
@@ -116,24 +119,32 @@ export function ShipBuilder({ onClose }: Props) {
 
   const save = () => {
     saveCustomForm(structuredClone(draft))
-    setStatus(`Saved “${draft.name}”.`)
+    setStatus(`Saved “${draft.name}” as a local draft — download the roster file to keep it.`)
   }
 
+  /**
+   * Hand back `src/data/customShips.json` with every design in it. Committing
+   * that file is what makes a design permanent and shared: it is bundled with
+   * the site, so it reaches every player on every device.
+   */
   const download = () => {
-    const blob = new Blob([exportCustomForms()], { type: 'application/json' })
+    const blob = new Blob([rosterFileContents()], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'starforce-custom-ships.json'
+    a.download = 'customShips.json'
     a.click()
     URL.revokeObjectURL(url)
+    setStatus('Downloaded — replace src/data/customShips.json with it and commit.')
   }
 
   const upload = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text())
       const list: ShipForm[] = Array.isArray(parsed) ? parsed : [parsed]
-      setStatus(`Imported ${importCustomForms(list)} design(s).`)
+      setStatus(
+        `Loaded ${importCustomForms(list)} design(s) as drafts — download the roster file to keep them.`,
+      )
     } catch {
       setStatus('That file is not a StarForce ship roster.')
     }
@@ -168,6 +179,7 @@ export function ShipBuilder({ onClose }: Props) {
                   {saved.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
+                      {isUnsavedDraft(f.id) ? ' — draft' : isFileForm(f.id) ? ' — in the file' : ''}
                     </option>
                   ))}
                 </optgroup>
@@ -182,13 +194,18 @@ export function ShipBuilder({ onClose }: Props) {
             </select>
           </label>
           <button type="button" onClick={save}>
-            Save design
+            Save draft
           </button>
-          <button type="button" onClick={download}>
-            Export roster
+          <button
+            type="button"
+            className="primary"
+            onClick={download}
+            title="Every design, as the file to commit to the repository"
+          >
+            Download customShips.json
           </button>
           <button type="button" onClick={() => fileInput.current?.click()}>
-            Import roster
+            Load a roster file
           </button>
           <input
             ref={fileInput}
@@ -207,14 +224,31 @@ export function ShipBuilder({ onClose }: Props) {
               className="danger"
               onClick={() => {
                 deleteCustomForm(draft.id)
-                setStatus(`Deleted “${draft.name}”.`)
+                setStatus(
+                  isFileForm(draft.id)
+                    ? `Reverted “${draft.name}” to the version in the file.`
+                    : `Deleted “${draft.name}”.`,
+                )
               }}
             >
-              Delete
+              {isFileForm(draft.id) ? 'Revert' : 'Delete'}
             </button>
           )}
           {status && <span className="builder-status">{status}</span>}
         </div>
+
+        <p className="builder-where">
+          Designs live in <code>src/data/customShips.json</code>, which is bundled with the site, so
+          a design committed there reaches every player on every device.{' '}
+          <strong>Save draft</strong> keeps a design in this browser only;{' '}
+          <strong>Download customShips.json</strong> writes the file to commit.
+          {draftCount() > 0 && (
+            <em>
+              {' '}
+              {draftCount()} design{draftCount() === 1 ? '' : 's'} not yet in the file.
+            </em>
+          )}
+        </p>
 
         <div className="builder-body">
           <div className="builder-form">

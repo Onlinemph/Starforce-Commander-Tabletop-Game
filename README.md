@@ -40,10 +40,21 @@ address. It is still one shared game — hot-seat, both fleets on the same scree
 can host the game: GitHub Pages, Netlify, Cloudflare Pages, S3, nginx, a Raspberry Pi on your LAN.
 There is no build-time configuration and no runtime environment to provide.
 
-**GitHub Pages** is wired up already. In the repository, set *Settings → Pages → Source* to
-**GitHub Actions** once; from then on every push to the default branch builds and publishes
-`.github/workflows/deploy.yml`. A project site lives under `/<repo-name>/`, so the workflow passes
-that path as `BASE_PATH` — taken from the repository itself, so forks and renames need no edit.
+**GitHub Pages** is wired up already, but it needs one setting: in the repository, go to
+*Settings → Pages → Source* and choose **GitHub Actions**.
+
+This matters, because the default is *Deploy from a branch*, which serves the repository's files
+as-is. That publishes the **source**, not a build — and the source `index.html` points at
+`/src/main.tsx`, which browsers cannot execute and which is not where the site would serve it from.
+The result is a page that loads and then does nothing. If you ever see that, the page now says so
+rather than sitting there blank.
+
+With the source set to GitHub Actions, every push to the **default branch** builds and publishes
+via `.github/workflows/deploy.yml`. A project site lives under `/<repo-name>/`, so the workflow
+passes that path as `BASE_PATH`, taken from the repository itself — forks and renames need no edit.
+The workflow triggers on every branch but only publishes from the default branch, so renaming it
+does not quietly stop deployments. To publish from a branch that is not the default, run the
+workflow by hand from the Actions tab.
 
 **Any other static host** — point it at `dist/`, with the build command `npm run build` and Node 20+.
 Leave `BASE_PATH` unset when the site sits at a domain root.
@@ -56,9 +67,7 @@ docker compose up --build     # http://localhost:8080
 
 The image is a two-stage build — Node to compile, nginx to serve — and carries no state.
 
-A note on where things are kept: ships you design in the **ship builder** live in your browser's
-local storage, which is per-origin and per-device. They do not travel with the site. Use *Export
-roster* to get a JSON file you can keep, share, or import on another machine.
+Ships you design travel with the site — see below.
 
 `.github/workflows/ci.yml` typechecks, runs the full test suite and does a production build on every
 push and pull request.
@@ -567,6 +576,27 @@ by label, so the builder maintains the pair rather than letting you save a ship 
 never be powered. Where a printed form already does something clever — the KNOX II buys two of its
 four sensors with a single power point — that is left alone rather than normalised away.
 
+### Where designs are kept
+
+Designs live in **`src/data/customShips.json`**, which is bundled at build time exactly like the
+canon roster. A design committed there reaches every player who loads the page, on any device, with
+nothing to import.
+
+The builder writes that file for you:
+
+1. Design a ship. **Save draft** keeps it in this browser so you can come back to it.
+2. **Download customShips.json** — you get the whole roster, file designs and drafts together.
+3. Replace `src/data/customShips.json` with it and commit.
+
+Until step 3 a design is a *draft*: it exists on that one device only, and the builder says so —
+designs are labelled “draft” or “in the file”, and a count of what is not yet committed sits above
+the form. Editing a committed design creates a draft that shadows it, so you see your change
+immediately; **Revert** throws the draft away and goes back to the file.
+
+A test keeps that file honest: it must be a JSON array, hold no duplicate ids, never shadow a canon
+ship, and contain only designs that pass the rules check — so a bad hand-edit fails CI instead of
+blanking the site.
+
 ### How a ship is priced
 
 The sheet values eight components, weights each, and divides by ten:
@@ -702,6 +732,7 @@ src/
     game.ts        Sequence of play, terrain, victory points
   data/            Game content — all canon, all machine-imported
     ships.json     93 ship forms: the Master Ship Book plus the Aurelian book
+    customShips.json  Designs made in the ship builder, bundled with the site
     damageDeck.json  The 56-card damage deck from the component sheets
     scenarios.ts   Section S scenarios and force setup
 tools/             Importers that regenerate the JSON from the source PDFs

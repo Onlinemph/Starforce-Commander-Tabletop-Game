@@ -32,7 +32,59 @@
     <meta property="og:type" content="website" />
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      React replaces everything inside #root on mount. Anything still visible
+      here means the script never ran — almost always because the site is
+      serving this repository's *source* rather than a build, which leaves a
+      blank page with no clue as to why. Say so instead.
+    -->
+    <div id="root">
+      <div class="boot-message">
+        <h1>StarForce Commander</h1>
+        <p>
+          The page loaded but the game did not start, which means this host is serving the
+          repository source rather than a built site.
+        </p>
+        <p>
+          Build it with <code>npm install &amp;&amp; npm run build</code> and serve the
+          <code>dist/</code> folder. On GitHub Pages, set
+          <em>Settings → Pages → Source</em> to <strong>GitHub Actions</strong> — the workflow in
+          <code>.github/workflows/deploy.yml</code> does the build for you.
+        </p>
+        <noscript>
+          <p><strong>JavaScript is switched off.</strong> The rules engine runs in your browser, so the game needs it.</p>
+        </noscript>
+      </div>
+    </div>
+    <style>
+      /* The real stylesheet arrives with the bundle, so this fallback carries
+         just enough of it to be readable on its own. */
+      body {
+        margin: 0;
+        background: #0b0e14;
+      }
+      .boot-message {
+        max-width: 34rem;
+        margin: 12vh auto;
+        padding: 0 1.5rem;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        color: #e6ebf5;
+        line-height: 1.55;
+      }
+      .boot-message h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.8rem;
+      }
+      .boot-message code {
+        background: #1c2230;
+        border-radius: 3px;
+        padding: 0.1em 0.35em;
+        font-size: 0.9em;
+      }
+      .boot-message p {
+        color: #8b96ab;
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

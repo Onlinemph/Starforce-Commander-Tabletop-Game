@@ -1,4 +1,5 @@
 import type { ShipForm } from '../engine/types'
+import customShipData from './customShips.json'
 import shipData from './ships.json'
 
 /**
@@ -32,12 +33,25 @@ import shipData from './ships.json'
 export const SHIP_FORMS: ShipForm[] = shipData as unknown as ShipForm[]
 
 /**
+ * Designs that live in the repository, in `customShips.json`.
+ *
+ * These are bundled at build time exactly like the canon roster, so they travel
+ * with the site: everyone who loads the page gets them, on any device, with no
+ * import step. The ship builder writes this file for you — design a ship, then
+ * *Download customShips.json* and commit what it gives you.
+ */
+export const FILE_FORMS: ShipForm[] = customShipData as unknown as ShipForm[]
+
+/**
  * Designs built in the ship builder. They are kept apart from the canon roster
  * so nothing can quietly overwrite a printed ship, but they are visible
  * everywhere a form is looked up by id, which is what lets a custom hull be
  * dropped straight into a scenario.
+ *
+ * Seeded from the repository file, then replaced by the builder's store, which
+ * layers any unsaved local drafts on top.
  */
-const CUSTOM_FORMS: ShipForm[] = []
+const CUSTOM_FORMS: ShipForm[] = [...FILE_FORMS]
 
 /** Replace the custom roster wholesale. Called by the builder's store. */
 export function registerCustomForms(forms: ShipForm[]): void {

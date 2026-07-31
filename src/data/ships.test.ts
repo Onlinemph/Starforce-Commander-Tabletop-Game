@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { findShipForm, SHIP_FORMS, VALLARI_CRUISER, YORKTOWN } from './ships'
+import { FILE_FORMS, findShipForm, shipFormById, SHIP_FORMS, VALLARI_CRUISER, YORKTOWN } from './ships'
+import { validateDesign } from '../engine/shipBuilder'
 import { createShip, damageControlRating, markStructure, structureBoxes } from '../engine/shipState'
 import { armingCapacityThisRound } from '../engine/shipState'
 import { ARC_ORDER } from '../engine/geometry'
@@ -266,6 +267,42 @@ describe('Aurelian roster (Expansion 5)', () => {
           if (!homing) expect(bracket.endurancePhase, weapon.name).toBeUndefined()
         }
       }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Designs committed to the repository
+// ---------------------------------------------------------------------------
+
+describe('customShips.json', () => {
+  it('is a JSON array, so the app can always boot', () => {
+    // A malformed file here would take the whole site down at load, and it is
+    // hand-edited by whoever commits a design.
+    expect(Array.isArray(FILE_FORMS)).toBe(true)
+  })
+
+  it('never shadows a canon ship', () => {
+    const canon = new Set(SHIP_FORMS.map((f) => f.id))
+    for (const form of FILE_FORMS) {
+      expect(canon.has(form.id), `${form.id} collides with a printed ship`).toBe(false)
+    }
+  })
+
+  it('holds no duplicate ids', () => {
+    expect(new Set(FILE_FORMS.map((f) => f.id)).size).toBe(FILE_FORMS.length)
+  })
+
+  it('holds only designs that are legal to play', () => {
+    for (const form of FILE_FORMS) {
+      const errors = validateDesign(form).filter((p) => p.severity === 'error')
+      expect(errors, `${form.name}: ${errors.map((e) => e.message).join('; ')}`).toEqual([])
+    }
+  })
+
+  it('is reachable by id like any other form', () => {
+    for (const form of FILE_FORMS) {
+      expect(shipFormById(form.id)?.name).toBe(form.name)
     }
   })
 })
