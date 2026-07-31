@@ -2,7 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
+/**
+ * The app is a static, single-page build with no server and no router, so it
+ * can be served from any file host. `BASE_PATH` exists for project-scoped
+ * hosting like GitHub Pages, where the site lives under `/<repo-name>/`; leave
+ * it unset for a domain root, a local preview, or a container.
+ */
+const base = process.env.BASE_PATH ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [react()],
   resolve: {
     alias: {

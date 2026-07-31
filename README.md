@@ -11,13 +11,57 @@ Command Systems (H5), nebulae and gas clouds (K4, K5), cloaking (H6), homing wea
 behind toggles, the optional Coordinated Fire (H4) and jamming-versus-homing (E5.10) rules. The rules engine is a standalone TypeScript library with no UI dependencies, so it can
 later be driven by a networked client or an AI opponent without change.
 
+## Quick start
+
+Node 20 or newer (the repo pins 22 in `.nvmrc`).
+
 ```bash
 npm install
-npm run dev        # play at http://localhost:5173
-npm test           # 312 rules and data-integrity tests
-npm run typecheck
-npm run build
+npm run dev          # play at http://localhost:5173
 ```
+
+That is the whole setup. There is no server to start, no database, no API keys and no accounts —
+the game is a single static page and the rules engine runs in the browser.
+
+```bash
+npm test             # 477 rules and data-integrity tests
+npm run typecheck
+npm run check        # both of the above
+npm run build        # static site in dist/
+npm run serve        # preview the built site on your network at :4173
+```
+
+To play on a tablet or a second screen, run `npm run dev -- --host` and open the printed LAN
+address. It is still one shared game — hot-seat, both fleets on the same screen.
+
+## Hosting it
+
+`npm run build` produces a `dist/` folder of plain static files. Anything that can serve a directory
+can host the game: GitHub Pages, Netlify, Cloudflare Pages, S3, nginx, a Raspberry Pi on your LAN.
+There is no build-time configuration and no runtime environment to provide.
+
+**GitHub Pages** is wired up already. In the repository, set *Settings → Pages → Source* to
+**GitHub Actions** once; from then on every push to the default branch builds and publishes
+`.github/workflows/deploy.yml`. A project site lives under `/<repo-name>/`, so the workflow passes
+that path as `BASE_PATH` — taken from the repository itself, so forks and renames need no edit.
+
+**Any other static host** — point it at `dist/`, with the build command `npm run build` and Node 20+.
+Leave `BASE_PATH` unset when the site sits at a domain root.
+
+**Docker**, if you would rather not install Node:
+
+```bash
+docker compose up --build     # http://localhost:8080
+```
+
+The image is a two-stage build — Node to compile, nginx to serve — and carries no state.
+
+A note on where things are kept: ships you design in the **ship builder** live in your browser's
+local storage, which is per-origin and per-device. They do not travel with the site. Use *Export
+roster* to get a JSON file you can keep, share, or import on another machine.
+
+`.github/workflows/ci.yml` typechecks, runs the full test suite and does a production build on every
+push and pull request.
 
 ## What you get
 

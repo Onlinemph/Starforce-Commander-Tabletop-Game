@@ -4,6 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StarForce Commander — Digital Tabletop</title>
+    <meta
+      name="description"
+      content="A browser implementation of StarForce Commander, a game of tactical starship combat by Patrick Doyle (Mariner Games). Hot-seat, no server, canon ship data."
+    />
+
+    <!-- The app is dark throughout; tell the browser before the CSS lands so
+         there is no white flash and the chrome matches. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0e14" />
+
+    <!--
+      An inline SVG favicon: a ship counter on the play surface. Data URIs are
+      relative to nothing, so this survives being hosted under a subpath such as
+      a GitHub Pages project site, and costs no extra request.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230b0e14'/%3E%3Cpath d='M16 5 L26 27 L16 22 L6 27 Z' fill='%236ee7ff'/%3E%3C/svg%3E"
+    />
+
+    <meta property="og:title" content="StarForce Commander — Digital Tabletop" />
+    <meta
+      property="og:description"
+      content="Tactical starship combat in the browser. Full Standard rules, every expansion, 93 canon ships, and a ship builder on the designers' own point model."
+    />
+    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>
