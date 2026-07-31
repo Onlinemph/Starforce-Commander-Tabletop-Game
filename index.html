@@ -42,14 +42,19 @@
       <div class="boot-message">
         <h1>StarForce Commander</h1>
         <p>
-          The page loaded but the game did not start, which means this host is serving the
-          repository source rather than a built site.
+          The page loaded but the game did not start. This host is serving the repository
+          <em>source</em> rather than a built site.
         </p>
         <p>
-          Build it with <code>npm install &amp;&amp; npm run build</code> and serve the
-          <code>dist/</code> folder. On GitHub Pages, set
-          <em>Settings → Pages → Source</em> to <strong>GitHub Actions</strong> — the workflow in
-          <code>.github/workflows/deploy.yml</code> does the build for you.
+          <strong>On GitHub Pages</strong>, this means the source is set to
+          <em>Deploy from a branch</em>. That publishes your files through Jekyll, which cannot
+          build this app — and it overwrites the real build on every push. Go to
+          <em>Settings → Pages → Source</em> and choose <strong>GitHub Actions</strong>. The
+          workflow in <code>.github/workflows/deploy.yml</code> then does the build.
+        </p>
+        <p>
+          <strong>Anywhere else</strong>, run <code>npm install &amp;&amp; npm run build</code> and
+          serve the <code>dist/</code> folder.
         </p>
         <noscript>
           <p><strong>JavaScript is switched off.</strong> The rules engine runs in your browser, so the game needs it.</p>

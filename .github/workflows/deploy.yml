@@ -31,6 +31,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # If Pages is still set to "Deploy from a branch", GitHub *also* runs its
+      # legacy Jekyll pipeline on every push. That one publishes the repository
+      # source, finishes a few seconds after this workflow, and silently
+      # overwrites the real build — so the site loads and does nothing. Both
+      # runs go green, which makes it a genuinely nasty thing to debug. Fail
+      # here instead, with the fix in the message.
+      - name: Check the Pages source is set to GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null); then
+            echo "::warning::Could not read the Pages configuration; continuing."
+            exit 0
+          fi
+          if [ "$build_type" != "workflow" ]; then
+            echo "::error::GitHub Pages is set to '$build_type', not 'workflow'. Its legacy Jekyll pipeline will overwrite this deploy with the unbuilt source. Fix: Settings -> Pages -> Source -> GitHub Actions."
+            exit 1
+          fi
+          echo "Pages source is GitHub Actions."
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc

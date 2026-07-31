@@ -43,11 +43,15 @@ There is no build-time configuration and no runtime environment to provide.
 **GitHub Pages** is wired up already, but it needs one setting: in the repository, go to
 *Settings → Pages → Source* and choose **GitHub Actions**.
 
-This matters, because the default is *Deploy from a branch*, which serves the repository's files
-as-is. That publishes the **source**, not a build — and the source `index.html` points at
-`/src/main.tsx`, which browsers cannot execute and which is not where the site would serve it from.
-The result is a page that loads and then does nothing. If you ever see that, the page now says so
-rather than sitting there blank.
+Do not skip this. The default is *Deploy from a branch*, and it does not simply fail — it runs
+GitHub's own Jekyll pipeline on every push, **in addition** to the workflow here. Jekyll publishes
+the repository source, which cannot run (the source `index.html` points at `/src/main.tsx`), and it
+finishes a few seconds *after* the real deploy, so it overwrites it. Both runs report success. The
+site loads and does nothing.
+
+Two things now catch that: the deploy workflow checks the Pages source before building and fails
+with the fix in the message, and a page that does not start says why instead of sitting there
+blank.
 
 With the source set to GitHub Actions, every push to the **default branch** builds and publishes
 via `.github/workflows/deploy.yml`. A project site lives under `/<repo-name>/`, so the workflow
