@@ -1,22 +1,47 @@
 /* StarForce Commander — digital tabletop.
-   Visual language borrows from the printed components: dark space for the play
-   surface, and pale "dry-erase" panels for the ship form and command card. */
+
+   Two visual languages, deliberately kept apart:
+
+   * The chrome — frame, rails, headers, buttons — is LCARS-flavoured: black
+     ground, rounded elbows, solid colour blocks, condensed uppercase labels.
+   * The play surface and the ship form stay legible first. Side colours
+     (blue/red), die colours and damage states are rules information, so they
+     keep their own meaning and are never repainted to suit the theme. */
 
 :root {
-  --bg: #0b0e14;
-  --panel: #151a24;
-  --panel-2: #1c2230;
-  --ink: #e6ebf5;
-  --ink-dim: #8b96ab;
-  --line: #2b3444;
-  --blue: #4a9eff;
+  /* LCARS chrome */
+  --lc-orange: #ff9c00;
+  --lc-sand: #ffcc66;
+  --lc-lilac: #cc99cc;
+  --lc-peri: #9c9cff;
+  --lc-sky: #79b8ff;
+  --lc-salmon: #ff7b6b;
+  --lc-plum: #7d5ba6;
+
+  --bg: #05060b;
+  --panel: #101320;
+  --panel-2: #191d2e;
+  --ink: #e9edf7;
+  --ink-dim: #93a0bd;
+  --line: #2a3350;
+
+  /* Rules colours: the die and counter colours the rulebook names. */
+  --blue: #5aa9ff;
   --red: #ff5c5c;
   --green: #46c46f;
   --yellow: #ffc94a;
-  --accent: #6ee7ff;
+
+  --accent: var(--lc-orange);
   --warn: #ffb020;
   --danger: #ff5c5c;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+
+  --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  /* No webfonts: the site has to work offline and under a strict host. These
+     are the condensed faces already present on common systems, in order. */
+  --font-lcars: 'Antonio', 'Oswald', 'Roboto Condensed', 'Arial Narrow',
+    'Helvetica Neue Condensed', 'Liberation Sans Narrow', var(--font-ui);
+
+  font-family: var(--font-ui);
   font-size: 14px;
   color-scheme: dark;
 }
@@ -36,30 +61,30 @@ h2,
 h3,
 h4 {
   margin: 0 0 0.4rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-family: var(--font-lcars);
+  font-weight: 600;
+  font-stretch: condensed;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
 }
 
 h1 {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  color: var(--lc-sand);
 }
 h2 {
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 h3 {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-dim);
+  font-size: 0.88rem;
+  color: var(--lc-sand);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 h4 {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-dim);
+  font-size: 0.8rem;
+  color: var(--lc-lilac);
 }
 
 p {
@@ -67,58 +92,236 @@ p {
   line-height: 1.5;
 }
 
+/* The chrome's default control: a dark pill with a lit edge. Solid LCARS
+   colour is reserved for the primary and "currently on" states below, so a
+   glance finds the live control rather than a wall of orange. */
 button {
-  font: inherit;
-  color: inherit;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0.3rem 0.6rem;
+  font-family: var(--font-lcars);
+  font-size: 0.82rem;
+  font-stretch: condensed;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lc-sand);
+  background: #1b2136;
+  border: 1px solid #33406b;
+  border-radius: 999px;
+  padding: 0.28rem 0.85rem;
   cursor: pointer;
 }
 button:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: #26304e;
+  border-color: var(--lc-orange);
+  color: var(--lc-orange);
+}
+button:focus-visible {
+  outline: 2px solid var(--lc-orange);
+  outline-offset: 2px;
 }
 button:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
   cursor: not-allowed;
 }
 button.primary {
-  background: #1d3a54;
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
+  background: var(--lc-orange);
+  border-color: var(--lc-orange);
+  color: #150c00;
+  font-weight: 700;
+}
+button.primary:hover:not(:disabled) {
+  background: var(--lc-sand);
+  border-color: var(--lc-sand);
+  color: #150c00;
 }
 
+/* Everything except the tick boxes, which keep their native control. */
 select,
-input[type='number'] {
+textarea,
+input:not([type='checkbox']):not([type='radio']) {
   font: inherit;
-  color: inherit;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0.25rem 0.4rem;
+  color: var(--ink);
+  background: #12172a;
+  border: 1px solid #33406b;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+}
+/* Autofill paints its own background; keep the field dark. */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 40px #12172a inset;
+}
+input[type='checkbox'] {
+  accent-color: var(--lc-orange);
+}
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--lc-orange);
+  outline-offset: 1px;
 }
 
-/* ── Layout ─────────────────────────────────────────────────────────────── */
+/* ── LCARS frame ────────────────────────────────────────────────────────── */
 
 .app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-rows: 74px minmax(0, 1fr);
+  background: var(--bg);
+  padding: 10px 12px 12px;
 }
 
+/* The vertical half of the elbow. Its height plus the topbar's thinner arm
+   make the corner read as one continuous shape. */
+.lcars-elbow {
+  grid-column: 1;
+  grid-row: 1;
+  background: var(--lc-orange);
+  border-top-left-radius: 52px;
+  border-bottom-left-radius: 8px;
+}
+
+.lcars-rail {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 5px;
+  min-height: 0;
+}
+
+.rail-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 4px 0 0 4px;
+  color: #100a00;
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  text-align: right;
+  min-height: 46px;
+}
+.rail-block b {
+  font-size: 1.35rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.rail-block span {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+  /* Side names can be long; keep the block from stretching the rail. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.rail-orange {
+  background: var(--lc-orange);
+}
+.rail-sand {
+  background: var(--lc-sand);
+}
+.rail-sky {
+  background: var(--lc-sky);
+}
+.rail-salmon {
+  background: var(--lc-salmon);
+}
+.rail-lilac {
+  background: var(--lc-lilac);
+}
+
+.rail-fill {
+  flex: 1;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 5px;
+}
+.rail-fill span {
+  display: block;
+  width: 100%;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px 0 0 4px;
+  background: var(--lc-plum);
+  color: #0d0616;
+  font-family: var(--font-lcars);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-align: right;
+}
+.rail-cap {
+  height: 46px;
+  background: var(--lc-orange);
+  border-bottom-left-radius: 52px;
+  border-top-left-radius: 8px;
+}
+
+.lcars-stage {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 5px 0 0 10px;
+  min-width: 0;
+}
+
+.lcars-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.35rem 0.9rem 0.35rem 0;
+  color: var(--ink-dim);
+  font-size: 0.68rem;
+  border-top: 2px solid var(--lc-plum);
+}
+.foot-cap {
+  width: 46px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 0 0 0 12px;
+  background: var(--lc-plum);
+}
+.foot-code {
+  margin-left: auto;
+  font-family: var(--font-lcars);
+  letter-spacing: 0.14em;
+  color: var(--lc-plum);
+  white-space: nowrap;
+}
+
+/* ── Topbar ─────────────────────────────────────────────────────────────── */
+
 .topbar {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.6rem 1rem;
+  padding: 0.35rem 0.9rem 0 0.9rem;
   background: var(--panel);
-  border-bottom: 1px solid var(--line);
+  /* The horizontal half of the elbow: thinner than the vertical stub, flat
+     where the two meet, rounded away at the far end. */
+  border-top: 24px solid var(--lc-orange);
+  border-top-right-radius: 16px;
+  margin-left: 0;
+}
+.brand h1 {
+  margin: 0;
+  line-height: 1.1;
 }
 .brand .subtitle {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 .topbar .field {
   margin-left: auto;
@@ -127,14 +330,41 @@ input[type='number'] {
 .layout {
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(380px, 460px);
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.9rem;
   align-items: start;
 }
 
+/* Below this width the elbow has nowhere to turn: it flattens into a cap bar
+   over a stacked header, and the rail steps aside. */
 @media (max-width: 1000px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 16px auto minmax(0, 1fr);
+    padding: 8px;
+  }
+  .lcars-elbow {
+    grid-column: 1;
+    grid-row: 1;
+    border-radius: 16px 16px 0 0;
+  }
+  .lcars-rail {
+    display: none;
+  }
+  .topbar {
+    grid-column: 1;
+    grid-row: 2;
+    flex-wrap: wrap;
+    border-top: none;
+    border-top-right-radius: 0;
+    padding: 0.5rem 0.7rem;
+  }
+  .lcars-stage {
+    grid-column: 1;
+    grid-row: 3;
+    padding-left: 0;
   }
 }
 
@@ -151,38 +381,50 @@ input[type='number'] {
 .sequence-bar {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  background: var(--panel-2);
-  border-bottom: 1px solid var(--line);
+  gap: 0.8rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.6rem;
+  background: var(--panel);
+  border-left: 6px solid var(--lc-sand);
+  border-radius: 0 999px 999px 0;
   flex-wrap: wrap;
+}
+.sequence-bar .round,
+.sequence-bar .phase {
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
 }
 .sequence-bar .round {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--lc-sand);
 }
 .sequence-bar .phase {
   font-weight: 600;
+  color: var(--lc-lilac);
 }
 .sequence-bar .segments {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
   list-style: none;
   margin: 0;
   padding: 0;
   flex-wrap: wrap;
 }
 .sequence-bar .segments li {
-  font-size: 0.72rem;
-  padding: 0.15rem 0.45rem;
-  border-radius: 3px;
+  font-family: var(--font-lcars);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
   color: var(--ink-dim);
-  border: 1px solid transparent;
+  background: #1b2136;
 }
 .sequence-bar .segments li.is-current {
-  color: var(--ink);
-  background: #24405c;
-  border-color: var(--accent);
+  color: #150c00;
+  background: var(--lc-orange);
+  font-weight: 700;
 }
 .sequence-bar > button {
   margin-left: auto;
@@ -192,44 +434,86 @@ input[type='number'] {
 
 .map {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #05070c;
+  display: block;
+  border: none;
+  border-radius: 4px 4px 4px 20px;
+  background: #010206;
+  /* The board sits in its own well, lit from within. */
+  box-shadow:
+    0 0 0 2px var(--lc-plum),
+    0 0 26px rgba(125, 91, 166, 0.28);
 }
 .map-bg {
-  fill: #05070c;
-}
-.grid {
-  stroke: #131a26;
-  stroke-width: 1;
-}
-
-.terrain {
-  fill: #1a2436;
-  stroke: #2f3d55;
-  stroke-width: 1.5;
-}
-.terrain-planet {
-  fill: #24384f;
-}
-.terrain-asteroid-field {
-  fill: #2a2620;
-  stroke-dasharray: 4 3;
-}
-/* Gas clouds are soft-edged and translucent, not solid bodies (K5). */
-.terrain-gas-cloud {
-  fill: #2d2a3f;
-  fill-opacity: 0.75;
-  stroke: #4b4370;
-  stroke-dasharray: 2 4;
+  fill: #010206;
 }
 /* A nebula covers the whole play area, so it tints the map itself (K4.1.1). */
 .map-bg.is-nebula {
-  fill: #191527;
+  fill: #100b1e;
+}
+.map-vignette {
+  fill: url(#map-falloff);
+  pointer-events: none;
+}
+.map-edge {
+  fill: none;
+  stroke: rgba(125, 91, 166, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 8 6;
+  pointer-events: none;
+}
+.grid {
+  stroke: #1d2a46;
+  stroke-width: 0.6;
+  stroke-dasharray: 2 6;
+  opacity: 0.7;
+}
+
+.terrain {
+  fill: #16203a;
+  stroke: #33456b;
+  stroke-width: 1.5;
+}
+.terrain-planet,
+.terrain-moon {
+  fill: url(#planet-lit);
+  stroke: rgba(150, 190, 235, 0.28);
+  stroke-width: 1;
+}
+.planet-halo {
+  fill: url(#planet-glow);
+  pointer-events: none;
+}
+.planet-terminator {
+  fill: url(#planet-night);
+  pointer-events: none;
+}
+.terrain-asteroid-field {
+  fill: rgba(48, 40, 28, 0.5);
+  stroke: #6b5836;
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+}
+.asteroid-rocks circle {
+  fill: #a08a63;
+  pointer-events: none;
+}
+/* Gas clouds are soft-edged and translucent, not solid bodies (K5). */
+.terrain-gas-cloud {
+  fill: url(#cloud-fill);
+  stroke: rgba(140, 118, 220, 0.5);
+  stroke-dasharray: 2 5;
+  stroke-width: 1;
 }
 .terrain-label {
-  fill: var(--ink-dim);
+  fill: rgba(200, 215, 245, 0.72);
+  font-family: var(--font-lcars);
   font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .range-ring {
@@ -238,24 +522,29 @@ input[type='number'] {
   stroke-dasharray: 3 5;
 }
 .range-ring-green {
-  stroke: rgba(70, 196, 111, 0.45);
+  stroke: rgba(70, 196, 111, 0.5);
 }
 .range-ring-max {
-  stroke: rgba(139, 150, 171, 0.3);
+  stroke: rgba(255, 156, 0, 0.28);
 }
 .range-ring-label {
-  fill: var(--ink-dim);
+  fill: rgba(255, 204, 102, 0.75);
+  font-family: var(--font-lcars);
   font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .arc-overlay .arc {
-  fill: rgba(110, 231, 255, 0.04);
-  stroke: rgba(110, 231, 255, 0.25);
+  fill: rgba(255, 156, 0, 0.025);
+  stroke: rgba(255, 156, 0, 0.16);
   stroke-width: 1;
 }
 .arc-label {
-  fill: rgba(110, 231, 255, 0.6);
+  fill: rgba(255, 204, 102, 0.55);
+  font-family: var(--font-lcars);
   font-size: 9px;
+  letter-spacing: 0.06em;
 }
 
 .los {
@@ -265,23 +554,31 @@ input[type='number'] {
 }
 .los-label {
   fill: var(--warn);
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--font-lcars);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.8);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .ship {
   cursor: pointer;
 }
 .ship-base {
-  fill: #101722;
+  fill: rgba(8, 12, 22, 0.9);
   stroke: var(--ink-dim);
   stroke-width: 1.5;
 }
 .ship-blue .ship-base {
   stroke: var(--blue);
+  filter: drop-shadow(0 0 4px rgba(90, 169, 255, 0.55));
 }
 .ship-red .ship-base {
   stroke: var(--red);
+  filter: drop-shadow(0 0 4px rgba(255, 92, 92, 0.55));
 }
 .ship-blue .ship-bow {
   fill: var(--blue);
@@ -290,23 +587,31 @@ input[type='number'] {
   fill: var(--red);
 }
 .ship.is-selected .ship-base {
-  fill: #17263a;
+  fill: rgba(23, 38, 58, 0.95);
   stroke-width: 2.5;
 }
 .ship.is-targeted .ship-base {
   stroke: var(--warn);
   stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(255, 176, 32, 0.7));
 }
 .ship-shield {
-  fill: var(--ink-dim);
+  fill: rgba(190, 205, 235, 0.9);
   font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
 }
 .ship-name {
   fill: var(--ink);
+  font-family: var(--font-lcars);
   font-size: 10px;
+  letter-spacing: 0.06em;
   /* A halo keeps names legible when a fleet is packed into a setup zone. */
   paint-order: stroke;
-  stroke: var(--bg);
+  stroke: rgba(0, 0, 0, 0.85);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
@@ -327,15 +632,24 @@ input[type='number'] {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  line-height: 1.25;
+  line-height: 1.2;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
 }
 .ship-tab em {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   color: var(--ink-dim);
   font-style: normal;
+  letter-spacing: 0.04em;
 }
 .ship-tab.is-current {
-  border-color: var(--accent);
+  background: var(--lc-sand);
+  border-color: var(--lc-sand);
+  color: #150c00;
+  font-weight: 700;
+}
+.ship-tab.is-current em {
+  color: rgba(21, 12, 0, 0.7);
 }
 .ship-tab.is-out {
   opacity: 0.4;
@@ -343,6 +657,9 @@ input[type='number'] {
 
 /* ── Panels ─────────────────────────────────────────────────────────────── */
 
+/* Every panel is an LCARS block: a coloured spine on the left, square against
+   it, rounded away from it. The spine colour identifies the panel at a glance
+   the way the block colours do on a real LCARS display. */
 .ship-form,
 .command-card,
 .combat-panel,
@@ -351,9 +668,28 @@ input[type='number'] {
 .log,
 .scenario-brief {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.75rem 0.9rem;
+  border: none;
+  border-left: 6px solid var(--lc-lilac);
+  border-radius: 0 6px 6px 0;
+  padding: 0.7rem 0.9rem;
+}
+.segment-help {
+  border-left-color: var(--lc-orange);
+}
+.combat-panel {
+  border-left-color: var(--lc-salmon);
+}
+.command-card {
+  border-left-color: var(--lc-sky);
+}
+.damage-control {
+  border-left-color: var(--lc-salmon);
+}
+.log {
+  border-left-color: var(--lc-plum);
+}
+.scenario-brief {
+  border-left-color: var(--lc-peri);
 }
 
 .ship-form-header {
@@ -400,17 +736,18 @@ input[type='number'] {
 }
 
 .chip {
-  font-size: 0.68rem;
+  font-family: var(--font-lcars);
+  font-size: 0.7rem;
   font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--ink-dim);
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
 }
-.chip-warn {
+.chip.chip-warn {
   color: var(--warn);
   border-color: var(--warn);
 }
@@ -503,11 +840,17 @@ input[type='number'] {
   border: 1px solid var(--line);
   background: transparent;
   color: var(--ink-dim);
+  font-family: var(--font-ui);
   font-size: 0.66rem;
+  letter-spacing: 0;
   padding: 0;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.circle:hover:not(:disabled) {
+  background: transparent;
 }
 .circle.is-filled {
   background: var(--green);
@@ -547,8 +890,10 @@ input[type='number'] {
   flex-direction: column;
   gap: 2px;
   align-items: center;
-  padding: 0.2rem 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
   font-size: 0.62rem;
+  letter-spacing: 0.04em;
 }
 .mount.is-damaged {
   border-color: var(--danger);
@@ -709,13 +1054,14 @@ input[type='number'] {
   text-align: center;
 }
 .maneuver {
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0.55rem;
   font-size: 0.7rem;
 }
 .maneuver.is-current {
-  background: #1d3a54;
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--lc-sky);
+  border-color: var(--lc-sky);
+  color: #04121f;
+  font-weight: 700;
 }
 
 .accel-row {
@@ -832,13 +1178,13 @@ input[type='number'] {
   margin-bottom: 0.5rem;
 }
 .mode {
-  text-transform: capitalize;
   font-size: 0.72rem;
 }
 .mode.is-current {
-  background: #1d3a54;
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--lc-orange);
+  border-color: var(--lc-orange);
+  color: #150c00;
+  font-weight: 700;
 }
 .checkbox {
   display: flex;
@@ -860,10 +1206,16 @@ input[type='number'] {
   align-items: flex-start;
   font-size: 0.7rem;
   gap: 2px;
+  border-radius: 5px;
 }
 .weapon-pick.is-selected {
-  background: #1d3a54;
-  border-color: var(--accent);
+  background: var(--lc-orange);
+  border-color: var(--lc-orange);
+  color: #150c00;
+  font-weight: 700;
+}
+.weapon-pick.is-selected em {
+  color: rgba(21, 12, 0, 0.72);
 }
 .weapon-pick.is-disabled {
   opacity: 0.3;
@@ -974,7 +1326,10 @@ input[type='number'] {
   gap: 0.5rem;
 }
 .log-where {
-  color: var(--ink-dim);
+  color: var(--lc-plum);
+  font-family: var(--font-lcars);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   font-size: 0.66rem;
   min-width: 8rem;
   flex-shrink: 0;
@@ -1005,7 +1360,7 @@ input[type='number'] {
 .picker-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 12, 0.82);
+  background: rgba(2, 3, 8, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1015,26 +1370,36 @@ input[type='number'] {
 
 .picker {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: none;
+  border-left: 10px solid var(--lc-orange);
+  border-radius: 0 10px 10px 0;
   width: min(1100px, 100%);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
 }
 
+/* The modal's own elbow: the header bar tucks against the spine. */
 .picker > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--line);
+  gap: 1rem;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(90deg, rgba(255, 156, 0, 0.16), transparent 55%);
+  border-bottom: 2px solid var(--lc-orange);
+}
+
+.picker > header h2 {
+  margin: 0;
+  color: var(--lc-orange);
 }
 
 .picker > footer {
   padding: 0.7rem 1rem;
-  border-top: 1px solid var(--line);
+  border-top: 2px solid var(--lc-plum);
   display: flex;
   justify-content: flex-end;
 }
@@ -1077,19 +1442,21 @@ input[type='number'] {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 6px solid var(--line);
+  border-radius: 0 6px 6px 0;
+  background: var(--panel-2);
   padding: 0.6rem;
 }
 .picker-blue {
-  border-color: rgba(74, 158, 255, 0.5);
+  border-left-color: var(--blue);
 }
 .picker-red {
-  border-color: rgba(255, 92, 92, 0.5);
+  border-left-color: var(--red);
 }
 /* Expansion 5's third side gets the Aurelian purple. */
 .picker-aurelian {
-  border-color: rgba(150, 100, 220, 0.6);
+  border-left-color: var(--lc-plum);
 }
 
 .roster {
@@ -1113,19 +1480,28 @@ input[type='number'] {
   text-align: left;
   gap: 1px;
   margin-bottom: 2px;
-  padding: 0.25rem 0.45rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0 999px 999px 0;
   background: transparent;
   border-color: transparent;
+  color: var(--ink);
 }
-.roster-row:hover {
+.roster-row:hover:not(:disabled) {
   background: var(--panel-2);
+  border-color: transparent;
+  color: var(--lc-sand);
 }
 .roster-row.is-picked {
-  background: #1d3a54;
-  border-color: var(--accent);
+  background: var(--lc-sand);
+  border-color: var(--lc-sand);
+  color: #150c00;
+  font-weight: 700;
+}
+.roster-row.is-picked .roster-meta {
+  color: rgba(21, 12, 0, 0.72);
 }
 .roster-name {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
 }
 .roster-meta {
   font-size: 0.66rem;
@@ -1334,7 +1710,7 @@ input[type='number'] {
   font-style: normal;
 }
 
-.chip-scout {
+.chip.chip-scout {
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -1384,7 +1760,7 @@ input[type='number'] {
 /* ── Expansion 3: nebulae and gas clouds (K4, K5) ────────────────────────── */
 
 .cloud-panel {
-  border-color: #4b4370;
+  border-left-color: var(--lc-plum);
 }
 .cloud-effects {
   margin: 0.4rem 0 0;
@@ -1529,9 +1905,21 @@ input[type='number'] {
 
 .builder-section {
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 5px solid var(--lc-peri);
+  border-radius: 0 6px 6px 0;
   padding: 0.7rem 0.8rem;
+}
+/* Each section of the form gets its own block colour, the way an LCARS panel
+   colour-codes its groups. */
+.builder-section:nth-of-type(3n + 1) {
+  border-left-color: var(--lc-orange);
+}
+.builder-section:nth-of-type(3n + 2) {
+  border-left-color: var(--lc-lilac);
+}
+.builder-section:nth-of-type(3n) {
+  border-left-color: var(--lc-sky);
 }
 
 .builder-section > h3 {
@@ -1617,18 +2005,22 @@ input[type='number'] {
   width: 3.4rem;
 }
 
-.chip {
+/* The builder's chips are buttons rather than labels, so they get the button
+   affordances; the two `.chip` rules above and here are the same shape. */
+button.chip {
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--ink);
   border-radius: 999px;
-  padding: 0.1rem 0.6rem;
+  padding: 0.1rem 0.7rem;
   font-size: 0.75rem;
   cursor: pointer;
 }
 
-.chip:hover:not(:disabled) {
+button.chip:hover:not(:disabled) {
+  background: var(--panel-2);
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .chip:disabled {
@@ -1661,8 +2053,9 @@ input[type='number'] {
 }
 
 .weapon-editor {
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: none;
+  border-left: 4px solid var(--lc-salmon);
+  border-radius: 0 5px 5px 0;
   padding: 0.6rem;
   margin-bottom: 0.7rem;
   background: var(--panel);
@@ -1729,8 +2122,9 @@ input[type='number'] {
 
 .cost-panel {
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 5px solid var(--lc-sand);
+  border-radius: 0 6px 6px 0;
   padding: 0.7rem 0.8rem;
 }
 
@@ -1816,8 +2210,9 @@ input[type='number'] {
   margin: 0;
   padding: 0.6rem 0.8rem;
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 5px solid var(--warn);
+  border-radius: 0 6px 6px 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -1840,16 +2235,18 @@ input[type='number'] {
   margin: 0;
   padding: 0.6rem 0.8rem;
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 5px solid var(--green);
+  border-radius: 0 6px 6px 0;
   color: var(--green);
   font-size: 0.78rem;
 }
 
 .builder-launch {
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: none;
+  border-left: 5px solid var(--lc-salmon);
+  border-radius: 0 6px 6px 0;
   padding: 0.7rem 0.8rem;
   display: flex;
   flex-direction: column;
@@ -1913,10 +2310,21 @@ input[type='number'] {
 
 .fleet-side {
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 6px;
+  border: none;
+  border-left: 6px solid var(--lc-plum);
+  border-radius: 0 6px 6px 0;
   padding: 0.6rem 0.8rem;
+}
+/* The side's own colour, on the spine and on its name, so the two rosters are
+   never confused for one another. */
+.fleet-side.picker-blue > header h3 {
+  color: var(--blue);
+}
+.fleet-side.picker-red > header h3 {
+  color: var(--red);
+}
+.fleet-side.picker-aurelian > header h3 {
+  color: var(--lc-lilac);
 }
 
 .fleet-side > header {
@@ -2151,8 +2559,9 @@ input[type='number'] {
 /* --- Boarding combat ----------------------------------------------------- */
 
 .boarding-action {
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: none;
+  border-left: 5px solid var(--lc-salmon);
+  border-radius: 0 5px 5px 0;
   padding: 0.5rem 0.6rem;
   margin-bottom: 0.6rem;
   background: var(--panel-2);

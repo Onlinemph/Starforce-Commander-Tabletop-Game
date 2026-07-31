@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { positionIsHidden } from '../engine/cloaking'
+import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
-import type { GameState } from '../engine/game'
+import type { GameState, TerrainKind } from '../engine/game'
 import { blueShieldRemaining, greenShieldRemaining, type ShipState } from '../engine/shipState'
 import type { Arc } from '../engine/types'
 
@@ -12,6 +13,74 @@ import type { Arc } from '../engine/types'
  */
 
 const SCALE = 20
+
+/**
+ * A margin of space drawn outside the play area, in pixels. It carries no
+ * rules meaning — the board edge is still drawn, and still where the scenario
+ * bounds say it is — but a ship sitting on the boundary can now show its name
+ * and shield readouts instead of having them clipped away.
+ */
+const MARGIN = 16
+
+/**
+ * The starfield is decoration, but it must not crawl about between renders or
+ * the map stops reading as a fixed place. Seeding the engine's own RNG from the
+ * board size pins every star for a given scenario.
+ */
+const STARFIELD_SEED = 0x5f0cd1
+
+interface Star {
+  x: number
+  y: number
+  r: number
+  o: number
+}
+
+function useStarfield(w: number, h: number): { dust: Star[]; bright: Star[] } {
+  return useMemo(() => {
+    const rng = new Rng(STARFIELD_SEED ^ (w * 73856093) ^ (h * 19349663))
+    const dust: Star[] = []
+    const bright: Star[] = []
+    // One star per ~1,300 square pixels: dense enough to read as deep space,
+    // sparse enough that counters and range rings stay the loudest thing here.
+    const count = Math.round((w * h) / 1300)
+    for (let i = 0; i < count; i++) {
+      const size = rng.next()
+      const star = {
+        x: Math.round(rng.next() * w),
+        y: Math.round(rng.next() * h),
+        // Cubed so the great majority are pinpricks and only a few have body.
+        r: 0.3 + size * size * size * 1.9,
+        o: 0.15 + rng.next() * 0.65,
+      }
+      if (star.r > 1.5 && bright.length < 14) bright.push(star)
+      else dust.push(star)
+    }
+    return { dust, bright }
+  }, [w, h])
+}
+
+/** Planets and moons are both solid lit bodies, and are drawn the same way. */
+function isWorld(kind: TerrainKind): boolean {
+  return kind === 'planet' || kind === 'moon'
+}
+
+/** Faint gas banks well behind the action, for depth (purely cosmetic). */
+function useNebulae(w: number, h: number) {
+  return useMemo(() => {
+    const rng = new Rng((STARFIELD_SEED ^ 0x9e37) + w + h * 31)
+    const tints = ['url(#neb-a)', 'url(#neb-b)', 'url(#neb-c)']
+    return tints.map((fill, i) => ({
+      fill,
+      cx: (0.12 + rng.next() * 0.76) * w,
+      cy: (0.12 + rng.next() * 0.76) * h,
+      rx: (0.22 + rng.next() * 0.24) * w,
+      ry: (0.18 + rng.next() * 0.2) * h,
+      rotate: rng.next() * 180,
+      key: i,
+    }))
+  }, [w, h])
+}
 
 interface Props {
   game: GameState
@@ -49,26 +118,103 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
     return lines
   }, [width, height, w, h])
 
+  const { dust, bright } = useStarfield(w, h)
+  const nebulae = useNebulae(w, h)
+
   return (
-    <svg className="map" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Play surface">
+    <svg
+      className="map"
+      viewBox={`${-MARGIN} ${-MARGIN} ${w + MARGIN * 2} ${h + MARGIN * 2}`}
+      role="img"
+      aria-label="Play surface"
+    >
+      <SpaceDefs />
+
+      {/* ── Deep space ──────────────────────────────────────────────────── */}
       <rect
-        x={0}
-        y={0}
-        width={w}
-        height={h}
+        x={-MARGIN}
+        y={-MARGIN}
+        width={w + MARGIN * 2}
+        height={h + MARGIN * 2}
         className={`map-bg${game.scenario.nebula ? ' is-nebula' : ''}`}
       />
+
+      {/* Gas banks first, so stars burn through them. */}
+      <g className="nebula-field">
+        {nebulae.map((n) => (
+          <ellipse
+            key={n.key}
+            cx={n.cx}
+            cy={n.cy}
+            rx={n.rx}
+            ry={n.ry}
+            fill={n.fill}
+            transform={`rotate(${n.rotate} ${n.cx} ${n.cy})`}
+          />
+        ))}
+      </g>
+
+      <g className="starfield">
+        {dust.map((s, i) => (
+          <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#dce6ff" opacity={s.o} />
+        ))}
+        {bright.map((s, i) => (
+          <g key={`b${i}`} className="star-bright">
+            {/* A four-point flare reads as a nearby star rather than a speck. */}
+            <path
+              d={`M ${s.x - s.r * 5} ${s.y} H ${s.x + s.r * 5} M ${s.x} ${s.y - s.r * 5} V ${s.y + s.r * 5}`}
+              stroke="#cfe0ff"
+              strokeWidth={0.6}
+              opacity={0.35}
+            />
+            <circle cx={s.x} cy={s.y} r={s.r} fill="#ffffff" opacity={0.9} />
+          </g>
+        ))}
+      </g>
+
       {grid}
+
+      {/* The edge of the play area (A2.9): leaving it is disengagement (J9), so
+          it has to stay visible now that space is drawn beyond it. */}
+      <rect x={0} y={0} width={w} height={h} className="map-edge" />
 
       {/* Terrain (Section K) */}
       {game.scenario.terrain.map((feature) => (
-        <g key={feature.id}>
+        <g key={feature.id} className={`terrain-group terrain-group-${feature.kind}`}>
+          {isWorld(feature.kind) && (
+            /* A halo of scattered light, so a world reads as lit from a star
+               rather than as a flat disc. */
+            <circle
+              cx={feature.center.x * SCALE}
+              cy={feature.center.y * SCALE}
+              r={feature.radius * SCALE * 1.22}
+              className="planet-halo"
+            />
+          )}
           <circle
             cx={feature.center.x * SCALE}
             cy={feature.center.y * SCALE}
             r={feature.radius * SCALE}
             className={`terrain terrain-${feature.kind}`}
           />
+          {isWorld(feature.kind) && (
+            /* The night side. Offset the same way for every world so the whole
+               map is lit from one direction. */
+            <circle
+              cx={feature.center.x * SCALE}
+              cy={feature.center.y * SCALE}
+              r={feature.radius * SCALE}
+              className="planet-terminator"
+            />
+          )}
+          {feature.kind === 'asteroid-field' && (
+            <AsteroidScatter
+              cx={feature.center.x * SCALE}
+              cy={feature.center.y * SCALE}
+              r={feature.radius * SCALE}
+              seed={feature.id}
+            />
+          )}
           <text
             x={feature.center.x * SCALE}
             y={feature.center.y * SCALE}
@@ -242,7 +388,102 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             onSelect={onSelect}
           />
         ))}
+
+      {/* Corner falloff, drawn last and click-through, to seat the board in
+          the surrounding chrome. */}
+      <rect
+        x={-MARGIN}
+        y={-MARGIN}
+        width={w + MARGIN * 2}
+        height={h + MARGIN * 2}
+        className="map-vignette"
+      />
     </svg>
+  )
+}
+
+/**
+ * Gradients and filters for the play surface. Cosmetic only — nothing here
+ * carries rules meaning, and none of it changes the 1 inch = 20 px scale.
+ */
+function SpaceDefs() {
+  return (
+    <defs>
+      <radialGradient id="neb-a" cx="50%" cy="50%">
+        <stop offset="0%" stopColor="#3d2a6b" stopOpacity="0.55" />
+        <stop offset="55%" stopColor="#241a45" stopOpacity="0.26" />
+        <stop offset="100%" stopColor="#0a0a18" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="neb-b" cx="50%" cy="50%">
+        <stop offset="0%" stopColor="#0f4a63" stopOpacity="0.45" />
+        <stop offset="60%" stopColor="#0a2c40" stopOpacity="0.2" />
+        <stop offset="100%" stopColor="#05121c" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="neb-c" cx="50%" cy="50%">
+        <stop offset="0%" stopColor="#5a2440" stopOpacity="0.34" />
+        <stop offset="60%" stopColor="#2c1226" stopOpacity="0.16" />
+        <stop offset="100%" stopColor="#0d0611" stopOpacity="0" />
+      </radialGradient>
+
+      {/* Lit from the upper left, consistently across the board. */}
+      <radialGradient id="planet-lit" cx="34%" cy="30%" r="78%">
+        <stop offset="0%" stopColor="#7ea8d8" />
+        <stop offset="45%" stopColor="#33587f" />
+        <stop offset="100%" stopColor="#0e1d30" />
+      </radialGradient>
+      <radialGradient id="planet-night" cx="34%" cy="30%" r="72%">
+        <stop offset="55%" stopColor="#000000" stopOpacity="0" />
+        <stop offset="100%" stopColor="#01030a" stopOpacity="0.85" />
+      </radialGradient>
+      <radialGradient id="planet-glow" cx="50%" cy="50%">
+        <stop offset="70%" stopColor="#5f9fd4" stopOpacity="0" />
+        <stop offset="88%" stopColor="#5f9fd4" stopOpacity="0.16" />
+        <stop offset="100%" stopColor="#5f9fd4" stopOpacity="0" />
+      </radialGradient>
+
+      <radialGradient id="cloud-fill" cx="50%" cy="50%">
+        <stop offset="0%" stopColor="#6b5cc4" stopOpacity="0.5" />
+        <stop offset="70%" stopColor="#40357e" stopOpacity="0.32" />
+        <stop offset="100%" stopColor="#2a2258" stopOpacity="0.05" />
+      </radialGradient>
+
+      <radialGradient id="map-falloff" cx="50%" cy="50%" r="72%">
+        <stop offset="60%" stopColor="#000000" stopOpacity="0" />
+        <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
+      </radialGradient>
+    </defs>
+  )
+}
+
+/**
+ * Individual rocks inside an asteroid field's radius (K3). Decoration over the
+ * real circle — the circle is still what the rules measure against.
+ */
+function AsteroidScatter({ cx, cy, r, seed }: { cx: number; cy: number; r: number; seed: string }) {
+  const rocks = useMemo(() => {
+    let n = 0
+    for (let i = 0; i < seed.length; i++) n = (n * 31 + seed.charCodeAt(i)) | 0
+    const rng = new Rng(n ^ 0x1d3f)
+    return Array.from({ length: Math.max(14, Math.round(r / 3)) }, () => {
+      // Square-rooted radius so rocks spread evenly over the area, not bunched
+      // at the middle.
+      const d = Math.sqrt(rng.next()) * r * 0.92
+      const a = rng.next() * Math.PI * 2
+      return {
+        x: cx + Math.cos(a) * d,
+        y: cy + Math.sin(a) * d,
+        size: 1 + rng.next() * 2.6,
+        o: 0.3 + rng.next() * 0.5,
+      }
+    })
+  }, [cx, cy, r, seed])
+
+  return (
+    <g className="asteroid-rocks">
+      {rocks.map((rock, i) => (
+        <circle key={i} cx={rock.x} cy={rock.y} r={rock.size} opacity={rock.o} />
+      ))}
+    </g>
   )
 }
 
@@ -350,9 +591,13 @@ function ShipToken({
             ×{formationSize}
           </text>
         )}
-        {/* Close under the hull, so a line-abreast fleet's labels do not land
-            on the next ship's counter. */}
-        <text y={size / 2 + 13} className="ship-name" textAnchor="middle">
+        {/*
+          Just clear of the shield readouts. Those rotate with the hull, so on
+          a diagonal heading the aft label swings round to roughly where a name
+          set close under the counter would sit; 25px puts the name outside the
+          whole ring at any heading, while still staying under its own ship.
+        */}
+        <text y={size / 2 + 25} className="ship-name" textAnchor="middle">
           {ship.name} · spd {ship.speed}
           {formationSize > 1 ? ` · formation of ${formationSize}` : ''}
           {ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : ''}

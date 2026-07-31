@@ -71,6 +71,13 @@ export function App() {
 
   return (
     <div className="app">
+      {/*
+        An LCARS-style frame: a rounded elbow joins a vertical status rail to
+        the header bar. The shapes are borrowed; the numbers on the rail are the
+        game's own, so the chrome earns its space.
+      */}
+      <div className="lcars-elbow" aria-hidden="true" />
+
       <header className="topbar">
         <div className="brand">
           <h1>StarForce Commander</h1>
@@ -137,59 +144,118 @@ export function App() {
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
 
-      <SequenceBar game={game} />
+      <StatusRail game={game} />
 
-      <main className="layout">
-        <section className="map-column">
-          <MapView
-            game={game}
-            selectedId={selected?.id ?? null}
-            targetId={targetId}
-            onSelect={onSelect}
-            showArcs={showArcs}
-            rangeRings={rangeRings}
-          />
+      <div className="lcars-stage">
+        <SequenceBar game={game} />
 
-          <div className="map-controls">
-            <label className="checkbox">
-              <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
-              Firing arcs
-            </label>
-            <label className="checkbox">
-              <input type="checkbox" checked={showRings} onChange={(e) => setShowRings(e.target.checked)} />
-              Range rings
-            </label>
-            <div className="ship-tabs">
-              {game.ships.map((ship) => (
-                <button
-                  key={ship.id}
-                  type="button"
-                  className={`ship-tab${ship.id === selected?.id ? ' is-current' : ''}${
-                    ship.destroyed || ship.disengaged ? ' is-out' : ''
-                  }`}
-                  onClick={() => {
-                    setSelectedId(ship.id)
-                    setTargetId(null)
-                  }}
-                >
-                  {ship.name}
-                  <em>{ship.destroyed ? 'destroyed' : ship.disengaged ? 'disengaged' : damageLevel(ship)}</em>
-                </button>
-              ))}
+        <main className="layout">
+          <section className="map-column">
+            <MapView
+              game={game}
+              selectedId={selected?.id ?? null}
+              targetId={targetId}
+              onSelect={onSelect}
+              showArcs={showArcs}
+              rangeRings={rangeRings}
+            />
+
+            <div className="map-controls">
+              <label className="checkbox">
+                <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
+                Firing arcs
+              </label>
+              <label className="checkbox">
+                <input type="checkbox" checked={showRings} onChange={(e) => setShowRings(e.target.checked)} />
+                Range rings
+              </label>
+              <div className="ship-tabs">
+                {game.ships.map((ship) => (
+                  <button
+                    key={ship.id}
+                    type="button"
+                    className={`ship-tab${ship.id === selected?.id ? ' is-current' : ''}${
+                      ship.destroyed || ship.disengaged ? ' is-out' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedId(ship.id)
+                      setTargetId(null)
+                    }}
+                  >
+                    {ship.name}
+                    <em>{ship.destroyed ? 'destroyed' : ship.disengaged ? 'disengaged' : damageLevel(ship)}</em>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <ScenarioBrief game={game} />
-          <LogPanel game={game} />
-        </section>
+            <ScenarioBrief game={game} />
+            <LogPanel game={game} />
+          </section>
 
-        <section className="control-column">
-          {selected && <SegmentControls game={game} ship={selected} />}
-          {selected && <ShipFormPanel game={game} ship={selected} />}
-        </section>
-      </main>
+          <section className="control-column">
+            {selected && <SegmentControls game={game} ship={selected} />}
+            {selected && <ShipFormPanel game={game} ship={selected} />}
+          </section>
+        </main>
+
+        <footer className="lcars-foot">
+          <span className="foot-cap" aria-hidden="true" />
+          <span>
+            StarForce Commander is a game of tactical starship combat by Patrick Doyle, published by
+            Mariner Games. Rules as printed, v2.6.
+          </span>
+          <span className="foot-code" aria-hidden="true">
+            LCARS 47174-B
+          </span>
+        </footer>
+      </div>
     </div>
   )
+}
+
+/**
+ * The left-hand rail. LCARS fills these blocks with reference codes; this one
+ * fills them with the state a commander actually wants at a glance.
+ */
+function StatusRail({ game }: { game: GameState }) {
+  const sides = [...new Set(game.ships.map((s) => s.side))]
+  const tones = ['sky', 'salmon', 'lilac']
+
+  return (
+    <aside className="lcars-rail">
+      <div className="rail-block rail-orange">
+        <b>{game.round}</b>
+        <span>Round</span>
+      </div>
+      <div className="rail-block rail-sand">
+        <b>{PHASE_CODES[game.phase]}</b>
+        <span>Phase</span>
+      </div>
+      {sides.map((side, i) => (
+        <div key={side} className={`rail-block rail-${tones[i % tones.length]}`}>
+          <b>{game.ships.filter((s) => s.side === side && !s.destroyed && !s.disengaged).length}</b>
+          <span>{side}</span>
+        </div>
+      ))}
+      <div className="rail-fill" aria-hidden="true">
+        <span>A3·1</span>
+        <span>E7·2</span>
+        <span>J3·2</span>
+        <span>G1·1</span>
+      </div>
+      <div className="rail-cap" aria-hidden="true" />
+    </aside>
+  )
+}
+
+/** Short codes for the rail, where a full phase name will not fit. */
+const PHASE_CODES: Record<GameState['phase'], string> = {
+  engineering: 'ENG',
+  'combat-1': 'C-1',
+  'combat-2': 'C-2',
+  'combat-3': 'C-3',
+  final: 'FIN',
 }
 
 /** The Sequence of Play strip (A3.1). */
