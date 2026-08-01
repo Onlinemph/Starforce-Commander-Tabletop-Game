@@ -155,13 +155,37 @@ describe('defensive jamming doctrine', () => {
     expect(jam, 'out of reach, the captain should be jamming').toBeDefined()
   })
 
-  it('in reach, the captain bids Tactical Scan instead', () => {
+  it('in reach with armed batteries, the captain bids Tactical Scan instead', () => {
     const game = commandGame(6)
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    // A ship with a real shot this phase: batteries armed and in range.
+    for (const weapon of blue.form.weapons) {
+      weapon.mounts.forEach((mount, i) => {
+        blue.mounts[weapon.id][i].armed = mount.armingCircles
+      })
+    }
     const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'captain')
     const scan = actions.find(
       (a) => a.type === 'plot-sensor' && a.key === 'tacticalScan' && a.value > 0,
     )
     expect(scan).toBeDefined()
+  })
+
+  it('armed but with a quiet phase ahead — discharged batteries — the captain jams max', () => {
+    // In range, but nothing to shoot with: every mount is discharged. The
+    // planned position offers no volley, so the sensors go defensive.
+    const game = commandGame(6)
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    for (const weapon of blue.form.weapons) {
+      weapon.mounts.forEach((_, i) => {
+        blue.mounts[weapon.id][i].armed = 0
+      })
+    }
+    const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'captain')
+    const jam = actions.find(
+      (a) => a.type === 'plot-sensor' && a.key === 'jamming' && a.value > 0,
+    )
+    expect(jam, 'nothing to fire this phase — the captain should jam').toBeDefined()
   })
 
   it('the ensign never jams, even out of reach', () => {

@@ -27,13 +27,16 @@ import {
   hasLineOfSight,
   headingVector,
   relativeBearing,
+  shieldsFacing,
 } from './geometry'
 import { disengagementOptions, plannedMovement, validatePlot, accelerationBudget } from './navigation'
 import {
   armingCapacityThisRound,
+  blueShieldRemaining,
   currentMaxSpeed,
   damageControlRating,
   damageLevel,
+  greenShieldRemaining,
   lineValue,
   maxReverseSpeed,
   mountIsReady,
@@ -224,10 +227,29 @@ function planAllocation(
     if (difficulty !== 'ensign' || ship.stressMarkers > 0) {
       for (const line of byKind('sif')) fill(line.id, 1)
     }
-    // A damaged shield is worth a repair point (G1.3.3).
-    for (const line of byKind('shield-repair')) {
-      if (!line.shieldSide) continue
-      if (ship.blueShieldDamage[line.shieldSide] > 0) fill(line.id, 1)
+    /**
+     * The shield the fire will come from matters most. The threat axis —
+     * enemies weighted by proximity and how bow-on they sit, all public
+     * table information — names the sides about to be hit: repair those
+     * first (G1.3.3), and a trained captain also puts a reinforcement point
+     * there before the volley, the game's way of angling a strong shield
+     * into the attack (G1.3.2).
+     */
+    const threat = difficulty === 'ensign' ? null : threatPoint(game, ship)
+    const threatened = threat
+      ? shieldsFacing(threat, ship.placement.position, ship.placement.heading)
+      : []
+    const repairs = byKind('shield-repair').filter(
+      (line) => line.shieldSide && ship.blueShieldDamage[line.shieldSide] > 0,
+    )
+    repairs.sort((a, b) => {
+      const at = threatened.includes(a.shieldSide!) ? 0 : 1
+      const bt = threatened.includes(b.shieldSide!) ? 0 : 1
+      return at - bt
+    })
+    for (const line of repairs) fill(line.id, 1)
+    for (const line of byKind('shield-reinforce')) {
+      if (line.shieldSide && threatened.includes(line.shieldSide)) fill(line.id, 1)
     }
     // Spare change: deeper sensors, then a second acceleration point.
     for (const line of byKind('sensor')) fill(line.id, line.steps.length)
@@ -357,40 +379,54 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
      * the table and outbids it by exactly one, spending the rest on
      * targeting.
      *
-     * Unless the ship should not be trading fire at all. A crippled hull, or
-     * one whose guns cannot reach the enemy even with full targeting, gets
-     * nothing from initiative or brackets — jamming, though, pushes enemy
-     * effective range out and can deny long-range fire entirely (H2.3.7).
-     * Trained ranks go dark and defensive; the ensign never jams.
+     * Unless the ship will not be shooting this phase. A crippled hull, or
+     * one whose planned position offers no shot worth taking — nothing
+     * bears, nothing reaches, or only red brackets that fire discipline
+     * would hold anyway — gets nothing from initiative or brackets.
+     * Jamming, though, pushes enemy effective range out and can deny
+     * long-range fire entirely (H2.3.7). Trained ranks go dark and
+     * defensive on their quiet phases; the ensign never jams.
      */
     const sensorLine = ship.form.functions.find((l) => l.kind === 'sensor')
     const available = sensorLine ? lineValue(ship, sensorLine.id) : 0
     const cap = sensorFunctionCap(ship)
-    const defensive =
-      difficulty !== 'ensign' &&
-      enemy !== null &&
-      (damageLevel(ship) === 'crippled' || !canReach(ship, enemy, cap))
 
+    // The aggressive split, computed first so the quiet-phase probe can ask
+    // "with this targeting, would my planned position give me a real shot?"
     let tacticalScan: number
-    let targeting: number
-    let jamming: number
-    if (defensive) {
+    if (difficulty === 'ensign') {
+      tacticalScan = Math.min(cap, Math.floor(available / 2))
+    } else if (difficulty === 'admiral') {
+      const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
+      tacticalScan = Math.min(cap, available, enemyScan + 1)
+      // Nobody scanning? Keep the habit of initiative anyway.
+      if (enemyScan === 0) tacticalScan = Math.min(cap, available)
+    } else {
+      tacticalScan = Math.min(cap, available)
+    }
+    let targeting = Math.min(cap, available - tacticalScan)
+    let jamming = Math.min(cap, available - tacticalScan - targeting)
+
+    const quiet = (() => {
+      if (difficulty === 'ensign' || !enemy) return false
+      const plannedCard: CommandCard = {
+        maneuver: plan.maneuver,
+        direction: plan.direction,
+        accel: plan.accel,
+        speed: ship.speed + plan.accel,
+        sensors: card.sensors,
+        shieldsDown: [],
+      }
+      const end = plannedMovement(ship, plannedCard).end
+      const probe: ShipState = { ...ship, sensors: { targeting, jamming: 0, tacticalScan } }
+      // Red brackets do not count: fire discipline would hold that volley.
+      return firepowerAt(probe, end, enemy.placement.position, enemy.speed === 0, false) === 0
+    })()
+
+    if (difficulty !== 'ensign' && enemy !== null && (damageLevel(ship) === 'crippled' || quiet)) {
       jamming = Math.min(cap, available)
       tacticalScan = Math.min(cap, available - jamming)
       targeting = Math.min(cap, available - jamming - tacticalScan)
-    } else {
-      if (difficulty === 'ensign') {
-        tacticalScan = Math.min(cap, Math.floor(available / 2))
-      } else if (difficulty === 'admiral') {
-        const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
-        tacticalScan = Math.min(cap, available, enemyScan + 1)
-        // Nobody scanning? Keep the habit of initiative anyway.
-        if (enemyScan === 0) tacticalScan = Math.min(cap, available)
-      } else {
-        tacticalScan = Math.min(cap, available)
-      }
-      targeting = Math.min(cap, available - tacticalScan)
-      jamming = Math.min(cap, available - tacticalScan - targeting)
     }
     const want = { targeting, tacticalScan, jamming } as const
     for (const k of ['targeting', 'tacticalScan', 'jamming'] as const) {
@@ -408,22 +444,28 @@ function positionHidden(game: GameState, ship: ShipState): boolean {
 }
 
 /**
- * Whether any live direct-fire battery could touch the enemy from here, even
- * with every sensor point on targeting. Reads only the ship's own form.
+ * The table's own threat picture: where the incoming fire will come from.
+ * Enemies are weighted by proximity and by how bow-on they sit — a ship
+ * pointed at you is a ship about to have you in arc. Public surface only:
+ * positions, headings, nothing an opponent across the table could not see.
  */
-function canReach(ship: ShipState, enemy: ShipState, targetingCap: number): boolean {
-  const actual = actualRange(ship.placement.position, enemy.placement.position)
-  const bestCase = Math.max(0, actual - targetingCap)
-  for (const weapon of ship.form.weapons) {
-    if (isHoming(weapon)) continue
-    const reach = weapon.brackets[weapon.brackets.length - 1]?.max ?? 0
-    if (reach < bestCase) continue
-    const alive = weapon.mounts.some(
-      (mount, i) => ship.mounts[weapon.id][i].damage < mount.hitBoxes,
-    )
-    if (alive) return true
+function threatPoint(game: GameState, ship: ShipState): Point | null {
+  const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  if (enemies.length === 0) return null
+  let wx = 0
+  let wy = 0
+  let total = 0
+  for (const e of enemies) {
+    const range = actualRange(ship.placement.position, e.placement.position)
+    const bearing = relativeBearing(e.placement.position, e.placement.heading, ship.placement.position)
+    const offBow = Math.min(bearing, 360 - bearing)
+    const aim = 1 + (180 - offBow) / 180 // 2 when bow-on … 1 when pointed away
+    const weight = aim / (range + 4)
+    wx += e.placement.position.x * weight
+    wy += e.placement.position.y * weight
+    total += weight
   }
-  return false
+  return { x: wx / total, y: wy / total }
 }
 
 function nearest(ship: ShipState, enemies: ShipState[]): ShipState | null {
@@ -452,6 +494,7 @@ function firepowerAt(
   placement: { position: Point; heading: number },
   targetPos: Point,
   targetLowSpeed: boolean,
+  includeRed = true,
 ): number {
   const arcs = arcTo(placement.position, placement.heading, targetPos)
   const actual = actualRange(placement.position, targetPos)
@@ -465,6 +508,9 @@ function firepowerAt(
       if (!canBearOn(mount.arcs, arcs)) return
       const found = selectBracket(weapon, effective, targetLowSpeed)
       if (!found) return
+      // Red brackets can be excluded: fire discipline holds those volleys,
+      // so for "will I actually shoot?" they are worth nothing.
+      if (found.bracket.band === 'red' && !includeRed) return
       const weight = found.bracket.band === 'green' ? 1.3 : found.bracket.band === 'red' ? 0.6 : 1
       value += (found.bracket.dice.length + (found.bracket.bonus ?? 0)) * weight
     })
@@ -566,9 +612,21 @@ function bestPlot(
       // Rank is what the officer optimises. The ensign flies by feel —
       // bearing and range — while trained captains read their own firing
       // charts and steer for the position their batteries are worth most
-      // from.
+      // from, and present their healthiest shield to the fire coming back:
+      // when one side is stripped, showing it to the enemy is hull damage
+      // volunteered.
       if (difficulty !== 'ensign') {
-        score += firepowerAt(ship, end, predicted, enemy.speed === 0) * 0.4
+        const fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
+        score += fp * 0.4
+        // On an arc boundary the attacker picks the shield (E6.2 Step 4),
+        // so the weakest facing side is the one that will be hit. With a
+        // shot on the board the guns come first; on a quiet approach the
+        // hull angles its strongest shield into the incoming fire instead.
+        const facing = shieldsFacing(predicted, end.position, end.heading)
+        const weakest = Math.min(
+          ...facing.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
+        )
+        score += weakest * (fp > 0 ? 0.15 : 0.4)
       }
 
       /**
@@ -633,7 +691,13 @@ function bestPlot(
           const off2 = Math.min(b2, 360 - b2)
           let s = -Math.abs(r2 - ideal) * 0.5 + ((180 - off2) / 180) * 3 - then.stress * 1.5
           if (off2 < 45) s += 1.5
-          s += firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0) * 0.4
+          const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
+          s += fp2 * 0.4
+          const facing2 = shieldsFacing(afterEnemy, then.end.position, then.end.heading)
+          const weakest2 = Math.min(
+            ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
+          )
+          s += weakest2 * (fp2 > 0 ? 0.15 : 0.4)
           if (s > bestNext) bestNext = s
         }
         if (bestNext > -Infinity) score += bestNext * 0.5

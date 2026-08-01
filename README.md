@@ -98,10 +98,15 @@ that one fact.
   a ship that overshoots turns and fights its way back instead of sailing off the map; it prices
   maneuver stress by whether the SIF will actually cancel it, leads its target knowing the target
   is turning too, and — above ensign rank — steers for the position its own firing charts say the
-  batteries are worth most from. Trained ranks also read the defensive half of the sensor rules:
-  a crippled ship, or one whose guns cannot reach the enemy even at full targeting, shifts its
-  sensor points to jamming — which pushes enemy effective range out and can deny long-range fire
-  entirely (H2.3.7).
+  batteries are worth most from. Trained ranks also run a real threat assessment, from public
+  table information only — enemies weighted by proximity and how bow-on they sit. On a quiet
+  phase (crippled, discharged, out of position, or holding an all-red volley anyway) the sensors
+  go dark and jam at maximum, which pushes enemy effective range out and can deny long-range
+  fire entirely (H2.3.7). The same threat axis drives the shields: the threatened side gets the
+  repair priority and a reinforcement point before the volley arrives (G1.3.2, G1.3.3), and when
+  a shield is stripped the helm angles a healthy side into the incoming fire — guns first when
+  there is a shot to take, hull first when there is not. The measured effect is dramatic: the
+  admiral's season against the never-jamming ensign went from 36W–28L to 59W–5L.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything
