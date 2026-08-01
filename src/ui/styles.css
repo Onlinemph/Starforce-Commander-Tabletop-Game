@@ -3572,3 +3572,16 @@ button.chip:hover:not(:disabled) {
     grid-template-columns: 1fr;
   }
 }
+
+.online-invite {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 640px;
+}
+
+.online-invite input {
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}

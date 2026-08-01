@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { useGame } from './store'
-import { claimSide, createMatch, joinMatch, leaveMatch, useOnline } from './online'
+import {
+  claimSide,
+  createMatch,
+  DEFAULT_MATCH_SERVER,
+  inviteLink,
+  joinMatch,
+  leaveMatch,
+  useOnline,
+} from './online'
 
 /**
  * The online lobby. Host the battle on screen as a persistent match — it
@@ -32,7 +40,10 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
   const game = useGame()
   const sides = [...new Set(game.ships.map((s) => s.side))]
 
-  const [server, setServer] = useState(() => online.server || rememberedServer())
+  const [server, setServer] = useState(
+    () => online.server || rememberedServer() || DEFAULT_MATCH_SERVER,
+  )
+  const [copied, setCopied] = useState(false)
   const [name, setName] = useState(game.scenario.name)
   const [password, setPassword] = useState('')
   const [hostSide, setHostSide] = useState(sides[0] ?? '')
@@ -166,6 +177,27 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                     : 'Connecting…'}
               </p>
 
+              {inviteLink() && (
+                <div className="online-invite">
+                  <label className="field grow">
+                    <span>Invite link — one tap joins, no typing</span>
+                    <input readOnly value={inviteLink() ?? ''} onFocus={(e) => e.target.select()} />
+                  </label>
+                  <button
+                    type="button"
+                    className="chip"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(inviteLink() ?? '').then(() => {
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      })
+                    }}
+                  >
+                    {copied ? 'Copied ✓' : 'Copy link'}
+                  </button>
+                </div>
+              )}
+
               <div className="online-sides">
                 {(online.sides.length > 0 ? online.sides : sides).map((side) => (
                   <button
@@ -185,8 +217,9 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
               <p className="online-hint">
-                Share the code and password with the other commander. Claiming a side shows the
-                others who holds it{online.creator ? '; as the host, your device runs any AI sides' : ''}.
+                Share the invite link (it carries the code and password), or the code and password
+                separately. Claiming a side shows the others who holds it
+                {online.creator ? '; as the host, your device runs any AI sides' : ''}.
               </p>
 
               <button type="button" className="chip danger" onClick={leaveMatch}>

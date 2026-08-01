@@ -66,7 +66,10 @@ that one fact.
   scenarios and custom ships travel inside the match like they do in battle files. Sides show
   live presence, the host's device drives any AI sides, and matches idle for 7 days are cleaned
   up. Deploying your own service is a one-time `wrangler deploy` on a free Cloudflare account —
-  see `server/README.md`.
+  see `server/README.md`. Nobody types a server address: set the repository variable
+  `MATCH_SERVER` to your Worker URL and the Pages build pre-fills it for every visitor, and the
+  host's **invite link** carries server, code and password in the URL fragment — a joiner taps
+  it, picks a side, and is in.
 - **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a

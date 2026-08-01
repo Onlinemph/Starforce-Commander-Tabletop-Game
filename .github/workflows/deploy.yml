@@ -64,6 +64,11 @@ jobs:
         # fork or a rename needs no edit here.
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # The match service every visitor's Online panel starts with. Set a
+          # repository *variable* (Settings → Secrets and variables → Actions
+          # → Variables) named MATCH_SERVER to your deployed Worker URL, e.g.
+          # https://sfc-matches.your-name.workers.dev — no code edit needed.
+          VITE_MATCH_SERVER: ${{ vars.MATCH_SERVER }}
         run: npm run build
 
       - uses: actions/configure-pages@v5

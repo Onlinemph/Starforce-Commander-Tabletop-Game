@@ -41,6 +41,15 @@ export interface OnlineState {
   error: string | null
 }
 
+/**
+ * The match server every browser on this site starts with, so nobody has to
+ * type one. Set it after deploying server/ — either paste your
+ * `sfc-matches.<name>.workers.dev` URL here, or set VITE_MATCH_SERVER when
+ * building. The Online panel still lets a player point elsewhere.
+ */
+export const DEFAULT_MATCH_SERVER: string =
+  (import.meta.env.VITE_MATCH_SERVER as string | undefined) ?? ''
+
 const ENROLL_KEY = 'sfc.online-match.v1'
 
 interface Enrollment {
@@ -329,9 +338,61 @@ export function lastServer(): string {
   return recall()?.server ?? state.server
 }
 
-// Boot: a remembered enrollment reconnects by itself — the refresh answer.
-enrollment = recall()
-if (enrollment && typeof WebSocket !== 'undefined') {
-  set({ server: enrollment.server, matchId: enrollment.matchId, creator: enrollment.creator, side: enrollment.side })
-  queueMicrotask(connect)
+// ---------------------------------------------------------------------------
+// Invite links — the whole join, in one tap
+// ---------------------------------------------------------------------------
+
+/**
+ * One link carries server, code and password, so a joiner opens it and only
+ * picks a side. The payload rides in the URL fragment, which browsers never
+ * send to any server — the same tavern-door security as the password itself,
+ * traveling the same private channel the password would have.
+ */
+export function inviteLink(): string | null {
+  if (!enrollment) return null
+  const payload = { s: enrollment.server, m: enrollment.matchId, p: enrollment.password }
+  const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(payload))))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  return `${location.origin}${location.pathname}#join=${encoded}`
+}
+
+function joinFromHash(): boolean {
+  const match = /[#&]join=([A-Za-z0-9_-]+)/.exec(location.hash)
+  if (!match) return false
+  try {
+    const b64 = match[1].replace(/-/g, '+').replace(/_/g, '/')
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as {
+      s?: string
+      m?: string
+      p?: string
+    }
+    // The invite is consumed: a refresh reconnects via the enrollment, not
+    // by replaying the link.
+    history.replaceState(null, '', location.pathname + location.search)
+    if (!payload.s || !payload.m || typeof payload.p !== 'string') return false
+    joinMatch(payload.s, payload.m, payload.p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Boot: an invite link in the URL joins its match; otherwise a remembered
+// enrollment reconnects by itself — the refresh answer.
+if (typeof WebSocket !== 'undefined' && typeof location !== 'undefined') {
+  if (!joinFromHash()) {
+    enrollment = recall()
+    if (enrollment) {
+      set({
+        server: enrollment.server,
+        matchId: enrollment.matchId,
+        creator: enrollment.creator,
+        side: enrollment.side,
+      })
+      queueMicrotask(connect)
+    }
+  }
 }
