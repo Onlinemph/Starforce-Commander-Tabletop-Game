@@ -105,7 +105,15 @@ that one fact.
   range — book knowledge — through the declared targeting and jamming, and scaled down by its
   public damage marker. The threat axis weighs enemies by that estimate times how bow-on they
   sit, and every candidate plot is charged for the expected fire arriving at its end position,
-  which is what makes range control emerge: kite the heavy batteries, crowd the light ones. On a quiet
+  which is what makes range control emerge: kite the heavy batteries, crowd the light ones.
+- **Volley craft.** Trained ranks build the volley, not just pull the triggers: on an arc
+  boundary the attacker nominates the shield struck (E6.2 Step 4) and the captain names the
+  printed-weaker side; slow-arming heavies (diamond-gated mounts) are held out of red-bracket
+  volleys where the defender rerolls away rounds of charging; a squadron converges its fire on
+  one kill — highest threat over least structure, computed identically by every ship so the
+  fleet coordinates without a channel; scarce arming points are concentrated to *ready* mounts
+  instead of spread into half-charged silence; and the admiral takes the scalpel to broken ships
+  at knife range, precision-firing the weapons section (E9) with its all-PREC batteries. On a quiet
   phase (crippled, discharged, out of position, or holding an all-red volley anyway) the sensors
   go dark and jam at maximum, which pushes enemy effective range out and can deny long-range
   fire entirely (H2.3.7). The same threat axis drives the shields: the threatened side gets the

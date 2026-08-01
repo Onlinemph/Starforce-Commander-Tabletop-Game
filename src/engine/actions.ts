@@ -118,6 +118,8 @@ export type GameAction =
       mode: FireMode
       precisionSection?: 'shields' | 'weapons' | 'general' | 'engineering'
       degraded: boolean
+      /** On an arc boundary the attacker picks the shield struck (E6.2 Step 4). */
+      chosenShield?: ShieldSide
     }
   | { type: 'pass-fire'; shipId: string }
   | { type: 'declare-coordinated'; shipIds: string[]; targetId: string }
@@ -366,6 +368,7 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
           mounts: action.mounts,
           mode: action.mode,
           precisionSection: action.mode === 'precision' ? action.precisionSection : undefined,
+          chosenShield: action.chosenShield,
           coordinated: inGroup,
           scoutSupport: scoutSupport(game, attacker, target),
           ...cloakModifiers(game, attacker, target),

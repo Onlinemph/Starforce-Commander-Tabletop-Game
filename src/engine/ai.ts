@@ -1,5 +1,5 @@
 import type { GameAction } from './actions'
-import { firingOrder, selectBracket } from './combat'
+import { firingOrder, selectBracket, traitValue } from './combat'
 import { expectedValue } from './dice'
 import {
   asteroidFieldsAt,
@@ -49,7 +49,7 @@ import { boardingSides } from './boarding'
 import { endurance, isHoming, speedInPhase } from './homing'
 import { transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
-import type { CommandCard, Maneuver, Point, TurnDirection, WeaponSystemDef } from './types'
+import type { CommandCard, Maneuver, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
 
 /**
  * A computer opponent, as a captain of sound doctrine rather than deep search.
@@ -1099,6 +1099,7 @@ function bestVolley(
     allRed: boolean
     range: number
     level: ReturnType<typeof damageLevel>
+    effective: number
   } | null = null
 
   for (const enemy of enemiesOf(game, ship)) {
@@ -1121,6 +1122,22 @@ function bestVolley(
         if (!canBearOn(mount.arcs, arcs)) return
         const bracket = selectBracket(weapon, effective, enemy.speed === 0)
         if (!bracket) return
+        /**
+         * A slow-arming heavy (diamond gates: multiple rounds to charge) is
+         * held out of red-bracket volleys — spending rounds of arming on
+         * dice the defender rerolls is the worst trade on the ship. It
+         * waits for its green window, unless the target is broken and any
+         * dice will do. The ensign has no such patience.
+         */
+        if (
+          difficulty !== 'ensign' &&
+          bracket.bracket.band === 'red' &&
+          (mount.roundGates ?? []).some(Boolean) &&
+          damageLevel(enemy) !== 'heavy' &&
+          damageLevel(enemy) !== 'crippled'
+        ) {
+          return
+        }
         mounts.push({ weaponId: weapon.id, mountIndex })
         score += bracket.bracket.dice.length + (bracket.bracket.bonus ?? 0)
         if (bracket.bracket.band !== 'red') allRed = false
@@ -1142,7 +1159,7 @@ function bestVolley(
           !best || actual < best.range || (actual === best.range && enemy.id < best.targetId)
         : !best || score > best.score || (score === best.score && enemy.id < best.targetId)
     if (better) {
-      best = { targetId: enemy.id, mounts, score, allRed, range: actual, level }
+      best = { targetId: enemy.id, mounts, score, allRed, range: actual, level, effective }
     }
   }
 
@@ -1164,6 +1181,43 @@ function bestVolley(
     return null
   }
 
+  const target = game.ships.find((s) => s.id === best!.targetId)!
+
+  /**
+   * Land the damage on the weak shield. When the geometry sits on an arc
+   * boundary the attacker nominates which facing shield is struck (E6.2
+   * Step 4) — and the printed strengths differ by side, book knowledge
+   * again. The ensign takes whatever the table gives it.
+   */
+  let chosenShield: ShieldSide | undefined
+  if (difficulty !== 'ensign') {
+    const options = shieldsFacing(
+      ship.placement.position,
+      target.placement.position,
+      target.placement.heading,
+    )
+    if (options.length > 1) {
+      const printed = (side: ShieldSide) =>
+        target.form.shields.blue[side] + target.form.shields.green[side]
+      chosenShield = [...options].sort((a, b) => printed(a) - printed(b))[0]
+    }
+  }
+
+  /**
+   * The admiral's scalpel: a broken ship at knife range, engaged by an
+   * all-PREC battery, takes precision fire on its weapons section (E9) —
+   * the kill matters less than the silence.
+   */
+  const precision =
+    difficulty === 'admiral' &&
+    (best.level === 'heavy' || best.level === 'crippled') &&
+    best.effective <= 8 &&
+    best.mounts.length > 0 &&
+    best.mounts.every((m) => {
+      const weapon = ship.form.weapons.find((w) => w.id === m.weaponId)!
+      return traitValue(weapon, 'PREC') !== null
+    })
+
   return {
     type: 'fire-volley',
     attackerId: ship.id,
@@ -1171,8 +1225,10 @@ function bestVolley(
     mounts: best.mounts,
     // At extreme range the admiral fires proximity-fused: rerolled blanks and
     // half damage beat full damage that never lands (E3.3).
-    mode: difficulty === 'admiral' && best.allRed ? 'proximity' : 'standard',
+    mode: precision ? 'precision' : difficulty === 'admiral' && best.allRed ? 'proximity' : 'standard',
+    precisionSection: precision ? 'weapons' : undefined,
     degraded: false,
+    chosenShield,
   }
 }
 
