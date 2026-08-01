@@ -408,8 +408,16 @@ export function CombatPanel({ game, attacker }: Props) {
             {lastResult.damage.standard} standard
             {lastResult.damage.leak > 0 && `, ${lastResult.damage.leak} leak`}
             {lastResult.damage.structurePenetration > 0 && `, STR+${lastResult.damage.structurePenetration}`} on the{' '}
-            {lastResult.targetShield} shield → {lastResult.outcome.blueAbsorbed + lastResult.outcome.greenAbsorbed}{' '}
-            absorbed by shields, {lastResult.outcome.armorAbsorbed} by armor, {lastResult.outcome.internal} internal.
+            {lastResult.targetShield} shield →{' '}
+            {lastResult.outcome === null ? (
+              <>damage held — tied Tactical Scans resolve simultaneously (H2.4.2)</>
+            ) : (
+              <>
+                {lastResult.outcome.blueAbsorbed + lastResult.outcome.greenAbsorbed} absorbed by
+                shields, {lastResult.outcome.armorAbsorbed} by armor, {lastResult.outcome.internal}{' '}
+                internal.
+              </>
+            )}
           </p>
         </div>
       )}

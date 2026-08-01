@@ -98,7 +98,17 @@ that one fact.
   a ship that overshoots turns and fights its way back instead of sailing off the map; it prices
   maneuver stress by whether the SIF will actually cancel it, leads its target knowing the target
   is turning too, and — above ensign rank — steers for the position its own firing charts say the
-  batteries are worth most from.
+  batteries are worth most from. Trained ranks also read the defensive half of the sensor rules:
+  a crippled ship, or one whose guns cannot reach the enemy even at full targeting, shifts its
+  sensor points to jamming — which pushes enemy effective range out and can deny long-range fire
+  entirely (H2.3.7).
+- **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
+  simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
+  once but holds the damage until the whole tie group has fired or passed, then lands everything
+  in firing order — so no tie-mate loses its weapons, or its life, before its own guns speak.
+  This is the rulebook's own table procedure ("write the damage down, draw the cards when
+  everyone has fired") made mechanical; the log marks held volleys and their landings, and the
+  map plays every held impact at once.
 - **Three AI levels.** *Ensign* does not lead targets, sometimes takes the second-best plot,
   shoots whatever is closest — including all-red pot shots that hand the defender rerolls — and
   never touches the exotic systems. *Captain* holds the long shot, bids Tactical Scan for the

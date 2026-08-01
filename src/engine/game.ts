@@ -8,7 +8,10 @@ import {
   type DamageContext,
   type DeckState,
   type DestructionOptions,
+  type VolleyDamage,
+  type VolleyOutcome,
 } from './damage'
+import { applyHeldVolley, type HeldVolley } from './combat'
 import {
   commandSystemBoxes,
   hasCommandSystems,
@@ -383,6 +386,13 @@ export interface GameState {
    * to fire per phase" of H4.1.1.
    */
   firedThisSegment: Set<string>
+  /**
+   * Volleys rolled but not yet landed: ships with tied Tactical Scans fire
+   * simultaneously and their damage takes effect simultaneously (H2.4.2), so
+   * a tie group's damage is held here until the whole group has fired or
+   * passed.
+   */
+  pendingVolleys: HeldVolley[]
   /** Ships that have raised or lowered a shield this phase (G1.1.5). */
   shieldChangedThisPhase: Set<string>
   /** Command ship and lent tactical scan, per side, for this round (H5.2). */
@@ -472,6 +482,7 @@ export function createGame(args: {
     rng,
     log: [],
     firedThisSegment: new Set(),
+    pendingVolleys: [],
     shieldChangedThisPhase: new Set(),
     command,
     coordinatedFire: args.coordinatedFire ?? false,
@@ -506,6 +517,47 @@ export function damageContext(game: GameState): DamageContext {
     ships: game.ships,
     formations: game.formations,
   }
+}
+
+/** One held volley, landed: what the flush applied and what it did. */
+export interface FlushedVolley {
+  attackerId: string
+  attackerName: string
+  targetId: string
+  damage: VolleyDamage
+  outcome: VolleyOutcome
+}
+
+/**
+ * Land every held volley, in firing order (H2.4.2). Called when a Tactical
+ * Scan tie group has completely fired or passed — and defensively when the
+ * Combat Segment closes, so held damage can never leak past its phase.
+ */
+export function flushPendingVolleys(game: GameState): FlushedVolley[] {
+  if (game.pendingVolleys.length === 0) return []
+  const flushed: FlushedVolley[] = []
+  for (const held of game.pendingVolleys) {
+    const target = game.ships.find((s) => s.id === held.targetId)
+    // A tie-mate's held volley may already have finished the target; the
+    // remaining damage is simultaneous overkill and changes nothing.
+    if (!target || target.destroyed || target.disengaged) continue
+    const outcome = applyHeldVolley(target, held, damageContext(game))
+    pushLog(
+      game,
+      `${held.attackerName}'s held volley lands on ${target.name}: ` +
+        `${outcome.greenAbsorbed + outcome.blueAbsorbed} absorbed by shields, ` +
+        `${outcome.armorAbsorbed} by armor, ${outcome.internal} internal (H2.4.2).`,
+    )
+    flushed.push({
+      attackerId: held.attackerId,
+      attackerName: held.attackerName,
+      targetId: held.targetId,
+      damage: held.damage,
+      outcome,
+    })
+  }
+  game.pendingVolleys = []
+  return flushed
 }
 
 /**
@@ -1042,6 +1094,9 @@ function runSegmentExit(game: GameState): void {
     }
 
     case 'combat': {
+      // Any damage still held for a tie group lands before the segment closes
+      // (H2.4.2) — nothing may carry a rolled-but-unapplied volley forward.
+      flushPendingVolleys(game)
       // J3.6.4 — a lock whose last tractor beam has been shot away lets go at
       // once, as does one whose ship has just been destroyed.
       const report = pruneLinks(game.ops.links, game.ships, (id) => positionOfObject(game, id))

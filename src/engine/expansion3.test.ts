@@ -357,7 +357,7 @@ describe('firing inside a nebula', () => {
       expect(result.damage.standard).toBe(Math.floor(result.rawStandard / 2))
       expect(result.damage.leak).toBe(0)
       // The shield absorbed nothing (K4.2.1).
-      expect(result.outcome.blueAbsorbed).toBe(0)
+      expect(result.outcome?.blueAbsorbed).toBe(0)
       expect(blueShieldRemaining(target, 'F')).toBe(shieldBefore)
     }
   })

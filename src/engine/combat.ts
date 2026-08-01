@@ -151,6 +151,11 @@ export interface VolleyRequest {
    */
   attackerSciences?: number
   obstacles?: CircleObstacle[]
+  /**
+   * Roll everything but hold the damage: the attacker is in a Tactical Scan
+   * tie, and tied ships' damage takes effect simultaneously (H2.4.2).
+   */
+  defer?: boolean
 }
 
 export interface MountFireRecord {
@@ -172,7 +177,41 @@ export interface VolleyResult {
   damage: VolleyDamage
   /** Damage before halving from proximity/degraded fire control. */
   rawStandard: number
-  outcome: VolleyOutcome
+  /** Null when the volley was deferred: the damage is held (H2.4.2). */
+  outcome: VolleyOutcome | null
+  /** The held damage, when deferred — applied when the tie group completes. */
+  held?: HeldVolley
+}
+
+/**
+ * A volley rolled but not yet applied. Ships with tied Tactical Scans fire
+ * simultaneously and their damage takes effect simultaneously (H2.4.2) — the
+ * rulebook's own table procedure is "write the damage down, draw the cards
+ * when everyone has fired", and this is that note, held as data until the
+ * tie group completes.
+ */
+export interface HeldVolley {
+  attackerId: string
+  attackerName: string
+  targetId: string
+  damage: VolleyDamage
+  /** Arcs the damage arrives from, for card resolution context. */
+  attackerArcs: Arc[]
+  /** Precision hand drawn at roll time, kept private until it lands (E9.2.2). */
+  precision?: DamageContext['precision']
+}
+
+/** Land a held volley: the deferred half of `resolveVolley`. */
+export function applyHeldVolley(
+  target: ShipState,
+  held: HeldVolley,
+  ctx: DamageContext,
+): VolleyOutcome {
+  const volleyCtx: DamageContext = { ...ctx, attackerArcs: held.attackerArcs, precision: held.precision }
+  const outcome = applyVolley(target, held.damage, volleyCtx)
+  // Reshuffle after every volley that damages a ship (E7.1.3).
+  reshuffle(ctx.deck, ctx.rng)
+  return outcome
 }
 
 export interface VolleyRejected {
@@ -436,6 +475,30 @@ export function resolveVolley(
     ctx.log(
       `${attacker.name} uses precision targeting on ${request.precisionSection} (${cardCount} replacement cards).`,
     )
+  }
+
+  // A tied ship's damage is held until the whole tie group has fired
+  // (H2.4.2): the dice are final, the cards wait.
+  if (request.defer) {
+    return {
+      ok: true,
+      actualRange: actual,
+      effectiveRange: effective,
+      attackerArcs: firingArcs,
+      targetShield,
+      records,
+      damage,
+      rawStandard,
+      outcome: null,
+      held: {
+        attackerId: attacker.id,
+        attackerName: attacker.name,
+        targetId: target.id,
+        damage,
+        attackerArcs: volleyCtx.attackerArcs ?? [],
+        precision: volleyCtx.precision,
+      },
+    }
   }
 
   const outcome = applyVolley(target, damage, volleyCtx)

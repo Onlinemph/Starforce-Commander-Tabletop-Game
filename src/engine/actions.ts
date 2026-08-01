@@ -5,7 +5,7 @@ import {
   reduceDetection,
   DETECTION_LABELS,
 } from './cloaking'
-import { resolveVolley, type FireMode, type MountSelection, type VolleyResult } from './combat'
+import { firingOrder, resolveVolley, type FireMode, type MountSelection, type VolleyResult } from './combat'
 import { setCommandAssignment } from './command'
 import {
   armMount,
@@ -48,9 +48,12 @@ import {
   setMaxSystem,
   setSabotageSquads,
   setShieldDown,
+  flushPendingVolleys,
+  tacticalScanOf,
   terrainObstacles,
   tractorIncomingHoming,
   workingSystemBoxes,
+  type FlushedVolley,
   type GameState,
 } from './game'
 import { setScoutAssignment, setScoutSensorActive } from './scouting'
@@ -164,6 +167,8 @@ export interface ActionOutcome {
   destroyed?: boolean
   /** damage-control: one line per repair attempt. */
   messages?: string[]
+  /** Held tie-group volleys this action caused to land (H2.4.2). */
+  flushed?: FlushedVolley[]
 }
 
 const ok: ActionOutcome = { message: null }
@@ -171,6 +176,22 @@ const said = (message: string | null): ActionOutcome => ({ message })
 
 function shipById(game: GameState, id: string): ShipState | null {
   return game.ships.find((s) => s.id === id) ?? null
+}
+
+/**
+ * If every ship in the tie group whose damage is being held has now fired or
+ * passed, land the lot (H2.4.2). Returns what landed, for the effects layer.
+ */
+function maybeFlushTieGroup(game: GameState): FlushedVolley[] | undefined {
+  if (game.pendingVolleys.length === 0) return undefined
+  const pending = new Set(game.pendingVolleys.map((h) => h.attackerId))
+  const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
+  const settled = groups.every(
+    (g) =>
+      !g.some((s) => pending.has(s.id)) || g.every((s) => game.firedThisSegment.has(s.id)),
+  )
+  if (!settled) return undefined
+  return flushPendingVolleys(game)
 }
 
 /**
@@ -322,6 +343,21 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
         const blocked = attackAllowed(game, attacker, target)
         if (blocked) return said(blocked)
       }
+      /**
+       * Tied Tactical Scans fire simultaneously and their damage takes
+       * effect simultaneously (H2.4.2): a tied ship's volley is rolled now
+       * but held, so no tie-mate loses weapons — or the ship — before its
+       * own guns speak. Held damage lands when the whole group has fired or
+       * passed. The optional H4 step machine has its own sequencing, so this
+       * applies to the base firing sequence only.
+       */
+      const tieGroup = game.coordinatedFire
+        ? undefined
+        : firingOrder(game.ships, (s) => tacticalScanOf(game, s)).find((g) =>
+            g.some((s) => !game.firedThisSegment.has(s.id)),
+          )
+      const tied =
+        tieGroup !== undefined && tieGroup.length > 1 && tieGroup.some((s) => s.id === attacker.id)
       const terrain = cloudModifiers(game, attacker, target)
       const result = resolveVolley(
         {
@@ -343,6 +379,7 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
           lowSpeedNegated:
             terrain.lowSpeedNegated ||
             asteroidFieldsAt(game.scenario.terrain, target.placement.position).length > 0,
+          defer: tied,
         },
         damageContext(game),
         game.rng,
@@ -356,16 +393,20 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
         game,
         `${attacker.name} fires on ${target.name} at effective range ${result.effectiveRange} ` +
           `(${result.targetShield} shield). Dice: ${dice} → ${result.damage.standard} damage` +
-          (result.damage.leak ? `, ${result.damage.leak} leak` : ''),
+          (result.damage.leak ? `, ${result.damage.leak} leak` : '') +
+          (result.held ? ' — damage held for simultaneous resolution (H2.4.2)' : ''),
       )
-      return { message: null, volley: result }
+      if (result.held) game.pendingVolleys.push(result.held)
+      const flushed = maybeFlushTieGroup(game)
+      return { message: null, volley: result, flushed }
     }
     case 'pass-fire': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
       game.firedThisSegment.add(ship.id)
       pushLog(game, `${ship.name} declines to fire this phase (E6.2 Step 1).`)
-      return ok
+      const flushed = maybeFlushTieGroup(game)
+      return flushed ? { message: null, flushed } : ok
     }
     case 'declare-coordinated': {
       const ships = action.shipIds

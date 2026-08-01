@@ -111,41 +111,65 @@ export function fxBefore(game: GameState, action: GameAction): BattleFx[] {
   return []
 }
 
-/** Effects read off a resolved outcome — the volley, above all. */
-export function fxAfter(game: GameState, action: GameAction, outcome: ActionOutcome): BattleFx[] {
-  if (action.type !== 'fire-volley' || !outcome.volley) return []
-  const attacker = game.ships.find((s) => s.id === action.attackerId)
-  const target = game.ships.find((s) => s.id === action.targetId)
-  if (!attacker || !target) return []
-
-  const { records, outcome: dealt } = outcome.volley
-  const fx: BattleFx[] = records.map((record, i) => {
-    const lane = i - (records.length - 1) / 2
-    const { from, to } = offsetShot(attacker.placement.position, target.placement.position, lane)
-    return {
-      id: nextId++,
-      kind: 'shot' as const,
-      weapon: weaponFx(record.weaponName),
-      from,
-      to,
-      delay: i * STAGGER,
-    }
-  })
-
-  // One impact for the volley: hull if anything got through, shield if the
-  // screens took it all, nothing on a clean miss.
+/** Hull if anything got through, shield if the screens took it all. */
+function impactKind(dealt: {
+  internal: number
+  leakCards: number
+  structureFromSpecial: number
+  greenAbsorbed: number
+  blueAbsorbed: number
+  armorAbsorbed: number
+}): 'hull' | 'shield' | null {
   const throughShields = dealt.internal + dealt.leakCards + dealt.structureFromSpecial
   const absorbed = dealt.greenAbsorbed + dealt.blueAbsorbed + dealt.armorAbsorbed
-  const impact: 'hull' | 'shield' | null =
-    throughShields > 0 ? 'hull' : absorbed > 0 ? 'shield' : null
-  if (impact && records.length > 0) {
-    fx.push({
-      id: nextId++,
-      kind: 'impact',
-      impact,
-      at: target.placement.position,
-      delay: (records.length - 1) * STAGGER + TRAVEL,
-    })
+  return throughShields > 0 ? 'hull' : absorbed > 0 ? 'shield' : null
+}
+
+/** Effects read off a resolved outcome — the volley, above all. */
+export function fxAfter(game: GameState, action: GameAction, outcome: ActionOutcome): BattleFx[] {
+  const fx: BattleFx[] = []
+
+  if (action.type === 'fire-volley' && outcome.volley) {
+    const attacker = game.ships.find((s) => s.id === action.attackerId)
+    const target = game.ships.find((s) => s.id === action.targetId)
+    if (attacker && target) {
+      const { records, outcome: dealt } = outcome.volley
+      records.forEach((record, i) => {
+        const lane = i - (records.length - 1) / 2
+        const { from, to } = offsetShot(attacker.placement.position, target.placement.position, lane)
+        fx.push({
+          id: nextId++,
+          kind: 'shot',
+          weapon: weaponFx(record.weaponName),
+          from,
+          to,
+          delay: i * STAGGER,
+        })
+      })
+
+      // A tied volley's damage is held (H2.4.2): the shots fly now, and the
+      // impact arrives with the flush below — possibly on a later action.
+      const impact = dealt ? impactKind(dealt) : null
+      if (impact && records.length > 0) {
+        fx.push({
+          id: nextId++,
+          kind: 'impact',
+          impact,
+          at: target.placement.position,
+          delay: (records.length - 1) * STAGGER + TRAVEL,
+        })
+      }
+    }
   }
+
+  // Held volleys landing together: every impact flashes at once, which is
+  // exactly what simultaneous damage should look like.
+  for (const landed of outcome.flushed ?? []) {
+    const target = game.ships.find((s) => s.id === landed.targetId)
+    const impact = impactKind(landed.outcome)
+    if (!target || !impact) continue
+    fx.push({ id: nextId++, kind: 'impact', impact, at: target.placement.position, delay: TRAVEL })
+  }
+
   return fx
 }

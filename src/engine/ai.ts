@@ -356,23 +356,42 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
      * Tactical Scan first; the admiral reads the enemy's declared scan off
      * the table and outbids it by exactly one, spending the rest on
      * targeting.
+     *
+     * Unless the ship should not be trading fire at all. A crippled hull, or
+     * one whose guns cannot reach the enemy even with full targeting, gets
+     * nothing from initiative or brackets — jamming, though, pushes enemy
+     * effective range out and can deny long-range fire entirely (H2.3.7).
+     * Trained ranks go dark and defensive; the ensign never jams.
      */
     const sensorLine = ship.form.functions.find((l) => l.kind === 'sensor')
     const available = sensorLine ? lineValue(ship, sensorLine.id) : 0
     const cap = sensorFunctionCap(ship)
+    const defensive =
+      difficulty !== 'ensign' &&
+      enemy !== null &&
+      (damageLevel(ship) === 'crippled' || !canReach(ship, enemy, cap))
+
     let tacticalScan: number
-    if (difficulty === 'ensign') {
-      tacticalScan = Math.min(cap, Math.floor(available / 2))
-    } else if (difficulty === 'admiral') {
-      const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
-      tacticalScan = Math.min(cap, available, enemyScan + 1)
-      // Nobody scanning? Keep the habit of initiative anyway.
-      if (enemyScan === 0) tacticalScan = Math.min(cap, available)
+    let targeting: number
+    let jamming: number
+    if (defensive) {
+      jamming = Math.min(cap, available)
+      tacticalScan = Math.min(cap, available - jamming)
+      targeting = Math.min(cap, available - jamming - tacticalScan)
     } else {
-      tacticalScan = Math.min(cap, available)
+      if (difficulty === 'ensign') {
+        tacticalScan = Math.min(cap, Math.floor(available / 2))
+      } else if (difficulty === 'admiral') {
+        const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
+        tacticalScan = Math.min(cap, available, enemyScan + 1)
+        // Nobody scanning? Keep the habit of initiative anyway.
+        if (enemyScan === 0) tacticalScan = Math.min(cap, available)
+      } else {
+        tacticalScan = Math.min(cap, available)
+      }
+      targeting = Math.min(cap, available - tacticalScan)
+      jamming = Math.min(cap, available - tacticalScan - targeting)
     }
-    const targeting = Math.min(cap, available - tacticalScan)
-    const jamming = Math.min(cap, available - tacticalScan - targeting)
     const want = { targeting, tacticalScan, jamming } as const
     for (const k of ['targeting', 'tacticalScan', 'jamming'] as const) {
       if (card.sensors[k] !== want[k]) {
@@ -386,6 +405,25 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
 function positionHidden(game: GameState, ship: ShipState): boolean {
   const cloak = cloakOf(game, ship)
   return Boolean(cloak && isCloaked(cloak))
+}
+
+/**
+ * Whether any live direct-fire battery could touch the enemy from here, even
+ * with every sensor point on targeting. Reads only the ship's own form.
+ */
+function canReach(ship: ShipState, enemy: ShipState, targetingCap: number): boolean {
+  const actual = actualRange(ship.placement.position, enemy.placement.position)
+  const bestCase = Math.max(0, actual - targetingCap)
+  for (const weapon of ship.form.weapons) {
+    if (isHoming(weapon)) continue
+    const reach = weapon.brackets[weapon.brackets.length - 1]?.max ?? 0
+    if (reach < bestCase) continue
+    const alive = weapon.mounts.some(
+      (mount, i) => ship.mounts[weapon.id][i].damage < mount.hitBoxes,
+    )
+    if (alive) return true
+  }
+  return false
 }
 
 function nearest(ship: ShipState, enemies: ShipState[]): ShipState | null {
