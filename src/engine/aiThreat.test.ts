@@ -48,6 +48,44 @@ describe('threat-aware shields', () => {
     expect(actions.find((a) => a.type === 'allocate' && a.lineId === forward.id)).toBeUndefined()
   })
 
+  it('the hull answers to every enemy: the flanker decides which way it rotates', () => {
+    // Bow shield stripped, target ahead: the hull must angle away. With one
+    // enemy the left/right choice is a symmetric coin; a flanker breaks the
+    // symmetry through the aggregate threat axis, so the plotted maneuver
+    // must depend on which side the flanker holds.
+    const plot = (flank: 'starboard' | 'port') => {
+      const game = startScenario('exp2-squadron-engagement', { seed: 4 })
+      const blues = game.ships.filter((s) => s.side === 'Blue Force')
+      const reds = game.ships.filter((s) => s.side === 'Red Force')
+      const me = blues[0]
+      me.placement = { position: { x: 15, y: 20 }, heading: 0 }
+      reds[0].placement = { position: { x: 15, y: 8 }, heading: 180 } // ahead
+      // Forward-quarter flanker: close enough to the bow axis that the
+      // stripped F still faces the aggregate threat — it only breaks the
+      // left/right symmetry of the turn away.
+      reds[1].placement =
+        flank === 'starboard'
+          ? { position: { x: 21, y: 9 }, heading: 225 }
+          : { position: { x: 9, y: 9 }, heading: 135 }
+      // Everyone else is out of the battle entirely.
+      for (const other of [...blues.slice(1), ...reds.slice(2)]) {
+        other.destroyed = true
+      }
+      me.blueShieldDamage.F = 99
+      me.greenShieldDamage.F = 99
+      game.phase = 'combat-1'
+      game.segment = 'command'
+      for (const ship of game.ships) game.orders[ship.id] = defaultCommandCard(ship)
+      const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'captain')
+      return JSON.stringify(
+        actions.filter(
+          (a) => 'shipId' in a && a.shipId === me.id && (a.type === 'plot-maneuver' || a.type === 'plot-accel'),
+        ),
+      )
+    }
+    expect(plot('starboard')).not.toBe(plot('port'))
+  })
+
   it('a stripped shield changes the plotted maneuver: the hull turns a healthy side in', () => {
     const plot = (stripForward: boolean) => {
       const game = startScenario('s3.1-the-duel', { seed: 7 })

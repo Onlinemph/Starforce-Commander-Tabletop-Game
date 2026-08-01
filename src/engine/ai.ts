@@ -527,6 +527,13 @@ function bestPlot(
 ): Candidate {
   const ideal = preferredRange(ship)
   /**
+   * The guns aim at the chosen enemy, but the hull answers to every enemy on
+   * the table: the shield you angle away from one attacker you may be
+   * angling toward another. Facing decisions score against the aggregate
+   * threat axis, not just the target of the moment.
+   */
+  const threat = threatPoint(game, ship)
+  /**
    * Lead the target — knowing the target is fighting back. The enemy's
    * captain wants their bow on us just as we want ours on them, so a
    * straight-line lead is systematically wrong the moment they start coming
@@ -622,7 +629,7 @@ function bestPlot(
         // so the weakest facing side is the one that will be hit. With a
         // shot on the board the guns come first; on a quiet approach the
         // hull angles its strongest shield into the incoming fire instead.
-        const facing = shieldsFacing(predicted, end.position, end.heading)
+        const facing = shieldsFacing(threat ?? predicted, end.position, end.heading)
         const weakest = Math.min(
           ...facing.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
         )
@@ -693,7 +700,7 @@ function bestPlot(
           if (off2 < 45) s += 1.5
           const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
           s += fp2 * 0.4
-          const facing2 = shieldsFacing(afterEnemy, then.end.position, then.end.heading)
+          const facing2 = shieldsFacing(threat ?? afterEnemy, then.end.position, then.end.heading)
           const weakest2 = Math.min(
             ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
           )

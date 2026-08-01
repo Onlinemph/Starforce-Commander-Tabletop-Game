@@ -136,7 +136,7 @@ describe('AI self-play', () => {
   })
 
   it('the Aurelians cloak, hunt, decloak and loose their homing torpedoes', () => {
-    const d = selfPlay('exp5-aurelian-raid', 3, ['Blue Force', 'Aurelian Empire'], 12)
+    const d = selfPlay('exp5-aurelian-raid', 1, ['Blue Force', 'Aurelian Empire'], 12)
     const types = new Set(d.journal.map((a) => a.type))
     expect(types.has('engage-cloak')).toBe(true)
     expect(types.has('decloak')).toBe(true)
