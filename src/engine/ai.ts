@@ -44,7 +44,7 @@ import { boardingSides } from './boarding'
 import { endurance, isHoming, speedInPhase } from './homing'
 import { transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
-import type { CommandCard, Maneuver, TurnDirection } from './types'
+import type { CommandCard, Maneuver, Point, TurnDirection } from './types'
 
 /**
  * A computer opponent, as a captain of sound doctrine rather than deep search.
@@ -219,7 +219,11 @@ function planAllocation(
     }
     for (const line of byKind('sensor')) fill(line.id, Math.min(2, line.steps.length))
     for (const line of byKind('accel')) fill(line.id, 1)
-    if (ship.stressMarkers > 0) for (const line of byKind('sif')) fill(line.id, 1)
+    // Turning hard is doctrine now, and SIF is what makes it survivable — a
+    // practiced captain powers it before the stress arrives, not after.
+    if (difficulty !== 'ensign' || ship.stressMarkers > 0) {
+      for (const line of byKind('sif')) fill(line.id, 1)
+    }
     // A damaged shield is worth a repair point (G1.3.3).
     for (const line of byKind('shield-repair')) {
       if (!line.shieldSide) continue
@@ -344,13 +348,31 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
       actions.push({ type: 'plot-accel', shipId: ship.id, delta: plan.accel - card.accel })
     }
 
-    // Sensor split (H2.2.2): targeting first, then tactical scan, then jamming.
+    /**
+     * Sensor split (H2.2.2). Tactical Scan decides firing order, and under
+     * the one-opportunity rule (E6.2) the ship that shoots first may leave
+     * the other unable to answer — initiative beats brackets. The ensign
+     * splits evenly, by the book and behind the fight; the captain bids
+     * Tactical Scan first; the admiral reads the enemy's declared scan off
+     * the table and outbids it by exactly one, spending the rest on
+     * targeting.
+     */
     const sensorLine = ship.form.functions.find((l) => l.kind === 'sensor')
     const available = sensorLine ? lineValue(ship, sensorLine.id) : 0
     const cap = sensorFunctionCap(ship)
-    const targeting = Math.min(cap, Math.ceil(available / 2))
-    const tacticalScan = Math.min(cap, available - targeting)
-    const jamming = Math.min(cap, available - targeting - tacticalScan)
+    let tacticalScan: number
+    if (difficulty === 'ensign') {
+      tacticalScan = Math.min(cap, Math.floor(available / 2))
+    } else if (difficulty === 'admiral') {
+      const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
+      tacticalScan = Math.min(cap, available, enemyScan + 1)
+      // Nobody scanning? Keep the habit of initiative anyway.
+      if (enemyScan === 0) tacticalScan = Math.min(cap, available)
+    } else {
+      tacticalScan = Math.min(cap, available)
+    }
+    const targeting = Math.min(cap, available - tacticalScan)
+    const jamming = Math.min(cap, available - tacticalScan - targeting)
     const want = { targeting, tacticalScan, jamming } as const
     for (const k of ['targeting', 'tacticalScan', 'jamming'] as const) {
       if (card.sensors[k] !== want[k]) {
@@ -379,6 +401,39 @@ function nearest(ship: ShipState, enemies: ShipState[]): ShipState | null {
   return best
 }
 
+/**
+ * Dice-weighted worth of this ship's ready direct-fire batteries against a
+ * point, were it standing at `placement` — the movement planner's real
+ * objective. A plot is good exactly insofar as the guns it brings to bear:
+ * each bearing, ready mount contributes its bracket's dice at that range,
+ * worth more in green (attacker rerolls, E1.2.1) and less in red. Only the
+ * ship's own form is read; the enemy stays a counter on the table.
+ */
+function firepowerAt(
+  ship: ShipState,
+  placement: { position: Point; heading: number },
+  targetPos: Point,
+  targetLowSpeed: boolean,
+): number {
+  const arcs = arcTo(placement.position, placement.heading, targetPos)
+  const actual = actualRange(placement.position, targetPos)
+  const effective = effectiveRange(actual, 0, ship.sensors.targeting)
+  let value = 0
+  for (const weapon of ship.form.weapons) {
+    if (isHoming(weapon)) continue
+    weapon.mounts.forEach((mount, mountIndex) => {
+      const state = ship.mounts[weapon.id][mountIndex]
+      if (!mountIsReady(weapon, mountIndex, state)) return
+      if (!canBearOn(mount.arcs, arcs)) return
+      const found = selectBracket(weapon, effective, targetLowSpeed)
+      if (!found) return
+      const weight = found.bracket.band === 'green' ? 1.3 : found.bracket.band === 'red' ? 0.6 : 1
+      value += (found.bracket.dice.length + (found.bracket.bonus ?? 0)) * weight
+    })
+  }
+  return value
+}
+
 function bestPlot(
   game: GameState,
   ship: ShipState,
@@ -387,15 +442,30 @@ function bestPlot(
   difficulty: AiDifficulty,
 ): Candidate {
   const ideal = preferredRange(ship)
-  // Assume the enemy holds course — the same guess a human plotter makes.
-  // The ensign aims at where the enemy is, not where it will be.
-  const ev = headingVector(enemy.placement.heading)
+  /**
+   * Lead the target — knowing the target is fighting back. The enemy's
+   * captain wants their bow on us just as we want ours on them, so a
+   * straight-line lead is systematically wrong the moment they start coming
+   * about. From public information only (position, heading, speed): assume
+   * they turn toward us by up to a standard turn, then run their speed. On a
+   * head-on approach that reduces to the straight-line lead; in a circling
+   * fight it cuts the corner instead of chasing where they will not be. The
+   * ensign aims at where the enemy is, not where it will be.
+   */
+  const toUs = relativeBearing(enemy.placement.position, enemy.placement.heading, ship.placement.position)
+  const signed = toUs > 180 ? toUs - 360 : toUs
+  const ev = headingVector(enemy.placement.heading + Math.max(-45, Math.min(45, signed)))
+  const sifLine = ship.form.functions.find((l) => l.kind === 'sif')
+  const sifCover = sifLine ? lineValue(ship, sifLine.id) : 0
+  // Half the enemy's speed: a full-speed lead overshoots the moment the
+  // enemy maneuvers, and in a turning fight the enemy is always maneuvering.
+  const lead = enemy.speed * 0.5
   const predicted =
     difficulty === 'ensign'
       ? enemy.placement.position
       : {
-          x: enemy.placement.position.x + ev.x * enemy.speed,
-          y: enemy.placement.position.y + ev.y * enemy.speed,
+          x: enemy.placement.position.x + ev.x * lead,
+          y: enemy.placement.position.y + ev.y * lead,
         }
 
   const maneuvers: Array<[Maneuver, TurnDirection | null, number]> = [
@@ -439,14 +509,39 @@ function bestPlot(
 
       const end = planned.end
       const range = actualRange(end.position, predicted)
-      let score = -Math.abs(range - ideal)
+      let score = -Math.abs(range - ideal) * 0.5
 
-      // Keep the bow on the enemy so the forward batteries bear.
+      /**
+       * Keep the bow turning toward the enemy — and pay for every degree of
+       * progress, not just for arriving. An easy or standard turn moves the
+       * full distance and then pivots (C2.2.3), so its end position matches
+       * flying straight and only the heading differs: with a threshold
+       * bonus, the first turn of a comeback from dead astern scored level
+       * with sailing on forever. The continuous reward is the gradient that
+       * makes coming about win on its own merits at every rank.
+       */
       const bearing = relativeBearing(end.position, end.heading, predicted)
-      if (bearing < 45 || bearing > 315) score += 2.5
-      else if (bearing < 90 || bearing > 270) score += 1
+      const offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
+      score += ((180 - offBow) / 180) * 3
+      if (offBow < 45) score += 1.5
 
-      score -= planned.stress * 1.5
+      // Rank is what the officer optimises. The ensign flies by feel —
+      // bearing and range — while trained captains read their own firing
+      // charts and steer for the position their batteries are worth most
+      // from.
+      if (difficulty !== 'ensign') {
+        score += firepowerAt(ship, end, predicted, enemy.speed === 0) * 0.4
+      }
+
+      /**
+       * Stress the SIF will cancel is cheap; stress beyond it draws damage
+       * cards (C3.1.4), and no firing angle is worth flying the ship apart —
+       * an aggressive circler must not out-damage the enemy's guns with its
+       * own helm. Price the two very differently.
+       */
+      const covered = Math.max(0, sifCover - ship.stressMarkers)
+      const uncovered = Math.max(0, planned.stress - covered)
+      score -= (planned.stress - uncovered) * 0.5 + uncovered * 4
 
       // The board edge is disengagement (S2.2.1) — do not back into it.
       const { width, height } = game.scenario.bounds
@@ -462,6 +557,48 @@ function bestPlot(
           if (over > (f.safeSpeed ?? 99)) score -= 3 * (over - (f.safeSpeed ?? 0))
         }
         if (fields.length > 0) break
+      }
+
+      /**
+       * Rank is search depth. The admiral looks one phase further: from this
+       * candidate's end, what does the best follow-up maneuver achieve? A
+       * greedy plotter turns toward the enemy; the admiral plans the turn
+       * *sequence* that brings the batteries to bear, and knows a plot that
+       * looks level now can be the one that wins the next phase.
+       */
+      if (difficulty === 'admiral') {
+        const afterEnemy = {
+          x: predicted.x + ev.x * enemy.speed,
+          y: predicted.y + ev.y * enemy.speed,
+        }
+        const future: ShipState = {
+          ...ship,
+          placement: end,
+          speed: planned.speed,
+          stressMarkers: ship.stressMarkers + planned.stress,
+        }
+        let bestNext = -Infinity
+        for (const [m2, d2, s2] of maneuvers) {
+          if (s2 > 0 && future.stressMarkers + s2 >= ship.form.stressRating) continue
+          const followUp: CommandCard = {
+            maneuver: m2,
+            direction: d2,
+            accel: 0,
+            speed: future.speed,
+            sensors: card.sensors,
+            shieldsDown: [],
+          }
+          const then = plannedMovement(future, followUp)
+          if (then.illegal) continue
+          const r2 = actualRange(then.end.position, afterEnemy)
+          const b2 = relativeBearing(then.end.position, then.end.heading, afterEnemy)
+          const off2 = Math.min(b2, 360 - b2)
+          let s = -Math.abs(r2 - ideal) * 0.5 + ((180 - off2) / 180) * 3 - then.stress * 1.5
+          if (off2 < 45) s += 1.5
+          s += firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0) * 0.4
+          if (s > bestNext) bestNext = s
+        }
+        if (bestNext > -Infinity) score += bestNext * 0.5
       }
 
       if (score > bestScore) {
@@ -735,6 +872,7 @@ function bestVolley(game: GameState, ship: ShipState, difficulty: AiDifficulty):
     score: number
     allRed: boolean
     range: number
+    level: ReturnType<typeof damageLevel>
   } | null = null
 
   for (const enemy of enemiesOf(game, ship)) {
@@ -775,11 +913,28 @@ function bestVolley(game: GameState, ship: ShipState, difficulty: AiDifficulty):
           !best || actual < best.range || (actual === best.range && enemy.id < best.targetId)
         : !best || score > best.score || (score === best.score && enemy.id < best.targetId)
     if (better) {
-      best = { targetId: enemy.id, mounts, score, allRed, range: actual }
+      best = { targetId: enemy.id, mounts, score, allRed, range: actual, level }
     }
   }
 
   if (!best) return null
+
+  /**
+   * Fire discipline is rank. An all-red volley hands the defender rerolls
+   * (E1.2.3), and the discharged batteries cost next round's arming points —
+   * a phase of patience usually converts those dice to yellow or green. The
+   * ensign bangs away regardless; a trained captain holds the long shot
+   * unless the target is already broken and worth finishing at any odds.
+   */
+  if (
+    difficulty !== 'ensign' &&
+    best.allRed &&
+    best.level !== 'heavy' &&
+    best.level !== 'crippled'
+  ) {
+    return null
+  }
+
   return {
     type: 'fire-volley',
     attackerId: ship.id,

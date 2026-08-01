@@ -94,14 +94,22 @@ that one fact.
   It reads only what an opponent across the table could see: never your form, your power, or your
   arming. Launching a test flight from the ship builder now gets you an AI adversary
   automatically.
+- **Captains that come about.** The movement planner pays for every degree of bow-on progress, so
+  a ship that overshoots turns and fights its way back instead of sailing off the map; it prices
+  maneuver stress by whether the SIF will actually cancel it, leads its target knowing the target
+  is turning too, and — above ensign rank — steers for the position its own firing charts say the
+  batteries are worth most from.
 - **Three AI levels.** *Ensign* does not lead targets, sometimes takes the second-best plot,
-  shoots whatever is closest and never touches the exotic systems. *Captain* plays the full
-  doctrine: Aurelian ships cloak to cross the gulf and decloak into their firing bracket, homing
-  torpedoes fly at anything in flight range, scouts illuminate for the fleet, point defense
-  answers incoming missiles and tractor beams pluck them from the sky. *Admiral* adds tractor
-  captures, marines beamed onto crippled hulls behind deliberately dropped shields,
-  proximity-fused fire at extreme range and harder focus — in self-play it beats the ensign
-  three duels in four across a season with the hulls swapped each game.
+  shoots whatever is closest — including all-red pot shots that hand the defender rerolls — and
+  never touches the exotic systems. *Captain* holds the long shot, bids Tactical Scan for the
+  first-fire slot, and plays the full doctrine: Aurelian ships cloak to cross the gulf and
+  decloak into their firing bracket, homing torpedoes fly at anything in flight range, scouts
+  illuminate for the fleet, point defense answers incoming missiles and tractor beams pluck them
+  from the sky. *Admiral* adds a phase of movement lookahead, outbids the enemy's declared scan
+  by exactly one, and presses tractor captures, marines beamed onto crippled hulls behind
+  deliberately dropped shields, proximity-fused fire at extreme range and harder focus. In
+  mirror-image self-play the ranks are worth points, not routs — a symmetric duel is decided by
+  dice, as it should be; the gap a human feels is the ensign's exploitable habits.
 
 ## Hosting it
 
