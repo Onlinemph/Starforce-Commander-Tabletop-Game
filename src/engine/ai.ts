@@ -42,13 +42,14 @@ import {
   maxReverseSpeed,
   mountIsReady,
   sensorFunctionCap,
+  structureRemaining,
   type ShipState,
 } from './shipState'
 import { boardingSides } from './boarding'
 import { endurance, isHoming, speedInPhase } from './homing'
 import { transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
-import type { CommandCard, Maneuver, Point, TurnDirection } from './types'
+import type { CommandCard, Maneuver, Point, TurnDirection, WeaponSystemDef } from './types'
 
 /**
  * A computer opponent, as a captain of sound doctrine rather than deep search.
@@ -263,8 +264,8 @@ function planAllocation(
 
   if (actions.length > 0) return actions
 
-  // Second pass, after the allocations landed: any arming points the auto-arm
-  // rule could not place (scarce power) are spent round-robin.
+  // Second pass, after the allocations landed: leftover arming points, scout
+  // orders, and the fleet's command-point assignments (H5.2.1).
   const key = `ra-arm:${game.round}:${fleet[0].side}`
   if (memo.done.has(key)) return []
   memo.done.add(key)
@@ -284,22 +285,46 @@ function planAllocation(
       })
     }
     for (const weapon of ship.form.weapons) {
-      let points = armingPointsAvailable(ship, weapon.id)
-      let index = 0
-      let guard = 0
-      while (points > 0 && guard++ < 60) {
-        const mount = index % weapon.mounts.length
-        const state = ship.mounts[weapon.id][mount]
-        if (armingCapacityThisRound(weapon, mount, state) > 0) {
-          arming.push({ type: 'arm-mount', shipId: ship.id, weaponId: weapon.id, mountIndex: mount })
-          points -= 1
-        }
-        index += 1
-        if (index > weapon.mounts.length * 8) break
-      }
+      arming.push(...armingPlan(ship, weapon))
     }
   }
   return arming
+}
+
+/**
+ * Spend a weapon's scarce arming points. A mount fires only when *fully*
+ * armed, so spreading points round-robin can leave every battery half-charged
+ * and the ship silent — the classic way to waste a turn's power. Instead,
+ * concentrate: finish the mounts closest to ready first (which also favors
+ * heavy weapons already partway through a multi-round arm), and pour into
+ * each until its this-round capacity is spent before starting the next.
+ * Exported for tests.
+ */
+export function armingPlan(ship: ShipState, weapon: WeaponSystemDef): GameAction[] {
+  let points = armingPointsAvailable(ship, weapon.id)
+  if (points === 0) return []
+  const order = weapon.mounts
+    .map((mount, index) => {
+      const state = ship.mounts[weapon.id][index]
+      return {
+        index,
+        capacity: armingCapacityThisRound(weapon, index, state),
+        toReady: Math.max(0, mount.armingCircles - state.armed),
+      }
+    })
+    .filter((m) => m.capacity > 0 && m.toReady > 0)
+    .sort((a, b) => a.toReady - b.toReady || a.index - b.index)
+
+  const actions: GameAction[] = []
+  for (const mount of order) {
+    const pour = Math.min(points, mount.capacity)
+    for (let i = 0; i < pour; i++) {
+      actions.push({ type: 'arm-mount', shipId: ship.id, weaponId: weapon.id, mountIndex: mount.index })
+    }
+    points -= pour
+    if (points === 0) break
+  }
+  return actions
 }
 
 // ---------------------------------------------------------------------------
@@ -966,7 +991,7 @@ function planFiring(
     // Armed homing weapons go out first (E5.2): they fly on their own and the
     // direct-fire batteries still get their volley.
     if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo))
-    const volley = bestVolley(game, ship, difficulty)
+    const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty))
     if (volley) {
       memo.done.add(attemptKey)
       actions.push(volley)
@@ -1032,7 +1057,40 @@ function homingLaunches(game: GameState, ship: ShipState, memo: AiMemo): GameAct
   return actions
 }
 
-function bestVolley(game: GameState, ship: ShipState, difficulty: AiDifficulty): GameAction | null {
+/**
+ * The squadron's kill priority: one ship, brought down together. A half-dead
+ * enemy still shoots at full effect, so spreading a fleet's fire is the
+ * classic amateur error — the focus target is the enemy whose destruction
+ * buys the most safety soonest: highest estimated threat over least
+ * remaining structure. Pure and deterministic, so every ship of the side
+ * computes the same answer without needing to talk.
+ */
+function focusTargetFor(game: GameState, ship: ShipState, difficulty: AiDifficulty): string | null {
+  if (difficulty === 'ensign') return null
+  const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  if (enemies.length === 0) return null
+  const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
+  let best: string | null = null
+  let bestScore = -Infinity
+  for (const enemy of enemies) {
+    const nearestOwn = nearest(enemy, own)
+    if (!nearestOwn) continue
+    const danger = estimatedVolleyDamage(enemy, nearestOwn.placement.position, 0)
+    const score = danger / (structureRemaining(enemy) + 4)
+    if (score > bestScore || (score === bestScore && best !== null && enemy.id < best)) {
+      bestScore = score
+      best = enemy.id
+    }
+  }
+  return best
+}
+
+function bestVolley(
+  game: GameState,
+  ship: ShipState,
+  difficulty: AiDifficulty,
+  focusId: string | null = null,
+): GameAction | null {
   const obstacles = terrainObstacles(game.scenario.terrain)
   let best: {
     targetId: string
@@ -1074,6 +1132,9 @@ function bestVolley(game: GameState, ship: ShipState, difficulty: AiDifficulty):
     const level = damageLevel(enemy)
     const focus = difficulty === 'admiral' ? 2 : 1
     score += focus * (level === 'crippled' ? 3 : level === 'heavy' ? 2 : level === 'moderate' ? 1 : 0)
+    // The squadron kills one ship at a time (fleet focus): a worthwhile
+    // volley on the shared target beats a slightly better one elsewhere.
+    if (enemy.id === focusId) score += 4
 
     const better =
       difficulty === 'ensign'
