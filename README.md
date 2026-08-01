@@ -91,15 +91,21 @@ that one fact.
   force: it allocates power, arms its batteries, plots blind alongside you, fires in Tactical Scan
   order, repairs, presses boarding actions and withdraws its cripples — all through the same action
   journal as a human, so saves, undo, replay and remote play treat its orders like anyone else's.
-  It reads only what an opponent across the table could see: never your form, your power, or your
-  arming. Launching a test flight from the ship builder now gets you an AI adversary
-  automatically.
+  It reads only what an opponent across the table could see: your position, heading, speed and
+  damage marker — plus your *class* the way a veteran reads the ship book, since the name is on
+  the counter and the charts are public print. It never reads your hidden state: power, arming,
+  or which mounts are wrecked. Launching a test flight from the ship builder now gets you an AI
+  adversary automatically.
 - **Captains that come about.** The movement planner pays for every degree of bow-on progress, so
   a ship that overshoots turns and fights its way back instead of sailing off the map; it prices
   maneuver stress by whether the SIF will actually cancel it, leads its target knowing the target
   is turning too, and — above ensign rank — steers for the position its own firing charts say the
-  batteries are worth most from. Trained ranks also run a real threat assessment, from public
-  table information only — enemies weighted by proximity and how bow-on they sit. On a quiet
+  batteries are worth most from. Trained ranks also run a real threat assessment: each visible
+  enemy's **expected volley damage** is estimated from its printed firing charts at the current
+  range — book knowledge — through the declared targeting and jamming, and scaled down by its
+  public damage marker. The threat axis weighs enemies by that estimate times how bow-on they
+  sit, and every candidate plot is charged for the expected fire arriving at its end position,
+  which is what makes range control emerge: kite the heavy batteries, crowd the light ones. On a quiet
   phase (crippled, discharged, out of position, or holding an all-red volley anyway) the sensors
   go dark and jam at maximum, which pushes enemy effective range out and can deny long-range
   fire entirely (H2.3.7). The same threat axis drives the shields: the threatened side gets the

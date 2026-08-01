@@ -1,5 +1,6 @@
 import type { GameAction } from './actions'
 import { firingOrder, selectBracket } from './combat'
+import { expectedValue } from './dice'
 import {
   asteroidFieldsAt,
   cloakOf,
@@ -60,8 +61,12 @@ import type { CommandCard, Maneuver, Point, TurnDirection } from './types'
  *
  * Honesty: decisions read only what a human opponent could see across the
  * table — positions, headings, speeds, announced shield states, damage levels
- * — plus the AI's own ships in full. It never reads an enemy's form, power
- * allocation or arming.
+ * — plus the AI's own ships in full. Enemy *classes* are read the way a
+ * veteran reads the ship book: the class name is printed on the counter and
+ * the firing charts are public print, so expected-damage estimates from them
+ * are book knowledge, not espionage. What stays unread is the enemy's hidden
+ * current state — power allocation, arming, which mounts are wrecked — which
+ * is approximated only from the public damage-level marker (B1.9).
  *
  * Idempotence: planning duties (allocation, plotting) compare the computed
  * plan against the ship's current state and emit only differences, so being
@@ -444,10 +449,43 @@ function positionHidden(game: GameState, ship: ShipState): boolean {
 }
 
 /**
- * The table's own threat picture: where the incoming fire will come from.
- * Enemies are weighted by proximity and by how bow-on they sit — a ship
- * pointed at you is a ship about to have you in arc. Public surface only:
- * positions, headings, nothing an opponent across the table could not see.
+ * Book knowledge: what a volley from this enemy would be expected to do to a
+ * ship standing at `targetPos`. The class and its printed firing charts are
+ * public — the name is on the counter and the ship book is on the shelf —
+ * so a veteran reads dice-expectation off the enemy's own charts at the
+ * bracket the current range, their declared targeting and our jamming give.
+ * What is NOT public — their power, arming, which mounts are wrecked — is
+ * approximated by the one damage fact the table does show: the damage-level
+ * marker (B1.9), which scales the estimate down as the enemy breaks up.
+ */
+export function estimatedVolleyDamage(enemy: ShipState, targetPos: Point, myJamming: number): number {
+  const actual = actualRange(enemy.placement.position, targetPos)
+  const effective = effectiveRange(actual, myJamming, enemy.sensors.targeting)
+  let total = 0
+  for (const weapon of enemy.form.weapons) {
+    if (isHoming(weapon)) continue
+    const found = selectBracket(weapon, effective, false)
+    if (!found) continue
+    const special = weapon.special?.damage ?? 0
+    const bonus = found.bracket.bonus ?? 0
+    const perMount = found.bracket.dice.reduce(
+      (sum, color) => sum + expectedValue(color, special, bonus),
+      0,
+    )
+    total += perMount * weapon.mounts.length
+  }
+  const level = damageLevel(enemy)
+  const scale =
+    level === 'crippled' ? 0.35 : level === 'heavy' ? 0.6 : level === 'moderate' ? 0.85 : 1
+  return total * scale
+}
+
+/**
+ * The table's own threat picture: where the incoming fire will come from,
+ * weighted by how much of it each enemy is good for. Each visible enemy
+ * contributes its estimated volley damage at the current range, times how
+ * bow-on it sits — a ship pointed at you is a ship about to have you in
+ * arc. Public surface only.
  */
 function threatPoint(game: GameState, ship: ShipState): Point | null {
   const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
@@ -456,11 +494,13 @@ function threatPoint(game: GameState, ship: ShipState): Point | null {
   let wy = 0
   let total = 0
   for (const e of enemies) {
-    const range = actualRange(ship.placement.position, e.placement.position)
     const bearing = relativeBearing(e.placement.position, e.placement.heading, ship.placement.position)
     const offBow = Math.min(bearing, 360 - bearing)
     const aim = 1 + (180 - offBow) / 180 // 2 when bow-on … 1 when pointed away
-    const weight = aim / (range + 4)
+    const danger = estimatedVolleyDamage(e, ship.placement.position, ship.sensors.jamming)
+    // A floor keeps a currently-harmless enemy on the map: it can still close.
+    const range = actualRange(ship.placement.position, e.placement.position)
+    const weight = aim * (danger + 4 / (range + 4))
     wx += e.placement.position.x * weight
     wy += e.placement.position.y * weight
     total += weight
@@ -533,6 +573,7 @@ function bestPlot(
    * threat axis, not just the target of the moment.
    */
   const threat = threatPoint(game, ship)
+  const visibleEnemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
    * captain wants their bow on us just as we want ours on them, so a
@@ -634,6 +675,19 @@ function bestPlot(
           ...facing.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
         )
         score += weakest * (fp > 0 ? 0.15 : 0.4)
+
+        /**
+         * And the fire coming the other way: each enemy's expected volley at
+         * this end position, by book knowledge. Standing where the enemy's
+         * charts are rich while yours are poor is how ships die — this term
+         * is what makes range control emerge: kite the heavy batteries,
+         * crowd the light ones.
+         */
+        const incoming = visibleEnemies.reduce(
+          (sum, e) => sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming),
+          0,
+        )
+        score -= incoming * 0.15
       }
 
       /**
@@ -705,6 +759,11 @@ function bestPlot(
             ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
           )
           s += weakest2 * (fp2 > 0 ? 0.15 : 0.4)
+          s -=
+            visibleEnemies.reduce(
+              (sum, e) => sum + estimatedVolleyDamage(e, then.end.position, ship.sensors.jamming),
+              0,
+            ) * 0.15
           if (s > bestNext) bestNext = s
         }
         if (bestNext > -Infinity) score += bestNext * 0.5
