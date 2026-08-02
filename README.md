@@ -59,17 +59,24 @@ that one fact.
   both directions; the host's journal is the authority, so crossed actions heal automatically.
   Works across home networks in most cases (a very strict NAT may refuse the direct path).
 - **Online matches.** *Online* in the top bar hosts the battle on screen as a **persistent
-  match**: it lives on a tiny match service (see `server/`), gated by a password, shared by a
-  six-character code — and it stays up when everyone leaves. Refresh, switch devices, come back
-  tomorrow: enrollment is remembered and the battle replays to exactly where it stood, which is
-  the end of refresh death. The service holds no rules, just the ordered action journal; custom
-  scenarios and custom ships travel inside the match like they do in battle files. Sides show
-  live presence, the host's device drives any AI sides, and matches idle for 7 days are cleaned
-  up. Deploying your own service is a one-time `wrangler deploy` on a free Cloudflare account —
-  see `server/README.md`. Nobody types a server address: set the repository variable
-  `MATCH_SERVER` to your Worker URL and the Pages build pre-fills it for every visitor, and the
-  host's **invite link** carries server, code and password in the URL fragment — a joiner taps
-  it, picks a side, and is in.
+  match**: it lives on a match service, gated by a password, shared by a short code — and it
+  stays up when everyone leaves. Refresh, switch devices, come back tomorrow: enrollment is
+  remembered and the battle replays to exactly where it stood, which is the end of refresh
+  death. The service holds no rules, just the ordered action journal — it hands out the sequence
+  numbers, so two players acting in the same instant get a definite order and both boards
+  converge on it; custom scenarios and custom ships travel inside the match like they do in
+  battle files. Sides show live presence, and the host's device drives any AI sides.
+
+  Two backends, same behaviour, pick either: **Supabase** — paste one SQL file into the
+  dashboard and copy two values, no CLI and nothing to deploy (`supabase/README.md`); or a
+  **Cloudflare Worker** — one `wrangler deploy`, or the included GitHub Action if you would
+  rather not install anything (`server/README.md`). Nobody has to type an address: set the
+  repository variables (`SUPABASE_URL` + `SUPABASE_ANON_KEY`, or `MATCH_SERVER`) and the Pages
+  build pre-fills them for every visitor. The host's **invite link** carries the service, code
+  and password — plus the anon key on Supabase, which is public by design — in the URL
+  fragment, which browsers never send to any server: a joiner taps it, picks a side, and is in.
+  The Supabase client is fetched only when a match is actually opened, so solo play carries none
+  of its weight.
 - **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a

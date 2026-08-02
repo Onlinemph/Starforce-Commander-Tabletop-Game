@@ -7,9 +7,14 @@ import {
   applyRemoteSave,
   applyRemoteUndo,
   currentSave,
+  journalLength,
   setNetHooks,
   suppressAi,
 } from './store'
+// The Supabase client is a substantial dependency and most battles never
+// touch it, so it is fetched only when an online match actually needs it.
+// The type import is erased at build time and costs nothing.
+import type { MatchLink } from './supabaseMatch'
 
 /**
  * Online matches: the copy-paste link, grown a memory.
@@ -48,16 +53,39 @@ export interface OnlineState {
  * building. The Online panel still lets a player point elsewhere.
  */
 export const DEFAULT_MATCH_SERVER: string =
-  (import.meta.env.VITE_MATCH_SERVER as string | undefined) ?? ''
+  (import.meta.env.VITE_MATCH_SERVER as string | undefined) ??
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
+  ''
+
+/**
+ * A Supabase project needs its publishable anon key alongside the URL. The
+ * key is designed to be public — it ships in every client bundle — so it also
+ * rides inside invite links, which is what lets a friend join a Supabase
+ * match without configuring anything at all.
+ */
+export const DEFAULT_MATCH_KEY: string =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? ''
 
 const ENROLL_KEY = 'sfc.online-match.v1'
 
 interface Enrollment {
   server: string
+  /** Supabase anon key; absent for a Worker match service. */
+  key?: string
   matchId: string
   password: string
   side: string | null
   creator: boolean
+}
+
+/** Does this address name a Supabase project rather than a Worker service? */
+export function looksLikeSupabase(url: string): boolean {
+  return /supabase\.(co|in|net)/i.test(url) || /^https?:\/\/[^/]*supabase/i.test(url)
+}
+
+/** Which backend an enrollment speaks to. */
+function isSupabase(enrolled: Pick<Enrollment, 'server' | 'key'>): boolean {
+  return Boolean(enrolled.key) && looksLikeSupabase(enrolled.server)
 }
 
 let state: OnlineState = {
@@ -73,6 +101,7 @@ let state: OnlineState = {
 }
 
 let socket: WebSocket | null = null
+let supabase: MatchLink | null = null
 let enrollment: Enrollment | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
 let retryDelay = 2000
@@ -159,6 +188,13 @@ function connect(): void {
   if (retryTimer) clearTimeout(retryTimer)
   retryTimer = null
   socket?.close()
+  supabase?.close()
+  supabase = null
+
+  if (isSupabase(enrolled)) {
+    void connectSupabase(enrolled)
+    return
+  }
 
   let ws: WebSocket
   try {
@@ -199,6 +235,91 @@ function connect(): void {
     retryTimer = setTimeout(connect, retryDelay)
     retryDelay = Math.min(retryDelay * 2, 30000)
   }
+}
+
+/**
+ * The Supabase path. Same three duties as the socket path — take the ledger
+ * whole on arrival, hand the store somewhere to send its actions, and keep
+ * trying when the link drops — with Postgres as the ordering authority and
+ * Realtime as the relay.
+ */
+async function connectSupabase(enrolled: Enrollment): Promise<void> {
+  set({
+    phase: state.phase === 'connected' ? 'reconnecting' : 'connecting',
+    server: enrolled.server,
+    matchId: enrolled.matchId,
+    error: null,
+  })
+
+  const retry = () => {
+    if (leaving || enrollment !== enrolled) return
+    set({ phase: 'reconnecting' })
+    if (retryTimer) clearTimeout(retryTimer)
+    retryTimer = setTimeout(connect, retryDelay)
+    retryDelay = Math.min(retryDelay * 2, 30000)
+  }
+
+  const { openSupabaseMatch } = await import('./supabaseMatch')
+  const { opened, error } = await openSupabaseMatch(
+    { url: enrolled.server, key: enrolled.key ?? '' },
+    enrolled.matchId,
+    enrolled.password,
+    enrolled.side,
+    {
+      onAction: (action, seq) => {
+        if (applyRemoteAction(action, seq, false) === 'mismatch') void supabase?.resync()
+      },
+      onResync: (save) => {
+        applyRemoteSave(save)
+      },
+      onPresence: (present) => set({ present }),
+      onDropped: retry,
+    },
+    journalLength,
+  )
+
+  // A wrong password or a missing match is final; a link that would not open
+  // is worth another try.
+  if (!opened) {
+    if (enrollment !== enrolled) return
+    if (/password|no match/i.test(error ?? '')) {
+      leaveMatch()
+      set({ phase: 'failed', error: error ?? 'That match could not be opened.' })
+      return
+    }
+    set({ error: error ?? null })
+    retry()
+    return
+  }
+  if (enrollment !== enrolled || leaving) {
+    opened.link.close()
+    return
+  }
+
+  retryDelay = 2000
+  supabase = opened.link
+
+  const problem = applyRemoteSave(opened.save)
+  if (problem) {
+    leaveMatch()
+    set({ phase: 'failed', error: problem })
+    return
+  }
+  // One AI driver per match — the creator's client.
+  suppressAi(!enrolled.creator)
+  setNetHooks({
+    onAction: (action, seq) => void supabase?.append(action, seq),
+    onUndo: (lengthAfter) => void supabase?.undo(lengthAfter),
+    onReplace: (saved) => void supabase?.replace(saved),
+  })
+  set({
+    phase: 'connected',
+    matchName: opened.name,
+    sides: opened.sides,
+    side: enrolled.side,
+    creator: enrolled.creator,
+    error: null,
+  })
 }
 
 function receive(msg: ServerMessage): void {
@@ -260,8 +381,31 @@ export async function createMatch(
   password: string,
   side: string | null,
   sides: string[],
+  key?: string,
 ): Promise<string | null> {
   const save = currentSave()
+
+  if (key && looksLikeSupabase(server)) {
+    const { createSupabaseMatch } = await import('./supabaseMatch')
+    const { id, error } = await createSupabaseMatch(
+      { url: server, key },
+      name,
+      password,
+      sides,
+      save,
+    )
+    if (!id) {
+      set({ phase: 'failed', error: error ?? 'The project refused the match.' })
+      return null
+    }
+    rtcHangUp(null)
+    enrollment = { server, key, matchId: id, password, side, creator: true }
+    remember()
+    retryDelay = 2000
+    connect()
+    return id
+  }
+
   let res: Response
   try {
     res = await fetch(`${origin(server)}/api/matches`, {
@@ -286,10 +430,11 @@ export async function createMatch(
 }
 
 /** Join a match by code and password. The battle arrives over the link. */
-export function joinMatch(server: string, matchId: string, password: string): void {
+export function joinMatch(server: string, matchId: string, password: string, key?: string): void {
   rtcHangUp(null)
   enrollment = {
     server,
+    key: key || undefined,
     matchId: matchId.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
     password,
     side: null,
@@ -306,7 +451,8 @@ export function claimSide(side: string): void {
   enrollment.side = side
   remember()
   set({ side })
-  sendRaw({ t: 'claim', side })
+  if (supabase) void supabase.claim(side)
+  else sendRaw({ t: 'claim', side })
 }
 
 /** Leave for good: forget the enrollment and stop reconnecting. */
@@ -318,6 +464,8 @@ export function leaveMatch(): void {
   retryTimer = null
   socket?.close()
   socket = null
+  supabase?.close()
+  supabase = null
   setNetHooks(null)
   suppressAi(false)
   set({
@@ -338,6 +486,11 @@ export function lastServer(): string {
   return recall()?.server ?? state.server
 }
 
+/** The last Supabase key used, for pre-filling the panel. */
+export function lastKey(): string {
+  return recall()?.key ?? ''
+}
+
 // ---------------------------------------------------------------------------
 // Invite links — the whole join, in one tap
 // ---------------------------------------------------------------------------
@@ -350,7 +503,14 @@ export function lastServer(): string {
  */
 export function inviteLink(): string | null {
   if (!enrollment) return null
-  const payload = { s: enrollment.server, m: enrollment.matchId, p: enrollment.password }
+  const payload = {
+    s: enrollment.server,
+    m: enrollment.matchId,
+    p: enrollment.password,
+    // The anon key is public by design, and carrying it means a joiner needs
+    // nothing configured — the link is the whole setup.
+    ...(enrollment.key ? { k: enrollment.key } : {}),
+  }
   const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(payload))))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -368,12 +528,13 @@ function joinFromHash(): boolean {
       s?: string
       m?: string
       p?: string
+      k?: string
     }
     // The invite is consumed: a refresh reconnects via the enrollment, not
     // by replaying the link.
     history.replaceState(null, '', location.pathname + location.search)
     if (!payload.s || !payload.m || typeof payload.p !== 'string') return false
-    joinMatch(payload.s, payload.m, payload.p)
+    joinMatch(payload.s, payload.m, payload.p, payload.k)
     return true
   } catch {
     return false

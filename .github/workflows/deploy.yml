@@ -64,10 +64,16 @@ jobs:
         # fork or a rename needs no edit here.
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          # The match service every visitor's Online panel starts with. Set a
-          # repository *variable* (Settings → Secrets and variables → Actions
-          # → Variables) named MATCH_SERVER to your deployed Worker URL, e.g.
-          # https://sfc-matches.your-name.workers.dev — no code edit needed.
+          # The match service every visitor's Online panel starts with, so
+          # nobody has to paste anything. Set these as repository *variables*
+          # (Settings → Secrets and variables → Actions → Variables) — not
+          # secrets: they are meant to reach the browser, which is exactly
+          # what a Supabase anon key is for.
+          #
+          # Supabase (see supabase/README.md): SUPABASE_URL + SUPABASE_ANON_KEY
+          # Worker service (see server/README.md): MATCH_SERVER
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
           VITE_MATCH_SERVER: ${{ vars.MATCH_SERVER }}
         run: npm run build
 

@@ -3,10 +3,13 @@ import { useGame } from './store'
 import {
   claimSide,
   createMatch,
+  DEFAULT_MATCH_KEY,
   DEFAULT_MATCH_SERVER,
   inviteLink,
   joinMatch,
+  lastKey,
   leaveMatch,
+  looksLikeSupabase,
   useOnline,
 } from './online'
 
@@ -18,18 +21,20 @@ import {
  */
 
 const SERVER_KEY = 'sfc.match-server.v1'
+const ANON_KEY = 'sfc.match-key.v1'
 
-function rememberedServer(): string {
+function remembered(key: string): string {
   try {
-    return localStorage.getItem(SERVER_KEY) ?? ''
+    return localStorage.getItem(key) ?? ''
   } catch {
     return ''
   }
 }
 
-function rememberServer(server: string): void {
+function rememberServer(server: string, anonKey: string): void {
   try {
     localStorage.setItem(SERVER_KEY, server)
+    localStorage.setItem(ANON_KEY, anonKey)
   } catch {
     // Only the pre-fill is lost.
   }
@@ -41,8 +46,15 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
   const sides = [...new Set(game.ships.map((s) => s.side))]
 
   const [server, setServer] = useState(
-    () => online.server || rememberedServer() || DEFAULT_MATCH_SERVER,
+    () => online.server || remembered(SERVER_KEY) || DEFAULT_MATCH_SERVER,
   )
+  const [anonKey, setAnonKey] = useState(
+    () => lastKey() || remembered(ANON_KEY) || DEFAULT_MATCH_KEY,
+  )
+  // A Supabase project needs its publishable key as well as its URL; a Worker
+  // service needs only the address.
+  const needsKey = looksLikeSupabase(server)
+  const ready = server.trim().length > 0 && (!needsKey || anonKey.trim().length > 0)
   const [copied, setCopied] = useState(false)
   const [name, setName] = useState(game.scenario.name)
   const [password, setPassword] = useState('')
@@ -54,17 +66,24 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
   const enrolled = online.matchId !== null && online.phase !== 'idle' && online.phase !== 'failed'
 
   const host = async () => {
-    if (!server.trim() || !password) return
+    if (!ready || !password) return
     setBusy(true)
-    rememberServer(server.trim())
-    await createMatch(server.trim(), name.trim() || game.scenario.name, password, hostSide, sides)
+    rememberServer(server.trim(), anonKey.trim())
+    await createMatch(
+      server.trim(),
+      name.trim() || game.scenario.name,
+      password,
+      hostSide,
+      sides,
+      anonKey.trim() || undefined,
+    )
     setBusy(false)
   }
 
   const join = () => {
-    if (!server.trim() || !code.trim() || !joinPassword) return
-    rememberServer(server.trim())
-    joinMatch(server.trim(), code, joinPassword)
+    if (!ready || !code.trim() || !joinPassword) return
+    rememberServer(server.trim(), anonKey.trim())
+    joinMatch(server.trim(), code, joinPassword, anonKey.trim() || undefined)
   }
 
   return (
@@ -87,13 +106,28 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
               </p>
 
               <label className="field grow">
-                <span>Match server</span>
+                <span>Match service</span>
                 <input
-                  placeholder="sfc-matches.your-name.workers.dev"
+                  placeholder="https://your-project.supabase.co"
                   value={server}
                   onChange={(e) => setServer(e.target.value)}
                 />
               </label>
+              {needsKey && (
+                <label className="field grow">
+                  <span>Supabase anon key</span>
+                  <input
+                    placeholder="eyJhbGciOi…"
+                    value={anonKey}
+                    onChange={(e) => setAnonKey(e.target.value)}
+                  />
+                </label>
+              )}
+              <p className="online-hint">
+                {needsKey
+                  ? 'Supabase project — Settings → API gives you the URL and the anon (publishable) key. The key is meant to be public, so an invite link carries it and your opponent configures nothing.'
+                  : 'A Supabase project URL, or the address of a deployed Worker match service.'}
+              </p>
 
               <div className="online-columns">
                 <section className="online-card">
@@ -124,7 +158,7 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     className="primary"
-                    disabled={busy || !server.trim() || !password}
+                    disabled={busy || !ready || !password}
                     onClick={() => void host()}
                   >
                     Create match
@@ -153,7 +187,7 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     className="primary"
-                    disabled={!server.trim() || !code.trim() || !joinPassword}
+                    disabled={!ready || !code.trim() || !joinPassword}
                     onClick={join}
                   >
                     Join match
