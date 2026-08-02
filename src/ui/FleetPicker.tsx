@@ -83,6 +83,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('captain')
   const [aiPersonality, setAiPersonality] = useState<'steady' | 'aggressive' | 'cautious'>('steady')
   const [aiRetreats, setAiRetreats] = useState(true)
+  const [mapScale, setMapScale] = useState<1 | 2>(1)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -129,6 +130,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       aiDifficulty: ai.length > 0 ? aiDifficulty : undefined,
       aiPersonality: ai.length > 0 && aiPersonality !== 'steady' ? aiPersonality : undefined,
       aiRetreats: ai.length > 0 && !aiRetreats ? false : undefined,
+      mapScale: mapScale !== 1 ? mapScale : undefined,
     })
     onClose()
   }
@@ -192,6 +194,19 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               <option value="4">4 fields</option>
               <option value="6">6 fields</option>
               <option value="8">8 fields</option>
+            </select>
+          </label>
+          <label
+            className="field tiny"
+            title="Deep space doubles the printed map in both directions. Measured: room to turn, repair and reload turns a lone out-reached capital's 0–24 massacre into a 9–15 fight — envelopment only beats reach when the walls are close."
+          >
+            <span>Map size</span>
+            <select
+              value={String(mapScale)}
+              onChange={(e) => setMapScale(Number(e.target.value) === 2 ? 2 : 1)}
+            >
+              <option value="1">Printed (36")</option>
+              <option value="2">Deep space (72")</option>
             </select>
           </label>
           {[...aiSides].some((s) => sides.includes(s)) && (

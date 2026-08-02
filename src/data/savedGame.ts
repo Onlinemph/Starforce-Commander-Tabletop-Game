@@ -30,6 +30,8 @@ export interface GameSetup {
   fleets?: Partial<Record<string, string[]>>
   /** Random asteroid terrain (K1.1): 'roll' or an exact counter count. */
   terrain?: 'roll' | number
+  /** Battlefield multiplier: 2 doubles the printed map (36" → 72"). Default 1. */
+  mapScale?: number
   /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
   aiSides?: string[]
   /** How sharp the computer's captains are. Default 'captain'. */
@@ -67,6 +69,7 @@ export function buildGame(setup: GameSetup): GameState {
     forms: setup.forms,
     fleets: setup.fleets,
     terrain: setup.terrain,
+    mapScale: setup.mapScale,
   })
 }
 

@@ -194,6 +194,13 @@ that one fact.
   Measured: hull losses at hopeless odds went from 24-of-24 to **0-of-24, 24 escapes**, campaign
   ledger from −68 to **0.0 per sortie** — while the winnable two-to-one fight is still fought
   and won at an identical 20W–4L, and every season baseline held.
+- **Deep space: a map-size option.** Choose Forces now offers the printed 36" map or a 72"
+  deep-space board — bounds, terrain and deployment anchors scale together, so the fleets open
+  proportionally further apart. Measured consequence: room to turn, repair and reload is worth
+  more to a lone capital than any doctrine we shipped. The admiral Yorktown-V that went 0W–24L
+  against six frigates on the printed map (dead in all 24) goes 9W–15L in deep space, dies less
+  than half the time, and kills four times as many hulls — envelopment only beats reach when
+  the walls are close. Setup-carried, so saves and replays reproduce the board exactly.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything

@@ -166,3 +166,24 @@ describe('cutting losses', () => {
     expect(stage('captain')).toBe(false)
   })
 })
+
+describe('deep space (mapScale)', () => {
+  it('doubles bounds and opening range together; default stays bit-identical', () => {
+    const printed = startScenario('s3.1-the-duel', { seed: 5 })
+    const deep = startScenario('s3.1-the-duel', { seed: 5, mapScale: 2 })
+    expect(deep.scenario.bounds.width).toBe(printed.scenario.bounds.width * 2)
+    expect(deep.scenario.bounds.height).toBe(printed.scenario.bounds.height * 2)
+    const gap = (g: typeof printed) => {
+      const [a, b] = g.ships
+      return Math.hypot(
+        a.placement.position.x - b.placement.position.x,
+        a.placement.position.y - b.placement.position.y,
+      )
+    }
+    expect(gap(deep)).toBeCloseTo(gap(printed) * 2, 5)
+    const control = startScenario('s3.1-the-duel', { seed: 5 })
+    expect(JSON.stringify(control.ships.map((s) => s.placement))).toBe(
+      JSON.stringify(printed.ships.map((s) => s.placement)),
+    )
+  })
+})
