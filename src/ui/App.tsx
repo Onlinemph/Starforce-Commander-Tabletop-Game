@@ -29,7 +29,7 @@ import { FleetPicker } from './FleetPicker'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
-import { useOnline } from './online'
+import { inMatch, useOnline } from './online'
 import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
 import { ReplayTheater } from './ReplayTheater'
@@ -50,6 +50,14 @@ import {
 
 /** Which side's player is holding the console. Survives a refresh mid-handoff. */
 const VIEW_KEY = 'sfc.view-side.v1'
+
+/**
+ * Why the setup controls stand down inside a match. The battle belongs to the
+ * match ledger, not to this browser: rebuilding it here would put every other
+ * commander's client onto a board that no longer replays.
+ */
+const LOCKED_HINT =
+  'In a match the battle is fixed as its host created it — leave the match to change scenario, forces or options.'
 
 export function App() {
   const game = useGame()
@@ -80,7 +88,19 @@ export function App() {
   const [rawView, setRawView] = useState<string | null>(
     () => (typeof localStorage === 'undefined' ? null : localStorage.getItem(VIEW_KEY)) || null,
   )
-  const viewSide = rawView !== null && sides.includes(rawView) ? rawView : null
+  /**
+   * In a match the view is not a preference. A commander sees their own
+   * fleet's forms and the enemy's public face only, and cannot switch to the
+   * other chair or to the referee's overview — the choice is made by which
+   * side they claimed. (The battle still replays in full in every browser, as
+   * it must for the rules to run locally, so this is the tabletop's own
+   * honour system rather than a cryptographic one: it makes honesty the path
+   * of least effort, exactly as B1.9 intends.)
+   */
+  const enrolledInMatch = inMatch(online)
+  const lockedView = enrolledInMatch && online.side && sides.includes(online.side) ? online.side : null
+  const viewSide =
+    lockedView ?? (rawView !== null && sides.includes(rawView) ? rawView : null)
   const setViewSide = (side: string | null) => {
     setRawView(side)
     try {
@@ -137,9 +157,10 @@ export function App() {
           <span className="subtitle">Digital tabletop · Standard rules · hot-seat &amp; remote</span>
         </div>
 
-        <label className="field inline">
+        <label className="field inline" title={enrolledInMatch ? LOCKED_HINT : undefined}>
           <span>Scenario</span>
           <select
+            disabled={enrolledInMatch}
             value={game.scenario.id}
             onChange={(e) => {
               newGame({
@@ -164,28 +185,42 @@ export function App() {
         >
           <input
             type="checkbox"
+            disabled={enrolledInMatch}
             checked={game.coordinatedFire}
             onChange={(e) => dispatch({ type: 'set-coordinated-fire', on: e.target.checked })}
           />
           Coordinated Fire
         </label>
 
-        <button type="button" className="primary" onClick={() => setPicking(true)}>
+        <button
+          type="button"
+          className="primary"
+          disabled={enrolledInMatch}
+          title={enrolledInMatch ? LOCKED_HINT : undefined}
+          onClick={() => setPicking(true)}
+        >
           Choose forces
         </button>
-        <button type="button" onClick={() => setBuilding(true)} title="Design a ship on the designers' own point model">
+        <button
+          type="button"
+          disabled={enrolledInMatch}
+          onClick={() => setBuilding(true)}
+          title={enrolledInMatch ? LOCKED_HINT : "Design a ship on the designers' own point model"}
+        >
           Ship builder
         </button>
         <button
           type="button"
+          disabled={enrolledInMatch}
           onClick={() => setDesigning(true)}
-          title="Lay out a battle of your own: map, terrain, sides and fleets"
+          title={enrolledInMatch ? LOCKED_HINT : 'Lay out a battle of your own: map, terrain, sides and fleets'}
         >
           Scenario designer
         </button>
         <button
           type="button"
-          title="Same scenario and forces, fresh dice"
+          disabled={enrolledInMatch}
+          title={enrolledInMatch ? LOCKED_HINT : 'Same scenario and forces, fresh dice'}
           onClick={() => newGame({ ...currentSetup(), seed: Math.floor(Math.random() * 1e9) })}
         >
           Rematch
@@ -193,7 +228,12 @@ export function App() {
         <button
           type="button"
           className={net.phase === 'connected' ? 'is-linked' : ''}
-          title="Play this battle against another browser — no server, invite by copy-paste"
+          disabled={enrolledInMatch}
+          title={
+            enrolledInMatch
+              ? 'Already in an online match — leave it to use a direct browser link instead.'
+              : 'Play this battle against another browser — no server, invite by copy-paste'
+          }
           onClick={() => setLinking(true)}
         >
           {net.phase === 'connected' ? '● Linked' : 'Remote play'}
@@ -210,7 +250,7 @@ export function App() {
               ? '… Online'
               : 'Online'}
         </button>
-        <BattleMenu game={game} onReplay={() => setReplaying(true)} />
+        <BattleMenu game={game} locked={enrolledInMatch} onReplay={() => setReplaying(true)} />
       </header>
 
       {picking && (
@@ -278,37 +318,48 @@ export function App() {
             <div className="map-controls">
               <div className="view-chips" title="B1.9 — ship forms are hidden information. A side view shows only what that commander may see.">
                 <span>Viewing</span>
-                <button
-                  type="button"
-                  className={`chip${viewSide === null ? ' is-on' : ''}`}
-                  onClick={() => setViewSide(null)}
-                >
-                  Open table
-                </button>
-                {sides.map((side) => (
-                  <button
-                    key={side}
-                    type="button"
-                    className={`chip${viewSide === side ? ' is-on' : ''}`}
-                    onClick={() => setViewSide(side)}
-                  >
-                    {side}
-                  </button>
-                ))}
-                {viewSide !== null &&
-                  sides
-                    .filter((side) => side !== viewSide)
-                    .map((side) => (
+                {lockedView ? (
+                  <>
+                    <span className="chip is-on is-locked" title="In a match you see your own fleet's forms and the enemy's public face only. Claim a different side in the Online panel to change chairs.">
+                      🔒 {lockedView}
+                    </span>
+                    <span className="hint">your command</span>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`chip${viewSide === null ? ' is-on' : ''}`}
+                      onClick={() => setViewSide(null)}
+                    >
+                      Open table
+                    </button>
+                    {sides.map((side) => (
                       <button
-                        key={`pass-${side}`}
+                        key={side}
                         type="button"
-                        className="chip"
-                        title="Blank the screen, hand the device over, and let the next player take command"
-                        onClick={() => setHandoff(side)}
+                        className={`chip${viewSide === side ? ' is-on' : ''}`}
+                        onClick={() => setViewSide(side)}
                       >
-                        ⇄ pass to {side}
+                        {side}
                       </button>
                     ))}
+                    {viewSide !== null &&
+                      sides
+                        .filter((side) => side !== viewSide)
+                        .map((side) => (
+                          <button
+                            key={`pass-${side}`}
+                            type="button"
+                            className="chip"
+                            title="Blank the screen, hand the device over, and let the next player take command"
+                            onClick={() => setHandoff(side)}
+                          >
+                            ⇄ pass to {side}
+                          </button>
+                        ))}
+                  </>
+                )}
               </div>
               <label className="checkbox">
                 <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
@@ -482,7 +533,16 @@ function battleReport(game: GameState): string {
  * file is small, replays exactly, and carries any custom designs it needs —
  * hand it to another player and they resume your game to the die roll.
  */
-function BattleMenu({ game, onReplay }: { game: GameState; onReplay: () => void }) {
+function BattleMenu({
+  game,
+  locked,
+  onReplay,
+}: {
+  game: GameState
+  /** In a match: saving and reading stay, loading a different battle does not. */
+  locked: boolean
+  onReplay: () => void
+}) {
   const [note, setNote] = useState<string | null>(null)
 
   const download = (contents: string, filename: string, type: string) => {
@@ -520,11 +580,19 @@ function BattleMenu({ game, onReplay }: { game: GameState; onReplay: () => void 
       >
         Replay
       </button>
-      <label className="chip file-chip" title="Resume a battle from a downloaded file">
+      <label
+        className={`chip file-chip${locked ? ' is-disabled' : ''}`}
+        title={
+          locked
+            ? 'In a match the battle comes from the match ledger — leave the match to load a file.'
+            : 'Resume a battle from a downloaded file'
+        }
+      >
         Load file
         <input
           type="file"
           accept=".json,application/json"
+          disabled={locked}
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) void load(file)

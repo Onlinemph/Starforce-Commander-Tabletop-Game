@@ -3585,3 +3585,71 @@ button.chip:hover:not(:disabled) {
   font-size: 0.75rem;
   color: var(--ink-dim);
 }
+
+/* ---------------------------------------------------------------------------
+   Match browser — what is on offer, at a glance
+   --------------------------------------------------------------------------- */
+
+.match-browser {
+  margin-top: 0.9rem;
+}
+
+.browser-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.match-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.match-row {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border: 1px solid var(--line, #2c3a52);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  cursor: pointer;
+}
+
+.match-row:hover {
+  border-color: var(--accent, #ffb851);
+}
+
+.match-row.is-on {
+  border-color: var(--accent, #ffb851);
+  background: rgba(255, 184, 81, 0.12);
+}
+
+.match-title {
+  font-weight: 600;
+}
+
+.match-meta {
+  font-size: 0.82em;
+  opacity: 0.72;
+}
+
+/* A view the player may not change: their chair in a match. */
+.chip.is-locked {
+  cursor: default;
+  letter-spacing: 0.02em;
+}
+
+.chip.is-disabled,
+.chip.file-chip.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

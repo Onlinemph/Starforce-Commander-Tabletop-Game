@@ -77,6 +77,18 @@ that one fact.
   fragment, which browsers never send to any server: a joiner taps it, picks a side, and is in.
   The Supabase client is fetched only when a match is actually opened, so solo play carries none
   of its weight.
+
+  A match is also a sealed table. Its scenario, fleets, terrain and options are frozen at
+  creation, and while you are enrolled every control that would rebuild the battle — scenario
+  picker, fleet picker, ship builder, scenario designer, rematch, coordinated fire, loading a
+  file, the direct browser link — stands down, because a battle rebuilt here would leave every
+  other commander replaying a board that no longer exists. Your view is pinned to the side you
+  command: enemy ship forms are sealed and only their public face shows, which is the rulebook's
+  own hidden-information model (B1.9). Every client still replays the whole battle locally, as
+  it must for the rules to run without a server, so this is the tabletop's honour system made
+  the path of least effort rather than a cryptographic guarantee. On Supabase there is also a
+  **match browser**: hosts can list a match publicly, and anyone on the project sees its name,
+  sides and progress — never its battle, and joining still costs the password.
 - **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a

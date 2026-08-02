@@ -50,6 +50,10 @@ create table if not exists sfc_actions (
   primary key (match_id, seq)
 );
 
+-- Listed in the match browser, or reachable only by its code. Added after the
+-- first release, so existing databases pick it up on a re-run.
+alter table sfc_matches add column if not exists is_public boolean not null default true;
+
 create index if not exists sfc_actions_match_seq on sfc_actions (match_id, seq);
 create index if not exists sfc_matches_updated on sfc_matches (updated_at);
 
@@ -89,11 +93,16 @@ end $$;
 -- anything. That check is the whole security model, exactly as it was on the
 -- previous server: know the code and the password, join the battle.
 
+-- The signature gained p_public after the first release; the old one has to
+-- go or a four-argument call becomes ambiguous.
+drop function if exists sfc_create_match(text, text, jsonb, jsonb);
+
 create or replace function sfc_create_match(
   p_name     text,
   p_password text,
   p_sides    jsonb,
-  p_setup    jsonb
+  p_setup    jsonb,
+  p_public   boolean default true
 ) returns text
 language plpgsql security definer set search_path = public, extensions as $$
 declare
@@ -111,16 +120,46 @@ begin
     exit when not exists (select 1 from sfc_matches where id = v_id);
   end loop;
 
-  insert into sfc_matches (id, name, password_hash, sides, setup)
+  insert into sfc_matches (id, name, password_hash, sides, setup, is_public)
   values (
     v_id,
     coalesce(nullif(p_name, ''), 'A StarForce battle'),
     crypt(p_password, gen_salt('bf')),
     coalesce(p_sides, '[]'::jsonb),
-    p_setup
+    p_setup,
+    coalesce(p_public, true)
   );
   return v_id;
 end $$;
+
+/**
+ * The match browser: what is on offer, without opening anything.
+ *
+ * Deliberately thin — a name, the sides, how far along it is and when it last
+ * moved. No battle, no setup, and above all no password hash: joining still
+ * costs the password, so listing a match gives nothing away but its existence.
+ * Matches hosted privately are not listed at all.
+ */
+create or replace function sfc_list_matches(p_limit integer default 40)
+returns jsonb
+language sql security definer set search_path = public, extensions as $$
+  select coalesce(jsonb_agg(t.row order by t.updated_at desc), '[]'::jsonb)
+  from (
+    select m.updated_at,
+           jsonb_build_object(
+             'id', m.id,
+             'name', m.name,
+             'sides', m.sides,
+             'updatedAt', m.updated_at,
+             'createdAt', m.created_at,
+             'moves', (select count(*) from sfc_actions a where a.match_id = m.id)
+           ) as row
+      from sfc_matches m
+     where m.is_public
+     order by m.updated_at desc
+     limit greatest(coalesce(p_limit, 40), 1)
+  ) t;
+$$;
 
 -- Open a match: the whole battle, if the password is right.
 create or replace function sfc_open_match(p_id text, p_password text)
@@ -266,7 +305,8 @@ begin
 end $$;
 
 -- The browser calls these with the public anon key; nothing else is exposed.
-grant execute on function sfc_create_match(text, text, jsonb, jsonb)   to anon, authenticated;
+grant execute on function sfc_create_match(text, text, jsonb, jsonb, boolean) to anon, authenticated;
+grant execute on function sfc_list_matches(integer)                    to anon, authenticated;
 grant execute on function sfc_open_match(text, text)                   to anon, authenticated;
 grant execute on function sfc_append_action(text, text, integer, jsonb) to anon, authenticated;
 grant execute on function sfc_undo(text, text, integer)                to anon, authenticated;

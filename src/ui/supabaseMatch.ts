@@ -84,6 +84,42 @@ function saveFrom(setup: unknown, actions: unknown): SavedGame {
   }
 }
 
+/** One line in the match browser: enough to choose by, nothing more. */
+export interface MatchSummary {
+  id: string
+  name: string
+  sides: string[]
+  moves: number
+  updatedAt: string
+}
+
+/**
+ * What is on offer. Deliberately thin — no battle, no setup, no password
+ * hash — so listing a match reveals nothing but that it exists. Joining
+ * still costs the password.
+ */
+export async function listSupabaseMatches(
+  config: SupabaseConfig,
+  limit = 40,
+): Promise<{ matches?: MatchSummary[]; error?: string }> {
+  const client = clientFor(config)
+  const { data, error } = await client.rpc('sfc_list_matches', { p_limit: limit })
+  if (error) return { error: reasonFrom(error, 'Could not list matches.') }
+  const rows = Array.isArray(data) ? data : []
+  return {
+    matches: rows.map((row) => {
+      const r = row as Partial<MatchSummary> & { updatedAt?: string }
+      return {
+        id: String(r.id ?? ''),
+        name: String(r.name ?? 'A StarForce battle'),
+        sides: Array.isArray(r.sides) ? r.sides.map(String) : [],
+        moves: Number(r.moves ?? 0),
+        updatedAt: String(r.updatedAt ?? ''),
+      }
+    }),
+  }
+}
+
 /** Host the battle on screen as a persistent match. Resolves to its code. */
 export async function createSupabaseMatch(
   config: SupabaseConfig,
@@ -91,6 +127,7 @@ export async function createSupabaseMatch(
   password: string,
   sides: string[],
   save: SavedGame,
+  isPublic = true,
 ): Promise<{ id?: string; error?: string }> {
   const client = clientFor(config)
   const { data, error } = await client.rpc('sfc_create_match', {
@@ -98,6 +135,7 @@ export async function createSupabaseMatch(
     p_password: password,
     p_sides: sides,
     p_setup: save.setup,
+    p_public: isPublic,
   })
   if (error || typeof data !== 'string') {
     return { error: reasonFrom(error, 'The project refused the match.') }

@@ -382,6 +382,7 @@ export async function createMatch(
   side: string | null,
   sides: string[],
   key?: string,
+  isPublic = true,
 ): Promise<string | null> {
   const save = currentSave()
 
@@ -393,6 +394,7 @@ export async function createMatch(
       password,
       sides,
       save,
+      isPublic,
     )
     if (!id) {
       set({ phase: 'failed', error: error ?? 'The project refused the match.' })
@@ -489,6 +491,27 @@ export function lastServer(): string {
 /** The last Supabase key used, for pre-filling the panel. */
 export function lastKey(): string {
   return recall()?.key ?? ''
+}
+
+/**
+ * Enrolled in a match — connected, connecting or reconnecting. While this
+ * holds, the battle belongs to the match rather than to this browser: its
+ * setup is fixed, and the controls that would rebuild it stand down.
+ */
+export function inMatch(state: OnlineState): boolean {
+  return state.matchId !== null && state.phase !== 'idle' && state.phase !== 'failed'
+}
+
+/** Browse the matches a project is offering. Supabase backend only. */
+export async function browseMatches(
+  server: string,
+  key: string,
+): Promise<{ matches?: import('./supabaseMatch').MatchSummary[]; error?: string }> {
+  if (!key || !looksLikeSupabase(server)) {
+    return { error: 'The match browser needs a Supabase project.' }
+  }
+  const { listSupabaseMatches } = await import('./supabaseMatch')
+  return listSupabaseMatches({ url: server, key })
 }
 
 // ---------------------------------------------------------------------------

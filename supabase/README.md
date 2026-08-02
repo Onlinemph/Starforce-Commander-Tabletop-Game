@@ -68,8 +68,18 @@ like a Supabase project). Both are remembered in your browser.
 Then either:
 
 - **Host this battle** — names a password, and the battle currently on screen
-  becomes the match. You get a **match code** and an **invite link**.
+  becomes the match. Set the scenario, fleets, terrain and options up *before*
+  hosting: they are frozen into the match at that moment and nobody can change
+  them afterwards. You get a **match code** and an **invite link**. Untick
+  *List in the match browser* to keep a match reachable only by its code.
 - **Join a match** — with a code and password from the host.
+- **Open matches** — the browser lists every match hosted publicly on this
+  project. Clicking one fills in its code; you still need its password.
+
+While you are in a match the setup controls stand down — no scenario change,
+no fleet picker, no ship builder, no rematch, no loading another battle — and
+your view is pinned to the side you command, so enemy ship forms stay sealed.
+Leave the match to get them back.
 
 The invite link carries the project URL, the anon key, the match code and the
 password in its `#fragment` — which browsers never send to any server. Whoever

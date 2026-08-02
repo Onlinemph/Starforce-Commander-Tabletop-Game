@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from './store'
 import {
+  browseMatches,
   claimSide,
   createMatch,
   DEFAULT_MATCH_KEY,
@@ -12,6 +13,7 @@ import {
   looksLikeSupabase,
   useOnline,
 } from './online'
+import type { MatchSummary } from './supabaseMatch'
 
 /**
  * The online lobby. Host the battle on screen as a persistent match — it
@@ -62,6 +64,10 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState('')
   const [joinPassword, setJoinPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [listed, setListed] = useState(true)
+  const [browse, setBrowse] = useState<MatchSummary[] | null>(null)
+  const [browsing, setBrowsing] = useState(false)
+  const [browseError, setBrowseError] = useState<string | null>(null)
 
   const enrolled = online.matchId !== null && online.phase !== 'idle' && online.phase !== 'failed'
 
@@ -76,9 +82,26 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
       hostSide,
       sides,
       anonKey.trim() || undefined,
+      listed,
     )
     setBusy(false)
   }
+
+  const refreshBrowse = async () => {
+    if (!ready || !needsKey) return
+    setBrowsing(true)
+    setBrowseError(null)
+    const { matches, error } = await browseMatches(server.trim(), anonKey.trim())
+    setBrowse(matches ?? [])
+    setBrowseError(error ?? null)
+    setBrowsing(false)
+  }
+
+  // The list is worth having ready the moment the panel opens.
+  useEffect(() => {
+    if (!enrolled && needsKey && ready && browse === null) void refreshBrowse()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrolled, needsKey, ready])
 
   const join = () => {
     if (!ready || !code.trim() || !joinPassword) return
@@ -155,6 +178,17 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                       ))}
                     </select>
                   </label>
+                  <label
+                    className="checkbox"
+                    title="Listed matches appear in the browser for anyone using this project. The password is still required to join; unlisted matches are reachable only by their code or invite link."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={listed}
+                      onChange={(e) => setListed(e.target.checked)}
+                    />
+                    List in the match browser
+                  </label>
                   <button
                     type="button"
                     className="primary"
@@ -163,6 +197,11 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                   >
                     Create match
                   </button>
+                  <p className="hint">
+                    The scenario, fleets, terrain and options are fixed into the match as it is
+                    created — set the battle up before hosting, because nobody can change it
+                    afterwards.
+                  </p>
                 </section>
 
                 <section className="online-card">
@@ -194,6 +233,53 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                   </button>
                 </section>
               </div>
+
+              {needsKey && (
+                <section className="online-card match-browser">
+                  <div className="browser-head">
+                    <h3>Open matches</h3>
+                    <button
+                      type="button"
+                      className="chip"
+                      disabled={!ready || browsing}
+                      onClick={() => void refreshBrowse()}
+                    >
+                      {browsing ? 'Looking…' : 'Refresh'}
+                    </button>
+                  </div>
+                  {browseError && <p className="online-error">{browseError}</p>}
+                  {browse !== null && browse.length === 0 && !browseError && (
+                    <p className="hint">
+                      Nothing listed yet. Host a battle above and it will appear here for
+                      everyone using this project.
+                    </p>
+                  )}
+                  {browse !== null && browse.length > 0 && (
+                    <ul className="match-list">
+                      {browse.map((m) => (
+                        <li key={m.id}>
+                          <button
+                            type="button"
+                            className={`match-row${code.trim().toUpperCase() === m.id ? ' is-on' : ''}`}
+                            title="Pick this match, then type its password above"
+                            onClick={() => setCode(m.id)}
+                          >
+                            <span className="match-title">{m.name}</span>
+                            <span className="match-meta">
+                              {m.id} · {m.sides.join(' vs ') || 'unknown sides'} ·{' '}
+                              {m.moves === 0 ? 'not started' : `${m.moves} moves`}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="hint">
+                    Picking a match fills its code in above. You still need the password its host
+                    chose.
+                  </p>
+                </section>
+              )}
             </>
           )}
 
