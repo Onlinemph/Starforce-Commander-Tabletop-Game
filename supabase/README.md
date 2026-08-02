@@ -35,21 +35,35 @@ never readable by a browser.
 
 ## 3. Copy the two values
 
-Open **Project Settings** (the gear) → **API**. You need:
+Easiest route: the **Connect** button at the top of the project dashboard. It
+shows the Project URL and an API key together, ready to copy — under the
+*App Frameworks* tab they appear as `SUPABASE_URL` and `SUPABASE_ANON_KEY` (or
+`SUPABASE_PUBLISHABLE_KEY`).
 
-- **Project URL** — `https://<something>.supabase.co`
-- **anon / public key** — the long `eyJ…` string, labelled *anon* or
-  *publishable*
+Failing that, **Project Settings** → **API Keys** for the key, and **Project
+Settings** → **Data API** for the URL. Supabase moved these out of the old
+combined *API* page, so older walkthroughs (including the first draft of this
+one) point at a page that no longer exists.
 
-The anon key is designed to be public; it ships in the browser bundle of every
-Supabase app. Do **not** copy the `service_role` key — that one is a secret and
-the game never wants it.
+You need:
+
+- **Project URL** — `https://<project-ref>.supabase.co`. If you cannot find it
+  anywhere, read it off your browser's address bar: the dashboard URL is
+  `supabase.com/dashboard/project/<project-ref>`, and your Project URL is
+  `https://<project-ref>.supabase.co`.
+- **A publishable key** — `sb_publishable_…`, or a legacy `eyJ…` *anon* key.
+  Either works.
+
+Both key types are designed to be public; they ship in the browser bundle of
+every Supabase app. Never paste the **secret** key (`sb_secret_…`, formerly
+`service_role`) — it bypasses every security rule, and the game has no use
+for it.
 
 ## 4. Play
 
 Open the game → **Online match**. Paste the Project URL into **Match service**
-and the anon key into **Supabase anon key** (the key field appears once the URL
-looks like a Supabase project). Both are remembered in your browser.
+and the key into **Supabase API key** (the key field appears once the URL looks
+like a Supabase project). Both are remembered in your browser.
 
 Then either:
 
@@ -70,7 +84,7 @@ Actions → Variables**):
 | Name | Value |
 | --- | --- |
 | `SUPABASE_URL` | your Project URL |
-| `SUPABASE_ANON_KEY` | your anon key |
+| `SUPABASE_ANON_KEY` | your publishable (or legacy anon) key |
 
 The deploy workflow passes them to the build as `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_ANON_KEY`, and the Online panel starts pre-filled. Repository

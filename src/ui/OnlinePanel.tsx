@@ -115,9 +115,9 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
               </label>
               {needsKey && (
                 <label className="field grow">
-                  <span>Supabase anon key</span>
+                  <span>Supabase API key</span>
                   <input
-                    placeholder="eyJhbGciOi…"
+                    placeholder="sb_publishable_… or eyJhbGciOi…"
                     value={anonKey}
                     onChange={(e) => setAnonKey(e.target.value)}
                   />
@@ -125,7 +125,7 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
               )}
               <p className="online-hint">
                 {needsKey
-                  ? 'Supabase project — Settings → API gives you the URL and the anon (publishable) key. The key is meant to be public, so an invite link carries it and your opponent configures nothing.'
+                  ? 'Supabase project — the Connect button at the top of your dashboard shows the URL and key together. Use the publishable (or legacy anon) key, never the secret one. Publishable keys are meant to be public, so an invite link carries it and your opponent configures nothing.'
                   : 'A Supabase project URL, or the address of a deployed Worker match service.'}
               </p>
 
