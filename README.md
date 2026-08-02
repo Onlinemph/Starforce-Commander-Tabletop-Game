@@ -167,6 +167,22 @@ that one fact.
   *Steady* plays it straight, *Aggressive* presses unless clearly ahead, *Cautious* protects
   early and presses only from deep in the hole. All season baselines held exactly: duel
   admiral-over-captain 38W–25L, admiral-over-ensign 55W–9L, squadron 27W–5L.
+- **Anti-swarm doctrine: the admiral kites what it cannot outnumber.** Tournament self-play
+  showed numbers beating tonnage everywhere — so when the admiral is outnumbered two to one
+  *and* out-reaches every enemy chart by a real margin, the fight moves to the band the swarm
+  cannot answer from: hold one inch past their farthest bracket (stretched by their declared
+  targeting, shrunk by our jamming — H2.3.3), price slipping inside the band at triple
+  overshooting it, split sensors jam-first because the jamming *is* the moat, and from an
+  untouchable position invert fire discipline entirely — red dice the defender rerolls are free
+  damage when nothing answers, so even the slow-armed heavies discharge. A heavy hull facing
+  those odds cuts its losses and disengages (a departed ship concedes its damage level; a dead
+  one concedes everything, S2.8.4) — which surfaced a long-standing gap, now fixed for every
+  rank: ships that intend to leave actually power the FTL drive during Resource Allocation
+  (J9.1.3); before, cripples resolved to go home and then died at their posts with dark drives.
+  Measured: Yorktown-III vs two Coventrys flipped from 3W–21L to **20W–4L**. Measured honestly
+  the other way too: against five or six hulls the 36-inch board is too small to hold the band —
+  envelopment beats reach — so the doctrine claims the pair fight, not the wall of frigates.
+  All season baselines held exactly.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything

@@ -258,6 +258,25 @@ export function aiNextActions(
   }
 }
 
+/**
+ * Whether this hull intends to leave the battle (J9): a cripple always goes
+ * home; a heavy hull goes when the scoreboard says the lead is worth more
+ * than one more volley, or — admiral doctrine — when it faces twice its
+ * numbers and staying only feeds the enemy the rest of its points (S2.8.4).
+ * Shared by the disengagement plan and by Resource Allocation, because an
+ * FTL departure needs a fully powered drive (J9.1.3) — intending to leave
+ * without funding the drive is how cripples die at their posts.
+ */
+function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
+  const level = damageLevel(ship)
+  if (level === 'crippled') return true
+  if (level !== 'heavy') return false
+  if (postureOf(game, ship, difficulty) === 'protect') return true
+  const enemies = enemiesOf(game, ship)
+  const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
+  return difficulty === 'admiral' && enemies.length >= own.length * 2 && enemies.length >= 2
+}
+
 /** Cloak doctrine (H6): vanish to cross the gulf or to nurse wounds. */
 function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
   if (difficulty === 'ensign' || !cloakOperational(ship)) return false
@@ -321,6 +340,13 @@ function planAllocation(
     if (wantsCloak(game, ship, difficulty)) {
       const cloakLine = ship.form.functions.find((l) => l.label === 'CLOAK')
       if (cloakLine) fill(cloakLine.id, cloakLine.steps.length)
+    }
+    // A ship that intends to leave powers the drive that leaves (J9.1.3) —
+    // before the guns, because a departing hull's volley is worth less than
+    // the points its escape denies.
+    if (difficulty !== 'ensign' && wantsToLeave(game, ship, difficulty)) {
+      const ftlLine = ship.form.functions.find((l) => l.kind === 'ftl-drive')
+      if (ftlLine) fill(ftlLine.id, ftlLine.steps.length)
     }
 
     /**
@@ -540,6 +566,35 @@ interface Candidate {
   accel: number
 }
 
+/**
+ * The outnumbered hull's only winning geometry. Numbers beat tonnage in
+ * close battle — five volleys and five repair parties against one is not a
+ * fight doctrine can fix — so when the enemy brings twice the hulls AND
+ * every one of them is out-reached by this ship's longest chart, the fight
+ * moves to the band the enemy cannot answer from: stand just past the
+ * farthest bracket any of them can strike (their reach, stretched by their
+ * declared targeting, shrunk by our jamming — H2.3.3) and let the long guns
+ * grind. Returns the actual-range inches to hold, or null when the geometry
+ * offers no such band. Admiral doctrine: the read takes the whole table.
+ * Exported for tests.
+ */
+export function kiteBand(game: GameState, ship: ShipState, enemies: ShipState[]): number | null {
+  if (enemies.length < 2) return null
+  const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
+  if (enemies.length < own.length * 2) return null
+  const reachOf = (s: ShipState) =>
+    Math.max(
+      0,
+      ...s.form.weapons.filter((w) => !isHoming(w)).flatMap((w) => w.brackets.map((b) => b.max)),
+    )
+  const myReach = reachOf(ship)
+  const theirReach = Math.max(0, ...enemies.map(reachOf))
+  if (myReach < theirReach + 4) return null
+  const theirTargeting = Math.max(0, ...enemies.map((e) => e.sensors.targeting))
+  const safe = theirReach + theirTargeting - ship.sensors.jamming + 1
+  return Math.min(Math.max(safe, theirReach - ship.sensors.jamming + 1), myReach - 1)
+}
+
 function planOrders(
   game: GameState,
   fleet: ShipState[],
@@ -637,6 +692,15 @@ function planOrders(
       jamming = Math.min(cap, available)
       tacticalScan = Math.min(cap, available - jamming)
       targeting = Math.min(cap, available - jamming - tacticalScan)
+    }
+    // Kiting an out-reached swarm, the sensors ARE the moat: jamming widens
+    // the band the swarm cannot cross (H2.3.7), targeting pulls our own long
+    // shots down-bracket (H2.3.3), and initiative is worthless against ships
+    // that cannot answer at all.
+    if (difficulty === 'admiral' && enemy !== null && kiteBand(game, ship, enemies) !== null) {
+      jamming = Math.min(cap, Math.ceil(available / 2))
+      targeting = Math.min(cap, available - jamming)
+      tacticalScan = Math.min(cap, available - jamming - targeting)
     }
     const want = { targeting, tacticalScan, jamming } as const
     for (const k of ['targeting', 'tacticalScan', 'jamming'] as const) {
@@ -873,7 +937,6 @@ function bestPlot(
   memo: AiMemo | null = null,
 ): Candidate {
   const post = postureOf(game, ship, difficulty)
-  const ideal = preferredRange(ship)
   /**
    * The guns aim at the chosen enemy, but the hull answers to every enemy on
    * the table: the shield you angle away from one attacker you may be
@@ -882,6 +945,10 @@ function bestPlot(
    */
   const threat = threatPoint(game, ship)
   const visibleEnemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  // Against a longer-reached swarm the ideal range is not the green band's
+  // middle — it is the band the swarm cannot answer from.
+  const kite = difficulty === 'admiral' ? kiteBand(game, ship, visibleEnemies) : null
+  const ideal = kite ?? preferredRange(ship)
   const losObstacles = terrainObstacles(game.scenario.terrain)
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
@@ -969,7 +1036,22 @@ function bestPlot(
 
       const end = planned.end
       const range = actualRange(end.position, predicted)
-      let score = -Math.abs(range - ideal) * 0.5
+      /**
+       * Range discipline. Normally the price is symmetric around the guns'
+       * best band. Kiting, it is not: the distance is held against the
+       * NEAREST enemy hull, not the chosen target, and slipping inside the
+       * band costs triple what overshooting it does — an inch too far is a
+       * weaker die, an inch too close is five answering volleys.
+       */
+      let score: number
+      if (kite !== null && visibleEnemies.length > 0) {
+        const nearestRange = Math.min(
+          ...visibleEnemies.map((e) => actualRange(end.position, e.placement.position)),
+        )
+        score = -(kite - nearestRange > 0 ? (kite - nearestRange) * 1.5 : (nearestRange - kite) * 0.5)
+      } else {
+        score = -Math.abs(range - ideal) * 0.5
+      }
 
       /**
        * Keep the bow turning toward the enemy — and pay for every degree of
@@ -1703,6 +1785,20 @@ function bestVolley(
   opts: { onlyTargetId?: string; noPrecision?: boolean } = {},
 ): GameAction | null {
   const obstacles = terrainObstacles(game.scenario.terrain)
+  /**
+   * Untouchable: kiting an out-reached swarm from a band where no enemy's
+   * expected volley registers at all. From there every rule of fire
+   * discipline inverts — red dice the defender rerolls are still free
+   * damage when nothing answers, and a slow-armed heavy discharged into a
+   * red bracket costs nothing it would otherwise be doing.
+   */
+  const visibleForKite = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  const untouchable =
+    difficulty === 'admiral' &&
+    kiteBand(game, ship, visibleForKite) !== null &&
+    visibleForKite.every(
+      (e) => estimatedVolleyDamage(e, ship.placement.position, ship.sensors.jamming) === 0,
+    )
   let best: {
     targetId: string
     mounts: Array<{ weaponId: string; mountIndex: number }>
@@ -1747,6 +1843,7 @@ function bestVolley(
          */
         if (
           difficulty !== 'ensign' &&
+          !untouchable &&
           bracket.bracket.band === 'red' &&
           (mount.roundGates ?? []).some(Boolean) &&
           damageLevel(enemy) !== 'heavy' &&
@@ -1792,6 +1889,7 @@ function bestVolley(
   if (
     difficulty !== 'ensign' &&
     !opts.onlyTargetId && // a declared group's attack is already spent — take the shot
+    !untouchable && // free damage is never held
     best.allRed &&
     best.level !== 'heavy' &&
     best.level !== 'crippled' &&
@@ -1880,14 +1978,7 @@ function planDisengagement(
 ): GameAction[] {
   const actions: GameAction[] = []
   for (const ship of fleet) {
-    const level = damageLevel(ship)
-    // A cripple always goes home. With a lead on the scoreboard, a heavy
-    // hull goes too — its remaining points are worth more denied to the
-    // enemy than spent on one more volley (S2.8.4).
-    const leaves =
-      level === 'crippled' ||
-      (level === 'heavy' && postureOf(game, ship, difficulty) === 'protect')
-    if (!leaves) continue
+    if (!wantsToLeave(game, ship, difficulty)) continue
     const enemies = enemiesOf(game, ship)
     const options = disengagementOptions(
       ship,
