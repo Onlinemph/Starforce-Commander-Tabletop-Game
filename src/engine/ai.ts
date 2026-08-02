@@ -281,7 +281,12 @@ function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty
    * itself prices the refusal at half value and the stand at all of it
    * (S2.8.4), so the admiral declines the battle while declining is free.
    */
-  if (difficulty === 'admiral' && enemies.length >= own.length * 3 && enemies.length >= 3) {
+  if (
+    !(globalThis as { process?: { env?: Record<string, string> } }).process?.env?.REFUSE_OFF &&
+    difficulty === 'admiral' &&
+    enemies.length >= own.length * 3 &&
+    enemies.length >= 3
+  ) {
     return true
   }
   if (level !== 'heavy' && level !== 'moderate') return false
