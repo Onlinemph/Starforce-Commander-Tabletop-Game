@@ -393,6 +393,14 @@ export interface GameState {
    * passed.
    */
   pendingVolleys: HeldVolley[]
+  /**
+   * The table's public record of shield punishment: every volley resolves in
+   * the open — the struck side is declared and the absorption narrated — so
+   * both players can tally what each facing has soaked. Keyed by ship id,
+   * then shield side; counts shield boxes seen absorbed. Repairs happen in
+   * secret and are NOT reflected, which is exactly a human's uncertainty.
+   */
+  shieldHitsSeen: Record<string, Partial<Record<ShieldSide, number>>>
   /** Ships that have raised or lowered a shield this phase (G1.1.5). */
   shieldChangedThisPhase: Set<string>
   /** Command ship and lent tactical scan, per side, for this round (H5.2). */
@@ -483,6 +491,7 @@ export function createGame(args: {
     log: [],
     firedThisSegment: new Set(),
     pendingVolleys: [],
+    shieldHitsSeen: {},
     shieldChangedThisPhase: new Set(),
     command,
     coordinatedFire: args.coordinatedFire ?? false,
@@ -519,6 +528,18 @@ export function damageContext(game: GameState): DamageContext {
   }
 }
 
+/** Note publicly-observed shield absorption on a facing — the whole table saw it. */
+export function recordShieldHit(
+  game: GameState,
+  targetId: string,
+  side: ShieldSide,
+  absorbed: number,
+): void {
+  if (absorbed <= 0) return
+  const record = (game.shieldHitsSeen[targetId] ??= {})
+  record[side] = (record[side] ?? 0) + absorbed
+}
+
 /** One held volley, landed: what the flush applied and what it did. */
 export interface FlushedVolley {
   attackerId: string
@@ -542,6 +563,7 @@ export function flushPendingVolleys(game: GameState): FlushedVolley[] {
     // remaining damage is simultaneous overkill and changes nothing.
     if (!target || target.destroyed || target.disengaged) continue
     const outcome = applyHeldVolley(target, held, damageContext(game))
+    recordShieldHit(game, target.id, held.damage.side, outcome.greenAbsorbed + outcome.blueAbsorbed)
     pushLog(
       game,
       `${held.attackerName}'s held volley lands on ${target.name}: ` +

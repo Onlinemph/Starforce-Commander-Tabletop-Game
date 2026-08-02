@@ -65,9 +65,13 @@ import type { CommandCard, Maneuver, Point, ShieldSide, TurnDirection, WeaponSys
  * — plus the AI's own ships in full. Enemy *classes* are read the way a
  * veteran reads the ship book: the class name is printed on the counter and
  * the firing charts are public print, so expected-damage estimates from them
- * are book knowledge, not espionage. What stays unread is the enemy's hidden
- * current state — power allocation, arming, which mounts are wrecked — which
- * is approximated only from the public damage-level marker (B1.9).
+ * are book knowledge, not espionage. Shield state is estimated from the
+ * table's public record: every volley declares its struck side and narrates
+ * its absorption in the open, and `game.shieldHitsSeen` is that tally —
+ * secret repairs stay invisible, exactly a human's uncertainty. What stays
+ * unread is the enemy's hidden current state — power allocation, arming,
+ * which mounts are wrecked — approximated only from the public damage-level
+ * marker (B1.9).
  *
  * Idempotence: planning duties (allocation, plotting) compare the computed
  * plan against the ship's current state and emit only differences, so being
@@ -390,7 +394,15 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
     const card = game.orders[ship.id]
     if (!card) continue
     const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
-    const enemy = nearest(ship, enemies)
+    /**
+     * The helm and the guns hunt the same ship. Trained ranks steer at the
+     * squadron's focus target — the kill the whole side is converging on —
+     * not merely whatever is closest, so a fleet herds its chosen prey
+     * instead of drifting into three private duels. The ensign chases the
+     * nearest counter.
+     */
+    const focusId = difficulty === 'ensign' ? null : focusTargetFor(game, ship, difficulty)
+    const enemy = enemies.find((e) => e.id === focusId) ?? nearest(ship, enemies)
 
     const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
     if (card.maneuver !== plan.maneuver || card.direction !== plan.direction) {
@@ -503,6 +515,38 @@ export function estimatedVolleyDamage(enemy: ShipState, targetPos: Point, myJamm
   const scale =
     level === 'crippled' ? 0.35 : level === 'heavy' ? 0.6 : level === 'moderate' ? 0.85 : 1
   return total * scale
+}
+
+/**
+ * What the table's record says is left of an enemy shield: printed strength
+ * (book knowledge) minus the absorption everyone has watched that facing
+ * soak. Secret repairs are invisible, so this can underestimate — exactly
+ * the educated guess a human makes from the same seat.
+ */
+export function estimatedShieldRemaining(game: GameState, enemy: ShipState, side: ShieldSide): number {
+  const printed = enemy.form.shields.blue[side] + enemy.form.shields.green[side]
+  const seen = game.shieldHitsSeen[enemy.id]?.[side] ?? 0
+  return Math.max(0, printed - seen)
+}
+
+/**
+ * How broken the shield this position attacks into is, 0 (fresh) to 1
+ * (stripped). On an arc boundary the attacker picks the shield, so the most
+ * broken option counts (E6.2 Step 4).
+ */
+export function facingWeakness(
+  game: GameState,
+  enemy: ShipState,
+  attackerPos: Point,
+  enemyPos: Point,
+): number {
+  const struck = shieldsFacing(attackerPos, enemyPos, enemy.placement.heading)
+  let weakness = 0
+  for (const side of struck) {
+    const printed = Math.max(1, enemy.form.shields.blue[side] + enemy.form.shields.green[side])
+    weakness = Math.max(weakness, 1 - Math.min(1, estimatedShieldRemaining(game, enemy, side) / printed))
+  }
+  return weakness
 }
 
 /**
@@ -690,7 +734,15 @@ function bestPlot(
       // volunteered.
       if (difficulty !== 'ensign') {
         const fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
-        score += fp * 0.4
+        /**
+         * Deep maneuver: the same guns are worth up to double pointed at a
+         * battered facing. Which enemy shield this position attacks into is
+         * geometry; how much of it is left is the table's public record —
+         * so a ship works its way around onto the flank it has been
+         * hammering, instead of trading into a fresh screen.
+         */
+        const weakness = facingWeakness(game, enemy, end.position, predicted)
+        score += fp * 0.4 * (1 + weakness)
         // On an arc boundary the attacker picks the shield (E6.2 Step 4),
         // so the weakest facing side is the one that will be hit. With a
         // shot on the board the guns come first; on a quiet approach the
@@ -778,7 +830,7 @@ function bestPlot(
           let s = -Math.abs(r2 - ideal) * 0.5 + ((180 - off2) / 180) * 3 - then.stress * 1.5
           if (off2 < 45) s += 1.5
           const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
-          s += fp2 * 0.4
+          s += fp2 * 0.4 * (1 + facingWeakness(game, enemy, then.end.position, afterEnemy))
           const facing2 = shieldsFacing(threat ?? afterEnemy, then.end.position, then.end.heading)
           const weakest2 = Math.min(
             ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
@@ -1186,8 +1238,10 @@ function bestVolley(
   /**
    * Land the damage on the weak shield. When the geometry sits on an arc
    * boundary the attacker nominates which facing shield is struck (E6.2
-   * Step 4) — and the printed strengths differ by side, book knowledge
-   * again. The ensign takes whatever the table gives it.
+   * Step 4). Weak means what the table knows: printed strength minus the
+   * absorption everyone has watched that side soak — so a facing this ship
+   * has been hammering stays the target of choice even when its printed
+   * strength matches its neighbour's. The ensign takes what it is given.
    */
   let chosenShield: ShieldSide | undefined
   if (difficulty !== 'ensign') {
@@ -1197,9 +1251,10 @@ function bestVolley(
       target.placement.heading,
     )
     if (options.length > 1) {
-      const printed = (side: ShieldSide) =>
-        target.form.shields.blue[side] + target.form.shields.green[side]
-      chosenShield = [...options].sort((a, b) => printed(a) - printed(b))[0]
+      chosenShield = [...options].sort(
+        (a, b) =>
+          estimatedShieldRemaining(game, target, a) - estimatedShieldRemaining(game, target, b),
+      )[0]
     }
   }
 

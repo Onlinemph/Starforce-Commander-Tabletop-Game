@@ -113,7 +113,17 @@ that one fact.
   one kill — highest threat over least structure, computed identically by every ship so the
   fleet coordinates without a channel; scarce arming points are concentrated to *ready* mounts
   instead of spread into half-charged silence; and the admiral takes the scalpel to broken ships
-  at knife range, precision-firing the weapons section (E9) with its all-PREC batteries. On a quiet
+  at knife range, precision-firing the weapons section (E9) with its all-PREC batteries.
+- **Deep maneuver planning.** The game keeps the table's public record of shield punishment —
+  every volley declares its struck side and narrates its absorption in the open, and
+  `shieldHitsSeen` is that tally (secret repairs stay invisible, exactly a human's uncertainty).
+  Trained ranks read it everywhere: a firing position is worth up to double when it attacks into
+  a battered facing, so ships work their way around onto the flank they have been hammering —
+  across phases, through the admiral's lookahead, because a turn pivots only after the full move
+  and flanking is inherently a multi-phase plan; boundary nominations weigh the record over the
+  book, so a hammered strong side outranks a fresh weak one; and the helm steers at the
+  squadron's focus kill rather than whatever is closest, so a fleet herds its chosen prey
+  instead of drifting into private duels. On a quiet
   phase (crippled, discharged, out of position, or holding an all-red volley anyway) the sensors
   go dark and jam at maximum, which pushes enemy effective range out and can deny long-range
   fire entirely (H2.3.7). The same threat axis drives the shields: the threatened side gets the

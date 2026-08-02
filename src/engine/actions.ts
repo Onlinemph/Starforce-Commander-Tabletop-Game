@@ -49,6 +49,7 @@ import {
   setSabotageSquads,
   setShieldDown,
   flushPendingVolleys,
+  recordShieldHit,
   tacticalScanOf,
   terrainObstacles,
   tractorIncomingHoming,
@@ -400,6 +401,16 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
           (result.held ? ' — damage held for simultaneous resolution (H2.4.2)' : ''),
       )
       if (result.held) game.pendingVolleys.push(result.held)
+      // A landed volley's shield absorption is public — both players saw the
+      // side declared and the boxes come off. Held volleys record at flush.
+      if (result.outcome) {
+        recordShieldHit(
+          game,
+          target.id,
+          result.damage.side,
+          result.outcome.greenAbsorbed + result.outcome.blueAbsorbed,
+        )
+      }
       const flushed = maybeFlushTieGroup(game)
       return { message: null, volley: result, flushed }
     }
