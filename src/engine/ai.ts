@@ -270,6 +270,11 @@ export function aiNextActions(
 function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
   const level = damageLevel(ship)
   if (level === 'crippled') return true
+  if ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.RAID_EXIT_MODERATE && level === 'moderate' && difficulty === 'admiral') {
+    const enemies0 = enemiesOf(game, ship)
+    const own0 = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
+    if (enemies0.length >= own0.length * 2 && enemies0.length >= 2) return true
+  }
   if (level !== 'heavy') return false
   if (postureOf(game, ship, difficulty) === 'protect') return true
   const enemies = enemiesOf(game, ship)
@@ -579,6 +584,7 @@ interface Candidate {
  * Exported for tests.
  */
 export function kiteBand(game: GameState, ship: ShipState, enemies: ShipState[]): number | null {
+  if ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.RAID_DIVE) return null
   if (enemies.length < 2) return null
   const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
   if (enemies.length < own.length * 2) return null
