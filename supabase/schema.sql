@@ -11,7 +11,19 @@
 -- protocol, and it is why a refresh, a new device, or a week away all replay
 -- to exactly the same board.
 
-create extension if not exists pgcrypto;
+-- Supabase keeps extensions in their own schema; a plain Postgres puts them
+-- in public. Install into whichever exists, and every function below searches
+-- both — otherwise crypt() and gen_random_bytes() are simply invisible.
+do $$
+begin
+  if not exists (select 1 from pg_extension where extname = 'pgcrypto') then
+    begin
+      execute 'create extension pgcrypto with schema extensions';
+    exception when others then
+      execute 'create extension pgcrypto';
+    end;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -83,7 +95,7 @@ create or replace function sfc_create_match(
   p_sides    jsonb,
   p_setup    jsonb
 ) returns text
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_id text;
 begin
@@ -113,7 +125,7 @@ end $$;
 -- Open a match: the whole battle, if the password is right.
 create or replace function sfc_open_match(p_id text, p_password text)
 returns jsonb
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   m    sfc_matches;
   acts jsonb;
@@ -152,7 +164,7 @@ create or replace function sfc_append_action(
   p_seq      integer,
   p_action   jsonb
 ) returns integer
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   m      sfc_matches;
   v_next integer;
@@ -183,7 +195,7 @@ create or replace function sfc_undo(
   p_password     text,
   p_length_after integer
 ) returns integer
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   m sfc_matches;
 begin
@@ -214,7 +226,7 @@ create or replace function sfc_replace_match(
   p_setup    jsonb,
   p_actions  jsonb
 ) returns void
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   m sfc_matches;
   a jsonb;
@@ -244,7 +256,7 @@ end $$;
 --   select cron.schedule('sfc-sweep', '0 4 * * *', $$select sfc_sweep(30)$$);
 create or replace function sfc_sweep(p_days integer default 30)
 returns integer
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   n integer;
 begin
