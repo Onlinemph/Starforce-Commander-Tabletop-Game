@@ -136,17 +136,29 @@ select routine_name from information_schema.routines
 where routine_name like 'sfc_%' order by routine_name;
 ```
 
-The key works — open this in a browser (your own URL and key), and expect an
-empty array `[]`:
+The key works — the game only ever calls functions, so test a function. Paste
+this into a browser devtools console (F12), with your own URL and key:
 
-```
-https://<project-ref>.supabase.co/rest/v1/sfc_actions?select=seq&limit=1&apikey=<your key>
+```js
+fetch('https://<project-ref>.supabase.co/rest/v1/rpc/sfc_open_match', {
+  method: 'POST',
+  headers: {
+    apikey: '<your key>',
+    Authorization: 'Bearer <your key>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ p_id: 'ZZZZZZZZ', p_password: 'x' }),
+}).then(r => r.text()).then(console.log)
 ```
 
-Do **not** test with the bare `/rest/v1/` root: that endpoint is API
-introspection and Supabase restricts it to secret keys, so a perfectly good
-publishable key comes back with *"Secret API key required"* and looks broken
-when it is not.
+Expect `{"code":"P0001","message":"No match with that code."}` — that refusal
+is the success: the key authenticated and the function ran.
+
+Two browser URLs that look like failures but are not worth testing: the bare
+`/rest/v1/` root is API introspection and is restricted to secret keys
+(*"Secret API key required"*), and table paths like `/rest/v1/sfc_actions`
+depend on Data API settings the game never relies on. Neither says anything
+about whether a match will work.
 
 ## If something does not work
 
