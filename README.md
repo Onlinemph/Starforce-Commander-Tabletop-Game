@@ -183,6 +183,17 @@ that one fact.
   the other way too: against five or six hulls the 36-inch board is too small to hold the band —
   envelopment beats reach — so the doctrine claims the pair fight, not the wall of frigates.
   All season baselines held exactly.
+- **The admiral declines the donation.** The campaign-ledger experiment (enemy hulls
+  permanently destroyed vs own hull permanently lost) ruled out every heroic option at
+  three-to-one odds: diving kills a third of a frigate before dying, kiting is enveloped, and a
+  flight begun at half health ends under the guns 22 sorties in 24. A ship that has resolved to
+  leave now actually *flies* like one — distance from every gun, fight-shaped scoring dropped,
+  and the board edge treated as the door it legally is (J9.2.2) rather than a wall — and above
+  all, the admiral refuses a three-to-one battle outright while refusing is free, since the
+  scoreboard prices the refusal at half value and the stand at nearly all of it (S2.8.4).
+  Measured: hull losses at hopeless odds went from 24-of-24 to **0-of-24, 24 escapes**, campaign
+  ledger from −68 to **0.0 per sortie** — while the winnable two-to-one fight is still fought
+  and won at an identical 20W–4L, and every season baseline held.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything

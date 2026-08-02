@@ -94,6 +94,29 @@ describe('untouchable fire discipline inverts', () => {
   })
 })
 
+describe('refusing the hopeless battle', () => {
+  it('at three to one the admiral declines whole — the captain stands and dies', () => {
+    // Measured to the bone before this existed: at these odds no doctrine
+    // wins or even escapes once engaged. Refusing concedes half value
+    // (S2.8.4); standing conceded nearly all of it, 24 sorties in 24.
+    const stage = (difficulty: 'captain' | 'admiral') => {
+      const game = startScenario('s3.1-the-duel', {
+        seed: 3,
+        fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(3).fill(COVENTRY) },
+      })
+      const big = game.ships.find((s) => s.side === 'Blue Force')!
+      const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
+      big.allocation[ftlLine.id] = ftlLine.steps.length
+      game.segment = 'disengagement'
+      return aiNextActions(game, ['Blue Force'], createAiMemo(), false, difficulty).some(
+        (a) => a.type === 'disengage',
+      )
+    }
+    expect(stage('admiral')).toBe(true)
+    expect(stage('captain')).toBe(false)
+  })
+})
+
 describe('cutting losses', () => {
   function heavyAndOutnumbered(): { game: GameState; big: ShipState } {
     const { game, big } = goliathBoard(2)

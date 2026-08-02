@@ -270,16 +270,29 @@ export function aiNextActions(
 function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
   const level = damageLevel(ship)
   if (level === 'crippled') return true
-  if ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.RAID_EXIT_MODERATE && level === 'moderate' && difficulty === 'admiral') {
-    const enemies0 = enemiesOf(game, ship)
-    const own0 = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
-    if (enemies0.length >= own0.length * 2 && enemies0.length >= 2) return true
-  }
-  if (level !== 'heavy') return false
-  if (postureOf(game, ship, difficulty) === 'protect') return true
   const enemies = enemiesOf(game, ship)
   const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
-  return difficulty === 'admiral' && enemies.length >= own.length * 2 && enemies.length >= 2
+  /**
+   * Hopeless odds are refused outright, whole hull and all. Measured to the
+   * bone: at three-to-one and beyond, no doctrine on offer wins or even
+   * escapes once engaged — kiting is enveloped (the board is six moves
+   * across), diving kills a third of a frigate before dying, and a flight
+   * begun at half health ends under the guns 22 times in 24. The scoreboard
+   * itself prices the refusal at half value and the stand at all of it
+   * (S2.8.4), so the admiral declines the battle while declining is free.
+   */
+  if (difficulty === 'admiral' && enemies.length >= own.length * 3 && enemies.length >= 3) {
+    return true
+  }
+  if (level !== 'heavy' && level !== 'moderate') return false
+  if (level === 'heavy' && postureOf(game, ship, difficulty) === 'protect') return true
+  if (difficulty !== 'admiral') return false
+  const outnumbered = enemies.length >= own.length * 2 && enemies.length >= 2
+  if (!outnumbered) return false
+  // Against twice the numbers a heavy hull always cuts its losses, and a
+  // moderate one already losing on points calls the sortie failed — half
+  // the hull conceded now beats all of it conceded three rounds from now.
+  return level === 'heavy' || postureOf(game, ship, difficulty) === 'press'
 }
 
 /** Cloak doctrine (H6): vanish to cross the gulf or to nurse wounds. */
@@ -584,7 +597,6 @@ interface Candidate {
  * Exported for tests.
  */
 export function kiteBand(game: GameState, ship: ShipState, enemies: ShipState[]): number | null {
-  if ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.RAID_DIVE) return null
   if (enemies.length < 2) return null
   const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
   if (enemies.length < own.length * 2) return null
@@ -955,6 +967,15 @@ function bestPlot(
   // middle — it is the band the swarm cannot answer from.
   const kite = difficulty === 'admiral' ? kiteBand(game, ship, visibleEnemies) : null
   const ideal = kite ?? preferredRange(ship)
+  /**
+   * A ship that has resolved to leave stops flying like a ship that means
+   * to fight. Measured before this existed: goliaths that "decided" to
+   * disengage at heavy damage still steered their bows at the enemy while
+   * the drive charged, and died at their posts in 48 of 48 sorties. A
+   * leaver's helm has two goals only: distance from every gun, and the
+   * board edge — which is not a wall but the door (J9.2.2).
+   */
+  const fleeing = difficulty !== 'ensign' && wantsToLeave(game, ship, difficulty)
   const losObstacles = terrainObstacles(game.scenario.terrain)
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
@@ -1049,11 +1070,15 @@ function bestPlot(
        * band costs triple what overshooting it does — an inch too far is a
        * weaker die, an inch too close is five answering volleys.
        */
+      const nearestRange =
+        visibleEnemies.length > 0
+          ? Math.min(...visibleEnemies.map((e) => actualRange(end.position, e.placement.position)))
+          : Infinity
       let score: number
-      if (kite !== null && visibleEnemies.length > 0) {
-        const nearestRange = Math.min(
-          ...visibleEnemies.map((e) => actualRange(end.position, e.placement.position)),
-        )
+      if (fleeing) {
+        // Every inch from the nearest gun is the whole plan.
+        score = nearestRange === Infinity ? 40 : nearestRange
+      } else if (kite !== null && visibleEnemies.length > 0) {
         score = -(kite - nearestRange > 0 ? (kite - nearestRange) * 1.5 : (nearestRange - kite) * 0.5)
       } else {
         score = -Math.abs(range - ideal) * 0.5
@@ -1068,10 +1093,12 @@ function bestPlot(
        * with sailing on forever. The continuous reward is the gradient that
        * makes coming about win on its own merits at every rank.
        */
-      const bearing = relativeBearing(end.position, end.heading, predicted)
-      const offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
-      score += ((180 - offBow) / 180) * 3
-      if (offBow < 45) score += 1.5
+      if (!fleeing) {
+        const bearing = relativeBearing(end.position, end.heading, predicted)
+        const offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
+        score += ((180 - offBow) / 180) * 3
+        if (offBow < 45) score += 1.5
+      }
 
       // Rank is what the officer optimises. The ensign flies by feel —
       // bearing and range — while trained captains read their own firing
@@ -1079,7 +1106,7 @@ function bestPlot(
       // from, and present their healthiest shield to the fire coming back:
       // when one side is stripped, showing it to the enemy is hull damage
       // volunteered.
-      if (difficulty !== 'ensign') {
+      if (difficulty !== 'ensign' && !fleeing) {
         const fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
         /**
          * Deep maneuver: the same guns are worth up to double pointed at a
@@ -1147,9 +1174,24 @@ function bestPlot(
       const uncovered = Math.max(0, planned.stress - covered)
       score -= (planned.stress - uncovered) * 0.5 + uncovered * 4
 
-      // The board edge is disengagement (S2.2.1) — do not back into it.
+      // The board edge is disengagement (S2.2.1) — a wall to a ship that
+      // means to fight, the door itself to one that means to leave (J9.2.2).
       const { width, height } = game.scenario.bounds
-      if (end.position.x < 2 || end.position.y < 2 || end.position.x > width - 2 || end.position.y > height - 2) {
+      if (fleeing) {
+        if (
+          end.position.x < 0 ||
+          end.position.y < 0 ||
+          end.position.x > width ||
+          end.position.y > height
+        ) {
+          score += 30
+        }
+      } else if (
+        end.position.x < 2 ||
+        end.position.y < 2 ||
+        end.position.x > width - 2 ||
+        end.position.y > height - 2
+      ) {
         score -= 8
       }
 
@@ -1170,7 +1212,7 @@ function bestPlot(
        * *sequence* that brings the batteries to bear, and knows a plot that
        * looks level now can be the one that wins the next phase.
        */
-      if (difficulty === 'admiral') {
+      if (difficulty === 'admiral' && !fleeing) {
         const afterEnemy = {
           x: predicted.x + ev.x * enemy.speed,
           y: predicted.y + ev.y * enemy.speed,
