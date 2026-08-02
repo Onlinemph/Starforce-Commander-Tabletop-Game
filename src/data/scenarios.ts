@@ -251,6 +251,12 @@ export interface SetupOptions {
    * same field.
    */
   terrain?: 'roll' | number
+  /**
+   * Battlefield multiplier: 1 fights on the printed map, 2 doubles it in both
+   * directions (36" → 72"). More room favors reach, speed and repair over
+   * envelopment.
+   */
+  mapScale?: number
 }
 
 /**
@@ -664,19 +670,46 @@ export function printedForce(scenarioId: string, side: string): string[] {
 
 export function startScenario(scenarioId: string, options: SetupOptions = {}): GameState {
   const entry = entryFor(scenarioId)
+  /**
+   * A map scale of 2 doubles the battlefield in both directions — deep-space
+   * room to turn, repair and reload. Bounds, printed terrain and deployment
+   * anchors all scale together, so the sides open proportionally further
+   * apart while each side's own formation keeps its printed shape.
+   */
+  const scale = Math.max(1, options.mapScale ?? 1)
+  const bounds: MapBounds = {
+    ...entry.scenario.bounds,
+    width: entry.scenario.bounds.width * scale,
+    height: entry.scenario.bounds.height * scale,
+  }
+  const scaledScenario: Scenario = {
+    ...entry.scenario,
+    bounds,
+    terrain: entry.scenario.terrain.map((t) => ({
+      ...t,
+      center: { x: t.center.x * scale, y: t.center.y * scale },
+    })),
+  }
+  const sides =
+    scale === 1
+      ? entry.sides
+      : entry.sides.map((s) => ({
+          ...s,
+          anchor: { x: s.anchor.x * scale, y: s.anchor.y * scale },
+        }))
   // The scenario is cloned so generated terrain never leaks into the module's
   // shared definition — and the game's own RNG is left untouched, so a battle
   // with terrain rolls the same combat dice as one without.
   const scenario: Scenario = {
-    ...entry.scenario,
+    ...scaledScenario,
     terrain: [
-      ...entry.scenario.terrain,
-      ...rollAsteroidTerrain(entry.scenario, options.terrain, options.seed ?? 0),
+      ...scaledScenario.terrain,
+      ...rollAsteroidTerrain(scaledScenario, options.terrain, options.seed ?? 0),
     ],
   }
   return createGame({
     scenario,
-    ships: deploy(entry.sides, scenario.bounds, options),
+    ships: deploy(sides, scenario.bounds, options),
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
     options: {
