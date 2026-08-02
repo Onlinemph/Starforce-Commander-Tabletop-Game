@@ -125,6 +125,29 @@ The action feed itself is readable by anyone who knows a match code, since that
 is what Realtime delivers to subscribers. The codes are random 8-character
 strings; guessing one gets an eavesdropper a fleet battle between strangers.
 
+## Checking the setup before you play
+
+Two quick checks, both from the dashboard or the address bar.
+
+The schema is in place — run this in the SQL editor and expect six rows:
+
+```sql
+select routine_name from information_schema.routines
+where routine_name like 'sfc_%' order by routine_name;
+```
+
+The key works — open this in a browser (your own URL and key), and expect an
+empty array `[]`:
+
+```
+https://<project-ref>.supabase.co/rest/v1/sfc_actions?select=seq&limit=1&apikey=<your key>
+```
+
+Do **not** test with the bare `/rest/v1/` root: that endpoint is API
+introspection and Supabase restricts it to secret keys, so a perfectly good
+publishable key comes back with *"Secret API key required"* and looks broken
+when it is not.
+
 ## If something does not work
 
 - **"That password does not open this match."** — the password is wrong, or
