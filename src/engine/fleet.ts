@@ -126,7 +126,7 @@ export function validateFleets(
       }
       const rarity = availabilityIn(form, year)
       if (rarity === 'unavailable') {
-        push('error', `${form.name} does not enter service until ${form.year} (S2.5.4).`)
+        push('warning', `${form.name} does not enter service until ${form.year} (S2.5.4).`)
         continue
       }
       const bucket = byRarity.get(rarity) ?? { points: 0, count: 0, names: [] }
@@ -143,7 +143,7 @@ export function validateFleets(
       const share = uncommon.points / total
       if (share > AVAILABILITY_SHARE.uncommon) {
         push(
-          'error',
+          'warning',
           `Uncommon ships are ${Math.round(share * 100)}% of the force by point value; ` +
             `S2.5.4 allows 40% once you field more than one (${uncommon.names.join(', ')}).`,
         )
@@ -155,7 +155,7 @@ export function validateFleets(
       const share = rare.points / total
       if (share > AVAILABILITY_SHARE.rare) {
         push(
-          'error',
+          'warning',
           `Rare ships are ${Math.round(share * 100)}% of the force by point value; S2.5.4 allows ` +
             `20% — "these ships are valuable and rarely travel alone" (${rare.names.join(', ')}).`,
         )
@@ -173,7 +173,7 @@ export function validateFleets(
   if (uniquesInBattle > 1) {
     problems.push({
       side: fleets[0]?.side ?? '',
-      severity: 'error',
+      severity: 'warning',
       message: `${uniquesInBattle} unique ships are in the battle; S2.5.4 allows one.`,
     })
   }

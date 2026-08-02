@@ -5,6 +5,13 @@ import { applyAction } from '../engine/actions'
 import { PHASE_LABELS, SEGMENT_LABELS, victoryPoints, type GameState } from '../engine/game'
 import { fxAfter, fxBefore, type BattleFx } from './fx'
 import { MapView } from './MapView'
+import {
+  canRecordVideo,
+  DEFAULT_RECORD,
+  estimateSeconds,
+  recordReplay,
+  videoExtension,
+} from './replayVideo'
 
 /**
  * The replay theater: any battle file, scrubbed like a tape.
@@ -36,6 +43,9 @@ export function ReplayTheater({ initial, onClose }: Props) {
   const [speed, setSpeed] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [recording, setRecording] = useState<{ done: number; total: number } | null>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const timeline = useMemo(() => buildTimeline(saved), [saved])
   const last = saved.actions.length
@@ -120,6 +130,51 @@ export function ReplayTheater({ initial, onClose }: Props) {
 
   const points = victoryPoints(game)
 
+  /**
+   * Record the battle as a video file. The theater owns the playhead, so it
+   * drives: set the step, let React paint it, and let the recorder take the
+   * frame. Two animation frames is the reliable "it is on screen now" —
+   * one schedules the paint, the second lands after it.
+   */
+  const exportVideo = async () => {
+    if (recording) {
+      abortRef.current?.abort()
+      return
+    }
+    setPlaying(false)
+    setNote(null)
+    const controller = new AbortController()
+    abortRef.current = controller
+    setRecording({ done: 0, total: last })
+    try {
+      const blob = await recordReplay(
+        () => stageRef.current?.querySelector('svg') ?? null,
+        last,
+        async (step) => {
+          setIndex(step)
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        },
+        {
+          ...DEFAULT_RECORD,
+          signal: controller.signal,
+          onProgress: (done, total) => setRecording({ done, total }),
+        },
+      )
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `starforce-replay.${videoExtension()}`
+      link.click()
+      URL.revokeObjectURL(url)
+      setNote(controller.signal.aborted ? 'Recording stopped — the part captured was saved.' : 'Video saved.')
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : 'The recording failed.')
+    } finally {
+      abortRef.current = null
+      setRecording(null)
+    }
+  }
+
   return (
     <div className="picker-backdrop" role="dialog" aria-label="Replay theater">
       <div className="picker theater">
@@ -138,14 +193,30 @@ export function ReplayTheater({ initial, onClose }: Props) {
               }}
             />
           </label>
+          {canRecordVideo() && (
+            <button
+              type="button"
+              className={recording ? 'chip is-on' : 'chip'}
+              onClick={() => void exportVideo()}
+              title={
+                recording
+                  ? 'Stop recording and save what has been captured'
+                  : `Record the whole replay as a video file — about ${estimateSeconds(last)} seconds, played through in real time`
+              }
+            >
+              {recording
+                ? `Recording ${recording.done}/${recording.total} — stop`
+                : '⏺ Export video'}
+            </button>
+          )}
           {note && <span className="hint">{note}</span>}
-          <button type="button" onClick={onClose} aria-label="Close">
+          <button type="button" onClick={onClose} aria-label="Close" disabled={recording !== null}>
             ✕
           </button>
         </header>
 
         <div className="theater-body">
-          <div className="theater-stage">
+          <div className="theater-stage" ref={stageRef}>
             <div className="theater-status">
               <strong>Round {frame.round}</strong>
               <span>{PHASE_LABELS[frame.phase]}</span>

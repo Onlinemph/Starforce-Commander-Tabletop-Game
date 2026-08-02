@@ -89,6 +89,12 @@ that one fact.
   the path of least effort rather than a cryptographic guarantee. On Supabase there is also a
   **match browser**: hosts can list a match publicly, and anyone on the project sees its name,
   sides and progress — never its battle, and joining still costs the password.
+- **Replay to video.** The theater's *Export video* button plays the battle through and records
+  it to a file — WebM, or MP4 where the browser offers it. The map is live SVG styled by the
+  page's stylesheet, which a browser will not rasterise on its own, so each frame is made
+  self-contained first: the CSS folded in, the terrain art embedded as data URLs, then drawn to
+  a canvas a MediaRecorder is watching. Recording runs in real time (a 200-action battle takes
+  about a minute), the button shows progress, and stopping early still saves what was captured.
 - **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a
@@ -759,7 +765,8 @@ the only thing on the map that does not plot its movement.
 Every scenario prints a force, and that is what **Choose forces** opens with. From there you compose
 your own: pick hulls from the roster, set a point budget, and field up to eight ships a side.
 
-The interesting part is **S2.5.4 ship availability**, which is enforced live:
+The interesting part is **S2.5.4 ship availability**, which is checked live and reported as you
+compose — as advice, never as a barrier:
 
 - **Common** — no limit.
 - **Uncommon** — at most 40% of a force by point value, *but you may always have one*, however
@@ -774,8 +781,11 @@ maximum. So the picker has a **battle year**: set it to 3660 and the Yorktown II
 design, set it to 3700 and it is a common workhorse. Set it before a class enters service and you
 cannot field it at all. The roster shows each ship's effective rarity for the year you picked.
 
-An illegal force blocks **Start battle**, with one escape hatch: a scenario's own force composition
-overrides S2.5.4 (S2.5.1), so a "fight anyway" checkbox appears whenever a rule is broken.
+These limits never stop a battle. They are a tournament convention — and a scenario's own force
+composition overrides them outright (S2.5.1) — so breaking one shows a note beside the force and
+nothing more. **Start battle** is barred only by a force that cannot physically take the field: a
+side with no ships, more hulls than the setup zone holds, or a point budget the player set
+themselves. That last handful still offers the "fight anyway" override.
 
 Composed forces deploy into the scenario's own setup zone. A scenario's printed force keeps its
 printed placement exactly; ships beyond it extend the line and fold into a second rank when the line

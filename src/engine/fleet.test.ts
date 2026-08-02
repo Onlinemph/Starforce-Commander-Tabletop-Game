@@ -26,6 +26,16 @@ const byName = (fragment: string): ShipForm =>
 const errors = (problems: ReturnType<typeof validateFleets>) =>
   problems.filter((p) => p.severity === 'error').map((p) => p.message)
 
+/**
+ * S2.5.4's availability limits are advisory here: they are told to the player
+ * and never block the battle, because a digital table that refuses to deal
+ * the cards is worse than one that lets a friendly game bend a tournament
+ * rule. Structural impossibilities — an empty force, more hulls than the
+ * setup zone holds — remain errors.
+ */
+const advice = (problems: ReturnType<typeof validateFleets>) =>
+  problems.filter((p) => p.severity === 'warning').map((p) => p.message)
+
 // ---------------------------------------------------------------------------
 // S2.5.4 availability
 // ---------------------------------------------------------------------------
@@ -101,7 +111,8 @@ describe('force composition (S2.5)', () => {
   it('holds a second uncommon ship to 40% of the force', () => {
     const uncommon = SHIP_FORMS.find((f) => f.availability === 'uncommon')!
     const problems = validateFleets([{ side: BLUE, entries: [entry(uncommon, 2)] }], forms)
-    expect(errors(problems).join(' ')).toMatch(/Uncommon ships are 100%/)
+    expect(advice(problems).join(' ')).toMatch(/Uncommon ships are 100%/)
+    expect(errors(problems)).toEqual([])
   })
 
   it('lets a second uncommon ship in once the force is big enough', () => {
@@ -123,7 +134,8 @@ describe('force composition (S2.5)', () => {
     const problems = validateFleets([{ side: BLUE, entries: [entry(rare)] }], forms)
     // "These ships are valuable and rarely travel alone" — a lone rare ship is
     // 100% of its force, so it needs an escort.
-    expect(errors(problems).join(' ')).toMatch(/Rare ships are 100%/)
+    expect(advice(problems).join(' ')).toMatch(/Rare ships are 100%/)
+    expect(errors(problems)).toEqual([])
   })
 
   it('allows one unique ship in a battle but not two', () => {
@@ -138,7 +150,8 @@ describe('force composition (S2.5)', () => {
       ],
       forms,
     )
-    expect(errors(two).join(' ')).toMatch(/unique ships are in the battle/)
+    expect(advice(two).join(' ')).toMatch(/unique ships are in the battle/)
+    expect(errors(two)).toEqual([])
   })
 
   it('refuses a class that has not entered service by the battle year', () => {
@@ -146,7 +159,8 @@ describe('force composition (S2.5)', () => {
     const problems = validateFleets([{ side: BLUE, entries: [entry(late)] }], forms, {
       year: (late.year ?? 0) - 1,
     })
-    expect(errors(problems).join(' ')).toMatch(/does not enter service until/)
+    expect(advice(problems).join(' ')).toMatch(/does not enter service until/)
+    expect(errors(problems)).toEqual([])
   })
 
   it('applies the point budget', () => {

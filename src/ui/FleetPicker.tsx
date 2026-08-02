@@ -353,8 +353,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
         </div>
 
         <footer className="fleet-footer">
+          {/*
+            Only a force that cannot physically deploy stops a battle now —
+            an empty side, more hulls than the setup zone holds, or a budget
+            the player themselves set. S2.5.4's rarity limits are shown as
+            advice and never bar the way: a scenario's own composition
+            overrides them anyway (S2.5.1), and a table that refuses to deal
+            the cards is worse than one that lets a friendly game bend a
+            tournament rule.
+          */}
           {errors.length > 0 && (
-            <label className="checkbox" title="A scenario's own force composition overrides S2.5.4 (S2.5.1)">
+            <label className="checkbox" title="Overrides the remaining hard limits — an over-budget force, or more hulls than the setup zone holds">
               <input
                 type="checkbox"
                 checked={ignoreLimits}
