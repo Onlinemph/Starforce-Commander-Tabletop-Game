@@ -73,7 +73,9 @@ jobs:
           # Supabase (see supabase/README.md): SUPABASE_URL + SUPABASE_ANON_KEY
           # Worker service (see server/README.md): MATCH_SERVER
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          # Either name works: Supabase's Connect dialog calls it a
+          # publishable key now, older projects call it the anon key.
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || vars.SUPABASE_PUBLISHABLE_KEY }}
           VITE_MATCH_SERVER: ${{ vars.MATCH_SERVER }}
         run: npm run build
 
