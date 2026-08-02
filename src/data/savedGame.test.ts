@@ -201,3 +201,35 @@ describe('battle files', () => {
     expect(shipFormById(SHIP_FORMS[0].id)).toBeDefined()
   })
 })
+
+/**
+ * The armed-start house rule is part of the setup, so it has to survive the
+ * round trip like any other: a battle recorded with cold guns must not replay
+ * with hot ones.
+ */
+describe('weapons armed at start', () => {
+  const everyMountReady = (game: ReturnType<typeof buildGame>) =>
+    game.ships.every((ship) =>
+      ship.form.weapons.every((weapon) =>
+        weapon.mounts.every((_, i) => mountIsReady(weapon, i, ship.mounts[weapon.id][i])),
+      ),
+    )
+
+  it('deploys every mount charged, where the printed game opens cold', () => {
+    const cold = buildGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    const hot = buildGame({ scenarioId: 's3.1-the-duel', seed: 5, armedStart: true })
+    expect(everyMountReady(cold)).toBe(false)
+    expect(everyMountReady(hot)).toBe(true)
+  })
+
+  it('rides in the save, so a replay opens the same way', () => {
+    const saved: SavedGame = {
+      version: 1,
+      setup: { scenarioId: 's3.1-the-duel', seed: 5, armedStart: true },
+      actions: [],
+    }
+    const round = parseSavedGame(JSON.stringify(saved))
+    expect(typeof round).not.toBe('string')
+    expect(everyMountReady(replayGame(round as SavedGame))).toBe(true)
+  })
+})

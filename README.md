@@ -89,6 +89,12 @@ that one fact.
   the path of least effort rather than a cryptographic guarantee. On Supabase there is also a
   **match browser**: hosts can list a match publicly, and anyone on the project sees its name,
   sides and progress — never its battle, and joining still costs the password.
+- **Weapons armed at start.** A house rule in *Choose forces*, off by default. The printed game
+  opens cold — batteries fill their arming circles out of each round's power, and a slow-arming
+  heavy needs several rounds to charge (E4.2.8) — so the first exchanges are fought with
+  half-loaded guns. Tick the box and every mount deploys with its circles full, power unspent,
+  and the shooting starts on turn one. It rides in the save like any other setup value, so a
+  replay opens exactly as the battle did.
 - **Replay to video.** The theater's *Export video* button plays the battle through and records
   it to a file — WebM, or MP4 where the browser offers it. The map is live SVG styled by the
   page's stylesheet, which a browser will not rasterise on its own, so each frame is made

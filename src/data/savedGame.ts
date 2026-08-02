@@ -32,6 +32,8 @@ export interface GameSetup {
   terrain?: 'roll' | number
   /** Battlefield multiplier: 2 doubles the printed map (36" → 72"). Default 1. */
   mapScale?: number
+  /** House rule: every weapon arrives fully armed instead of charging up. */
+  armedStart?: boolean
   /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
   aiSides?: string[]
   /** How sharp the computer's captains are. Default 'captain'. */
@@ -70,6 +72,7 @@ export function buildGame(setup: GameSetup): GameState {
     fleets: setup.fleets,
     terrain: setup.terrain,
     mapScale: setup.mapScale,
+    armedStart: setup.armedStart,
   })
 }
 

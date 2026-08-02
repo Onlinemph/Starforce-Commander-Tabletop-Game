@@ -257,6 +257,17 @@ export interface SetupOptions {
    * envelopment.
    */
   mapScale?: number
+  /**
+   * Every weapon fully armed on turn one (a house rule, not S-section).
+   *
+   * The printed game opens cold: batteries fill their arming circles from a
+   * round's power, and a slow-arming heavy takes several rounds to charge
+   * (E4.2.8), so the first exchanges are a scramble of half-loaded guns.
+   * That ramp is the point in a campaign and a chore in a one-off, so this
+   * hands every mount its circles at deployment. Power is not spent for
+   * them — the fleets simply arrive loaded for bear.
+   */
+  armedStart?: boolean
 }
 
 /**
@@ -374,6 +385,26 @@ function offsetFor(setup: SideSetup, index: number, bounds: MapBounds): Point {
   return {
     x: base.x + setup.spread.x * column + behind.x * rank,
     y: base.y + setup.spread.y * column + behind.y * rank,
+  }
+}
+
+/**
+ * Fill every arming circle on every mount (the `armedStart` option).
+ *
+ * Deliberately blunt: it writes the circles rather than buying them, so the
+ * round's power is still free for shields, sensors and the drive. A mount
+ * whose weapon is out of ammunition or already wrecked is untouched — being
+ * armed is not the same as being able to fire (E4.2.3).
+ */
+function armEveryMount(ships: ShipState[]): void {
+  for (const ship of ships) {
+    for (const weapon of ship.form.weapons) {
+      weapon.mounts.forEach((mount, index) => {
+        const state = ship.mounts[weapon.id]?.[index]
+        if (!state || state.damage >= mount.hitBoxes) return
+        state.armed = mount.armingCircles
+      })
+    }
   }
 }
 
@@ -707,9 +738,12 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
       ...rollAsteroidTerrain(scaledScenario, options.terrain, options.seed ?? 0),
     ],
   }
+  const ships = deploy(sides, scenario.bounds, options)
+  if (options.armedStart) armEveryMount(ships)
+
   return createGame({
     scenario,
-    ships: deploy(sides, scenario.bounds, options),
+    ships,
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
     options: {

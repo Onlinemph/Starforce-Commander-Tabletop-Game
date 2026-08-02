@@ -84,6 +84,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [aiPersonality, setAiPersonality] = useState<'steady' | 'aggressive' | 'cautious'>('steady')
   const [aiRetreats, setAiRetreats] = useState(true)
   const [mapScale, setMapScale] = useState<1 | 2>(1)
+  const [armedStart, setArmedStart] = useState(false)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -131,6 +132,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       aiPersonality: ai.length > 0 && aiPersonality !== 'steady' ? aiPersonality : undefined,
       aiRetreats: ai.length > 0 && !aiRetreats ? false : undefined,
       mapScale: mapScale !== 1 ? mapScale : undefined,
+      armedStart: armedStart || undefined,
     })
     onClose()
   }
@@ -208,6 +210,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               <option value="1">Printed (36")</option>
               <option value="2">Deep space (72")</option>
             </select>
+          </label>
+          <label
+            className="checkbox"
+            title="House rule. The printed game opens cold — batteries fill their arming circles from each round's power, and a slow-arming heavy takes several rounds to charge (E4.2.8) — so the first exchanges are fought with half-loaded guns. Tick this and every mount arrives with its circles full, power unspent."
+          >
+            <input
+              type="checkbox"
+              checked={armedStart}
+              onChange={(e) => setArmedStart(e.target.checked)}
+            />
+            Weapons armed at start
           </label>
           {[...aiSides].some((s) => sides.includes(s)) && (
             <label
