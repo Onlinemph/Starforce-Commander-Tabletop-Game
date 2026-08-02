@@ -142,9 +142,10 @@ describe('AI self-play', () => {
     expect(types.has('decloak')).toBe(true)
     expect(types.has('cloak-search')).toBe(true)
     expect(types.has('launch-homing')).toBe(true)
-    // The Union side answers what arrives: point defense against the incoming
-    // torpedoes, then the impacts resolved — never left hanging.
-    expect(types.has('fire-small-target')).toBe(true)
+    // The Union side answers what arrives: every impact is resolved, never
+    // left hanging. (Mid-flight interception is exercised in aiTorpedoEra —
+    // a knife-range launch can impact before any combat segment sees it in
+    // flight, so this battle may legitimately contain no interception.)
     expect(types.has('resolve-homing-impacts')).toBe(true)
   })
 

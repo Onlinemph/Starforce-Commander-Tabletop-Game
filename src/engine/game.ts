@@ -1006,7 +1006,7 @@ export function resolveHomingImpacts(
         (volley.leak ? `, ${volley.leak} leak` : '') +
         (volley.absorbed ? ` (reduced by ${volley.absorbed} points of defensive fire)` : ''),
     )
-    applyVolley(
+    const outcome = applyVolley(
       target,
       {
         standard: volley.standard,
@@ -1018,6 +1018,10 @@ export function resolveHomingImpacts(
       },
       damageContext(game),
     )
+    // The strike is as public as any volley: the side was declared by the
+    // counter's approach and the absorption narrated — the table's shield
+    // record keeps it, same as direct fire.
+    recordShieldHit(game, target.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
   }
 
   game.homing = game.homing.filter((hw) => !hw.impacted && !hw.destroyed)

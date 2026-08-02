@@ -1,5 +1,5 @@
 import { applyAction, type GameAction } from '../engine/actions'
-import type { AiDifficulty } from '../engine/ai'
+import type { AiDifficulty, AiPersonality } from '../engine/ai'
 import type { GameState } from '../engine/game'
 import type { ShipForm } from '../engine/types'
 import { SHIP_FORMS, setEmbeddedForms, shipFormById } from './ships'
@@ -34,6 +34,8 @@ export interface GameSetup {
   aiSides?: string[]
   /** How sharp the computer's captains are. Default 'captain'. */
   aiDifficulty?: AiDifficulty
+  /** The computer captains' temperament — how they read the scoreboard. Default 'steady'. */
+  aiPersonality?: AiPersonality
   /**
    * A designed scenario, embedded whole when `scenarioId` names one — so the
    * battle replays on a machine that has never seen the design.

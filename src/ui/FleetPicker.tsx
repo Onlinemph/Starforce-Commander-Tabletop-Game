@@ -81,6 +81,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
   const [aiSides, setAiSides] = useState<Set<string>>(new Set())
   const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('captain')
+  const [aiPersonality, setAiPersonality] = useState<'steady' | 'aggressive' | 'cautious'>('steady')
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -125,6 +126,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       terrain: terrain === 'none' ? undefined : terrain,
       aiSides: ai.length > 0 ? ai : undefined,
       aiDifficulty: ai.length > 0 ? aiDifficulty : undefined,
+      aiPersonality: ai.length > 0 && aiPersonality !== 'steady' ? aiPersonality : undefined,
     })
     onClose()
   }
@@ -203,6 +205,24 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
                 <option value="ensign">Ensign</option>
                 <option value="captain">Captain</option>
                 <option value="admiral">Admiral</option>
+              </select>
+            </label>
+          )}
+          {[...aiSides].some((s) => sides.includes(s)) && (
+            <label
+              className="field tiny"
+              title="How the computer reads the scoreboard. Steady plays it straight. Aggressive presses unless clearly ahead and barely protects a lead. Cautious protects early and presses only from deep in the hole."
+            >
+              <span>AI temperament</span>
+              <select
+                value={aiPersonality}
+                onChange={(e) =>
+                  setAiPersonality(e.target.value as 'steady' | 'aggressive' | 'cautious')
+                }
+              >
+                <option value="steady">Steady</option>
+                <option value="aggressive">Aggressive</option>
+                <option value="cautious">Cautious</option>
               </select>
             </label>
           )}

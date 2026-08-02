@@ -3,8 +3,11 @@ import { firingOrder, selectBracket, traitValue } from './combat'
 import { expectedValue } from './dice'
 import {
   asteroidFieldsAt,
+  attackAllowed,
   cloakOf,
   cloudStatus,
+  currentFiringStep,
+  homingWeaponDef,
   impactingHoming,
   shipsUnderBoarding,
   tractorableHoming,
@@ -14,6 +17,7 @@ import {
   victoryPoints,
   type GameState,
 } from './game'
+import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from './coordinatedFire'
 import { cloakFullyPowered, cloakOperational, isCloaked, mayDecloak } from './cloaking'
 import {
   armingPointsAvailable,
@@ -140,7 +144,31 @@ function dangerScale(memo: AiMemo | null, enemyId: string): number {
  */
 export type Posture = 'balanced' | 'protect' | 'press'
 
-export function postureOf(game: GameState, ship: ShipState, difficulty: AiDifficulty): Posture {
+/**
+ * A named temperament, chosen at setup, that biases the posture without
+ * touching the rules: the captain's read of the same scoreboard. Aggressive
+ * treats a level board as a deficit — it presses unless clearly ahead, and
+ * barely protects a lead. Cautious is the mirror: it protects early and
+ * presses only from deep in the hole. Steady reads the board straight. Set
+ * once per aiNextActions call from setup, so replays reproduce it exactly.
+ */
+export type AiPersonality = 'steady' | 'aggressive' | 'cautious'
+
+let personality: AiPersonality = 'steady'
+
+/** How far the temperament shifts the scoreboard margin the posture reads. */
+const PERSONALITY_BIAS: Record<AiPersonality, number> = {
+  steady: 0,
+  aggressive: -6,
+  cautious: 6,
+}
+
+export function postureOf(
+  game: GameState,
+  ship: ShipState,
+  difficulty: AiDifficulty,
+  temperament: AiPersonality = personality,
+): Posture {
   if (difficulty === 'ensign') return 'balanced'
   const score = victoryPoints(game)
   const mine = score[ship.side] ?? 0
@@ -150,7 +178,7 @@ export function postureOf(game: GameState, ship: ShipState, difficulty: AiDiffic
       .filter(([side]) => side !== ship.side)
       .map(([, points]) => points),
   )
-  const margin = mine - theirs
+  const margin = mine - theirs + PERSONALITY_BIAS[temperament]
   const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
   if (margin > 3 && hurt) return 'protect'
   if (margin < -3) return 'press'
@@ -203,7 +231,9 @@ export function aiNextActions(
   memo: AiMemo,
   closing = false,
   difficulty: AiDifficulty = 'captain',
+  temperament: AiPersonality = 'steady',
 ): GameAction[] {
+  personality = temperament
   const fleet = ownShips(game, sides)
   if (fleet.length === 0) return []
   observe(game, memo, sides)
@@ -212,7 +242,7 @@ export function aiNextActions(
     case 'resource-allocation':
       return planAllocation(game, fleet, memo, difficulty)
     case 'damage-control':
-      return planDamageControl(game, fleet, memo)
+      return planDamageControl(game, fleet, memo, difficulty)
     case 'command':
       return planOrders(game, fleet, difficulty, memo)
     case 'operations':
@@ -439,12 +469,20 @@ export function armingPlan(ship: ShipState, weapon: WeaponSystemDef): GameAction
 }
 
 // ---------------------------------------------------------------------------
-// Damage Control (B3.2): guns before hull
+// Damage Control (B3.2): what gets fixed depends on what the battle asks
 // ---------------------------------------------------------------------------
 
 const REPAIR_PRIORITY: RepairCategory[] = ['weapons', 'engineering', 'systems', 'shields', 'structure']
 
-function planDamageControl(game: GameState, fleet: ShipState[], memo: AiMemo): GameAction[] {
+/** A ship running for home fixes the legs and the umbrella before the guns. */
+const PROTECT_PRIORITY: RepairCategory[] = ['engineering', 'shields', 'weapons', 'systems', 'structure']
+
+function planDamageControl(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  difficulty: AiDifficulty,
+): GameAction[] {
   const actions: GameAction[] = []
   for (const ship of fleet) {
     const key = `dc:${game.round}:${ship.id}`
@@ -455,7 +493,15 @@ function planDamageControl(game: GameState, fleet: ShipState[], memo: AiMemo): G
     const targets = repairTargets(ship)
     if (budget === 0 || targets.length === 0) continue
 
-    const present = REPAIR_PRIORITY.filter((c) => targets.some((t) => t.category === c))
+    // The repair queue answers to the posture: pressing or level, guns first
+    // (the current doctrine); protecting a lead on a hurt hull, the drive
+    // that carries the points home and the shields that keep them come first.
+    // The ensign's crews just follow the book's order.
+    const priority =
+      difficulty !== 'ensign' && postureOf(game, ship, difficulty) === 'protect'
+        ? PROTECT_PRIORITY
+        : REPAIR_PRIORITY
+    const present = priority.filter((c) => targets.some((t) => t.category === c))
     const assignments = present.slice(0, 2).map((category, i) => ({
       category,
       dice: i === 0 ? Math.max(1, budget - (present.length > 1 ? 1 : 0)) : 1,
@@ -1224,43 +1270,29 @@ function planFiring(
   closing: boolean,
   difficulty: AiDifficulty,
 ): GameAction[] {
-  // Defensive duties come first, whoever holds the firing slot: incoming
-  // homing weapons are shot at by the point defense (E12.4) and then resolved
-  // (E5.4) — an unresolved impact would simply wait forever.
-  const defensive: GameAction[] = []
+  // Defensive duties come first, whoever holds the firing slot. Point defense
+  // intercepts torpedoes in FLIGHT — E12.3.2 bars fire only during the launch
+  // phase, and a counter that has already impacted is no longer a small
+  // target at all — so the shots are taken on the way in, and then the
+  // impacts are resolved (E5.4); an unresolved impact would simply wait
+  // forever. The interception is fleet-coordinated: one deterministic
+  // assignment every ship of the side computes identically, most urgent
+  // counter first, each counter covered once before any is covered twice —
+  // a wave is beaten by splitting the defense across it, not by three ships
+  // proudly killing the same torpedo.
+  const defensive: GameAction[] = difficulty === 'ensign' ? [] : fleetPointDefense(game, fleet, memo)
   for (const ship of fleet) {
-    const incoming = impactingHoming(game, ship)
-    if (incoming.length === 0) continue
+    if (impactingHoming(game, ship).length === 0) continue
     const key = `pd:${game.round}:${game.phase}:${ship.id}`
     if (memo.done.has(key)) continue
     memo.done.add(key)
-
-    if (difficulty !== 'ensign') {
-      const used = new Set<string>()
-      for (const hw of incoming) {
-        const pd = readyPointDefenseMount(ship, used)
-        if (!pd) break
-        used.add(`${pd.weaponId}|${pd.mountIndex}`)
-        defensive.push({
-          type: 'fire-small-target',
-          attackerId: ship.id,
-          targetId: hw.id,
-          weaponId: pd.weaponId,
-          mountIndex: pd.mountIndex,
-        })
-      }
-    }
     defensive.push({ type: 'resolve-homing-impacts', shipId: ship.id, pointDefense: {} })
   }
   if (defensive.length > 0) return defensive
 
-  // Coordinated Fire (H4) has its own strict step machine; this captain plays
-  // the base game's sequence and simply passes under H4 rather than misfire.
+  // Coordinated Fire (H4) has its own strict step machine, played in full.
   if (game.coordinatedFire) {
-    if (!closing) return []
-    return fleet
-      .filter((s) => !game.firedThisSegment.has(s.id))
-      .map((s) => ({ type: 'pass-fire', shipId: s.id }) as GameAction)
+    return planCoordinatedFiring(game, fleet, memo, closing, difficulty)
   }
 
   const unfired = fleet.filter((s) => !game.firedThisSegment.has(s.id))
@@ -1300,21 +1332,267 @@ function planFiring(
   return actions
 }
 
-/** A ready mount whose weapon carries a point-defense trait (E12.4.3). */
-function readyPointDefenseMount(
-  ship: ShipState,
-  used: Set<string>,
-): { weaponId: string; mountIndex: number } | null {
-  for (const weapon of ship.form.weapons) {
-    if (!weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))) continue
-    for (let i = 0; i < weapon.mounts.length; i++) {
-      if (used.has(`${weapon.id}|${i}`)) continue
-      if (mountIsReady(weapon, i, ship.mounts[weapon.id][i])) {
-        return { weaponId: weapon.id, mountIndex: i }
+/**
+ * The optional H4 step machine, played rather than passed. One attack per
+ * faction per target per phase is the rule's whole geometry (H4.3.1): a
+ * squadron firing individually burns its single attack on the focus target
+ * with one ship's volley, so trained ranks hold their scan-2+ hulls off the
+ * individual steps and bring them in together on the coordinated step their
+ * best scan calls (H4.5), while the rest pick off secondary hulls on the
+ * way down. The ensign knows only its own printed step. The step clock is
+ * advanced only when this AI owns every hull on the table — in a mixed game
+ * that button belongs to the human.
+ */
+function planCoordinatedFiring(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  closing: boolean,
+  difficulty: AiDifficulty,
+): GameAction[] {
+  const unfired = fleet.filter((s) => !game.firedThisSegment.has(s.id))
+  if (closing) {
+    return unfired.map((s) => ({ type: 'pass-fire', shipId: s.id }) as GameAction)
+  }
+  if (unfired.length === 0) return []
+
+  const step = currentFiringStep(game)
+  const actions: GameAction[] = []
+  const scanOf = (s: ShipState) => tacticalScanOf(game, s)
+
+  // A declared group of ours fires now: each member a separate volley at the
+  // group's target (H4.6.1), never precision (H4.6.2).
+  const group = game.coordinatedGroup
+  if (group && group.step === step.index) {
+    for (const ship of unfired) {
+      if (!group.shipIds.includes(ship.id)) continue
+      const attemptKey = `vol:${game.round}:${game.phase}:${ship.id}`
+      if (memo.done.has(attemptKey)) continue
+      memo.done.add(attemptKey)
+      if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo, difficulty))
+      const volley = bestVolley(game, ship, difficulty, group.targetId, {
+        onlyTargetId: group.targetId,
+        noPrecision: true,
+      })
+      actions.push(volley ?? { type: 'pass-fire', shipId: ship.id })
+    }
+    if (actions.length > 0) return actions
+  }
+
+  // Each side's intended group, recomputed off the open board every call so
+  // a fallen partner or a dead target reshapes the plan instead of wedging it.
+  const plans = new Map<string, { shipIds: string[]; targetId: string; stepIndex: number }>()
+  if (difficulty !== 'ensign') {
+    for (const side of [...new Set(unfired.map((s) => s.side))].sort()) {
+      const plan = plannedCoordinatedGroup(
+        game,
+        unfired.filter((s) => s.side === side),
+        difficulty,
+      )
+      if (plan) plans.set(side, plan)
+    }
+  }
+  const reserved = new Set(
+    [...plans.values()].flatMap((p) => (p.stepIndex >= step.index ? p.shipIds : [])),
+  )
+
+  // One volley per call: H4.3.1's one-attack-per-target ledger only advances
+  // when an action lands, so a second ship plans against the board the first
+  // ship's volley has already changed — the drive loop brings it back around.
+  const fireIndividually = (ship: ShipState): boolean => {
+    if (positionHidden(game, ship)) return false
+    const attemptKey = `vol:${game.round}:${game.phase}:${ship.id}`
+    if (memo.done.has(attemptKey)) return false
+    if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo, difficulty))
+    const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty))
+    if (volley) {
+      memo.done.add(attemptKey)
+      actions.push(volley)
+      return true
+    }
+    return false
+  }
+
+  if (step.kind === 'individual') {
+    for (const ship of unfired) {
+      if (!stepMatchesScan(step, scanOf(ship))) continue
+      if (reserved.has(ship.id)) continue // holding for the coordinated step
+      if (fireIndividually(ship)) break
+    }
+  } else {
+    // Declare when a plan's step has come and the table is clear of groups —
+    // a still-firing group finishes before the next faction declares over it.
+    const groupDone = !group || group.shipIds.every((id) => game.firedThisSegment.has(id))
+    for (const [side, plan] of plans) {
+      if (!groupDone || plan.stepIndex !== step.index) continue
+      const declKey = `decl:${game.round}:${game.phase}:${side}:${step.index}`
+      if (memo.done.has(declKey)) continue
+      memo.done.add(declKey)
+      actions.push({ type: 'declare-coordinated', shipIds: plan.shipIds, targetId: plan.targetId })
+    }
+    // A ship whose partners fell through still fires alone on its step (H4.2.4).
+    if (actions.length === 0) {
+      for (const ship of unfired) {
+        if (!mayFireAlone(step, scanOf(ship))) continue
+        if (group && group.side === ship.side && !groupDone) continue
+        if (reserved.has(ship.id)) continue
+        if (fireIndividually(ship)) break
       }
     }
   }
-  return null
+  if (actions.length > 0) return actions
+
+  const active = game.ships.filter((s) => !s.destroyed && !s.disengaged)
+  const ownsTable = active.every((s) => fleet.some((f) => f.id === s.id))
+  if (ownsTable && game.firingStepIndex < FIRING_STEPS.length - 1) {
+    return [{ type: 'advance-firing-step' }]
+  }
+  return []
+}
+
+/**
+ * The group this side intends to bring in on a coordinated step: unfired
+ * scan-2+ hulls with a live shot at the squadron's focus target, at the
+ * largest head count every member's scan can cover (H4.5.1), fired on the
+ * step the group's best scan calls (H4.5.5).
+ */
+function plannedCoordinatedGroup(
+  game: GameState,
+  own: ShipState[],
+  difficulty: AiDifficulty,
+): { shipIds: string[]; targetId: string; stepIndex: number } | null {
+  if (own.length === 0) return null
+  const focusId = focusTargetFor(game, own[0], difficulty)
+  const target = focusId ? game.ships.find((s) => s.id === focusId) : null
+  if (!target) return null
+  if (attackAllowed(game, own[0], target)) return null // the faction's attack is spent
+  const candidates = own
+    .filter((s) => !positionHidden(game, s) && tacticalScanOf(game, s) >= 2)
+    .filter(
+      (s) =>
+        bestVolley(game, s, difficulty, focusId, { onlyTargetId: focusId!, noPrecision: true }) !==
+        null,
+    )
+    .sort((a, b) => tacticalScanOf(game, b) - tacticalScanOf(game, a) || (a.id < b.id ? -1 : 1))
+  let size = 0
+  while (size < candidates.length && tacticalScanOf(game, candidates[size]) >= size + 1) size++
+  if (size < 2) return null
+  let members = candidates.slice(0, size)
+  const stepFor = coordinatedStepFor(tacticalScanOf(game, members[0]))
+  if (!stepFor) return null
+  if (stepFor.maxShips !== null && members.length > stepFor.maxShips) {
+    members = members.slice(0, stepFor.maxShips)
+  }
+  return { shipIds: members.map((s) => s.id), targetId: target.id, stepIndex: stepFor.index }
+}
+
+/**
+ * The side's shared point-defense tally. Every ship of a side computes the
+ * same list: enemy homing counters in flight against the side's hulls, most
+ * urgent first (closest to landing, then by id), and each is assigned at
+ * most one ready PD mount per pass — the pass re-runs as the drive loop
+ * turns, so survivors draw second shots only after every counter has drawn
+ * its first. Both warhead types reward the spread: a missile's kill
+ * threshold accumulates across hits (F13.2), a particle warhead is worn
+ * down point by point (F1.16.2).
+ *
+ * Every PD weapon in the book is a main gun with a point-defense mode, and
+ * an interception discharges the mount like any shot — so only IDLE guns
+ * intercept: mounts with no firing solution on any visible enemy hull this
+ * phase. Measured the other way first: eagerly trading main-battery volleys
+ * for warhead wear turned a +26 Union margin into −16 across the raid
+ * season. Free shots only — which is most of them, since the launch window
+ * is exactly when the raiders sit cloaked or out of reach.
+ */
+function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): GameAction[] {
+  const actions: GameAction[] = []
+  for (const side of [...new Set(fleet.map((s) => s.side))].sort()) {
+    const own = fleet.filter((s) => s.side === side)
+    const ownIds = new Set(own.map((s) => s.id))
+    const incoming = game.homing
+      .filter(
+        (hw) =>
+          !hw.destroyed &&
+          !hw.impacted &&
+          !hw.tractored &&
+          hw.phasesFlown >= 1 &&
+          ownIds.has(hw.targetId),
+      )
+      .filter((hw) => {
+        // Only counters that will actually land are worth the arming: a
+        // seeker still chasing a maneuvering hull may simply run out of
+        // endurance (E5.3), and warhead points worn off a torpedo that
+        // would have expired anyway are main-battery rounds thrown away.
+        // "Will land" ≈ its next leg covers the gap.
+        const def = homingWeaponDef(game, hw)
+        const target = game.ships.find((s) => s.id === hw.targetId)
+        if (!def || !target) return false
+        return (
+          actualRange(hw.position, target.placement.position) <=
+          Math.min(speedInPhase(def, hw.phasesFlown + 1), hw.maxSpeed)
+        )
+      })
+      .sort((a, b) => {
+        const ta = game.ships.find((s) => s.id === a.targetId)!
+        const tb = game.ships.find((s) => s.id === b.targetId)!
+        const da = actualRange(a.position, ta.placement.position)
+        const db = actualRange(b.position, tb.placement.position)
+        return da - db || (a.id < b.id ? -1 : 1)
+      })
+    if (incoming.length === 0) continue
+
+    const mounts = own.flatMap((ship) => {
+      const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+      const idle = (mount: WeaponSystemDef['mounts'][number], weapon: WeaponSystemDef) =>
+        !enemies.some((enemy) => {
+          const range = actualRange(ship.placement.position, enemy.placement.position)
+          if (!weapon.brackets.some((b) => range >= b.min && range <= b.max)) return false
+          return canBearOn(
+            mount.arcs,
+            arcTo(ship.placement.position, ship.placement.heading, enemy.placement.position),
+          )
+        })
+      return ship.form.weapons.flatMap((weapon) =>
+        weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+          ? weapon.mounts.flatMap((mount, mountIndex) =>
+              mountIsReady(weapon, mountIndex, ship.mounts[weapon.id][mountIndex]) &&
+              idle(mount, weapon)
+                ? [{ ship, weapon, mount, mountIndex }]
+                : [],
+            )
+          : [],
+      )
+    })
+
+    const spent = new Set<string>()
+    for (const hw of incoming) {
+      const shot = mounts.find(({ ship, weapon, mount, mountIndex }) => {
+        const key = `${ship.id}|${weapon.id}|${mountIndex}`
+        if (spent.has(key)) return false
+        // One attempt per mount per counter per phase: a refusal the doctrine
+        // did not foresee must not be re-argued every drive iteration.
+        if (memo.done.has(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)) return false
+        const range = actualRange(ship.placement.position, hw.position)
+        if (!weapon.brackets.some((b) => range >= b.min && range <= b.max)) return false
+        return canBearOn(
+          mount.arcs,
+          arcTo(ship.placement.position, ship.placement.heading, hw.position),
+        )
+      })
+      if (!shot) continue
+      const key = `${shot.ship.id}|${shot.weapon.id}|${shot.mountIndex}`
+      spent.add(key)
+      memo.done.add(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)
+      actions.push({
+        type: 'fire-small-target',
+        attackerId: shot.ship.id,
+        targetId: hw.id,
+        weaponId: shot.weapon.id,
+        mountIndex: shot.mountIndex,
+      })
+    }
+  }
+  return actions
 }
 
 /** Total distance a homing weapon covers over its whole endurance (E5.3). */
@@ -1422,6 +1700,7 @@ function bestVolley(
   ship: ShipState,
   difficulty: AiDifficulty,
   focusId: string | null = null,
+  opts: { onlyTargetId?: string; noPrecision?: boolean } = {},
 ): GameAction | null {
   const obstacles = terrainObstacles(game.scenario.terrain)
   let best: {
@@ -1436,6 +1715,11 @@ function bestVolley(
 
   for (const enemy of enemiesOf(game, ship)) {
     if (positionHidden(game, enemy)) continue
+    if (opts.onlyTargetId && enemy.id !== opts.onlyTargetId) continue
+    // H4.3.1: a faction attacks each target once per phase. A group member
+    // fires under its group's declared attack; everyone else must pick a
+    // hull the faction has not spent its attack on.
+    if (game.coordinatedFire && !opts.onlyTargetId && attackAllowed(game, ship, enemy)) continue
     if (!hasLineOfSight(ship.placement.position, enemy.placement.position, obstacles)) continue
 
     const arcs = arcTo(ship.placement.position, ship.placement.heading, enemy.placement.position)
@@ -1507,6 +1791,7 @@ function bestVolley(
    */
   if (
     difficulty !== 'ensign' &&
+    !opts.onlyTargetId && // a declared group's attack is already spent — take the shot
     best.allRed &&
     best.level !== 'heavy' &&
     best.level !== 'crippled' &&
@@ -1546,6 +1831,7 @@ function bestVolley(
    * the kill matters less than the silence.
    */
   const precision =
+    !opts.noPrecision && // no member of a coordinated group may use it (H4.6.2)
     difficulty === 'admiral' &&
     (best.level === 'heavy' || best.level === 'crippled') &&
     best.effective <= 8 &&

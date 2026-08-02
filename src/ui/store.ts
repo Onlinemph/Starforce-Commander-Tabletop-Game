@@ -320,7 +320,14 @@ function driveAi(closing = false): void {
   try {
     let changed = false
     for (let guard = 0; guard < 300; guard++) {
-      const batch = aiNextActions(game, sides, aiMemo, closing, setup.aiDifficulty ?? 'captain')
+      const batch = aiNextActions(
+        game,
+        sides,
+        aiMemo,
+        closing,
+        setup.aiDifficulty ?? 'captain',
+        setup.aiPersonality ?? 'steady',
+      )
       if (batch.length === 0) break
       for (const action of batch) {
         applyJournaled(action)

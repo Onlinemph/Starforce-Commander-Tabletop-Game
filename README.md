@@ -149,6 +149,24 @@ that one fact.
   is already broken or the scoreboard says waiting is losing. Season-measured against the
   standing baselines: duel admiral over captain 38W–25L, admiral over ensign 55W–9L, squadron
   27W–5L — every prior mark met or beaten.
+- **The fleet fights the torpedo era.** Under the optional Coordinated Fire rules (H4) the AI
+  now plays the ten-step machine instead of passing: one attack per faction per target per phase
+  is the rule's whole geometry (H4.3.1), so trained ranks hold their scan-2+ hulls off the
+  individual steps and bring them in together on the coordinated step their best scan calls,
+  volleying as a declared group at the squadron's focus kill while the rest pick off secondary
+  hulls — and an AI that owns every hull on the table drives the step clock itself, while in a
+  mixed game that button stays yours. Point defense intercepts torpedoes in flight with a
+  fleet-shared tally — every ship computes the same assignment, most urgent counter first, each
+  covered once before any is covered twice — but only with idle guns aimed at counters that
+  will actually land: every PD weapon in the book is a main gun with a point-defense mode, and
+  the season showed that eagerly trading main-battery volleys for warhead wear turns a winning
+  margin into a losing one. Homing strikes now feed the same public shield record as direct
+  fire, so the deep-planning layer hunts the facing the plasma torpedoes have been grinding.
+  The repair queue answers to the posture — protecting a lead fixes the drive and the umbrella
+  before the guns. And a setup-chosen **temperament** reads the same scoreboard differently:
+  *Steady* plays it straight, *Aggressive* presses unless clearly ahead, *Cautious* protects
+  early and presses only from deep in the hole. All season baselines held exactly: duel
+  admiral-over-captain 38W–25L, admiral-over-ensign 55W–9L, squadron 27W–5L.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything
