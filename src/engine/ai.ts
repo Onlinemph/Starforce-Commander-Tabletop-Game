@@ -22,6 +22,7 @@ import {
 } from './engineering'
 import {
   actualRange,
+  applyManeuver,
   effectiveRange,
   arcTo,
   canBearOn,
@@ -495,8 +496,13 @@ function positionHidden(game: GameState, ship: ShipState): boolean {
  * approximated by the one damage fact the table does show: the damage-level
  * marker (B1.9), which scales the estimate down as the enemy breaks up.
  */
-export function estimatedVolleyDamage(enemy: ShipState, targetPos: Point, myJamming: number): number {
-  const actual = actualRange(enemy.placement.position, targetPos)
+export function estimatedVolleyDamage(
+  enemy: ShipState,
+  targetPos: Point,
+  myJamming: number,
+  from: Point = enemy.placement.position,
+): number {
+  const actual = actualRange(from, targetPos)
   const effective = effectiveRange(actual, myJamming, enemy.sensors.targeting)
   let total = 0
   for (const weapon of enemy.form.weapons) {
@@ -539,14 +545,78 @@ export function facingWeakness(
   enemy: ShipState,
   attackerPos: Point,
   enemyPos: Point,
+  enemyHeading: number = enemy.placement.heading,
 ): number {
-  const struck = shieldsFacing(attackerPos, enemyPos, enemy.placement.heading)
+  const struck = shieldsFacing(attackerPos, enemyPos, enemyHeading)
   let weakness = 0
   for (const side of struck) {
     const printed = Math.max(1, enemy.form.shields.blue[side] + enemy.form.shields.green[side])
     weakness = Math.max(weakness, 1 - Math.min(1, estimatedShieldRemaining(game, enemy, side) / printed))
   }
   return weakness
+}
+
+/**
+ * Model the opponent as a player. Plotting is simultaneous and secret
+ * (B1.9.1), so the right prediction is not "where their nose points" but
+ * "the plot their seat would choose off the current board": enumerate their
+ * maneuver and speed candidates with pure geometry and the book's own turn
+ * template table — never their hidden allocation — and score each from
+ * their perspective: bow on us, the range their charts want, the damage
+ * they would threaten, the board edge they must not cross. The best of
+ * those is where the admiral aims. Exported for tests.
+ */
+export function predictEnemyPlot(
+  game: GameState,
+  enemy: ShipState,
+  viewer: ShipState,
+  start: { position: Point; heading: number } = enemy.placement,
+  startSpeed: number = enemy.speed,
+): { position: Point; heading: number; speed: number } {
+  const maneuvers: Array<[Maneuver, TurnDirection | null]> = [
+    ['straight', null],
+    ['easy', 'left'],
+    ['easy', 'right'],
+    ['standard', 'left'],
+    ['standard', 'right'],
+  ]
+  const ideal = preferredRange(enemy) // their charts: book knowledge
+  const { width, height } = game.scenario.bounds
+
+  let best = { position: start.position, heading: start.heading, speed: startSpeed }
+  let bestScore = -Infinity
+  for (const accel of [-2, -1, 0, 1, 2]) {
+    if (Math.abs(accel) > enemy.form.sublight.maxAccelPerPhase) continue
+    const speed = startSpeed + accel
+    if (speed < 0 || speed > enemy.form.sublight.maxSpeed) continue
+    for (const [maneuver, direction] of maneuvers) {
+      const result = applyManeuver({
+        start: { position: start.position, heading: start.heading },
+        speed,
+        maneuver,
+        direction,
+        turnTemplate: enemy.form.sublight.turnBySpeed[Math.abs(speed)] ?? 0,
+      })
+      const end = result.end
+      const range = actualRange(end.position, viewer.placement.position)
+      const bearing = relativeBearing(end.position, end.heading, viewer.placement.position)
+      const offBow = Math.min(bearing, 360 - bearing)
+      let score = -Math.abs(range - ideal) * 0.5 + ((180 - offBow) / 180) * 3
+      if (offBow < 45) score += 1.5
+      score += estimatedVolleyDamage(enemy, viewer.placement.position, 0, end.position) * 0.4
+      // They dodge our guns the way we dodge theirs — the viewer's charts
+      // are book knowledge to them too.
+      score -= estimatedVolleyDamage(viewer, end.position, 0, viewer.placement.position) * 0.15
+      if (end.position.x < 2 || end.position.y < 2 || end.position.x > width - 2 || end.position.y > height - 2) {
+        score -= 8
+      }
+      if (score > bestScore) {
+        bestScore = score
+        best = { position: end.position, heading: end.heading, speed }
+      }
+    }
+  }
+  return best
 }
 
 /**
@@ -661,6 +731,24 @@ function bestPlot(
   // Half the enemy's speed: a full-speed lead overshoots the moment the
   // enemy maneuvers, and in a turning fight the enemy is always maneuvering.
   const lead = enemy.speed * 0.5
+  /**
+   * The admiral does not guess the lead — it plays the enemy's turn. One
+   * prediction per enemy per phase (plotting is simultaneous, so their best
+   * plot does not depend on which of our candidates we weigh), and a second
+   * prediction from the first for the lookahead's far phase.
+   */
+  const enemyPlan = difficulty === 'admiral' ? predictEnemyPlot(game, enemy, ship) : null
+  const enemyPlan2 = enemyPlan
+    ? predictEnemyPlot(game, enemy, ship, enemyPlan, enemyPlan.speed)
+    : null
+  /**
+   * The model earns its keep where the heuristic is silent. Position: the
+   * hedged half-speed lead measured better than the model's point guess
+   * (a confident miss aims worse than a humble average), so the lead stays.
+   * Heading: the heuristic has none — facing math previously used the
+   * enemy's STALE current heading — and there the modeled plot is the only
+   * informed guess on offer.
+   */
   const predicted =
     difficulty === 'ensign'
       ? enemy.placement.position
@@ -668,6 +756,7 @@ function bestPlot(
           x: enemy.placement.position.x + ev.x * lead,
           y: enemy.placement.position.y + ev.y * lead,
         }
+  const predictedHeading = enemyPlan?.heading ?? enemy.placement.heading
 
   const maneuvers: Array<[Maneuver, TurnDirection | null, number]> = [
     ['straight', null, 0],
@@ -741,7 +830,7 @@ function bestPlot(
          * so a ship works its way around onto the flank it has been
          * hammering, instead of trading into a fresh screen.
          */
-        const weakness = facingWeakness(game, enemy, end.position, predicted)
+        const weakness = facingWeakness(game, enemy, end.position, predicted, predictedHeading)
         score += fp * 0.4 * (1 + weakness)
         // On an arc boundary the attacker picks the shield (E6.2 Step 4),
         // so the weakest facing side is the one that will be hit. With a
@@ -830,7 +919,17 @@ function bestPlot(
           let s = -Math.abs(r2 - ideal) * 0.5 + ((180 - off2) / 180) * 3 - then.stress * 1.5
           if (off2 < 45) s += 1.5
           const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
-          s += fp2 * 0.4 * (1 + facingWeakness(game, enemy, then.end.position, afterEnemy))
+          s +=
+            fp2 *
+            0.4 *
+            (1 +
+              facingWeakness(
+                game,
+                enemy,
+                then.end.position,
+                afterEnemy,
+                enemyPlan2?.heading ?? predictedHeading,
+              ))
           const facing2 = shieldsFacing(threat ?? afterEnemy, then.end.position, then.end.heading)
           const weakest2 = Math.min(
             ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
