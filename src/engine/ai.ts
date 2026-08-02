@@ -11,6 +11,7 @@ import {
   tacticalScanOf,
   terrainObstacles,
   tractorBeamsFree,
+  victoryPoints,
   type GameState,
 } from './game'
 import { cloakFullyPowered, cloakOperational, isCloaked, mayDecloak } from './cloaking'
@@ -82,10 +83,78 @@ import type { CommandCard, Maneuver, Point, ShieldSide, TurnDirection, WeaponSys
 
 export interface AiMemo {
   done: Set<string>
+  /** Highest Tactical Scan each enemy side has shown — the auction remembered. */
+  scanSeen: Map<string, number>
+  /** Log entries digested so far by the observation pass. */
+  logSeen: number
+  /** Consecutive under-book volleys observed per enemy ship: a power-starved read. */
+  underPowered: Map<string, number>
 }
 
 export function createAiMemo(): AiMemo {
-  return { done: new Set() }
+  return { done: new Set(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
+}
+
+/**
+ * The veteran's notebook: everything here is watched, not peeked. Enemy scan
+ * bids are declared each phase; volleys resolve in the open with their damage
+ * narrated. An enemy whose fire keeps landing far under its book strength is
+ * running starved of power — press it. One whose scan bids keep winning the
+ * auction has a habit — outbid the habit, not just this phase's number.
+ */
+function observe(game: GameState, memo: AiMemo, sides: string[]): void {
+  for (const e of game.ships) {
+    if (sides.includes(e.side) || e.destroyed || e.disengaged) continue
+    const prev = memo.scanSeen.get(e.side) ?? 0
+    if (e.sensors.tacticalScan > prev) memo.scanSeen.set(e.side, e.sensors.tacticalScan)
+  }
+  for (; memo.logSeen < game.log.length; memo.logSeen++) {
+    const line = game.log[memo.logSeen].message
+    const hit = /^(.+?) fires on .+? → (\d+) damage/.exec(line)
+    if (!hit) continue
+    const attacker = game.ships.find((s) => s.name === hit[1])
+    if (!attacker || sides.includes(attacker.side)) continue
+    const observed = Number(hit[2])
+    // Book strength at the range its own charts prefer — a rough yardstick.
+    const yardstick = estimatedVolleyDamage(
+      attacker,
+      { x: attacker.placement.position.x + preferredRange(attacker), y: attacker.placement.position.y },
+      0,
+    )
+    const weak = yardstick > 0 && observed < yardstick * 0.35
+    memo.underPowered.set(attacker.id, weak ? (memo.underPowered.get(attacker.id) ?? 0) + 1 : 0)
+  }
+}
+
+/** Discount an enemy's estimated danger when the notebook says it is starved. */
+function dangerScale(memo: AiMemo | null, enemyId: string): number {
+  return memo && (memo.underPowered.get(enemyId) ?? 0) >= 2 ? 0.6 : 1
+}
+
+/**
+ * How the battle stands, read off the public scoreboard (S2.8.4) — and what
+ * that asks of this ship. Ahead and hurt: the lead is the thing to protect,
+ * so kite harder, jam sooner, take the cripples home. Behind: points must be
+ * taken, so close and accept the odds a level scoreboard would refuse. The
+ * ensign plays every battle the same.
+ */
+export type Posture = 'balanced' | 'protect' | 'press'
+
+export function postureOf(game: GameState, ship: ShipState, difficulty: AiDifficulty): Posture {
+  if (difficulty === 'ensign') return 'balanced'
+  const score = victoryPoints(game)
+  const mine = score[ship.side] ?? 0
+  const theirs = Math.max(
+    0,
+    ...Object.entries(score)
+      .filter(([side]) => side !== ship.side)
+      .map(([, points]) => points),
+  )
+  const margin = mine - theirs
+  const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
+  if (margin > 3 && hurt) return 'protect'
+  if (margin < -3) return 'press'
+  return 'balanced'
 }
 
 /**
@@ -137,6 +206,7 @@ export function aiNextActions(
 ): GameAction[] {
   const fleet = ownShips(game, sides)
   if (fleet.length === 0) return []
+  observe(game, memo, sides)
 
   switch (game.segment) {
     case 'resource-allocation':
@@ -144,7 +214,7 @@ export function aiNextActions(
     case 'damage-control':
       return planDamageControl(game, fleet, memo)
     case 'command':
-      return planOrders(game, fleet, difficulty)
+      return planOrders(game, fleet, difficulty, memo)
     case 'operations':
       return planOperations(game, fleet, memo, difficulty)
     case 'combat':
@@ -152,7 +222,7 @@ export function aiNextActions(
     case 'boarding-combat':
       return planBoarding(game, sides, memo)
     case 'disengagement':
-      return planDisengagement(game, fleet)
+      return planDisengagement(game, fleet, difficulty)
     default:
       return []
   }
@@ -221,6 +291,42 @@ function planAllocation(
     if (wantsCloak(game, ship, difficulty)) {
       const cloakLine = ship.form.functions.find((l) => l.label === 'CLOAK')
       if (cloakLine) fill(cloakLine.id, cloakLine.steps.length)
+    }
+
+    /**
+     * Read the round before spending on it. When the nearest enemy sits far
+     * beyond every battery's reach, nothing fires this round no matter what
+     * the allocation says — so a trained captain powers the long game: the
+     * slow-arming heavies (diamond gates, E4.2.8) start their multi-round
+     * charge now, ahead of the fast batteries that can fill in a single
+     * round once the enemy is close enough to matter.
+     */
+    const slowArming = (line: { weaponSystemId?: string }) => {
+      const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
+      return !!weapon?.mounts.some((m) => (m.roundGates ?? []).some(Boolean))
+    }
+    const nearestEnemy = nearest(
+      ship,
+      enemiesOf(game, ship).filter((e) => !positionHidden(game, e)),
+    )
+    const reach = Math.max(0, ...ship.form.weapons.flatMap((w) => w.brackets.map((b) => b.max)))
+    const closingRound =
+      difficulty !== 'ensign' &&
+      nearestEnemy !== null &&
+      actualRange(ship.placement.position, nearestEnemy.placement.position) > reach + 6
+
+    if (closingRound) {
+      for (const line of byKind('weapon')) {
+        if (weaponAlive(line) && slowArming(line)) fill(line.id, line.steps.length)
+      }
+      // The admiral also floors the throttle: two drive points now, before
+      // the sensors take theirs, buys the merge a round early. Measured as
+      // an admiral-only edge — when every rank races, the closings get so
+      // fast that dice swamp doctrine and the rank gap flattens; held back
+      // for the admiral it keeps the season won at every level.
+      if (difficulty === 'admiral') {
+        for (const line of byKind('accel')) fill(line.id, 2)
+      }
     }
     // Weapons full — the auto-arm rule then spends the points (E4.2.2).
     for (const line of byKind('weapon')) if (weaponAlive(line)) fill(line.id, line.steps.length)
@@ -388,7 +494,12 @@ interface Candidate {
   accel: number
 }
 
-function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficulty): GameAction[] {
+function planOrders(
+  game: GameState,
+  fleet: ShipState[],
+  difficulty: AiDifficulty,
+  memo: AiMemo | null = null,
+): GameAction[] {
   const actions: GameAction[] = []
 
   for (const ship of fleet) {
@@ -405,7 +516,7 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
     const focusId = difficulty === 'ensign' ? null : focusTargetFor(game, ship, difficulty)
     const enemy = enemies.find((e) => e.id === focusId) ?? nearest(ship, enemies)
 
-    const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
+    const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty, memo) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
     if (card.maneuver !== plan.maneuver || card.direction !== plan.direction) {
       actions.push({ type: 'plot-maneuver', shipId: ship.id, maneuver: plan.maneuver, direction: plan.direction })
     }
@@ -440,7 +551,13 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
     if (difficulty === 'ensign') {
       tacticalScan = Math.min(cap, Math.floor(available / 2))
     } else if (difficulty === 'admiral') {
-      const enemyScan = Math.max(0, ...enemies.map((e) => e.sensors.tacticalScan))
+      // Outbid the habit, not just this phase's number: the notebook holds
+      // the highest bid each enemy side has ever shown.
+      const enemyScan = Math.max(
+        0,
+        ...enemies.map((e) => e.sensors.tacticalScan),
+        ...enemies.map((e) => memo?.scanSeen.get(e.side) ?? 0),
+      )
       tacticalScan = Math.min(cap, available, enemyScan + 1)
       // Nobody scanning? Keep the habit of initiative anyway.
       if (enemyScan === 0) tacticalScan = Math.min(cap, available)
@@ -466,7 +583,11 @@ function planOrders(game: GameState, fleet: ShipState[], difficulty: AiDifficult
       return firepowerAt(probe, end, enemy.placement.position, enemy.speed === 0, false) === 0
     })()
 
-    if (difficulty !== 'ensign' && enemy !== null && (damageLevel(ship) === 'crippled' || quiet)) {
+    if (
+      difficulty !== 'ensign' &&
+      enemy !== null &&
+      (damageLevel(ship) === 'crippled' || quiet || postureOf(game, ship, difficulty) === 'protect')
+    ) {
       jamming = Math.min(cap, available)
       tacticalScan = Math.min(cap, available - jamming)
       targeting = Math.min(cap, available - jamming - tacticalScan)
@@ -703,7 +824,9 @@ function bestPlot(
   card: CommandCard,
   enemy: ShipState,
   difficulty: AiDifficulty,
+  memo: AiMemo | null = null,
 ): Candidate {
+  const post = postureOf(game, ship, difficulty)
   const ideal = preferredRange(ship)
   /**
    * The guns aim at the chosen enemy, but the hull answers to every enemy on
@@ -713,6 +836,7 @@ function bestPlot(
    */
   const threat = threatPoint(game, ship)
   const visibleEnemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  const losObstacles = terrainObstacles(game.scenario.terrain)
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
    * captain wants their bow on us just as we want ours on them, so a
@@ -850,10 +974,33 @@ function bestPlot(
          * crowd the light ones.
          */
         const incoming = visibleEnemies.reduce(
-          (sum, e) => sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming),
+          (sum, e) =>
+            sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming) * dangerScale(memo, e.id),
           0,
         )
-        score -= incoming * 0.15
+        // The scoreboard sets the appetite for risk: a lead worth keeping
+        // kites harder; a deficit closes and accepts the fire.
+        score -= incoming * (post === 'protect' ? 0.25 : post === 'press' ? 0.08 : 0.15)
+
+        /**
+         * Terrain is a tool, not just a hazard. A field entered at legal
+         * speed grants cover rerolls against everything inbound (K2.1.8),
+         * and a world between you and every gun is better than any shield —
+         * both sought in proportion to how much this ship currently wants
+         * to not be hit.
+         */
+        const defensiveNeed = post === 'protect' ? 1 : fp === 0 ? 0.6 : 0.15
+        for (const field of asteroidFieldsAt(game.scenario.terrain, end.position)) {
+          if (Math.abs(candidate.speed) <= (field.safeSpeed ?? 0)) {
+            score += (field.cover ?? 0) * defensiveNeed
+          }
+        }
+        if (losObstacles.length > 0 && defensiveNeed > 0.5 && visibleEnemies.length > 0) {
+          const hidden = visibleEnemies.every(
+            (e) => !hasLineOfSight(e.placement.position, end.position, losObstacles),
+          )
+          if (hidden) score += 5 * defensiveNeed
+        }
       }
 
       /**
@@ -1141,7 +1288,7 @@ function planFiring(
     }
     // Armed homing weapons go out first (E5.2): they fly on their own and the
     // direct-fire batteries still get their volley.
-    if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo))
+    if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo, difficulty))
     const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty))
     if (volley) {
       memo.done.add(attemptKey)
@@ -1177,10 +1324,36 @@ function totalFlight(weapon: Parameters<typeof endurance>[0]): number {
   return total
 }
 
-/** Launch every armed homing mount at the best target within flight range. */
-function homingLaunches(game: GameState, ship: ShipState, memo: AiMemo): GameAction[] {
+/**
+ * Launch armed homing mounts — as a wave, not a dribble. A lone seeker is
+ * the easiest thing on the board to kill: point defense concentrates on it,
+ * a tractor beam snags it (E5.6), and the shot is wasted. Two arriving
+ * together split the defense. So when exactly one mount is ready but another
+ * is partway through its arming, a trained captain holds the shot a round
+ * and lets the salvo form — unless the target is already broken and any hit
+ * might finish it, or the scoreboard says waiting is losing.
+ */
+function homingLaunches(
+  game: GameState,
+  ship: ShipState,
+  memo: AiMemo,
+  difficulty: AiDifficulty,
+): GameAction[] {
   const actions: GameAction[] = []
-  for (const weapon of ship.form.weapons.filter(isHoming)) {
+  const homing = ship.form.weapons.filter(isHoming)
+
+  let ready = 0
+  let forming = 0
+  for (const weapon of homing) {
+    weapon.mounts.forEach((mount, i) => {
+      const state = ship.mounts[weapon.id][i]
+      if (state.damage >= mount.hitBoxes) return
+      if (mountIsReady(weapon, i, state)) ready++
+      else if (state.armed > 0) forming++
+    })
+  }
+
+  for (const weapon of homing) {
     const reach = totalFlight(weapon)
     weapon.mounts.forEach((_, mountIndex) => {
       const key = `hl:${game.round}:${game.phase}:${ship.id}:${weapon.id}:${mountIndex}`
@@ -1195,6 +1368,14 @@ function homingLaunches(game: GameState, ship: ShipState, memo: AiMemo): GameAct
         ),
       )
       if (!target) return
+      const level = damageLevel(target)
+      const holdForWave =
+        ready === 1 &&
+        forming > 0 &&
+        level !== 'heavy' &&
+        level !== 'crippled' &&
+        postureOf(game, ship, difficulty) !== 'press'
+      if (holdForWave) return
       memo.done.add(key)
       actions.push({
         type: 'launch-homing',
@@ -1321,13 +1502,15 @@ function bestVolley(
    * (E1.2.3), and the discharged batteries cost next round's arming points —
    * a phase of patience usually converts those dice to yellow or green. The
    * ensign bangs away regardless; a trained captain holds the long shot
-   * unless the target is already broken and worth finishing at any odds.
+   * unless the target is already broken and worth finishing at any odds —
+   * or the scoreboard says holding is losing, and any dice beat none.
    */
   if (
     difficulty !== 'ensign' &&
     best.allRed &&
     best.level !== 'heavy' &&
-    best.level !== 'crippled'
+    best.level !== 'crippled' &&
+    postureOf(game, ship, difficulty) !== 'press'
   ) {
     return null
   }
@@ -1404,10 +1587,21 @@ function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameActio
   return actions
 }
 
-function planDisengagement(game: GameState, fleet: ShipState[]): GameAction[] {
+function planDisengagement(
+  game: GameState,
+  fleet: ShipState[],
+  difficulty: AiDifficulty = 'captain',
+): GameAction[] {
   const actions: GameAction[] = []
   for (const ship of fleet) {
-    if (damageLevel(ship) !== 'crippled') continue
+    const level = damageLevel(ship)
+    // A cripple always goes home. With a lead on the scoreboard, a heavy
+    // hull goes too — its remaining points are worth more denied to the
+    // enemy than spent on one more volley (S2.8.4).
+    const leaves =
+      level === 'crippled' ||
+      (level === 'heavy' && postureOf(game, ship, difficulty) === 'protect')
+    if (!leaves) continue
     const enemies = enemiesOf(game, ship)
     const options = disengagementOptions(
       ship,

@@ -131,6 +131,24 @@ that one fact.
   a shield is stripped the helm angles a healthy side into the incoming fire — guns first when
   there is a shot to take, hull first when there is not. The measured effect is dramatic: the
   admiral's season against the never-jamming ensign went from 36W–28L to 59W–5L.
+- **The AI plays the game, not just the phase.** Trained ranks read the public scoreboard
+  (S2.8.4) into a posture: ahead and hurt, they protect the lead — kite harder, and a heavy hull
+  takes its points home rather than risk them on one more volley; behind, they press — closing
+  through fire and firing even the all-red long shot, because any dice beat none. Terrain is a
+  tool, not just a hazard: a covering asteroid field entered at safe speed is worth its printed
+  rerolls (K2.1.8) and a world between you and every gun beats any shield, both sought in
+  proportion to how much the ship currently wants to not be hit. A notebook accumulates what the
+  enemy has shown — the highest scan each side has bid feeds the admiral's outbidding, and an
+  enemy whose volleys keep landing far under its book strength is marked power-starved and
+  discounted as a threat. On a closing round, when nothing can reach, the allocation funds the
+  long game: slow-arming heavies start their multi-round charge ahead of the fast batteries, and
+  the admiral floors the drive to buy the merge a round early — measured as admiral-only
+  doctrine, because when every rank races the closings get so fast that dice swamp doctrine.
+  And homing torpedoes go out in waves: a lone ready tube holds its shot while a wingmate is
+  still arming, so the salvo arrives together and splits the point defense — unless the target
+  is already broken or the scoreboard says waiting is losing. Season-measured against the
+  standing baselines: duel admiral over captain 38W–25L, admiral over ensign 55W–9L, squadron
+  27W–5L — every prior mark met or beaten.
 - **Simultaneous fire on tied Tactical Scans (H2.4.2).** Ships with equal scans fire
   simultaneously and their damage takes effect simultaneously. The engine rolls a tied volley at
   once but holds the damage until the whole tie group has fired or passed, then lands everything
