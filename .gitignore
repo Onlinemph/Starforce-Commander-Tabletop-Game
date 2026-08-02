@@ -5,3 +5,5 @@ dist/
 .vite/
 tsconfig.tsbuildinfo
 .wrangler/
+# Measurement probes: throwaway season/tournament harnesses, never committed
+src/*-probe.test.ts
