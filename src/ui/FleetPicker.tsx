@@ -82,6 +82,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [aiSides, setAiSides] = useState<Set<string>>(new Set())
   const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('captain')
   const [aiPersonality, setAiPersonality] = useState<'steady' | 'aggressive' | 'cautious'>('steady')
+  const [aiRetreats, setAiRetreats] = useState(true)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -127,6 +128,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       aiSides: ai.length > 0 ? ai : undefined,
       aiDifficulty: ai.length > 0 ? aiDifficulty : undefined,
       aiPersonality: ai.length > 0 && aiPersonality !== 'steady' ? aiPersonality : undefined,
+      aiRetreats: ai.length > 0 && !aiRetreats ? false : undefined,
     })
     onClose()
   }
@@ -224,6 +226,19 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
                 <option value="aggressive">Aggressive</option>
                 <option value="cautious">Cautious</option>
               </select>
+            </label>
+          )}
+          {[...aiSides].some((s) => sides.includes(s)) && (
+            <label
+              className="field tiny checkbox"
+              title="Checked: the computer plays the scoreboard — cripples go home, and an admiral refuses hopeless odds outright (a disengaged ship concedes only its damage level, S2.8.4). Unchecked: every AI hull stands and fights to the last box."
+            >
+              <span>AI may retreat</span>
+              <input
+                type="checkbox"
+                checked={aiRetreats}
+                onChange={(e) => setAiRetreats(e.target.checked)}
+              />
             </label>
           )}
           <label className="field tiny">

@@ -156,6 +156,9 @@ export type AiPersonality = 'steady' | 'aggressive' | 'cautious'
 
 let personality: AiPersonality = 'steady'
 
+/** Setup switch: when false the AI never voluntarily disengages. */
+let retreatsAllowed = true
+
 /** How far the temperament shifts the scoreboard margin the posture reads. */
 const PERSONALITY_BIAS: Record<AiPersonality, number> = {
   steady: 0,
@@ -232,8 +235,10 @@ export function aiNextActions(
   closing = false,
   difficulty: AiDifficulty = 'captain',
   temperament: AiPersonality = 'steady',
+  mayRetreat = true,
 ): GameAction[] {
   personality = temperament
+  retreatsAllowed = mayRetreat
   const fleet = ownShips(game, sides)
   if (fleet.length === 0) return []
   observe(game, memo, sides)
@@ -266,8 +271,13 @@ export function aiNextActions(
  * Shared by the disengagement plan and by Resource Allocation, because an
  * FTL departure needs a fully powered drive (J9.1.3) — intending to leave
  * without funding the drive is how cripples die at their posts.
+ *
+ * The whole behavior sits behind a setup switch: a player who wants the
+ * battle fought to the last box unchecks "AI may retreat" and every hull
+ * stands its ground, doctrine be damned.
  */
 function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
+  if (!retreatsAllowed) return false
   const level = damageLevel(ship)
   if (level === 'crippled') return true
   const enemies = enemiesOf(game, ship)

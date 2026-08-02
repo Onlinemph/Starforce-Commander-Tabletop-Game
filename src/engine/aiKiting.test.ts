@@ -115,6 +115,22 @@ describe('refusing the hopeless battle', () => {
     expect(stage('admiral')).toBe(true)
     expect(stage('captain')).toBe(false)
   })
+
+  it('the "AI may retreat" switch pins every hull to its post — even a cripple', () => {
+    const game = startScenario('s3.1-the-duel', {
+      seed: 3,
+      fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(3).fill(COVENTRY) },
+    })
+    const big = game.ships.find((s) => s.side === 'Blue Force')!
+    big.structureDamaged = big.structureDamaged.map((_, i, all) => i < Math.ceil(all.length * 0.9))
+    const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
+    big.allocation[ftlLine.id] = ftlLine.steps.length
+    game.segment = 'disengagement'
+    const stays = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'admiral', 'steady', false)
+    expect(stays.some((a) => a.type === 'disengage')).toBe(false)
+    const leaves = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'admiral', 'steady', true)
+    expect(leaves.some((a) => a.type === 'disengage')).toBe(true)
+  })
 })
 
 describe('cutting losses', () => {

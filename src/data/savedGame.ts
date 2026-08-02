@@ -36,6 +36,8 @@ export interface GameSetup {
   aiDifficulty?: AiDifficulty
   /** The computer captains' temperament — how they read the scoreboard. Default 'steady'. */
   aiPersonality?: AiPersonality
+  /** Whether the AI may disengage and refuse hopeless battles. Default true. */
+  aiRetreats?: boolean
   /**
    * A designed scenario, embedded whole when `scenarioId` names one — so the
    * battle replays on a machine that has never seen the design.

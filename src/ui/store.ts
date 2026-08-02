@@ -327,6 +327,7 @@ function driveAi(closing = false): void {
         closing,
         setup.aiDifficulty ?? 'captain',
         setup.aiPersonality ?? 'steady',
+        setup.aiRetreats ?? true,
       )
       if (batch.length === 0) break
       for (const action of batch) {
