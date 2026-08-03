@@ -130,6 +130,14 @@ export interface VolleyRequest {
   chosenShield?: ShieldSide
   /** Extra defender rerolls from terrain cover (K2.1.8). */
   defenderCoverRerolls?: number
+  /**
+   * Extra defender rerolls from evasive maneuvers (C3.6.3, optional). Both
+   * halves of that rule land here, because both are the defender rerolling:
+   * an evading *target* is harder to hit, and an evading *attacker* shoots
+   * worse, so its victim rerolls its dice right back. Proximity fire denies
+   * them, exactly as it denies a red bracket's (E3.3.4).
+   */
+  defenderEvasiveRerolls?: number
   /** Low-speed penalty suppressed by terrain (C1.5.3, K2.2.1). */
   lowSpeedNegated?: boolean
   /** Part of a Coordinated Fire attack, which bars precision targeting (H4.6.2). */
@@ -412,7 +420,9 @@ export function resolveVolley(
    * at five — the gap widening exactly where the old rule ran out of list and
    * started wasting the budget.
    */
-  if (mode !== 'proximity' && request.defenderCoverRerolls) {
+  const extraRerolls =
+    (request.defenderCoverRerolls ?? 0) + (request.defenderEvasiveRerolls ?? 0)
+  if (mode !== 'proximity' && extraRerolls > 0) {
     const pool = records.flatMap((record) => {
       const weapon = attacker.form.weapons.find((w) => w.name === record.weaponName)!
       const special = weapon.special?.damage ?? 0
@@ -420,7 +430,7 @@ export function resolveVolley(
       return record.rolls.map((_, index) => ({ record, index, special, bonus }))
     })
 
-    for (let left = request.defenderCoverRerolls; left > 0; left--) {
+    for (let left = extraRerolls; left > 0; left--) {
       let best: (typeof pool)[number] | null = null
       let bestGain = 0
       for (const slot of pool) {

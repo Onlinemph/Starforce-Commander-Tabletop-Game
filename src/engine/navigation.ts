@@ -189,6 +189,25 @@ export function executeMovement(
   ship.speed = speed
   ship.accelUsedThisRound += Math.abs(card.accel)
 
+  /**
+   * The evasive plot takes effect as the card is revealed (C3.6.4). Only an
+   * *increase* costs points: staying evasive at the same depth is free, but
+   * stopping and restarting is not, because the old points are spent and gone
+   * (C3.6.4). Evasive spending counts against the round's acceleration limit
+   * like any other, though the per-phase limit does not apply to it (C3.6.2).
+   */
+  if (card.evasive !== undefined) {
+    const want = Math.max(0, Math.floor(card.evasive))
+    if (want > ship.evasive) {
+      const room = Math.max(0, accelerationBudget(ship) - ship.accelUsedThisRound)
+      const added = Math.min(want - ship.evasive, room)
+      ship.accelUsedThisRound += added
+      ship.evasive += added
+    } else {
+      ship.evasive = want
+    }
+  }
+
   ship.placement = planned.end
   ship.stressMarkers += planned.stress
   if (planned.maneuver === 'em-90' || planned.maneuver === 'em-180') ship.emergencyTurnUsed = true

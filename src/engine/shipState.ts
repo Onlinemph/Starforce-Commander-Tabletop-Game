@@ -94,6 +94,12 @@ export interface ShipState {
   stressMarkers: number
   /** Acceleration points spent this round, for the /ROUND track (C1.2.6). */
   accelUsedThisRound: number
+  /**
+   * Acceleration points currently spent weaving (C3.6.3): the number of
+   * attack dice this ship may reroll from each incoming volley — and the
+   * number its own targets may reroll right back at it.
+   */
+  evasive: number
   /** Emergency turns are once per round (C3.5.4). */
   emergencyTurnUsed: boolean
   /** Phases remaining at speed zero from an Emergency Stop (C3.8.2). */
@@ -178,6 +184,7 @@ export function createShip(args: {
     excessStructureDamage: 0,
     stressMarkers: 0,
     accelUsedThisRound: 0,
+    evasive: 0,
     emergencyTurnUsed: false,
     emergencyStopPhases: 0,
     marineSquads: form.marineSquads,
@@ -573,6 +580,7 @@ export function beginRound(ship: ShipState): void {
   for (const sensor of ship.scoutAssignments) sensor.active = true
   ship.genSysLevel = 'off'
   ship.accelUsedThisRound = 0
+  ship.evasive = 0
   ship.emergencyTurnUsed = false
   ship.stressMarkers = 0
   for (const side of SHIELD_SIDES) {

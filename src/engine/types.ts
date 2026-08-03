@@ -431,6 +431,13 @@ export interface CommandCard {
   speed: number
   /** Half-inch slide instead of a full inch (C2.4.1). */
   halfSlide?: boolean
+  /**
+   * Acceleration points thrown into evasive maneuvers (C3.6, optional). The
+   * plot is the number in the card's EVASIVE box: leave it at the ship's
+   * current level to stay as it is, raise it to begin or deepen the weave,
+   * set it to zero to stop.
+   */
+  evasive?: number
   /** Sensor point split (H2.2.2). */
   sensors: { targeting: number; jamming: number; tacticalScan: number }
   /** Shields the captain has ordered lowered (G1.1.5). */

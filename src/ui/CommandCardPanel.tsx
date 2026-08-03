@@ -41,6 +41,9 @@ export function CommandCardPanel({ game, ship }: Props) {
     dispatch({ type: 'plot-maneuver', shipId: ship.id, maneuver, direction })
 
   const setAccel = (delta: number) => dispatch({ type: 'plot-accel', shipId: ship.id, delta })
+  const evasive = card.evasive ?? ship.evasive
+  const setEvasive = (points: number) =>
+    dispatch({ type: 'plot-evasive', shipId: ship.id, points })
 
   const setSensor = (key: keyof typeof card.sensors, value: number) =>
     dispatch({ type: 'plot-sensor', shipId: ship.id, key, value })
@@ -116,6 +119,33 @@ export function CommandCardPanel({ game, ship }: Props) {
           {ship.accelUsedThisRound} of {budget} acceleration points used this round · max{' '}
           {ship.form.sublight.maxAccelPerPhase}/phase · safe {ship.form.sublight.safeAccelPerRound}/round ·
           speed range {-maxReverseSpeed(ship)} to {currentMaxSpeed(ship)}
+        </p>
+
+        {/*
+          The EVASIVE box (C3.6). Acceleration spent weaving rather than on
+          speed: it buys rerolls against every incoming volley, and hands the
+          same number to anyone this ship shoots at. The per-phase limit does
+          not apply to it, only the round's total.
+        */}
+        <div className="accel-row">
+          <button
+            type="button"
+            disabled={evasive <= 0}
+            onClick={() => setEvasive(evasive - 1)}
+            aria-label="Less evasive"
+          >
+            −
+          </button>
+          <span className={`accel-value${evasive > 0 ? ' is-evasive' : ''}`}>EVASIVE {evasive}</span>
+          <button type="button" onClick={() => setEvasive(evasive + 1)} aria-label="More evasive">
+            +
+          </button>
+          {ship.evasive > 0 && <span className="speed-value">WEAVING</span>}
+        </div>
+        <p className="hint">
+          {evasive > 0
+            ? `Rerolls ${evasive} attack ${evasive === 1 ? 'die' : 'dice'} from every incoming volley — and hands ${evasive} back to anything this ship fires at (C3.6.3).`
+            : 'Spend acceleration on evasive maneuvers: harder to hit, and less accurate yourself (C3.6).'}
         </p>
       </div>
 

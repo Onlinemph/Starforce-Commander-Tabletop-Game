@@ -15,6 +15,7 @@ import {
   type RepairAssignment,
 } from './engineering'
 import { chooseLead, joinFormation, leaveFormation } from './formation'
+import { accelerationBudget } from './navigation'
 import {
   advanceFiringStep,
   advanceOperationsStep,
@@ -95,6 +96,7 @@ export type GameAction =
   // Command card plotting (C1)
   | { type: 'plot-maneuver'; shipId: string; maneuver: Maneuver; direction: TurnDirection | null }
   | { type: 'plot-accel'; shipId: string; delta: number }
+  | { type: 'plot-evasive'; shipId: string; points: number }
   | {
       type: 'plot-sensor'
       shipId: string
@@ -277,6 +279,23 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
       card.speed = ship.speed + card.accel
       return ok
     }
+    case 'plot-evasive': {
+      const ship = shipById(game, action.shipId)
+      const card = game.orders[action.shipId]
+      if (!ship || !card) return said('No command card for that ship.')
+      /**
+       * The EVASIVE box (C3.6.2). Capped at what the drive was powered for
+       * this round, minus what the round has already spent — the per-phase
+       * acceleration limit deliberately does not apply here, only the round's
+       * total does. Points already weaving are not re-bought (C3.6.4).
+       */
+      const room = Math.max(
+        0,
+        accelerationBudget(ship) - ship.accelUsedThisRound + ship.evasive,
+      )
+      card.evasive = Math.max(0, Math.min(Math.floor(action.points), room))
+      return ok
+    }
     case 'plot-sensor': {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
@@ -380,6 +399,9 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
           // Asteroid cover rerolls (K2.1.8) and the in-field exemption from
           // the low-speed penalty (K2.2.1).
           defenderCoverRerolls: asteroidCoverRerolls(game, attacker, target),
+          // Both halves of C3.6.3 at once: what the target's own weaving
+          // earns it, plus what the attacker's weaving costs its accuracy.
+          defenderEvasiveRerolls: target.evasive + attacker.evasive,
           lowSpeedNegated:
             terrain.lowSpeedNegated ||
             asteroidFieldsAt(game.scenario.terrain, target.placement.position).length > 0,
