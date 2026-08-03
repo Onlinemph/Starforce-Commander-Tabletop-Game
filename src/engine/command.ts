@@ -32,9 +32,19 @@ export function commandSystemBoxes(ship: ShipState): number {
  */
 export function commandPointsAvailable(ship: ShipState): number {
   if (ship.destroyed || ship.derelict || ship.disengaged) return 0
-  if (genSysSetting(ship) !== 'max') return 0
-  return commandSystemBoxes(ship)
+  /**
+   * A flagship carries two points that cost nothing and need no GEN SYS
+   * (S3.6) — the staff aboard rather than the hardware. They stack with
+   * anything its CMND boxes produce, and are still bounded at the receiving
+   * end by that ship's own sensor rating.
+   */
+  const flag = ship.flagship ? FLAGSHIP_SCAN_POINTS : 0
+  if (genSysSetting(ship) !== 'max') return flag
+  return flag + commandSystemBoxes(ship)
 }
+
+/** Free tactical scan points a flagship may hand out each round (S3.6). */
+export const FLAGSHIP_SCAN_POINTS = 2
 
 /** One recipient's share of the command ship's output. */
 export interface CommandAssignment {

@@ -575,6 +575,8 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       */}
       {game.ships
         .filter((ship) => {
+          // Reinforcements are not on the board until their round (S3.2).
+          if (ship.arrivesRound > game.round) return false
           const cloak = game.cloaks[ship.id]
           // A cloaked, undetected ship is off the table (H6.2.2) — except to
           // its own commander, who tracks it in secret. The open table hides

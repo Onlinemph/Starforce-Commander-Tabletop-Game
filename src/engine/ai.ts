@@ -13,6 +13,7 @@ import {
   tractorableHoming,
   tacticalScanOf,
   isCombatPhase,
+  reconProgress,
   terrainObstacles,
   tractorBeamsFree,
   victoryPoints,
@@ -287,6 +288,14 @@ export function aiNextActions(
  * stands its ground, doctrine be damned.
  */
 function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
+  /**
+   * A recon mission ends by leaving, not by winning (S3.2): the information
+   * is worth nothing aboard a ship that stays to fight, and the destroyers
+   * are coming. This one outranks the retreat toggle — going home *is* the
+   * mission, not a decision to abandon it.
+   */
+  const recon = reconProgress(game)
+  if (recon && ship.side === recon.side && recon.gathered >= recon.required) return true
   if (!retreatsAllowed) return false
   const level = damageLevel(ship)
   if (level === 'crippled') return true
@@ -1256,6 +1265,18 @@ function bestPlot(
    * board edge — which is not a wall but the door (J9.2.2).
    */
   const fleeing = difficulty !== 'ensign' && wantsToLeave(game, ship, difficulty)
+  /**
+   * A survey still to finish (S3.2). The raider's helm answers to the planet
+   * rather than to the picket: a scan needs eight inches, and a ship that
+   * flies at the enemy instead never gets them. Once the survey is done
+   * `wantsToLeave` turns it for home, and `fleeing` takes over.
+   */
+  const survey = (() => {
+    if (difficulty === 'ensign' || fleeing) return null
+    const recon = reconProgress(game)
+    if (!recon || ship.side !== recon.side || recon.gathered >= recon.required) return null
+    return game.scenario.terrain.find((t) => t.id === recon.target)?.center ?? null
+  })()
   const losObstacles = terrainObstacles(game.scenario.terrain)
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
@@ -1358,6 +1379,10 @@ function bestPlot(
       if (fleeing) {
         // Every inch from the nearest gun is the whole plan.
         score = nearestRange === Infinity ? 40 : nearestRange
+      } else if (survey) {
+        // Close to scanning range and hold there — the mission is the planet,
+        // and the picket is only in the way (J4.2.1 wants eight inches).
+        score = -Math.abs(actualRange(end.position, survey) - 5)
       } else if (kite !== null && visibleEnemies.length > 0) {
         score = -(kite - nearestRange > 0 ? (kite - nearestRange) * 1.5 : (nearestRange - kite) * 0.5)
       } else {
@@ -1582,6 +1607,20 @@ function planOperations(
   if (difficulty === 'ensign') return []
 
   const actions: GameAction[] = []
+  /**
+   * The recon mission (S3.2) is the one scenario where shooting is not the
+   * job. The raider's orders are to read the planet and leave with what it
+   * read, so it scans every phase it can until the survey is complete — and
+   * `wantsToLeave` takes it home from there.
+   */
+  const recon = reconProgress(game)
+  if (recon && !recon.succeeded && recon.gathered < recon.required) {
+    for (const ship of fleet) {
+      if (ship.side !== recon.side || ship.derelict) continue
+      actions.push({ type: 'scan', shipId: ship.id, targetId: recon.target })
+    }
+  }
+
   for (const ship of fleet) {
     const cloak = cloakOf(game, ship)
     const cloaked = Boolean(cloak && isCloaked(cloak))

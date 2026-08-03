@@ -50,6 +50,16 @@ export interface ShipState {
   // ── Engineering ────────────────────────────────────────────────────────
   /** Hits on each power point, keyed by reactor group id. */
   reactorDamage: Record<string, number[]>
+  /**
+   * The force's flagship (S3.6). Damage scored against it is worth double to
+   * the enemy, and its side gets free tactical scan points to hand out.
+   */
+  flagship: boolean
+  /**
+   * A reinforcement's arrival round (S3.2). Until then the hull is off the map
+   * entirely: not drawn, not targetable, not counted as active.
+   */
+  arrivesRound: number
   batteryDamaged: boolean[]
   batteryCharged: boolean[]
   ftlDriveDamage: number
@@ -133,6 +143,8 @@ export function createShip(args: {
   form: ShipForm
   placement: Placement
   speed: number
+  flagship?: boolean
+  arrivesRound?: number
 }): ShipState {
   const { form } = args
 
@@ -163,6 +175,8 @@ export function createShip(args: {
     speed: args.speed,
     reactorDamage,
     // Batteries begin a scenario fully charged (B2.4.1).
+    flagship: args.flagship ?? false,
+    arrivesRound: args.arrivesRound ?? 1,
     batteryDamaged: new Array(form.batteries).fill(false),
     batteryCharged: new Array(form.batteries).fill(true),
     ftlDriveDamage: 0,

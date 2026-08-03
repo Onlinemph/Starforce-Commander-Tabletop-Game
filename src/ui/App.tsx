@@ -6,6 +6,8 @@ import {
   isCombatPhase,
   PHASE_LABELS,
   PHASE_SEGMENTS,
+  pendingArrivals,
+  reconProgress,
   SEGMENT_LABELS,
   sidesAwaited,
   victoryPoints,
@@ -306,6 +308,7 @@ export function App() {
 
       <div className="lcars-stage">
         <SequenceBar game={game} mySide={lockedView} />
+        <MissionStatus game={game} />
 
         <main className="layout">
           <section className="map-column">
@@ -452,7 +455,7 @@ function StatusRail({ game }: { game: GameState }) {
       </div>
       {sides.map((side, i) => (
         <div key={side} className={`rail-block rail-${tones[i % tones.length]}`}>
-          <b>{game.ships.filter((s) => s.side === side && !s.destroyed && !s.disengaged).length}</b>
+          <b>{activeShips(game).filter((s) => s.side === side).length}</b>
           <span>
             {side}
             {(currentSetup().aiSides ?? []).includes(side) ? ' · AI' : ''}
@@ -875,6 +878,38 @@ function ScenarioBrief({ game }: { game: GameState }) {
         <strong>Victory:</strong> {game.scenario.victory}
       </p>
     </details>
+  )
+}
+
+/**
+ * The scenario's own scoreboard, for the two that keep score by something
+ * other than damage: a survey to finish and get away with (S3.2), and the
+ * reinforcements whose arrival is the clock (S3.2 again).
+ */
+function MissionStatus({ game }: { game: GameState }) {
+  const recon = reconProgress(game)
+  const coming = pendingArrivals(game)
+  if (!recon && coming.length === 0) return null
+  return (
+    <div className="mission-status">
+      {recon && (
+        <p className={recon.succeeded ? 'is-done' : ''}>
+          <strong>{recon.side}</strong> survey: {recon.gathered} of {recon.required} information
+          points
+          {recon.gathered >= recon.required
+            ? recon.away
+              ? ' — gathered and away. Mission complete.'
+              : ' — gathered. Now get it home (J9).'
+            : ' — scan the objective during Operations (J4.2.2).'}
+        </p>
+      )}
+      {coming.length > 0 && (
+        <p>
+          {coming.length} reinforcement{coming.length === 1 ? '' : 's'} arrive Round{' '}
+          {coming[0].arrivesRound} ({coming[0].side}).
+        </p>
+      )}
+    </div>
   )
 }
 

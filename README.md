@@ -298,6 +298,23 @@ that one fact.
   players get the full rule and an EVASIVE control on the card. Every baseline held: duel
   admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L of 64, and the
   outnumbered capital unchanged at 11W–13L.
+- **All six printed missions (S3).** The rulebook prints six scenarios and each exists to turn on
+  a rule the plain duel never reaches, so they are worth having as written rather than as flavour
+  text. **The Duel** and **Orbital Ambush** were already here; the other four brought the
+  mechanics they need with them. **First Strike** opens with the cruiser at green alert — every
+  weapon cold, every shield down, because raising them would have been the provocation — and holds
+  it to speed 1 for the opening round while a ship half its size empties its racks into it.
+  **Mutual Surprise** rolls its own asteroid field and places both ships in secret: a seeded
+  scatter, unknown to both players, the same for both of them, reproducible from the battle file —
+  so a game can open bow to bow or with one cruiser already astern of the other. **Target the
+  Flagship** gives each side three hulls and names one, doubles every victory point scored against
+  the enemy's, and hands each flagship two free Tactical Scan points to distribute — the staff
+  aboard rather than the hardware, so they cost no power and need no GEN SYS. **Recon Mission** is
+  the one that is not a fight at all: the raider has to scan the survey world for information
+  worth twenty points plus ten for every SCNC box it brought, and then *leave with it* — damage is
+  beside the point, and three destroyers arrive across its way home on Round 8. The computer plays
+  it as a mission rather than a battle: its helm answers to the planet instead of the picket, it
+  scans every phase it can, and the moment the survey is complete it turns for home.
 - **Batteries as a reserve, not a rounding error (B2.5, optional).** Ticked in Choose Forces, and
   it changes what a battery is *for*. Normally stored power is spent before anyone has moved — it
   simply covers whatever the round's allocation overspends. Under the optional rule it can be held
@@ -485,7 +502,7 @@ exemption (K2.2.1) all apply at the table.
 | J9 Disengagement | ✅ | FTL, leaving the map, range 36, mutual agreement |
 | K Space Terrain | ⚠️ | Planets/moons block line of sight; asteroid transit damage and cover done |
 | S2 Scenario Rules | ✅ | Map types, placement, victory points by damage level |
-| S3 Scenarios | ⚠️ | The Duel and Orbital Ambush; the rest are straightforward to add |
+| S3 Scenarios | ✅ | All six printed missions, with the rules each one turns on |
 | **C5 Formation Maneuvering** *(Expansion 1)* | ✅ | Join requirements, lead selection, one plot for the group, one counter on the map |
 | **H3 Scouting Sensors** *(Expansion 1)* | ✅ | Targeting illumination, area jamming, scan range; canon scout blocks for all 8 scouts |
 | **H4 Coordinated Fire** *(Expansion 2, optional)* | ✅ | Ten-step firing sequence, group validation, one attack per faction per phase |

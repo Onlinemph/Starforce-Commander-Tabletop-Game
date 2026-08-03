@@ -3836,3 +3836,19 @@ button.chip:hover:not(:disabled) {
   color: var(--lc-green, #57c46f);
   opacity: 1;
 }
+
+/* The scenario's own scoreboard: a survey to finish, a clock to beat. */
+.mission-status {
+  padding: 0.35rem 0.9rem;
+  background: rgba(255, 156, 0, 0.08);
+  border-bottom: 1px solid rgba(255, 156, 0, 0.25);
+  font-size: 0.8rem;
+}
+
+.mission-status p {
+  margin: 0.1rem 0;
+}
+
+.mission-status .is-done {
+  color: var(--lc-green, #57c46f);
+}

@@ -277,6 +277,20 @@ export interface Scenario {
   nebula?: boolean
   /** Scenario-specific tuning of the Common Nebula Effects (K4.2, K5.2.4). */
   nebulaEffects?: Partial<NebulaEffects>
+  /**
+   * A side held to a speed for the opening round — the ambushed ship that has
+   * not realised yet (S3.3, S3.4). Its plot is capped rather than refused, so
+   * the player is told the ship will not go faster, not told off.
+   */
+  speedLimit?: { side: string; round: number; speed: number }
+  /**
+   * Information points a side must gather on a scanned object before it may
+   * call the mission a success, and the object it must gather them from
+   * (S3.2). The threshold is worked out from the recon force's own SCNC boxes.
+   */
+  recon?: { side: string; targetId: string }
+  /** Terrain the scenario rolls for itself when the player picks none (S3.5). */
+  defaultTerrain?: 'roll' | number
 }
 
 // ---------------------------------------------------------------------------
@@ -809,8 +823,65 @@ export function cloakSuppressedByTerrain(game: GameState, ship: ShipState): bool
 // Queries
 // ---------------------------------------------------------------------------
 
+/**
+ * A scenario's opening-round speed limit, where one binds this ship (S3.3,
+ * S3.4). The ambushed captain has not realised yet: the ship holds station
+ * for the round no matter what the helm plots.
+ */
+export function speedLimitFor(game: GameState, ship: ShipState): number | undefined {
+  const limit = game.scenario.speedLimit
+  if (!limit || limit.side !== ship.side || game.round > limit.round) return undefined
+  return limit.speed
+}
+
 export function activeShips(game: GameState): ShipState[] {
-  return game.ships.filter((s) => !s.destroyed && !s.disengaged)
+  return game.ships.filter((s) => !s.destroyed && !s.disengaged && s.arrivesRound <= game.round)
+}
+
+/**
+ * How the recon mission stands (S3.2).
+ *
+ * The raider's requirement is set by the sciences it brought: twenty points
+ * for one SCNC box and ten more for every box after that. Damage is beside
+ * the point — the information only counts if the ship leaves with it, so the
+ * mission is only *done* once the hull has disengaged.
+ */
+export interface ReconProgress {
+  side: string
+  target: string
+  gathered: number
+  required: number
+  away: boolean
+  succeeded: boolean
+}
+
+export function reconProgress(game: GameState): ReconProgress | null {
+  const recon = game.scenario.recon
+  if (!recon) return null
+  const force = game.ships.filter((s) => s.side === recon.side)
+  const boxes = force.reduce(
+    (sum, ship) => sum + ship.form.systems.filter((g) => g.kind === 'SCNC').reduce((n, g) => n + g.boxes, 0),
+    0,
+  )
+  const gathered = game.ops.info[recon.side]?.[recon.targetId] ?? 0
+  const required = boxes > 0 ? 10 * (boxes + 1) : 0
+  // Destroyed hulls take the survey with them; only a ship that left counts.
+  const away = force.some((ship) => ship.disengaged && !ship.destroyed)
+  return {
+    side: recon.side,
+    target: recon.targetId,
+    gathered,
+    required,
+    away,
+    succeeded: gathered >= required && away,
+  }
+}
+
+/** Reinforcements still on their way (S3.2), in arrival order. */
+export function pendingArrivals(game: GameState): ShipState[] {
+  return game.ships
+    .filter((s) => !s.destroyed && s.arrivesRound > game.round)
+    .sort((a, b) => a.arrivesRound - b.arrivesRound)
 }
 
 export function shipById(game: GameState, id: string): ShipState | undefined {
@@ -959,7 +1030,9 @@ export function victoryPoints(game: GameState): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const side of sides(game)) totals[side] = 0
   for (const ship of game.ships) {
-    const earned = pointsAgainst(ship)
+    // The flagship is worth double to whoever hurts it (S3.6): the scenario
+    // is about command and control, so the scoring says so.
+    const earned = pointsAgainst(ship) * (ship.flagship ? 2 : 1)
     for (const side of sides(game)) {
       if (side !== ship.side) totals[side] += earned
     }
@@ -1156,6 +1229,7 @@ function runSegmentExit(game: GameState): void {
           ship,
           card,
           towed ? adjustedSpeed(ship, game.ops.links, game.ships, card.speed) : undefined,
+          speedLimitFor(game, ship),
         )
         if (result.illegal) pushLog(game, `${ship.name}: illegal plot — ${result.illegal}`)
         if (result.stress > 0) pushLog(game, `${ship.name}: +${result.stress} stress from maneuver.`)
@@ -1370,6 +1444,10 @@ function startNewRound(game: GameState): void {
   pruneFormations(game.formations, game.ships)
   for (const ship of activeShips(game)) beginRound(ship)
   pushLog(game, `— Round ${game.round} —`)
+  // Reinforcements make the board (S3.2). Announced, because a squadron
+  // appearing across the exit is the whole point of the clock.
+  const arrived = game.ships.filter((s) => s.arrivesRound === game.round && !s.destroyed)
+  for (const ship of arrived) pushLog(game, `${ship.name} arrives (${ship.side}).`)
 }
 
 // ---------------------------------------------------------------------------

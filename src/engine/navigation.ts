@@ -179,9 +179,11 @@ export function executeMovement(
   ship: ShipState,
   card: CommandCard,
   towedSpeed?: number,
+  /** A scenario's opening-round speed limit, if one binds this ship. */
+  speedCap?: number,
 ): MovementResult {
   const planned = plannedMovement(ship, card, towedSpeed)
-  const maxForward = currentMaxSpeed(ship)
+  const maxForward = Math.min(currentMaxSpeed(ship), speedCap ?? Infinity)
   let speed = card.speed
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)

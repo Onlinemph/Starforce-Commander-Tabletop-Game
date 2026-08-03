@@ -27,6 +27,19 @@ export const RED = 'Red Force'
  * gives 1 = NE, 2 = E, 3 = SE, 4 = S, 5 = SW, 6 = W, 7 = NW — which is what
  * makes S3.1's printed facings (Blue 6, Red 2) a converging head-on setup.
  */
+/**
+ * A printed map square, as the scenarios cite them — "LOC: F5", "planet in D6".
+ *
+ * The printed map is a 9×9 lettered grid over 36 inches, so each square is four
+ * inches on a side and E5 is the middle of the board, which is where S3.3 puts
+ * its planet and where this lands it.
+ */
+export function square(ref: string): Point {
+  const column = ref.toUpperCase().charCodeAt(0) - 65
+  const row = Number(ref.slice(1)) - 1
+  return { x: (column + 0.5) * 4, y: (row + 0.5) * 4 }
+}
+
 export function facingToHeading(facing: number): number {
   return ((facing - 8) * 45 + 360) % 360
 }
@@ -297,6 +310,30 @@ interface SideSetup {
   names: string[]
   /** The force the scenario prints. */
   defaults: () => ShipForm[]
+  /**
+   * Condition at the opening bell (S2.5.5). Red is ready for a fight — every
+   * mount armed. Green is the opposite and the reason a scenario like First
+   * Strike works at all: weapons cold and shields down, because raising them
+   * would have been the provocation. Yellow, the default, is the middle: alert
+   * but not yet loaded.
+   */
+  alert?: 'green' | 'yellow' | 'red'
+  /**
+   * Secret placement (S3.5): each captain writes down a square and a facing
+   * and neither learns the other's until the counters go down. On a digital
+   * table that is a seeded scatter — unknown to both players, the same for
+   * both of them, and reproducible from the battle file.
+   */
+  scatter?: boolean
+  /** The force's flagship, if the scenario names one (S3.6). */
+  flagship?: boolean
+  /**
+   * Reinforcements (S3.2): every ship from `fromIndex` onward is off the map
+   * until `round`, then enters at its own anchor and facing. Expressed inside
+   * the side rather than as a second side, so a player who composes their own
+   * force gets one force with a late half — not two whole ones.
+   */
+  late?: { fromIndex: number; round: number; anchor: Point; facing: number }
 }
 
 /** Vessel names for the ships players field, so the log reads like a battle. */
@@ -415,30 +452,96 @@ function armEveryMount(ships: ShipState[]): void {
   }
 }
 
+/**
+ * Condition at the opening bell (S2.5.5): what the scenario says the crew was
+ * doing when the shooting started. Red alert means every mount loaded; green
+ * means cold guns and shields down, which several scenarios turn on.
+ */
+function applyAlert(ship: ShipState, alert: 'green' | 'yellow' | 'red'): void {
+  if (alert === 'red') {
+    for (const weapon of ship.form.weapons) {
+      weapon.mounts.forEach((mount, index) => {
+        const state = ship.mounts[weapon.id]?.[index]
+        if (!state || state.damage >= mount.hitBoxes) return
+        state.armed = mount.armingCircles
+      })
+    }
+    return
+  }
+  if (alert === 'green') {
+    // Shields lowered to avoid provoking anybody, which is exactly the
+    // mistake the scenario is about (S3.4).
+    for (const side of ['F', 'A', 'P', 'S'] as const) ship.shieldsDown[side] = true
+  }
+}
+
 function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): ShipState[] {
   const ships: ShipState[] = []
   const clamp = (v: number, max: number) =>
     Math.min(max - EDGE_MARGIN, Math.max(EDGE_MARGIN, v))
+  // Secret placement is seeded from the battle, never from the clock, so the
+  // same battle file always deploys the same way.
+  const scatterRng = new Rng((options.seed ?? 0) ^ 0x5ecc7)
   for (const setup of setups) {
     const prefix = setup.side.split(' ')[0].toLowerCase()
-    forceFor(setup, options).forEach((form, i) => {
-      const offset = offsetFor(setup, i, bounds)
-      ships.push(
-        createShip({
-          id: `${prefix}-${i + 1}`,
-          side: setup.side,
-          name: setup.names[i] ?? `${setup.names[0]} ${i + 1}`,
-          form,
-          placement: {
-            position: {
-              x: clamp(setup.anchor.x + offset.x, bounds.width),
-              y: clamp(setup.anchor.y + offset.y, bounds.height),
-            },
-            heading: facingToHeading(setup.facing),
+    const forms = forceFor(setup, options)
+    /**
+     * The whole force lands somewhere unknown, so the box it may land in is
+     * inset by the room the formation itself needs — otherwise a large
+     * composed force gets clamped against an edge and stacks up on itself.
+     */
+    const extent = {
+      x: Math.abs(setup.spread.x) * (forms.length - 1),
+      y: Math.abs(setup.spread.y) * (forms.length - 1),
+    }
+    const pick = (span: number, reach: number) =>
+      EDGE_MARGIN + scatterRng.next() * Math.max(0, span - EDGE_MARGIN * 2 - reach)
+    const secret = setup.scatter
+      ? {
+          x: pick(bounds.width, extent.x),
+          y: pick(bounds.height, extent.y),
+          facing: 1 + scatterRng.int(8),
+        }
+      : null
+    forms.forEach((form, i) => {
+      const late = setup.late && i >= setup.late.fromIndex ? setup.late : null
+      /**
+       * Reinforcements form a line from their own anchor rather than reusing
+       * the deployment box's wrapping — they are arriving, not deploying, and
+       * the box's geometry has nothing to do with where they come in.
+       */
+      /**
+       * A line from the anchor, for the two cases where the deployment box's
+       * wrapping does not apply: reinforcements are arriving rather than
+       * deploying, and a secretly placed force starts from a spot the box
+       * geometry knows nothing about.
+       */
+      const line = (from: number) => ({
+        x: setup.spread.x * (i - from),
+        y: setup.spread.y * (i - from),
+      })
+      const offset = late ? line(late.fromIndex) : secret ? line(0) : offsetFor(setup, i, bounds)
+      const anchor = late ? late.anchor : (secret ?? setup.anchor)
+      const ship = createShip({
+        id: `${prefix}-${i + 1}`,
+        side: setup.side,
+        name: setup.names[i] ?? `${setup.names[0]} ${i + 1}`,
+        form,
+        placement: {
+          position: {
+            x: clamp(anchor.x + offset.x, bounds.width),
+            y: clamp(anchor.y + offset.y, bounds.height),
           },
-          speed: setup.speed,
-        }),
-      )
+          heading: facingToHeading(late ? late.facing : secret ? secret.facing : setup.facing),
+        },
+        speed: setup.speed,
+        // The scenario names one hull as the flagship, and it is the first
+        // one it lists (S3.6).
+        flagship: setup.flagship === true && i === 0,
+        arrivesRound: late ? late.round : undefined,
+      })
+      applyAlert(ship, setup.alert ?? 'yellow')
+      ships.push(ship)
     })
   }
   return ships
@@ -584,9 +687,270 @@ const AURELIAN_SIDES: SideSetup[] = [
   },
 ]
 
+// ---------------------------------------------------------------------------
+// S3.2 Recon Mission
+// ---------------------------------------------------------------------------
+
+export const RECON_MISSION: Scenario = {
+  id: 's3.2-recon-mission',
+  name: 'S3.2 Recon Mission',
+  background:
+    'A Red Force ship has run deep into Blue Force space to read a vital star system, and a ' +
+    'picket frigate is all that stands over the planet. Blue Force destroyers are converging: ' +
+    'they arrive on Round 8, and the raider that is still here to meet them has left it too late.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [
+    {
+      id: 'recon-planet',
+      kind: 'planet',
+      name: 'Survey world',
+      center: square('D6'),
+      radius: 5,
+    },
+  ],
+  objectives: {
+    [BLUE]: 'Destroy the raider, or hold it here until the destroyers arrive on Round 8.',
+    [RED]: 'Scan the survey world for the information the mission needs, then disengage by FTL.',
+  },
+  specialRules: [
+    'Red Force gathers information by scanning the planet during Operations (J4.2.2). What it ' +
+      'needs depends on the sciences it brought: 20 points for one SCNC box, and ten more for ' +
+      'every box after that.',
+    'Blue Force reinforcements — three destroyers — arrive at the start of Round 8 (S3.2).',
+    'Damage is beside the point for Red Force. The information only counts if the ship leaves ' +
+      'with it.',
+  ],
+  victory:
+    'Red Force wins by gathering the required information and disengaging; the raider that ' +
+    'leaves empty-handed, or does not leave, has failed however the shooting went. Blue Force ' +
+    'wins by preventing it. Victory points are still scored from damage (S2.8.4).',
+  recon: { side: RED, targetId: 'recon-planet' },
+}
+
+// The raider comes in from its own space in the east; the picket is over the
+// planet, and the destroyers arrive on the far side from where it must leave.
+const RECON_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 2,
+    speed: 2,
+    anchor: square('C5'),
+    pattern: [O(0, 0)],
+    names: BLUE_NAMES,
+    /**
+     * The picket is on station; everything behind it is still on its way.
+     * "At the beginning of Round 8, each destroyer may set up on a red or
+     * orange square on any facing" (S3.2) — the red squares being the
+     * raider's own setup boxes, so the reinforcements arrive across its way
+     * home. Leave before Round 8, or find the door shut.
+     */
+    late: { fromIndex: 1, round: 8, anchor: square('H2'), facing: 5 },
+    // A line across the top of the board rather than a column down the side,
+    // so a composed force of eight never deploys into the raider's lap.
+    spread: O(-4, 0),
+    defaults: () => {
+      const destroyer = shipFormById('union-xerxes-ii-class-destroyer') ?? YORKTOWN
+      return [
+        shipFormById('union-soryu-ii-class-frigate') ?? YORKTOWN,
+        destroyer,
+        destroyer,
+        destroyer,
+      ]
+    },
+  },
+  {
+    side: RED,
+    facing: 5,
+    speed: 4,
+    anchor: square('H6'),
+    pattern: [O(0, 0)],
+    spread: O(0, 3),
+    names: RED_NAMES,
+    defaults: () => [shipFormById('vallari-v-5k-corsair-class-destroyer') ?? VALLARI_CRUISER],
+  },
+]
+
+// ---------------------------------------------------------------------------
+// S3.4 First Strike
+// ---------------------------------------------------------------------------
+
+export const FIRST_STRIKE: Scenario = {
+  id: 's3.4-first-strike',
+  name: 'S3.4 First Strike',
+  background:
+    'Two ships have met under a flag of truce. Through a series of errors aboard the Blue Force ' +
+    'cruiser, the smaller Red Force ship has quietly armed its weapons — and the cruiser still ' +
+    'has its shields down, because raising them would have been the provocation.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [],
+  objectives: {
+    [BLUE]: 'Survive the opening volley, then destroy the Red Force ship or drive it off.',
+    [RED]: 'Strike before the cruiser can answer, and finish what the first volley starts.',
+  },
+  specialRules: [
+    'Blue Force begins at green alert: every weapon cold, every shield down (S2.5.5).',
+    'Blue Force may not exceed speed 1 during Round 1 — the helm has no reason to run yet.',
+    'Red Force begins at red alert with every mount armed.',
+  ],
+  victory:
+    'The winner is the last player left on the map. Victory points are earned from the damage ' +
+    'level inflicted on the enemy vessel (S2.8.4).',
+  speedLimit: { side: BLUE, round: 1, speed: 1 },
+}
+
+// LOC F5 and D4, as printed — close enough that the first volley is the point.
+const FIRST_STRIKE_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 6,
+    speed: 1,
+    anchor: square('F5'),
+    pattern: [O(0, 0)],
+    spread: O(0, 3),
+    names: BLUE_NAMES,
+    alert: 'green',
+    defaults: () => [shipFormById('union-yorktown-iii-class-heavy-cruiser') ?? YORKTOWN],
+  },
+  {
+    side: RED,
+    facing: 2,
+    speed: 2,
+    anchor: square('D4'),
+    pattern: [O(0, 0)],
+    spread: O(0, 3),
+    names: RED_NAMES,
+    alert: 'red',
+    defaults: () => [shipFormById('vallari-v-5l-corsair-class-destroyer') ?? VALLARI_CRUISER],
+  },
+]
+
+// ---------------------------------------------------------------------------
+// S3.5 Mutual Surprise
+// ---------------------------------------------------------------------------
+
+export const MUTUAL_SURPRISE: Scenario = {
+  id: 's3.5-mutual-surprise',
+  name: 'S3.5 Mutual Surprise',
+  background:
+    'Two cruisers are investigating unusual readings inside a large asteroid field. The rocks ' +
+    'are playing havoc with their sensors, and neither will see the other until they are close ' +
+    'enough for it to matter.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [],
+  defaultTerrain: 8,
+  objectives: {
+    [BLUE]: 'Destroy the Red Force cruiser or force it to disengage.',
+    [RED]: 'Destroy the Blue Force cruiser or force it to disengage.',
+  },
+  specialRules: [
+    'Each captain writes down a square and a facing in secret, and neither learns the other ' +
+      'until the counters go down — so a battle can open bow to bow or with one ship already ' +
+      'astern of the other. Some days it is hard to be the captain.',
+    'The asteroid field is rolled with the battle: cover, transit damage and the safe speed all ' +
+      'apply (K2).',
+  ],
+  victory:
+    'The winner is the last player left on the map. Victory points are earned from the damage ' +
+    'level inflicted on the enemy vessel (S2.8.4).',
+}
+
+const MUTUAL_SURPRISE_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 4,
+    speed: 2,
+    anchor: square('C3'),
+    pattern: [O(0, 0)],
+    spread: O(0, 3),
+    names: BLUE_NAMES,
+    scatter: true,
+    defaults: () => [shipFormById('union-yorktown-iii-class-heavy-cruiser') ?? YORKTOWN],
+  },
+  {
+    side: RED,
+    facing: 8,
+    speed: 2,
+    anchor: square('G7'),
+    pattern: [O(0, 0)],
+    spread: O(0, 3),
+    names: RED_NAMES,
+    scatter: true,
+    defaults: () => [shipFormById('vallari-v-10b-havoc-class-hvy-battlecruiser') ?? VALLARI_CRUISER],
+  },
+]
+
+// ---------------------------------------------------------------------------
+// S3.6 Target the Flagship
+// ---------------------------------------------------------------------------
+
+export const TARGET_THE_FLAGSHIP: Scenario = {
+  id: 's3.6-target-the-flagship',
+  name: 'S3.6 Target the Flagship',
+  background:
+    'Command and control is the target. Three ships a side, one of them the flagship — and ' +
+    'every point of damage done to the enemy flagship counts double, so the battle is fought ' +
+    'over one hull rather than across the line.',
+  bounds: { width: 36, height: 36, fixed: true },
+  terrain: [],
+  objectives: {
+    [BLUE]: 'Damage, destroy or drive off as many enemy ships as possible — the flagship first.',
+    [RED]: 'Damage, destroy or drive off as many enemy ships as possible — the flagship first.',
+  },
+  specialRules: [
+    'Each flagship carries two free Tactical Scan points it may hand to any ship in its force, ' +
+      'itself included — the staff aboard rather than the hardware, so they cost no power and ' +
+      'need no GEN SYS. They cannot push a ship past its own sensor rating.',
+    'Damage scored against a flagship, and forcing one to retreat, is worth double (S3.6).',
+  ],
+  victory:
+    'Victory points are scored from damage levels as usual (S2.8.4), doubled for everything ' +
+    'inflicted on the opposing flagship.',
+}
+
+const FLAGSHIP_SIDES: SideSetup[] = [
+  {
+    side: BLUE,
+    facing: 6,
+    speed: 4,
+    anchor: O(30, 18),
+    pattern: [O(0, 0), O(-3, -5), O(-3, 5)],
+    spread: O(0, 3),
+    names: BLUE_NAMES,
+    alert: 'red',
+    flagship: true,
+    defaults: () => {
+      const destroyer = shipFormById('union-xerxes-ii-class-destroyer') ?? YORKTOWN
+      return [shipFormById('union-yorktown-iii-class-heavy-cruiser') ?? YORKTOWN, destroyer, destroyer]
+    },
+  },
+  {
+    side: RED,
+    facing: 2,
+    speed: 4,
+    anchor: O(6, 18),
+    pattern: [O(0, 0), O(3, -5), O(3, 5)],
+    spread: O(0, 3),
+    names: RED_NAMES,
+    alert: 'red',
+    flagship: true,
+    defaults: () => {
+      const corsair = shipFormById('vallari-v-5l-corsair-class-destroyer') ?? VALLARI_CRUISER
+      return [
+        shipFormById('vallari-v-10b-havoc-class-hvy-battlecruiser') ?? VALLARI_CRUISER,
+        corsair,
+        corsair,
+      ]
+    },
+  },
+]
+
 export const SCENARIOS: Array<{ scenario: Scenario; sides: SideSetup[] }> = [
   { scenario: THE_DUEL, sides: DUEL_SIDES },
+  { scenario: RECON_MISSION, sides: RECON_SIDES },
   { scenario: ORBITAL_AMBUSH, sides: AMBUSH_SIDES },
+  { scenario: FIRST_STRIKE, sides: FIRST_STRIKE_SIDES },
+  { scenario: MUTUAL_SURPRISE, sides: MUTUAL_SURPRISE_SIDES },
+  { scenario: TARGET_THE_FLAGSHIP, sides: FLAGSHIP_SIDES },
   { scenario: SQUADRON_ENGAGEMENT, sides: SQUADRON_SIDES },
   { scenario: NEBULA_PATROL, sides: NEBULA_SIDES },
   { scenario: AURELIAN_RAID, sides: AURELIAN_SIDES },
@@ -742,7 +1106,11 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     ...scaledScenario,
     terrain: [
       ...scaledScenario.terrain,
-      ...rollAsteroidTerrain(scaledScenario, options.terrain, options.seed ?? 0),
+      ...rollAsteroidTerrain(
+        scaledScenario,
+        options.terrain ?? scaledScenario.defaultTerrain,
+        options.seed ?? 0,
+      ),
     ],
   }
   const ships = deploy(sides, scenario.bounds, options)
