@@ -47,24 +47,43 @@ export interface OnlineState {
 }
 
 /**
- * The match server every browser on this site starts with, so nobody has to
- * type one. Set it after deploying server/ — either paste your
- * `sfc-matches.<name>.workers.dev` URL here, or set VITE_MATCH_SERVER when
- * building. The Online panel still lets a player point elsewhere.
+ * The first of these that was actually configured.
+ *
+ * A build variable that is declared but empty — which is exactly what a CI
+ * step produces from a repository variable nobody set — is *not* a value to
+ * fall back from with `??`, because an empty string is neither null nor
+ * undefined. That distinction quietly cost a whole release its pre-filled
+ * match service, so the emptiness is checked rather than the nullishness.
  */
-export const DEFAULT_MATCH_SERVER: string =
-  (import.meta.env.VITE_MATCH_SERVER as string | undefined) ??
-  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
-  ''
+export function firstConfigured(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    const trimmed = typeof value === 'string' ? value.trim() : ''
+    if (trimmed.length > 0) return trimmed
+  }
+  return ''
+}
 
 /**
- * A Supabase project needs its publishable anon key alongside the URL. The
- * key is designed to be public — it ships in every client bundle — so it also
- * rides inside invite links, which is what lets a friend join a Supabase
- * match without configuring anything at all.
+ * The match service every browser on this site starts with, so nobody has to
+ * type one: a Supabase project URL, or a deployed Worker's address. Set the
+ * matching repository variables and the Pages build bakes them in; the Online
+ * panel still lets a player point elsewhere.
  */
-export const DEFAULT_MATCH_KEY: string =
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? ''
+export const DEFAULT_MATCH_SERVER: string = firstConfigured(
+  import.meta.env.VITE_SUPABASE_URL as string | undefined,
+  import.meta.env.VITE_MATCH_SERVER as string | undefined,
+)
+
+/**
+ * A Supabase project needs its publishable key alongside the URL. The key is
+ * designed to be public — it ships in every client bundle — so it also rides
+ * inside invite links, which is what lets a friend join a Supabase match
+ * without configuring anything at all.
+ */
+export const DEFAULT_MATCH_KEY: string = firstConfigured(
+  import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined,
+)
 
 const ENROLL_KEY = 'sfc.online-match.v1'
 

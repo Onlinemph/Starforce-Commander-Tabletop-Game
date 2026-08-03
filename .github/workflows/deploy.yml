@@ -65,18 +65,20 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
           # The match service every visitor's Online panel starts with, so
-          # nobody has to paste anything. Set these as repository *variables*
-          # (Settings → Secrets and variables → Actions → Variables) — not
-          # secrets: they are meant to reach the browser, which is exactly
-          # what a Supabase anon key is for.
+          # nobody has to paste anything.
           #
-          # Supabase (see supabase/README.md): SUPABASE_URL + SUPABASE_ANON_KEY
-          # Worker service (see server/README.md): MATCH_SERVER
-          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          # Either name works: Supabase's Connect dialog calls it a
-          # publishable key now, older projects call it the anon key.
-          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || vars.SUPABASE_PUBLISHABLE_KEY }}
-          VITE_MATCH_SERVER: ${{ vars.MATCH_SERVER }}
+          #   Supabase (supabase/README.md): SUPABASE_URL + SUPABASE_ANON_KEY
+          #                                  (or SUPABASE_PUBLISHABLE_KEY)
+          #   Worker service (server/README.md): MATCH_SERVER
+          #
+          # Repository *variables* are the right home for these — they are
+          # meant to reach the browser, which is what a Supabase publishable
+          # key is for — but secrets are read too, because "add it under
+          # Secrets" is the obvious mistake and failing silently over it
+          # helps nobody. Never put a Supabase *secret* key in either.
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
+          VITE_MATCH_SERVER: ${{ vars.MATCH_SERVER || secrets.MATCH_SERVER }}
         run: npm run build
 
       - uses: actions/configure-pages@v5

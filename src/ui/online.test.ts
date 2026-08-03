@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inMatch, looksLikeSupabase, type OnlineState } from './online'
+import { firstConfigured, inMatch, looksLikeSupabase, type OnlineState } from './online'
 
 /**
  * The match layer speaks to two backends — a Supabase project or a deployed
@@ -53,5 +53,29 @@ describe('being in a match', () => {
     expect(inMatch(state({ phase: 'idle' }))).toBe(false)
     expect(inMatch(state({ phase: 'failed', matchId: 'ABCD1234' }))).toBe(false)
     expect(inMatch(state({ phase: 'connected', matchId: null }))).toBe(false)
+  })
+})
+
+/**
+ * The pre-filled match service comes from build variables, and CI hands over
+ * an empty string for every repository variable nobody set. Falling back with
+ * `??` treats that empty string as a real answer — which is precisely how a
+ * configured Supabase project stopped reaching the panel.
+ */
+describe('choosing a configured value', () => {
+  it('skips empty and whitespace-only build variables', () => {
+    expect(firstConfigured('', 'https://x.supabase.co')).toBe('https://x.supabase.co')
+    expect(firstConfigured('   ', 'https://x.supabase.co')).toBe('https://x.supabase.co')
+    expect(firstConfigured(undefined, 'https://x.supabase.co')).toBe('https://x.supabase.co')
+  })
+
+  it('takes the first real value and trims it', () => {
+    expect(firstConfigured('  https://a.supabase.co  ', 'https://b.supabase.co')).toBe(
+      'https://a.supabase.co',
+    )
+  })
+
+  it('is empty when nothing was configured at all', () => {
+    expect(firstConfigured(undefined, '', '   ')).toBe('')
   })
 })
