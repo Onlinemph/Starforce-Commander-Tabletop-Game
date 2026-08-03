@@ -11,6 +11,7 @@ import {
   greenShieldRemaining,
   type ShipState,
 } from '../engine/shipState'
+import { estimatedShieldRemaining } from '../engine/ai'
 import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
@@ -556,6 +557,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         .map((ship) => (
           <ShipToken
             key={ship.id}
+            game={game}
             ship={ship}
             selected={ship.id === selectedId}
             targeted={ship.id === targetId}
@@ -874,10 +876,89 @@ function ShipGlyph({ kind }: { kind: Silhouette }) {
 }
 
 /**
+ * The four shields, drawn as arcs around the counter.
+ *
+ * A number on each facing says what a shield holds; an arc says it at a
+ * glance, across the whole board at once — which is how a commander actually
+ * reads a table. Each facing gets a faint full-length track with a bright
+ * segment over it, its length the fraction of the shield still standing, so a
+ * stripped flank is visible from across the map without clicking anything.
+ *
+ * What it draws depends on who is looking, and stays inside what the rules
+ * make public. Your own hulls show the truth off their form. An enemy shows
+ * the table's own record: printed strength minus the absorption everyone
+ * watched land (the same public tally the AI reasons from). Secret repairs
+ * therefore make an enemy look weaker than it is — exactly the uncertainty a
+ * player at the table has.
+ */
+// Inset a few degrees at each end so the four read as four shields rather
+// than one bubble — the gaps sit on the arc boundaries, where a defender's
+// facing actually changes (G1.1.1).
+const SHIELD_ARCS = [
+  ['F', -131, -49],
+  ['S', -41, 41],
+  ['A', 49, 131],
+  ['P', 139, 221],
+] as const
+
+function arcPath(radius: number, startDeg: number, endDeg: number): string {
+  const at = (deg: number) => {
+    const a = (deg * Math.PI) / 180
+    return { x: Math.cos(a) * radius, y: Math.sin(a) * radius }
+  }
+  const s = at(startDeg)
+  const e = at(endDeg)
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${radius} ${radius} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`
+}
+
+/** Healthy, worn, nearly gone — the band a fraction falls in. */
+function shieldBand(fraction: number): string {
+  if (fraction <= 0) return 'is-gone'
+  if (fraction < 0.25) return 'is-weak'
+  if (fraction < 0.6) return 'is-worn'
+  return 'is-strong'
+}
+
+function ShieldRing({
+  game,
+  ship,
+  radius,
+  redacted,
+}: {
+  game: GameState
+  ship: ShipState
+  radius: number
+  redacted: boolean
+}) {
+  return (
+    <g className="shield-ring" aria-hidden="true">
+      {SHIELD_ARCS.map(([side, from, to]) => {
+        const printed = ship.form.shields.blue[side] + ship.form.shields.green[side]
+        const down = ship.shieldsDown[side]
+        const remaining = redacted
+          ? estimatedShieldRemaining(game, ship, side)
+          : blueShieldRemaining(ship, side) + greenShieldRemaining(ship, side)
+        const fraction = printed > 0 ? Math.min(1, remaining / printed) : 0
+        const d = arcPath(radius, from, to)
+        return (
+          <g key={side} className={`shield-arc ${down ? 'is-down' : shieldBand(fraction)}`}>
+            <path className="shield-track" d={d} pathLength={100} />
+            {!down && fraction > 0 && (
+              <path className="shield-fill" d={d} pathLength={100} strokeDasharray={`${fraction * 100} 100`} />
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+/**
  * A ship counter: 1.5 inches square (A2.1), with the hull silhouette showing
  * the bow and a shield strength readout on each facing.
  */
 function ShipToken({
+  game,
   ship,
   selected,
   targeted,
@@ -887,6 +968,7 @@ function ShipToken({
   displayHeading,
   onSelect,
 }: {
+  game: GameState
   ship: ShipState
   selected: boolean
   targeted: boolean
@@ -923,9 +1005,14 @@ function ShipToken({
     return green > 0 ? `${blue}+${green}` : `${blue}`
   }
 
+  const hurt = damageLevel(ship)
+
   return (
     <g
       className={`ship map-mover ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}${cloaked ? ' is-cloaked' : ''}`}
+      /* How broken the hull is, is public — the damage marker sits on the
+         counter at the table (B1.9), so the counter carries it here too. */
+      data-damage={hurt}
       /* A style transform, not an attribute, so the Navigation reveal can
          animate it: ships glide along their plots instead of teleporting. */
       style={{ transform: `translate(${cx}px, ${cy}px) rotate(${displayHeading}deg)` }}
@@ -946,6 +1033,8 @@ function ShipToken({
           (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : '')}
       </title>
       <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-base" />
+
+      <ShieldRing game={game} ship={ship} radius={size * 0.62} redacted={redacted} />
 
       {/*
         The hull, scaled so bigger size classes fill more of their counter —

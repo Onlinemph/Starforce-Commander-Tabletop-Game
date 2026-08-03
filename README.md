@@ -89,6 +89,15 @@ that one fact.
   the path of least effort rather than a cryptographic guarantee. On Supabase there is also a
   **match browser**: hosts can list a match publicly, and anyone on the project sees its name,
   sides and progress — never its battle, and joining still costs the password.
+- **Damage you can read across the board.** Every counter wears its four shields as arcs: a faint
+  track for what the facing would hold intact, a bright segment for what is still standing, so a
+  stripped flank is obvious from the far side of the map without clicking anything. Green through
+  amber to red as it goes, dashed when a shield is down or gone. The hull carries its damage level
+  too — the marker that sits on a counter at the table (B1.9) — as a deepening wash, and a
+  crippled ship gets a slow alarm pulse. What it shows respects who is looking: your own hulls
+  read off their form, while an enemy shows the table's own record, printed strength minus the
+  absorption everyone watched land. Secret repairs make an enemy look weaker than it is, which is
+  exactly the uncertainty a player at the table has.
 - **Weapons armed at start.** A house rule in *Choose forces*, off by default. The printed game
   opens cold — batteries fill their arming circles out of each round's power, and a slow-arming
   heavy needs several rounds to charge (E4.2.8) — so the first exchanges are fought with

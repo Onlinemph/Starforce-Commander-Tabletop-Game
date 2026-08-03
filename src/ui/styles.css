@@ -3653,3 +3653,98 @@ button.chip:hover:not(:disabled) {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------------------------
+   Shield arcs and hull damage on the counter
+   ---------------------------------------------------------------------------
+   A number tells you one ship's state; the ring tells you the whole board's.
+   The track is what the facing would hold intact, the bright segment is what
+   is still standing, so a stripped flank reads from across the map. */
+
+.shield-ring {
+  pointer-events: none;
+}
+
+.shield-track {
+  fill: none;
+  stroke: rgba(150, 180, 220, 0.15);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.shield-fill {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  transition:
+    stroke 240ms ease,
+    stroke-dasharray 320ms ease;
+}
+
+.shield-arc.is-strong .shield-fill {
+  stroke: #56d2a0;
+}
+
+.shield-arc.is-worn .shield-fill {
+  stroke: #ffc247;
+}
+
+.shield-arc.is-weak .shield-fill {
+  stroke: #ff6b4a;
+}
+
+/* Nothing left, or deliberately dropped (G1.1.5): the track alone, dashed. */
+.shield-arc.is-gone .shield-track,
+.shield-arc.is-down .shield-track {
+  stroke: rgba(255, 107, 74, 0.42);
+  stroke-dasharray: 3 4;
+}
+
+/* How broken the hull is. The damage marker is public at the table (B1.9),
+   so the counter wears it: a deepening wash, and a hard edge once crippled. */
+.ship[data-damage='light'] .ship-base {
+  fill: rgba(255, 194, 71, 0.07);
+}
+
+.ship[data-damage='moderate'] .ship-base {
+  fill: rgba(255, 152, 60, 0.13);
+}
+
+.ship[data-damage='heavy'] .ship-base {
+  fill: rgba(255, 90, 60, 0.2);
+  stroke: rgba(255, 120, 80, 0.55);
+}
+
+.ship[data-damage='crippled'] .ship-base {
+  fill: rgba(255, 60, 50, 0.28);
+  stroke: #ff5a44;
+  stroke-width: 1.6;
+}
+
+/* A crippled hull is the loudest thing on the board, because it is. */
+.ship[data-damage='crippled'] .glyph-hull {
+  opacity: 0.62;
+}
+
+.ship[data-damage='crippled'] {
+  animation: hull-alarm 2.4s ease-in-out infinite;
+}
+
+@keyframes hull-alarm {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(255, 70, 55, 0.65));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ship[data-damage='crippled'] {
+    animation: none;
+  }
+  .shield-fill {
+    transition: none;
+  }
+}
