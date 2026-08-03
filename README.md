@@ -581,8 +581,10 @@ Each powered sensor is assigned one function during Resource Allocation and hold
 - **Area jamming** adds one jamming point to every friendly ship within the scout's jamming radius,
   itself included (H3.5.1).
 - **Informational scans** extend J4.2 scans to the scout's scan range for one bonus information
-  point per sensor (H3.6). J4.2's scan procedure is not interactive yet, so the engine reports the
-  capability rather than resolving a scan.
+  point per sensor (H3.6). The scan itself is a played action — declared in Operations step E,
+  rolled, journalled — but it does not yet read this capability: the range is still the flat eight
+  inches and the yield still counts only the scanning ship's own sciences. The panel shows what the
+  scout *would* contribute; the scan does not take it.
 
 A ship may take targeting from one scout and jamming from one scout (H3.4.4, H3.5.3), and a scout
 busy using its own sensors cannot take data from another scout — though its own sensors still serve
@@ -914,9 +916,11 @@ actions or functions: no firing, no scanning, no operations. It keeps its engine
 straight or make Standard turns, though it can still change speed. It may disengage at sublight
 immediately, but its captors cannot jump it to FTL until ten rounds after the capture.
 
-J6.3, arming the general crew to repel boarders, is an optional rule and is not implemented. B3.4,
-spending damage control dice to kill a boarding squad, is also optional but was already in the
-Damage Control Segment.
+J6.3, arming the general crew to repel boarders, is optional and is implemented: two improvised
+squads per size class, raised during the Boarding Combat Segment, at the cost of the ship's damage
+control, two points of power and its place in the firing order until twenty rounds after the
+fighting stops. B3.4, spending damage control dice to kill a boarding squad, is also optional and
+was already in the Damage Control Segment.
 
 ### Probes (J7)
 
@@ -1101,11 +1105,10 @@ line — which is exactly what E7.2.5 describes.
 - **Fighters and carriers** (E12.1.3) — the terminology, degraded-fire and point-defense rules are
   in the engine and shuttles and probes fly, but fighters need a carrier book that has not been
   published. Nothing to do until it exists.
-- **Scenarios** (S3) — two of the six printed missions, The Duel (S3.1) and Orbital Ambush (S3.3),
-  plus three written to exercise the expansions: the Squadron Engagement, Nebula Patrol and the
-  Aurelian Raid. S3.2, S3.4, S3.5 and S3.6 are straightforward to add.
-- **Informational scans** (J4.2) — scout sensors report their scan range and bonus information
-  points (H3.6), but the scan procedure itself is not interactive.
+- **Scout sensors and scans** (H3.6) — informational scans are fully playable (J4.2), but a scout's
+  own contribution to them is not wired in: `scanCapability` computes the extended scan range and
+  the bonus information point per sensor, and the scout panel displays both, while `performScan`
+  still measures against the flat 8-inch range and counts only the scanning ship's own sciences.
 - **Expansion 6** — the Master Ship List carries ten classes flagged for it with point values but no
   printed form yet: the Invictus II, Aquila Bellum VI, Tonitrus IV and V, Defensor Alatus II, III
   and IV, Corvus II, and Passer III and IV. Nothing to do until the book exists.

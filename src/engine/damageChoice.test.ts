@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
+import { findShipForm } from '../data/ships'
 import { replayGame } from '../data/savedGame'
 import { applyAction, type GameAction } from './actions'
 import { HIT_LABELS } from '../data/damageDeck'
@@ -12,7 +13,7 @@ import {
   type DamageChoice,
 } from './damage'
 import { cloneGame, damageContext, type GameState } from './game'
-import { structureRemaining, type ShipState } from './shipState'
+import { createShip, structureRemaining, type ShipState } from './shipState'
 
 /**
  * Damage cards that hand the defender a choice (E8.4.1 and friends).
@@ -208,5 +209,76 @@ describe('journalled choices survive a save', () => {
     const rebuilt = replayGame(JSON.parse(JSON.stringify(saved)))
     // The action applied and then cleared itself, exactly as it did live.
     expect(rebuilt.damageScript).toEqual([{ kind: 'any-hit', hit: 'sensors' }])
+  })
+})
+
+describe('Heavy Weapon takes the reds first (E8.3.4)', () => {
+  /**
+   * "First, apply the damage point to a weapon that uses red attack dice. If
+   * no undamaged weapons use red dice, choose a weapon that uses yellow dice."
+   * The pick inside a tier is the defender's; the tier is not.
+   *
+   * The duel hulls both carry a single torpedo that rolls red in one bracket
+   * and yellow in another, so they cannot tell the two tiers apart. The
+   * CORVUS can: a red-only plasma torpedo alongside two yellow-only
+   * disruptors.
+   */
+  const CORVUS = findShipForm('CORVUS I-class Destroyer')!
+
+  function corvus(): ShipState {
+    return createShip({
+      id: 'corvus',
+      side: 'Red Force',
+      name: 'V.I.S. CORVUS',
+      form: CORVUS,
+      placement: { position: { x: 10, y: 10 }, heading: 0 },
+      speed: 2,
+    })
+  }
+
+  const usesDie = (ship: ShipState, weaponId: string, colour: 'red' | 'yellow') =>
+    ship.form.weapons
+      .find((w) => w.id === weaponId)!
+      .brackets.some((b) => b.dice.includes(colour))
+
+  const redWeapons = (ship: ShipState) =>
+    ship.form.weapons.filter((w) => w.brackets.some((b) => b.dice.includes('red')))
+
+  it('never volunteers a yellow mount while a red one is undamaged', () => {
+    const ship = corvus()
+    expect(redWeapons(ship).length).toBeGreaterThan(0)
+
+    const pick = autoChoices.weaponMount(ship, { heavyOnly: true })
+    expect(pick).not.toBeNull()
+    expect(usesDie(ship, pick!.weaponId, 'red')).toBe(true)
+  })
+
+  it('drops to the yellows once every red mount is wrecked', () => {
+    const ship = corvus()
+    for (const weapon of redWeapons(ship)) {
+      ship.mounts[weapon.id].forEach((state, i) => {
+        state.damage = weapon.mounts[i].hitBoxes
+      })
+    }
+    const pick = autoChoices.weaponMount(ship, { heavyOnly: true })
+    expect(pick).not.toBeNull()
+    expect(usesDie(ship, pick!.weaponId, 'red')).toBe(false)
+    expect(usesDie(ship, pick!.weaponId, 'yellow')).toBe(true)
+  })
+
+  it('agrees with the options a human is offered', () => {
+    const ship = corvus()
+    const decision = decisionFor(ship, 'weapon-mount', { heavyOnly: true })
+    const auto = autoChoices.weaponMount(ship, { heavyOnly: true })!
+    // The doctrine's pick is shown to the captain as the recommended option,
+    // so it had better be one of the options.
+    expect(
+      decision.options.some(
+        (o) =>
+          o.choice.kind === 'weapon-mount' &&
+          o.choice.weaponId === auto.weaponId &&
+          o.choice.index === auto.index,
+      ),
+    ).toBe(true)
   })
 })
