@@ -728,6 +728,12 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ghost = shipById(game, action.ghostId)
       const cloak = ghost ? cloakOf(game, ghost) : null
       if (!ship || !ghost || !cloak) return said('Nothing to search for.')
+      // H6.9.5: two ships stalking each other from behind their own cloaks is
+      // a submarine engagement, not a space battle — the rulebook says so in
+      // as many words, and refuses the search outright.
+      if (shipIsCloaked(game, ship)) {
+        return said(`${ship.name} cannot search for another cloaked ship while cloaked (H6.9.5).`)
+      }
       const out = attemptSearch(ship, ghost, cloak, game.rng)
       if (out.faces.length > 0) {
         pushLog(

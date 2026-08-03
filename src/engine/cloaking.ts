@@ -337,10 +337,12 @@ export function attemptSearch(
   if (state.raisedThisSegment.includes(searcher.id)) {
     return fail('A searching ship may only gain one detection level per segment (H6.15.1).')
   }
-  // H6.9.5: a ship using its own cloak cannot hunt for someone else's.
   if (searcher.destroyed || searcher.derelict || searcher.disengaged) {
     return fail(`${searcher.name} cannot search.`)
   }
+  // H6.9.5 is the caller's to check: whether the *searcher* is running its own
+  // cloak is not visible from here, and a ship hunting from behind its own
+  // cloak is exactly what that rule forbids.
   if (!withinSearchRange(searcher, cloaked, state)) {
     return fail(`${cloaked.name} is beyond ${searcher.name}'s search range of ${searchRange(searcher)}" (H6.9.1).`)
   }

@@ -44,9 +44,13 @@ export function CloakPanel({ game, ship }: Props) {
   })
 
   const own = cloakOf(game, ship)
-  const enemyCloaks = game.ships.filter(
-    (s) => s.side !== ship.side && !s.destroyed && !s.disengaged && isCloaked(cloakOf(game, s)),
-  )
+  // H6.9.5: a ship running its own cloak does no hunting, so it is offered no
+  // search panel at all.
+  const enemyCloaks = isCloaked(own)
+    ? []
+    : game.ships.filter(
+        (s) => s.side !== ship.side && !s.destroyed && !s.disengaged && isCloaked(cloakOf(game, s)),
+      )
   if (!own && enemyCloaks.length === 0) return null
 
   return (

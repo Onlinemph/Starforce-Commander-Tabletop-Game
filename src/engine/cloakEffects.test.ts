@@ -140,6 +140,35 @@ describe('the systems a cloak switches off (H6.4)', () => {
   })
 })
 
+describe('a cloak does not hunt (H6.9.5)', () => {
+  it('refuses a cloaked ship the search it would otherwise be allowed', () => {
+    const { game, ghost, hunter } = battle()
+    // Both sides in the dark: the rulebook calls this a submarine engagement
+    // and declines to model it.
+    cloak(game, ghost)
+    const line = hunter.form.functions.find((l) => l.label === 'CLOAK')
+    if (line) {
+      hunter.allocation[line.id] = line.steps.length
+      engageCloak(hunter, cloakOf(game, hunter)!, [])
+      const refused = applyAction(game, {
+        type: 'cloak-search',
+        shipId: hunter.id,
+        ghostId: ghost.id,
+      })
+      expect(refused.message).toMatch(/H6\.9\.5/)
+    }
+  })
+
+  it('lets an uncloaked hunter search as normal', () => {
+    const { game, ghost, hunter } = battle()
+    cloak(game, ghost)
+    const out = applyAction(game, { type: 'cloak-search', shipId: hunter.id, ghostId: ghost.id })
+    // Hit or miss, the roll was allowed to happen.
+    expect(out.message ?? '').not.toContain('H6.9.5')
+    expect(game.log.some((l) => l.message.includes('searches for'))).toBe(true)
+  })
+})
+
 describe('minimum cloak time (H6.6.7)', () => {
   it('is enforced by the engine, not just greyed out in the panel', () => {
     const { game, ghost } = battle()
