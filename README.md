@@ -92,6 +92,29 @@ that one fact.
   a journal with bare segment advances in it could no longer replay under the gate — so the
   Online panel says which kind of match you are about to host.
 
+  **Three things a match cannot afford to be casual about.** *Undo* is a rewind button in solo
+  play and a way to fish for a better die roll in a match, so once you command a side it is
+  narrowed to your own orders, still secret: you may rewrite your command card or your power
+  allocation freely, because nobody has seen either. Anything that rolled a die, announced a
+  system, or moved the sequence of play along is refused, and the button says why. The engine
+  enforces it as well as the button, so a stale click or a second console cannot slip past.
+
+  *Desync* used to be undetectable. Both clients replay the same journal through the same
+  deterministic engine, and the sequence check catches a client whose journal has fallen behind
+  — but not two clients that agree about every action ever taken and disagree about the result,
+  which is what a build skew between them produces. Each action now carries a fingerprint of the
+  state it produced, including the shuffle of the undrawn deck, so a divergence is caught on the
+  next action rather than the next hit. Neither side can tell which of them is wrong, so the
+  ledger settles it and both players are told, because a silent correction that moves your ships
+  is worse than no correction at all.
+
+  *An empty chair* used to deadlock the gate. A side whose player closed the tab never says it
+  is ready, so the rule protecting the match also froze it, and the remaining player's only way
+  out was to abandon the game. A side with nobody connected is now readied on its behalf —
+  journalled like any other action, so both clients and any later replay agree it happened, and
+  a player who comes back can take their ready back and carry on. Only the host's client does
+  it, so two consoles cannot both volunteer the same absent side.
+
   A match is also a sealed table. Its scenario, fleets, terrain and options are frozen at
   creation, and while you are enrolled every control that would rebuild the battle — scenario
   picker, fleet picker, ship builder, scenario designer, rematch, coordinated fire, loading a

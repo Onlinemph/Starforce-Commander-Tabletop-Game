@@ -7,8 +7,13 @@ import {
   applyRemoteSave,
   applyRemoteUndo,
   currentSave,
+  currentSetup,
+  currentStateHash,
   enableReadyGate,
+  gateIsWaiting,
   journalLength,
+  readyAbsentSides,
+  setMatchSide,
   setNetHooks,
   suppressAi,
 } from './store'
@@ -131,7 +136,15 @@ let leaving = false
 let version = 0
 const listeners = new Set<() => void>()
 function set(next: Partial<OnlineState>): void {
+  const before = state.side
   state = { ...state, ...next }
+  /*
+   * The store needs to know which side this console commands, because that is
+   * what makes undo answerable to somebody. Routing it through the one setter
+   * covers every path that can change it — enrolling, claiming a side mid-
+   * match, and leaving, which nulls it and hands undo back its freedom.
+   */
+  if (state.side !== before) setMatchSide(state.side)
   version += 1
   for (const l of listeners) l()
 }
@@ -193,7 +206,7 @@ function wsUrl(server: string, matchId: string): string {
 type ServerMessage =
   | { t: 'welcome'; name: string; sides: string[]; save: SavedGame; present: string[] }
   | { t: 'refused'; reason: string }
-  | { t: 'action'; seq: number; action: GameAction }
+  | { t: 'action'; seq: number; action: GameAction; hash?: string }
   | { t: 'undo'; lengthAfter: number }
   | { t: 'sync'; save: SavedGame }
   | { t: 'presence'; present: string[] }
@@ -342,6 +355,20 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
   })
 }
 
+/**
+ * Cover for a side that has nobody at its console.
+ *
+ * Only the creator's client does it — the same one that drives the AI — so two
+ * consoles cannot both volunteer the same absent side and journal it twice.
+ * And only while the gate is actually holding: readying an absent side that
+ * nothing is waiting on would just be noise in the log.
+ */
+function coverAbsentSides(present: string[]): void {
+  if (!enrollment?.creator) return
+  if (!gateIsWaiting()) return
+  readyAbsentSides(present, currentSetup().aiSides ?? [])
+}
+
 function receive(msg: ServerMessage): void {
   switch (msg.t) {
     case 'welcome': {
@@ -356,7 +383,10 @@ function receive(msg: ServerMessage): void {
       // One AI driver per match — the creator's client.
       suppressAi(!(enrollment?.creator ?? false))
       setNetHooks({
-        onAction: (action, seq) => sendRaw({ t: 'action', seq, action }),
+        // The hash is of the state this action just produced, so the peer can
+        // check that applying the same action left it in the same place.
+        onAction: (action, seq) =>
+          sendRaw({ t: 'action', seq, action, hash: currentStateHash() }),
         onUndo: (lengthAfter) => sendRaw({ t: 'undo', lengthAfter }),
         onReplace: (saved) => sendRaw({ t: 'replace', save: saved }),
       })
@@ -375,9 +405,26 @@ function receive(msg: ServerMessage): void {
       leaveMatch()
       set({ phase: 'failed', error: msg.reason })
       return
-    case 'action':
-      if (applyRemoteAction(msg.action, msg.seq, false) === 'mismatch') sendRaw({ t: 'syncreq' })
+    case 'action': {
+      if (applyRemoteAction(msg.action, msg.seq, false) === 'mismatch') {
+        sendRaw({ t: 'syncreq' })
+        return
+      }
+      /*
+       * Same journal, different board. The sequence check above cannot see
+       * this: both clients agree about every action ever taken and disagree
+       * about the result, which happens when the two are running different
+       * builds or the engine has read something outside the seeded RNG.
+       * Neither side can tell which of them is wrong, so the ledger settles
+       * it — and the player is told, because a silent correction that moves
+       * their ships is worse than no correction at all.
+       */
+      if (msg.hash && msg.hash !== currentStateHash()) {
+        set({ error: 'The two boards had drifted apart — resynchronising from the match record.' })
+        sendRaw({ t: 'syncreq' })
+      }
       return
+    }
     case 'undo':
       if (applyRemoteUndo(msg.lengthAfter, false) === 'mismatch') sendRaw({ t: 'syncreq' })
       return
@@ -386,6 +433,7 @@ function receive(msg: ServerMessage): void {
       return
     case 'presence':
       set({ present: msg.present })
+      coverAbsentSides(msg.present)
       return
   }
 }

@@ -116,27 +116,33 @@ export const autoChoices: DamageChoices = {
 
   weaponMount(ship, filter) {
     /*
-     * E8.3.4 puts the tiers in order and leaves only the pick inside a tier to
-     * the defender: "First, apply the damage point to a weapon that uses red
-     * attack dice. If no undamaged weapons use red dice, choose a weapon that
-     * uses yellow dice." Pooling the two would let a ship keep its best gun by
+     * E8.3.4 degrades "one of the ship's heaviest remaining weapons", and puts
+     * the tiers in order: "First, apply the damage point to a weapon that uses
+     * red attack dice. If no undamaged weapons use red dice, choose a weapon
+     * that uses yellow dice." Only the pick *inside* a tier is the defender's.
+     *
+     * A weapon's tier is its heaviest die — the one bracket that rolls red
+     * makes it a red weapon, whatever it rolls at the ranges either side.
+     * Pooling reds and yellows would let a ship keep its best gun by
      * volunteering a lesser one, which is not a choice the rule offers.
      */
-    const usesDie = (weapon: (typeof ship.form.weapons)[number], colour: 'red' | 'yellow') =>
-      weapon.brackets.some((b) => b.dice.includes(colour))
+    const heaviestDie = (weapon: (typeof ship.form.weapons)[number]): 'red' | 'yellow' | null =>
+      weapon.brackets.some((b) => b.dice.includes('red'))
+        ? 'red'
+        : weapon.brackets.some((b) => b.dice.includes('yellow'))
+          ? 'yellow'
+          : null
+    const undamagedMount = (weapon: (typeof ship.form.weapons)[number]) =>
+      (ship.mounts[weapon.id] ?? []).some((state, i) => !mountIsDamaged(weapon, i, state))
     const heavyTier: 'red' | 'yellow' | null = !filter.heavyOnly
       ? null
-      : ship.form.weapons.some(
-            (w) =>
-              usesDie(w, 'red') &&
-              (ship.mounts[w.id] ?? []).some((state, i) => !mountIsDamaged(w, i, state)),
-          )
+      : ship.form.weapons.some((w) => heaviestDie(w) === 'red' && undamagedMount(w))
         ? 'red'
         : 'yellow'
 
     const candidates: Array<{ weaponId: string; index: number; score: number }> = []
     for (const weapon of ship.form.weapons) {
-      if (heavyTier && !usesDie(weapon, heavyTier)) continue
+      if (heavyTier && heaviestDie(weapon) !== heavyTier) continue
       const states = ship.mounts[weapon.id] ?? []
       states.forEach((state, index) => {
         if (mountIsDamaged(weapon, index, state)) return

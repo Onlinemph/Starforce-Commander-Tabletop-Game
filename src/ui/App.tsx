@@ -43,6 +43,7 @@ import { ShipFormPanel } from './ShipFormPanel'
 import {
   activeFx,
   canUndo,
+  undoRefusal,
   currentSave,
   currentSetup,
   dispatch,
@@ -677,7 +678,10 @@ function SequenceBar({ game, mySide }: { game: GameState; mySide: string | null 
         type="button"
         onClick={() => undo()}
         disabled={!canUndo()}
-        title="Take back the last action — dice included, the replay is exact"
+        title={
+          undoRefusal() ??
+          'Take back the last action — dice included, the replay is exact'
+        }
       >
         ↶ Undo
       </button>

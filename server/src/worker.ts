@@ -39,7 +39,7 @@ interface SavedGame {
 type ClientMessage =
   | { t: 'hello'; password: string; side?: string }
   | { t: 'claim'; side: string }
-  | { t: 'action'; seq: number; action: unknown }
+  | { t: 'action'; seq: number; action: unknown; hash?: string }
   | { t: 'undo'; lengthAfter: number }
   | { t: 'replace'; save: SavedGame }
   | { t: 'syncreq' }
@@ -235,7 +235,10 @@ export class Match implements DurableObject {
           save.actions.push(msg.action)
           await this.state.storage.put('save', save)
           await this.touch()
-          this.broadcast(ws, { t: 'action', seq: msg.seq, action: msg.action })
+          // The hash rides along untouched: it is the sender's fingerprint of
+          // the state this action produced, and the receiving client compares
+          // it against its own. The service never interprets it.
+          this.broadcast(ws, { t: 'action', seq: msg.seq, action: msg.action, hash: msg.hash })
         } else {
           // The sender's record disagrees with the ledger: the ledger wins.
           ws.send(JSON.stringify({ t: 'sync', save }))

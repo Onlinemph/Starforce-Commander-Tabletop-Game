@@ -7,10 +7,17 @@ import {
   type GameSetup,
   type SavedGame,
 } from '../data/savedGame'
-import { applyAction, type ActionOutcome, type GameAction } from '../engine/actions'
+import {
+  actionSide,
+  applyAction,
+  undoableInMatch,
+  type ActionOutcome,
+  type GameAction,
+} from '../engine/actions'
 import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
 import { probeDecision, type DamageChoice, type DamageDecision } from '../engine/damage'
-import { cloneGame, type GameState } from '../engine/game'
+import { cloneGame, everyoneReady, sidesAwaited, type GameState } from '../engine/game'
+import { stateHash } from '../engine/stateHash'
 import { fxAfter, fxBefore, type BattleFx } from './fx'
 import { soundFx } from './sound'
 
@@ -275,8 +282,48 @@ export function currentSetup(): GameSetup {
 // Undo
 // ---------------------------------------------------------------------------
 
+/**
+ * The side this console commands in an online match, or null when nobody is
+ * looking over your shoulder — solo, hot-seat, or a browser-to-browser link
+ * where the two players are in the same room and can police each other.
+ *
+ * Set by the match client on enrolment. It is what turns undo from a rewind
+ * button into something with rules.
+ */
+let matchSide: string | null = null
+
+export function setMatchSide(side: string | null): void {
+  matchSide = side
+  emit()
+}
+
+export function currentMatchSide(): string | null {
+  return matchSide
+}
+
+/**
+ * Why the last action cannot be taken back, or null if it can.
+ *
+ * Outside a match, anything can: it is one person's own game and undo is a
+ * convenience. Inside one, undo would otherwise let a captain re-roll a volley
+ * they did not like or un-announce a system the other player has already seen
+ * and planned around — so it is narrowed to their own orders, still secret.
+ */
+export function undoRefusal(): string | null {
+  if (journal.length === 0) return 'Nothing to take back.'
+  if (!matchSide) return null
+  const last = journal[journal.length - 1]
+  if (actionSide(game, last) !== matchSide && actionSide(game, last) !== null) {
+    return 'That was the other commander’s order — only your own can be taken back.'
+  }
+  if (!undoableInMatch(game, last, matchSide)) {
+    return 'Once an order is carried out the table has seen it; it cannot be taken back in a match.'
+  }
+  return null
+}
+
 export function canUndo(): boolean {
-  return journal.length > 0
+  return undoRefusal() === null
 }
 
 /**
@@ -285,6 +332,9 @@ export function canUndo(): boolean {
  */
 export function undo(): void {
   if (journal.length === 0) return
+  // In a match the same rule the button is greyed out by is enforced here, so
+  // a stale click or a second console cannot slip past it.
+  if (matchSide && undoRefusal() !== null) return
   journal = journal.slice(0, -1)
   // A queued script belongs to the action it was queued for; taking one back
   // without the other would leave answers waiting for a question nobody asks.
@@ -350,6 +400,51 @@ export function setNetHooks(hooks: NetHooks | null): void {
 
 export function journalLength(): number {
   return journal.length
+}
+
+/**
+ * A fingerprint of the battle as it stands, for the match client to stamp on
+ * the actions it sends. Two clients replaying the same journal must agree on
+ * it; when they do not, one of them is wrong and neither can tell which, so
+ * the ledger is asked to settle it.
+ */
+export function currentStateHash(): string {
+  return stateHash(game)
+}
+
+/**
+ * Ready the sides nobody is at the console for (online matches).
+ *
+ * The ready gate is what stops one player advancing the segment out from under
+ * the other, and it does that by refusing to move until every side has said it
+ * is finished. A side whose player has closed the tab says nothing, ever — so
+ * the gate that protects the match also deadlocks it, and the remaining player
+ * has no way out but to abandon the game.
+ *
+ * The fix is not to weaken the gate but to notice the empty chair: a side with
+ * nobody connected is readied on its behalf, journalled like any other action
+ * so both clients and any later replay agree it happened. A player who comes
+ * back can un-ready and carry on; their orders were never touched, only the
+ * declaration that they had finished giving them.
+ *
+ * One client does this — the creator's, the same one that drives the AI — so
+ * two consoles cannot both volunteer the same absent side.
+ */
+export function readyAbsentSides(present: readonly string[], aiSides: readonly string[]): void {
+  if (!game.readyGate) return
+  for (const side of sidesAwaited(game)) {
+    if (game.readySides.includes(side)) continue
+    // The computer's sides are driven from this very client; they are never
+    // the absent ones, and readying them would race the driver.
+    if (aiSides.includes(side)) continue
+    if (present.includes(side)) continue
+    dispatch({ type: 'signal-ready', side, ready: true })
+  }
+}
+
+/** Whether the gate is currently holding, for the match client to check. */
+export function gateIsWaiting(): boolean {
+  return game.readyGate && !everyoneReady(game)
 }
 
 /** The current battle record, for the network to ship whole. */

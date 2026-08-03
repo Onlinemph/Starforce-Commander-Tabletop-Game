@@ -873,3 +873,100 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
 
 // Re-exported so panels can keep their imports to one module.
 export type { RepairAssignment }
+
+// ---------------------------------------------------------------------------
+// Ownership and reversibility — what a captain may take back in a match
+// ---------------------------------------------------------------------------
+
+/**
+ * Whose action this is, where the question has an answer.
+ *
+ * Most actions name a ship and belong to whoever commands it. A few name a
+ * side outright. `advance-segment` and the step controls belong to nobody:
+ * they move the whole table on.
+ */
+export function actionSide(game: GameState, action: GameAction): string | null {
+  const of = (id: string | undefined) => (id ? (shipById(game, id)?.side ?? null) : null)
+  switch (action.type) {
+    case 'signal-ready':
+    case 'set-command-ship':
+    case 'assign-command':
+      return action.side
+    case 'set-sabotage':
+    case 'fight-boarders':
+      return action.side
+    case 'fire-volley':
+      return of(action.attackerId)
+    case 'declare-coordinated':
+      return of(action.shipIds[0])
+    case 'fire-small-target':
+      return of(action.attackerId)
+    case 'move-craft':
+    case 'recover-shuttle':
+    case 'dock-shuttle':
+      return of('shipId' in action ? action.shipId : undefined)
+    case 'advance-segment':
+    case 'ops-next-step':
+    case 'advance-firing-step':
+    case 'set-coordinated-fire':
+    case 'queue-damage-choices':
+      return null
+    default:
+      return of((action as { shipId?: string }).shipId)
+  }
+}
+
+/**
+ * Orders a captain may still take back: written on their own command card and
+ * not yet revealed to anyone.
+ *
+ * The table's own rule is the guide. Plotting is secret until the Navigation
+ * Segment turns the cards over (B1.9.1), so a captain may rewrite a card
+ * freely — nobody has seen it. Everything else has been *announced*: a volley
+ * has rolled dice, a scan has been declared, a cloak has been engaged in front
+ * of witnesses. You cannot unring those, and in a match against another human
+ * an undo that could is not a convenience, it is a way to fish for a better
+ * die roll.
+ *
+ * Solo and hot-seat play are unaffected: there, undo is a rewind button for
+ * one person's own game and the store only consults this in a match.
+ */
+const REVERSIBLE_IN_MATCH: ReadonlySet<GameAction['type']> = new Set([
+  // Resource allocation — secret until it is spent (B2).
+  'allocate',
+  'arm-mount',
+  'spend-battery',
+  // The command card itself (C1), secret until Navigation.
+  'plot-maneuver',
+  'plot-accel',
+  'plot-evasive',
+  'plot-turn-rate',
+  'plot-half-slide',
+  'plot-emergency-stop',
+  'plot-sensor',
+  'plot-shield',
+  // Assignments that are bookkeeping until they are used.
+  'set-max-system',
+  'set-command-ship',
+  'assign-command',
+  'scout-assign',
+  'scout-active',
+  'form-up',
+  'leave-formation',
+  'set-sabotage',
+])
+
+/**
+ * Whether this action may be taken back by `side` in a match: their own, and
+ * still private. Anything that rolled a die, announced a system, or moved the
+ * sequence of play along answers false.
+ */
+export function undoableInMatch(
+  game: GameState,
+  action: GameAction,
+  side: string | null,
+): boolean {
+  if (!side) return false
+  if (!REVERSIBLE_IN_MATCH.has(action.type)) return false
+  return actionSide(game, action) === side
+}
