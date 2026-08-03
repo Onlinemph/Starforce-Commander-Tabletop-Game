@@ -244,6 +244,23 @@ that one fact.
   Measured: hull losses at hopeless odds went from 24-of-24 to **0-of-24, 24 escapes**, campaign
   ledger from −68 to **0.0 per sortie** — while the winnable two-to-one fight is still fought
   and won at an identical 20W–4L, and every season baseline held.
+- **Evasive maneuvers (C3.6), and what measuring them taught us.** The rule is on the command
+  card: acceleration spent weaving instead of on speed, taken at reveal, buying rerolls against
+  *every* incoming volley and handing the same number to anything the weaving ship shoots at.
+  On paper that reads as a gift to the outnumbered — the benefit scales with the number of guns
+  pointed at you, the cost does not — and it is wrong. A lone heavy cruiser weaving hard against
+  six frigates goes 8W–16L; the same cruiser not weaving at all goes 11W–13L, over the same
+  twenty-four mirrored games. The side that actually banks the rule is the *swarm*, which turns
+  it into a six-win swing: each frigate pays the penalty on one small volley and collects
+  rerolls off a capital's broadsides. There is a second, quieter cost — evasive acceleration
+  counts against the round (C3.6.2), so weaving in the first combat phase disarms the helm for
+  the two that follow, worth five wins in sixty-four squadron games. What survives is narrow and
+  free: trained ranks weave only in the last combat phase, only when the plot leaves them no
+  shot at anybody, never with acceleration the maneuver or the safe-stress line wants, and never
+  while the plan is distance — a kite band and an FTL run are bought with the same points. Human
+  players get the full rule and an EVASIVE control on the card. Every baseline held: duel
+  admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L of 64, and the
+  outnumbered capital unchanged at 11W–13L.
 - **Deep space: a map-size option.** Choose Forces now offers the printed 36" map or a 72"
   deep-space board — bounds, terrain and deployment anchors scale together, so the fleets open
   proportionally further apart. Measured consequence: room to turn, repair and reload is worth
@@ -410,11 +427,12 @@ exemption (K2.2.1) all apply at the table.
 | **F1.13 / F1.16 Missile & Particle** *(Expansion 5)* | ✅ | `MISL X` destruction thresholds; particle damage worn down one point per three |
 | **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
 
-Optional rules (B2.5 full batteries, B3.4 repelling boarders, C3.6 evasive maneuvers, C3.7 reverse
-movement, C3.8 emergency stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6.3 arming
-the crew) are partly implemented in the engine — reverse movement, emergency stop, repelling
-boarders, derelicts and explosions all work — but are not yet surfaced as UI toggles beyond the
-destruction options.
+| C3.6 Evasive Maneuvers *(optional)* | ✅ | Plotted on the card, spent at reveal, rerolls against every incoming volley and the same handed to anything it shoots |
+
+Optional rules (B2.5 full batteries, B3.4 repelling boarders, C3.7 reverse movement, C3.8 emergency
+stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6.3 arming the crew) are partly
+implemented in the engine — reverse movement, emergency stop, repelling boarders, derelicts and
+explosions all work — but are not yet surfaced as UI toggles beyond the destruction options.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 

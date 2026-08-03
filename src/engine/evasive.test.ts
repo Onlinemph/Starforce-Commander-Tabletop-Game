@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction } from './actions'
+import { evasivePlan } from './ai'
 import { resolveVolley } from './combat'
 import { damageContext, defaultCommandCard, type GameState } from './game'
 import { arcTo, canBearOn } from './geometry'
@@ -136,5 +137,43 @@ describe('what evasive maneuvers buy, and cost', () => {
       return result.ok ? result.damage.standard : -1
     }
     expect(fire(4)).toBe(fire(0))
+  })
+})
+
+/**
+ * The doctrine, which is narrower than the rule. Measured over mirrored
+ * seasons, weaving is only worth taking when the round has no other use for
+ * the acceleration: an outnumbered capital that weaves against a swarm gains
+ * nothing (8W-16L against 11W-13L for not weaving at all), and weaving before
+ * the last combat phase disarms the helm for the phases that follow — five
+ * wins in sixty-four squadron games.
+ */
+describe('when the AI weaves', () => {
+  it('not while there is still a phase left to maneuver in', () => {
+    const { game, blue } = duel()
+    const end = blue.placement
+    game.phase = 'combat-1'
+    expect(evasivePlan(game, blue, 'admiral', end, 0, 0)).toBe(0)
+    game.phase = 'combat-3'
+    expect(evasivePlan(game, blue, 'admiral', end, 0, 0)).toBeGreaterThan(0)
+  })
+
+  it('not when the plot leaves a volley of its own to spoil', () => {
+    const { game, blue } = duel()
+    game.phase = 'combat-3'
+    expect(evasivePlan(game, blue, 'admiral', blue.placement, 4, 0)).toBe(0)
+  })
+
+  it('not with acceleration the maneuver already wants', () => {
+    const { game, blue } = duel()
+    game.phase = 'combat-3'
+    const budget = blue.form.sublight.safeAccelPerRound
+    expect(evasivePlan(game, blue, 'admiral', blue.placement, 0, budget)).toBe(0)
+  })
+
+  it('not at all for an ensign', () => {
+    const { game, blue } = duel()
+    game.phase = 'combat-3'
+    expect(evasivePlan(game, blue, 'ensign', blue.placement, 0, 0)).toBe(0)
   })
 })

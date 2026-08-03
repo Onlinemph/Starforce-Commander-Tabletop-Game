@@ -55,7 +55,7 @@ import { boardingSides } from './boarding'
 import { endurance, isHoming, speedInPhase } from './homing'
 import { transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
-import type { CommandCard, Maneuver, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
+import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
 
 /**
  * A computer opponent, as a captain of sound doctrine rather than deep search.
@@ -572,6 +572,73 @@ function planDamageControl(
 // Command (C1): close to the guns' best range, keep the bow on the enemy
 // ---------------------------------------------------------------------------
 
+/**
+ * How hard to weave (C3.6), and the arithmetic behind it — most of which was
+ * settled by measurement rather than by argument, because the obvious readings
+ * of the rule are wrong.
+ *
+ * On paper evasive looks like a bargain for the outnumbered: the rerolls come
+ * against *each* incoming volley (C3.6.3), while the matching penalty applies
+ * only to this ship's own fire, so the trade scales with the number of guns
+ * pointed at you. Played out, a lone capital that weaves against a swarm gains
+ * nothing — 8W-16L weaving hard against 11W-13L not weaving at all, over the
+ * same twenty-four mirrored games. The side that actually profits from the rule
+ * is the swarm, which converts the same doctrine into a six-win swing: its
+ * hulls fire one small volley each, so the penalty they pay is trivial beside
+ * the rerolls they take off a heavy cruiser's broadsides.
+ *
+ * What is left, and what this plans for, is the free case: a phase where the
+ * plot leaves no shot at anybody. Even that has a hidden price. Acceleration
+ * spent weaving counts against the round (C3.6.2), so weaving in the first
+ * combat phase quietly disarms the helm for the two that follow — worth five
+ * wins in sixty-four squadron games. Weaving in the last phase of the round
+ * costs nothing that round can still use.
+ *
+ * Hence: weave only in the final combat phase, only when the plot has no shot
+ * to spoil, never with acceleration the maneuver or the safe limit wants, and
+ * never at all when the plan is distance — a kite band or an FTL window is
+ * bought with the same points.
+ */
+export function evasivePlan(
+  game: GameState,
+  ship: ShipState,
+  difficulty: AiDifficulty,
+  end: Placement,
+  ownFirepower: number,
+  plannedAccel: number,
+): number {
+  if (difficulty === 'ensign') return 0
+  // Acceleration spent now is acceleration the rest of the round cannot spend.
+  if (game.phase !== 'combat-3') return 0
+  // A shot to spoil is a shot worth more than the weave.
+  if (ownFirepower > 0) return 0
+  if (wantsToLeave(game, ship, difficulty)) return 0
+  if (kiteBand(game, ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e))) !== null) {
+    return 0
+  }
+  /**
+   * Only what the plot did not want, and only up to the safe line: evasive
+   * acceleration counts against the round like any other (C3.6.2), so past that
+   * line each point buys a reroll and a stress marker.
+   */
+  const spare =
+    Math.min(accelerationBudget(ship), ship.form.sublight.safeAccelPerRound) -
+    ship.accelUsedThisRound -
+    Math.abs(plannedAccel) +
+    ship.evasive
+  if (spare <= 0) return 0
+
+  const threats = enemiesOf(game, ship)
+    .filter((e) => !positionHidden(game, e))
+    .filter((e) => estimatedVolleyDamage(e, end.position, ship.sensors.jamming) > 0).length
+  if (threats === 0) return 0
+
+  const protecting = postureOf(game, ship, difficulty) === 'protect'
+  // Two or three points take most of what is on offer; the value flattens fast,
+  // because a volley only holds a few dice worth rerolling.
+  return Math.min(spare, threats >= 3 || protecting ? 3 : 2)
+}
+
 /** The range this ship's heaviest battery most wants to fight at. */
 function preferredRange(ship: ShipState): number {
   let best = 6
@@ -696,8 +763,12 @@ function planOrders(
     let targeting = Math.min(cap, available - tacticalScan)
     let jamming = Math.min(cap, available - tacticalScan - targeting)
 
-    const quiet = (() => {
-      if (difficulty === 'ensign' || !enemy) return false
+    /**
+     * Where this plot puts the ship, and whether it will have a shot worth
+     * taking from there — the answer drives both the sensor split below and
+     * how hard the helm weaves.
+     */
+    const plannedEnd = (() => {
       const plannedCard: CommandCard = {
         maneuver: plan.maneuver,
         direction: plan.direction,
@@ -706,11 +777,48 @@ function planOrders(
         sensors: card.sensors,
         shieldsDown: [],
       }
-      const end = plannedMovement(ship, plannedCard).end
-      const probe: ShipState = { ...ship, sensors: { targeting, jamming: 0, tacticalScan } }
-      // Red brackets do not count: fire discipline would hold that volley.
-      return firepowerAt(probe, end, enemy.placement.position, enemy.speed === 0, false) === 0
+      return plannedMovement(ship, plannedCard).end
     })()
+    const plannedFirepower =
+      enemy === null
+        ? 0
+        : firepowerAt(
+            { ...ship, sensors: { targeting, jamming: 0, tacticalScan } } as ShipState,
+            plannedEnd,
+            enemy.placement.position,
+            enemy.speed === 0,
+            false, // Red brackets do not count: fire discipline would hold that volley.
+          )
+    const quiet = difficulty !== 'ensign' && enemy !== null && plannedFirepower === 0
+
+    /**
+     * Whether the plot leaves this ship a shot at *anybody*. The focus target's
+     * bracket answers a different question — a ship with several enemies in
+     * reach can be out of range of the kill the squadron is converging on and
+     * still have a broadside for someone else — and the weave below has to know
+     * whether there is a volley of its own to spoil.
+     */
+    const plannedFirepowerAny = enemies.reduce(
+      (most, e) =>
+        Math.max(
+          most,
+          firepowerAt(
+            { ...ship, sensors: { targeting, jamming: 0, tacticalScan } } as ShipState,
+            plannedEnd,
+            e.placement.position,
+            e.speed === 0,
+            false,
+          ),
+        ),
+      0,
+    )
+
+    // Evasive maneuvers (C3.6): weave with acceleration the round has no other
+    // use for. See evasivePlan for why that is the only case worth taking.
+    const weave = evasivePlan(game, ship, difficulty, plannedEnd, plannedFirepowerAny, plan.accel)
+    if ((card.evasive ?? ship.evasive) !== weave) {
+      actions.push({ type: 'plot-evasive', shipId: ship.id, points: weave })
+    }
 
     if (
       difficulty !== 'ensign' &&
