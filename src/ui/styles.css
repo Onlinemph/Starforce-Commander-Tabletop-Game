@@ -2195,6 +2195,25 @@ input:focus-visible {
   gap: 0.4rem;
   flex-wrap: wrap;
 }
+/* Where a ship six rounds in the dark says it came out (H6.8.7). */
+.cloak-reposition-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.cloak-reposition-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.cloak-reposition-fields input {
+  width: 4.5rem;
+}
 .cloak-target {
   display: flex;
   align-items: center;

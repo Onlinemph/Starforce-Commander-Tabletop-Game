@@ -3,7 +3,7 @@ import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
-import type { GameState, TerrainKind } from '../engine/game'
+import { shipIsCloaked, type GameState, type TerrainKind } from '../engine/game'
 import { plannedMovement } from '../engine/navigation'
 import {
   blueShieldRemaining,
@@ -1087,8 +1087,14 @@ function ShipToken({
       ? 'aurelian'
       : 'red'
 
+  // Engaged at all, detected or not — a cloak that has been found still has
+  // the ship's shields switched off (H6.4.1).
+  const cloakRunning = shipIsCloaked(game, ship)
+
   const shieldLabel = (side: 'F' | 'S' | 'A' | 'P') => {
-    if (ship.shieldsDown[side]) return '—'
+    // A running cloak takes the shields with it (H6.4.1), so the counter must
+    // not print a strength the ship no longer has.
+    if (cloakRunning || ship.shieldsDown[side]) return '—'
     // Strengths are printed on the hidden form (B1.9); an enemy counter shows
     // only that the shield is up.
     if (redacted) return ''

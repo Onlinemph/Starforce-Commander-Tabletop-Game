@@ -22,13 +22,18 @@ import {
 } from './command'
 import {
   bestDetection,
+  bonusSearch,
   cloakEffects,
   damageSearchDice,
   firingPermission,
   isCloaked,
+  disengageCloak,
+  freePlacementLegal,
+  maneuverAllowedWhileCloaked,
   newCloakState,
   positionIsHidden,
   speedSearchDice,
+  DETECTION_LABELS,
   type CloakEffects,
   type CloakState,
 } from './cloaking'
@@ -47,7 +52,15 @@ import {
   pruneFormations,
   type Formation,
 } from './formation'
-import { arcTo, canBearOn, distance, distanceToSegment, hasLineOfSight, type CircleObstacle } from './geometry'
+import {
+  actualRange,
+  arcTo,
+  canBearOn,
+  distance,
+  distanceToSegment,
+  hasLineOfSight,
+  type CircleObstacle,
+} from './geometry'
 import {
   cloudAt,
   degradedByClouds,
@@ -158,6 +171,7 @@ import {
 import type {
   CommandCard,
   Phase,
+  Placement,
   Point,
   Segment,
   ShieldSide,
@@ -603,6 +617,11 @@ export function damageContext(game: GameState): DamageContext {
     // takes the blast on the aft shield (E11.3.2, E11.3.4, C5).
     ships: game.ships,
     formations: game.formations,
+    // A cloaked ship has no shields at all: they drop the moment the cloak
+    // engages, and anything that reaches the hull goes straight inside
+    // (H6.4.1). Weapon fire says so through the volley as well; this catches
+    // terrain, exploding neighbours, and every other source.
+    shieldsBypassed: (ship) => shipIsCloaked(game, ship),
   }
 }
 
@@ -813,6 +832,92 @@ export function bonusSearchDice(game: GameState, ship: ShipState, damageTaken = 
   const cloak = game.cloaks[ship.id]
   if (!cloak?.engaged) return 0
   return speedSearchDice(ship.speed) + damageSearchDice(damageTaken)
+}
+
+/**
+ * The events that hand a cloaked ship's hunters a free roll (H6.15).
+ *
+ * This is what gives the speed-2 restriction its teeth: a cloak is not a
+ * cloaking *field* that fails above speed two, it is a ship that starts making
+ * noise. Every enemy in search range rolls, one die per point of speed over
+ * two, or one per four points of damage the hull just took, or one per small
+ * craft it just let out of the bay. Any `H` moves that searcher one rung up
+ * the ladder — and still only one rung per segment (H6.15.1).
+ */
+function extraSearches(game: GameState, ship: ShipState, dice: number, why: string): void {
+  const cloak = game.cloaks[ship.id]
+  if (!cloak?.engaged || dice <= 0) return
+  for (const hunter of activeShips(game)) {
+    if (hunter.side === ship.side || hunter.derelict) continue
+    // H6.9.5: a ship running its own cloak is not hunting anyone.
+    if (shipIsCloaked(game, hunter)) continue
+    const out = bonusSearch(hunter, ship, cloak, dice, game.rng)
+    if (out.faces.length === 0) continue
+    pushLog(
+      game,
+      `${hunter.name} searches for ${ship.name} — ${why}: ${out.faces.join(' ')} — ` +
+        (out.detected ? `${DETECTION_LABELS[out.to]} (H6.15).` : 'nothing (H6.15).'),
+    )
+  }
+}
+
+/**
+ * H6.15.2 — a cloaked ship above speed two is heard. Rolled when the command
+ * cards turn over, which is when the table learns its speed (H6.5.4).
+ */
+function speedSearches(game: GameState): void {
+  for (const ship of activeShips(game)) {
+    const dice = speedSearchDice(ship.speed)
+    if (dice > 0) extraSearches(game, ship, dice, `speed ${Math.abs(ship.speed)}`)
+  }
+}
+
+/**
+ * H6.15.3 — every four points of damage a cloaked hull takes is a flare in the
+ * dark. Called wherever damage lands on a ship, with the total after any
+ * reduction has already been applied.
+ */
+export function damageRevealsCloak(game: GameState, ship: ShipState, damage: number): void {
+  const dice = damageSearchDice(damage)
+  if (dice > 0) extraSearches(game, ship, dice, `${damage} damage taken`)
+}
+
+/** H6.15.4 — a small craft leaving the bay gives the ship's position away. */
+export function launchRevealsCloak(game: GameState, ship: ShipState, craft = 1): void {
+  extraSearches(game, ship, craft, 'small craft launched')
+}
+
+/**
+ * The long-approach escape hatch (H6.8.7).
+ *
+ * A ship that has run silent for six full rounds has had time to be anywhere
+ * within eighteen inches of its datum, so rather than replay eighteen phases of
+ * hidden movement it simply says where it ended up: any point in that circle,
+ * any heading, at a speed the cloak could have held. It decloaks in the act —
+ * the whole point is to arrive.
+ */
+export function repositionCloaked(
+  game: GameState,
+  ship: ShipState,
+  to: Placement,
+  speed: number,
+): string | null {
+  const cloak = game.cloaks[ship.id]
+  if (!cloak?.engaged) return `${ship.name} is not cloaked.`
+  if (!positionIsHidden(cloak)) {
+    return `${ship.name} has been found; it moves from where it is (H6.8.2).`
+  }
+  const illegal = freePlacementLegal(cloak, to, speed)
+  if (illegal) return illegal
+  ship.placement = { position: { ...to.position }, heading: to.heading }
+  ship.speed = speed
+  pushLog(
+    game,
+    `${ship.name} reappears ${actualRange(cloak.datum.position, to.position)}" from its datum ` +
+      `after ${cloak.speedLog.length} phases cloaked, at speed ${speed} (H6.8.7).`,
+  )
+  disengageCloak(cloak)
+  return null
 }
 
 /** Nebulae blind cloaks: all the restrictions, none of the benefit (H6.8.11). */
@@ -1183,6 +1288,7 @@ export function resolveHomingImpacts(
     // counter's approach and the absorption narrated — the table's shield
     // record keeps it, same as direct fire.
     recordShieldHit(game, target.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+    damageRevealsCloak(game, target, volley.standard)
   }
 
   game.homing = game.homing.filter((hw) => !hw.impacted && !hw.destroyed)
@@ -1243,9 +1349,26 @@ function runSegmentExit(game: GameState): void {
     }
 
     case 'navigation': {
+      // H6.15.2: the cards turn face up at the head of this segment, and a
+      // cloaked ship running above speed two has just told everyone in range
+      // roughly where it is — measured from where the hunters are now, before
+      // anyone moves.
+      speedSearches(game)
       for (const ship of activeShips(game)) {
         const card = game.orders[ship.id]
         if (!card || ship.derelict) continue
+        // H6.8.5(3): the cloak engages in Operations, after the card was
+        // written, so a hard turn plotted in the clear has to be given up when
+        // the ship slips into the dark.
+        const hidden = game.cloaks[ship.id]
+        if (hidden && positionIsHidden(hidden) && !maneuverAllowedWhileCloaked(card.maneuver)) {
+          pushLog(
+            game,
+            `${ship.name} holds its course: a cloaked ship may not make that turn (H6.8.5).`,
+          )
+          card.maneuver = 'straight'
+          card.direction = null
+        }
         // A ship in a tractor link still plots its true speed but travels at
         // the adjusted one, and the difference costs no acceleration and
         // causes no stress (J3.3.4, J3.4.5).
@@ -1497,6 +1620,10 @@ function startNewRound(game: GameState): void {
  * both up and down in the same phase (G1.1.5).
  */
 export function setShieldDown(game: GameState, ship: ShipState, side: ShieldSide, down: boolean): string | null {
+  // H6.4.1: the shields went down with the cloak and stay down until it does.
+  if (!down && shipIsCloaked(game, ship)) {
+    return `${ship.name} cannot raise shields while its cloak is running (H6.4.1).`
+  }
   const key = `${ship.id}:${side}`
   if (game.shieldChangedThisPhase.has(key)) {
     return 'That shield has already changed state this phase (G1.1.5).'
@@ -1714,6 +1841,17 @@ export function attemptTractorLock(
 ): TractorAttempt {
   const target = tractorTargets(game, source).find((t) => t.id === targetId)
   if (!target) return { refusal: 'No such target.' }
+  // H6.4.7: a cloak bars tractor beams in both directions, and a cloaked ship
+  // may not be gripped at any detection level.
+  if (shipIsCloaked(game, source)) {
+    return { refusal: `${source.name} cannot use tractor beams while cloaked (H6.4.7).` }
+  }
+  {
+    const other = shipById(game, targetId)
+    if (other && shipIsCloaked(game, other)) {
+      return { refusal: `No tractor beam may lock onto a cloaked ship (H6.4.7).` }
+    }
+  }
   const power = tractorPower(source, maxSystemOf(game, source))
   const refusal = lockRefusal(source, target.position, game.ops.links, power, beams)
   if (refusal) return { refusal }
@@ -1804,6 +1942,10 @@ export interface ScanOutcome {
 export function performScan(game: GameState, ship: ShipState, targetId: string): ScanOutcome {
   const captured = capturedRefusal(ship, 'scan')
   if (captured) return { refusal: captured }
+  // H6.4.3: a cloaked ship is listening, not looking.
+  if (shipIsCloaked(game, ship)) {
+    return { refusal: `${ship.name} cannot perform information scans while cloaked (H6.4.3).` }
+  }
   const target = scanTargets(game, ship).find((t) => t.id === targetId)
   if (!target) return { refusal: 'No such object.' }
   const key = `${ship.id}:${targetId}`
@@ -1857,6 +1999,13 @@ export function performTransport(
   to: ShipState,
   squads: number,
 ): TransportOutcome {
+  // H6.4.8: nothing beams off a cloaked ship, and nothing beams onto one.
+  if (shipIsCloaked(game, from)) {
+    return { refusal: `${from.name} cannot use transporters while cloaked (H6.4.8).` }
+  }
+  if (shipIsCloaked(game, to)) {
+    return { refusal: `Nothing may be transported to a cloaked ship (H6.4.8).` }
+  }
   const used = game.ops.transportedThisPhase[from.id] ?? 0
   const refusal = transportRefusal({
     from,
@@ -1910,6 +2059,9 @@ export function launchShuttle(
   })
   game.ops.launchedThisPhase.add(ship.id)
   pushLog(game, `${ship.name}: launches a ${kind === 'jamming-shuttle' ? 'jamming shuttle' : 'shuttle'}.`)
+  // H6.15.4: a craft leaving the bay of a cloaked ship is seen the instant it
+  // clears the hull, and everyone in range gets a look.
+  launchRevealsCloak(game, ship)
   return null
 }
 
@@ -2347,6 +2499,9 @@ function applyTerrainDamage(game: GameState, ship: ShipState, path: Array<{ x: n
     const side: ShieldSide = ship.speed < 0 ? 'A' : 'F'
     pushLog(game, `${ship.name} takes ${total} damage transiting ${feature.name}.`)
     applyVolley(ship, { standard: total, leak: 0, structurePenetration: 0, side }, damageContext(game))
+    // H6.15.3 / H6.8.11: rocks hit a cloaked hull as hard as anything else,
+    // and the shudder is what gives it away.
+    damageRevealsCloak(game, ship, total)
   }
 }
 
@@ -2384,6 +2539,7 @@ function applyCloudDamage(game: GameState, ship: ShipState): void {
     },
     damageContext(game),
   )
+  damageRevealsCloak(game, ship, total)
 }
 
 /**

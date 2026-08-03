@@ -513,6 +513,13 @@ export interface DamageContext {
   ships?: readonly ShipState[]
   /** Formations, which share explosion damage on the aft shield (E11.3.4). */
   formations?: readonly Formation[]
+  /**
+   * A standing condition that puts a ship's shields out of action whatever the
+   * source of the damage — a running cloak (H6.4.1). Distinct from a volley's
+   * own `shieldsInoperative`, which describes the shot rather than the ship,
+   * and so never reaches damage that skips the firing solution.
+   */
+  shieldsBypassed?: (ship: ShipState) => boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -954,8 +961,15 @@ export function applyVolley(
   }
 
   // Derelicts and lowered shields provide no protection (E11.2.5, G1.1.5), and
-  // neither do blue or green boxes inside a nebula or gas cloud (K4.2.1).
-  const shieldsWork = !ship.derelict && !ship.shieldsDown[side] && !volley.shieldsInoperative
+  // neither do blue or green boxes inside a nebula or gas cloud (K4.2.1). The
+  // context's own veto covers a condition of the ship rather than of the
+  // volley — a running cloak (H6.4.1) — so it holds for damage that never went
+  // through a firing solution: terrain, a neighbour's reactor, anything.
+  const shieldsWork =
+    !ship.derelict &&
+    !ship.shieldsDown[side] &&
+    !volley.shieldsInoperative &&
+    !ctx.shieldsBypassed?.(ship)
 
   if (shieldsWork) {
     // Reinforcement absorbs before the blue boxes (G1.3.2).

@@ -3,7 +3,10 @@ import {
   cloakFullyPowered,
   cloakOperational,
   cloakStrength,
+  mayFreePlace,
+  CLOAK_SAFE_SPEED,
   DETECTION_LABELS,
+  LONG_CLOAK_RADIUS,
   detectionBy,
   hasCloak,
   isCloaked,
@@ -30,6 +33,15 @@ interface Props {
 
 export function CloakPanel({ game, ship }: Props) {
   const [error, setError] = useState<string | null>(null)
+  // Where a long-cloaked ship says it ended up (H6.8.7). Seeded from the datum
+  // so the commonest answer — "roughly where you last saw me" — is one click.
+  const datum = cloakOf(game, ship)?.datum
+  const [spot, setSpot] = useState({
+    x: Math.round(datum?.position.x ?? ship.placement.position.x),
+    y: Math.round(datum?.position.y ?? ship.placement.position.y),
+    heading: Math.round(datum?.heading ?? ship.placement.heading),
+    speed: CLOAK_SAFE_SPEED,
+  })
 
   const own = cloakOf(game, ship)
   const enemyCloaks = game.ships.filter(
@@ -45,7 +57,7 @@ export function CloakPanel({ game, ship }: Props) {
         <>
           <p className="hint">
             {isCloaked(own)
-              ? `${ship.name} is cloaked. Shields down, weapons locked, no scans or tractors (H6.4).`
+              ? `${ship.name} is cloaked. Shields down, weapons locked, no scans, tractors, transporters or command lending (H6.4).`
               : `${ship.name} carries a cloaking system.`}
             {' '}Jamming becomes extra power to the cloak while it runs, and is what a searcher&apos;s
             targeting has to beat — currently {cloakStrength(ship)} (H6.4.5).
@@ -74,6 +86,69 @@ export function CloakPanel({ game, ship }: Props) {
                 {own.speedLog.join(', ') || '—'} · datum at ({own.datum.position.x.toFixed(1)},{' '}
                 {own.datum.position.y.toFixed(1)})
               </p>
+              <p className="hint">
+                Only straight, slide, easy and standard turns while undetected (H6.8.5). Above speed{' '}
+                {CLOAK_SAFE_SPEED} every hunter in range gets a free look, and so does every four
+                points of damage or any small craft leaving the bay (H6.15).
+              </p>
+              {mayFreePlace(own) && (
+                <div className="cloak-reposition">
+                  <p className="hint">
+                    {own.speedLog.length} phases cloaked: rather than fly the approach out, this ship
+                    may simply appear anywhere within {LONG_CLOAK_RADIUS}&quot; of its datum, on any
+                    heading, at speed 0–{CLOAK_SAFE_SPEED} (H6.8.7). It decloaks in the act.
+                  </p>
+                  <div className="cloak-reposition-fields">
+                    <label>
+                      <span>x</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={spot.x}
+                        onChange={(e) => setSpot({ ...spot, x: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>y</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={spot.y}
+                        onChange={(e) => setSpot({ ...spot, y: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>heading</span>
+                      <input
+                        type="number"
+                        step="15"
+                        value={spot.heading}
+                        onChange={(e) => setSpot({ ...spot, heading: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>speed</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={CLOAK_SAFE_SPEED}
+                        value={spot.speed}
+                        onChange={(e) => setSpot({ ...spot, speed: Number(e.target.value) })}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setError(
+                          dispatch({ type: 'cloak-reposition', shipId: ship.id, ...spot }).message,
+                        )
+                      }
+                    >
+                      Appear here (H6.8.7)
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="cloak-actions">
                 <button
                   type="button"
@@ -85,10 +160,7 @@ export function CloakPanel({ game, ship }: Props) {
                   type="button"
                   disabled={!mayDecloak(own)}
                   title={mayDecloak(own) ? '' : 'The cloak must run for a full phase first (H6.6.7)'}
-                  onClick={() => {
-                    dispatch({ type: 'decloak', shipId: ship.id })
-                    setError(null)
-                  }}
+                  onClick={() => setError(dispatch({ type: 'decloak', shipId: ship.id }).message)}
                 >
                   Decloak (H6.7)
                 </button>

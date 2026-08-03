@@ -2,6 +2,9 @@ import {
   attemptSearch,
   disengageCloak,
   engageCloak,
+  maneuverAllowedWhileCloaked,
+  mayDecloak,
+  positionIsHidden,
   reduceDetection,
   DETECTION_LABELS,
 } from './cloaking'
@@ -35,6 +38,7 @@ import {
   contestTractor,
   armCrew,
   damageContext,
+  damageRevealsCloak,
   declareCoordinatedFire,
   everyoneReady,
   dockShuttle,
@@ -51,11 +55,13 @@ import {
   recordAttack,
   recoverShuttle,
   releaseTractor,
+  repositionCloaked,
   resolveHomingImpacts,
   scoutSupport,
   setMaxSystem,
   setSabotageSquads,
   setShieldDown,
+  shipIsCloaked,
   sidesAwaited,
   flushPendingVolleys,
   recordShieldHit,
@@ -162,6 +168,11 @@ export type GameAction =
   | { type: 'decloak'; shipId: string }
   | { type: 'reduce-detection'; shipId: string }
   | { type: 'cloak-search'; shipId: string; ghostId: string }
+  /**
+   * H6.8.7 — after six rounds cloaked, reappear anywhere within 18" of the
+   * datum instead of replaying eighteen phases of hidden movement.
+   */
+  | { type: 'cloak-reposition'; shipId: string; x: number; y: number; heading: number; speed: number }
   // Scouting sensors (H3)
   | {
       type: 'scout-assign'
@@ -373,6 +384,19 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'plot-maneuver': {
       const card = game.orders[action.shipId]
       if (!card) return said('No command card for that ship.')
+      // H6.8.5(3): a ship feeling its way through the dark keeps it simple.
+      // While cloaked and undetected only straight, slide, easy and standard
+      // are available; anything sharper waits until it is back on the map.
+      const cloak = cloakOf(game, shipById(game, action.shipId)!)
+      if (
+        cloak &&
+        positionIsHidden(cloak) &&
+        !maneuverAllowedWhileCloaked(action.maneuver)
+      ) {
+        return said(
+          `A cloaked ship may only fly straight, slide, or make easy and standard turns (H6.8.5).`,
+        )
+      }
       card.maneuver = action.maneuver
       card.direction = action.direction
       return ok
@@ -572,6 +596,9 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
           result.damage.side,
           result.outcome.greenAbsorbed + result.outcome.blueAbsorbed,
         )
+        // H6.15.3: four points into a cloaked hull is a flare in the dark. The
+        // reduction from degraded fire control is already in this number.
+        damageRevealsCloak(game, target, result.damage.standard)
       }
       const flushed = maybeFlushTieGroup(game)
       return { message: null, volley: result, flushed }
@@ -659,6 +686,13 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const cloak = ship ? cloakOf(game, ship) : null
       if (!ship || !cloak) return said('No cloaking system.')
+      if (!cloak.engaged) return said(`${ship.name} is not cloaked.`)
+      // H6.6.7: once engaged the cloak runs for a full phase before it may be
+      // switched off. The panel greys the button out; the engine is what makes
+      // it true for a remote client or a replayed script.
+      if (!mayDecloak(cloak)) {
+        return said('The cloak must run for a full phase before it can be disengaged (H6.6.7).')
+      }
       disengageCloak(cloak)
       pushLog(game, `${ship.name} decloaks (H6.7).`)
       return ok
@@ -676,6 +710,18 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
         )
       }
       return said(results.length === 0 ? 'Nobody has a fix to shake off.' : null)
+    }
+    case 'cloak-reposition': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(
+        repositionCloaked(
+          game,
+          ship,
+          { position: { x: action.x, y: action.y }, heading: action.heading },
+          action.speed,
+        ),
+      )
     }
     case 'cloak-search': {
       const ship = shipById(game, action.shipId)
@@ -749,6 +795,15 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'assign-command': {
       const state = commandStateFor(game, action.side)
       const commandShip = game.ships.find((s) => s.id === state.commandShipId)
+      // H6.4.10: command systems go dark with the cloak, so a cloaked flagship
+      // lends nothing and a cloaked ship is past hearing.
+      if (commandShip && shipIsCloaked(game, commandShip)) {
+        return said(`${commandShip.name}'s command systems are disabled while cloaked (H6.4.10).`)
+      }
+      const recipientShip = game.ships.find((s) => s.id === action.targetId)
+      if (recipientShip && shipIsCloaked(game, recipientShip)) {
+        return said(`${recipientShip.name} cannot receive command points while cloaked (H6.4.10).`)
+      }
       const message = setCommandAssignment(state, game.ships, action.targetId, action.points)
       if (!message) {
         const recipient = game.ships.find((s) => s.id === action.targetId)!

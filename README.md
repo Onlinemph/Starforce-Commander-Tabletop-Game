@@ -539,7 +539,7 @@ exemption (K2.2.1) all apply at the table.
 | **E5 Homing Weapons** *(Expansion 5)* | ✅ | Launch, per-phase flight, endurance, point defense, tractors, head-on and overflight |
 | **F5 Plasma Torpedoes** *(Expansion 5)* | ✅ | Imported as homing particle weapons with per-phase bonus damage |
 | **F1.13 / F1.16 Missile & Particle** *(Expansion 5)* | ✅ | `MISL X` destruction thresholds; particle damage worn down one point per three |
-| **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
+| **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects enforced, the three bonus-search events, and the eighteen-phase free placement |
 | C3.6 Evasive Maneuvers *(optional)* | ✅ | Plotted on the card, spent at reveal, rerolls against every incoming volley and the same handed to anything it shoots |
 
 | C3.8 Emergency Stop *(optional)* | ✅ | Drive shut down: stationary this phase and the next, stress equal to the speed it was making |
@@ -705,13 +705,37 @@ searcher may only climb one rung per segment (H6.10.3, H6.15.1). Once a searcher
 switches from green dice to yellow, which hit twice as often (H6.12.3). The cloaked ship answers by
 rolling one blue die per searcher that holds a fix, dropping a rung on an `M` (H6.13).
 
-All eleven cloaking effects are in force while the cloak runs (H6.4): shields down, weapons and
-homing launches locked, no scans, no targeting, no tractors or transporters in either direction, no
-command points lent, and no precision targeting against it at any detection level. Engaging the
-cloak within 8 inches of an enemy hands that enemy a free Contact (H6.6.3); the cloak must run for a
-full phase before it can come off and stay off for one before it can go back on (H6.6.7, H6.7.7).
-Speed above 2, and every four points of damage taken, grant the hunters bonus search rolls
-(H6.15.2, H6.15.3).
+All eleven cloaking effects are in force while the cloak runs (H6.4), and each is enforced where the
+rule bites rather than only described. **Shields go down with the cloak and stay down** (H6.4.1):
+they cannot be raised, the counter prints `—` on every facing, and damage bypasses them whatever its
+source — weapon fire, a torpedo, an asteroid field, an exploding neighbour. Weapons and homing
+launches are locked, information scans refused, tractors and transporters refused in both
+directions, command points neither lent nor received, and precision targeting is barred against a
+cloaked ship at any detection level.
+
+While undetected the helm is limited to straight, slide, easy and standard turns (H6.8.5) — a harder
+turn is refused when plotted, and one plotted before the cloak engaged is given up at the Navigation
+Segment, since the cloak goes on in Operations after the card was written. Engaging within 8 inches
+of an enemy hands that enemy a free Contact (H6.6.3); the cloak must run a full phase before it can
+come off and stay off for one before it can go back on (H6.6.7, H6.7.7), both enforced by the engine
+rather than only greyed out in the panel.
+
+Three events hand every hunter in range a free roll (H6.15): running above speed 2 — rolled when the
+cards turn over, one die per point over — every four points of damage the hull takes, and any small
+craft leaving the bay. This is what gives the speed-2 limit its teeth: a cloak does not fail above
+speed two, the ship simply starts making noise. A ship that has stayed hidden for eighteen phases may
+skip the approach entirely and reappear anywhere within 18 inches of its datum, on any heading, at
+speed 0–2 (H6.8.7).
+
+**One deliberate divergence.** At the table an undetected ship's position genuinely does not exist:
+the player replays the speed log from the datum by eye when found, and H6.8.5(5) forbids
+pre-measuring or taking the move back. A screen cannot referee that honestly — and this engine's
+replays, undo and online sync all depend on every position being derivable from the action journal.
+So a cloaked ship keeps flying its card, with its true position hidden from everyone but its own
+commander, and appears there when it is found. What the rule actually *removes* is still removed:
+nothing sharper than a standard turn need be plotted, the default straight course costs nothing to
+leave alone, and a long approach can be skipped outright with H6.8.7 rather than flown out phase by
+phase.
 
 ### E5 Homing Weapons
 
