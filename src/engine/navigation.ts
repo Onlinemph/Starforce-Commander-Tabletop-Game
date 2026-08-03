@@ -144,25 +144,36 @@ export function plannedMovement(
   let speed = card.speed
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
-  if (ship.emergencyStopPhases > 0) speed = 0
+  if (ship.emergencyStopPhases > 0 || card.emergencyStop) speed = 0
 
   const travel =
     towedSpeed === undefined
       ? speed
       : Math.sign(speed) * Math.min(Math.abs(speed), Math.abs(towedSpeed))
 
-  const maneuver = mustGoStraight ? 'straight' : card.maneuver
+  // An emergency stop is a straight line to a standstill (C3.8.1).
+  const maneuver = mustGoStraight || card.emergencyStop ? 'straight' : card.maneuver
+  /**
+   * A turn may be taken at any rate up to the one the table allows (C3.9.1) —
+   * a captain who wants 20 degrees where the ship could manage 40 says so, and
+   * the ship obliges. Never *more* than the table, whatever the card says.
+   */
+  const allowed = turnTemplateAt(ship, travel)
   const result = applyManeuver({
     start: ship.placement,
     speed: travel,
     maneuver,
     direction: card.direction,
-    turnTemplate: turnTemplateAt(ship, travel),
+    turnTemplate:
+      card.turnRate !== undefined ? Math.min(Math.max(0, card.turnRate), allowed) : allowed,
     halfSlide: card.halfSlide,
   })
 
-  // Stress from the maneuver itself (C3.1.2).
-  return { ...result, speed: travel, stress: maneuverStress(maneuver, travel), maneuver }
+  // Stress from the maneuver itself (C3.1.2), or from stopping dead (C3.8.3).
+  const stress = card.emergencyStop
+    ? Math.abs(ship.speed)
+    : maneuverStress(maneuver, travel)
+  return { ...result, speed: travel, stress, maneuver }
 }
 
 /**
@@ -188,8 +199,20 @@ export function executeMovement(
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
   if (ship.emergencyStopPhases > 0) speed = 0
+  /**
+   * Emergency stop (C3.8): the drive shuts down and the ship is stationary
+   * this phase and the next, even when the next one falls in the following
+   * round. Two phases are booked here and one is spent below, so the ship is
+   * still held when the next card is revealed.
+   */
+  if (card.emergencyStop && ship.emergencyStopPhases === 0) {
+    speed = 0
+    ship.emergencyStopPhases = 2
+  }
   ship.speed = speed
-  ship.accelUsedThisRound += Math.abs(card.accel)
+  // "An emergency stop does not count against the ship's acceleration limits"
+  // (C3.8.1) — the stress it applies is the price instead.
+  if (!card.emergencyStop) ship.accelUsedThisRound += Math.abs(card.accel)
 
   /**
    * The evasive plot takes effect as the card is revealed (C3.6.4). Only an

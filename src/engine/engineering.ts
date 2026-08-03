@@ -3,6 +3,7 @@ import { rollForSpecial, type Rng } from './dice'
 import {
   armingCapacityThisRound,
   batteryPower,
+  crewIsArmed,
   blueShieldRemaining,
   damageControlRating,
   findLine,
@@ -33,7 +34,9 @@ export interface AllocationError {
 
 /** Total power available: undamaged reactors plus charged batteries (B2.2.1). */
 export function totalPowerAvailable(ship: ShipState): number {
-  return reactorPower(ship) + batteryPower(ship)
+  const total = reactorPower(ship) + batteryPower(ship)
+  // A ship fought by its own crew has nobody left to run it (J6.3.4).
+  return crewIsArmed(ship) ? Math.max(0, total - 2) : total
 }
 
 export function powerRemaining(ship: ShipState): number {
@@ -495,6 +498,13 @@ export interface RepairOutcome {
  * Resolve the Damage Control Segment. Each category may repair at most one box
  * per round regardless of how many dice are assigned (B3.2 Step 3).
  */
+/** A crew under arms is not repairing anything (J6.3.4). */
+export function damageControlRefusal(ship: ShipState): string | null {
+  return crewIsArmed(ship)
+    ? `${ship.name}'s crew is under arms — no damage control while they are (J6.3.4).`
+    : null
+}
+
 export function resolveDamageControl(
   ship: ShipState,
   assignments: RepairAssignment[],

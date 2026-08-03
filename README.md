@@ -298,6 +298,22 @@ that one fact.
   players get the full rule and an EVASIVE control on the card. Every baseline held: duel
   admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L of 64, and the
   outnumbered capital unchanged at 11W–13L.
+- **The optional maneuvers, now orderable.** Three rules the engine could already perform and no
+  captain could actually order, because nothing on the command card said them. **Emergency stop**
+  (C3.8) shuts the drive field down: the ship is stationary this phase *and* the next, even across
+  a round boundary, and pays stress equal to the speed it was making rather than acceleration —
+  none of it counts against the round's limits, which is what makes it a genuine escape from a
+  bad plot. **Precise turns** (C3.9) let any turn be taken at any template the ship could manage
+  or less — a shallower turn holds a firing arc that a hard one throws away — and slides may be
+  half an inch instead of the full one. The engine already took a turn template as a parameter and
+  a `halfSlide` flag; all they needed was somewhere to say so.
+
+  Two more from that list turned out to be reachable already, and the note claiming otherwise was
+  simply stale: **repelling boarders** (B3.4) has been a damage-control category all along, and
+  **reverse movement** (C3.7) is what plotting a negative speed does. **Arming the crew** (J6.3)
+  was the one genuinely missing, and it is an act of desperation the rulebook prices honestly:
+  two improvised squads per size class, and for twenty rounds after the fighting stops the ship
+  may not repair, loses two points of power, and fires last however good its Tactical Scan is.
 - **All six printed missions (S3).** The rulebook prints six scenarios and each exists to turn on
   a rule the plain duel never reaches, so they are worth having as written rather than as flavour
   text. **The Duel** and **Orbital Ambush** were already here; the other four brought the
@@ -516,10 +532,12 @@ exemption (K2.2.1) all apply at the table.
 | **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
 | C3.6 Evasive Maneuvers *(optional)* | ✅ | Plotted on the card, spent at reveal, rerolls against every incoming volley and the same handed to anything it shoots |
 
-Optional rules (B3.4 repelling boarders, C3.7 reverse movement, C3.8 emergency
-stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6.3 arming the crew) are partly
-implemented in the engine — reverse movement, emergency stop, repelling boarders, derelicts and
-explosions all work — but are not yet surfaced as UI toggles beyond the destruction options.
+| C3.8 Emergency Stop *(optional)* | ✅ | Drive shut down: stationary this phase and the next, stress equal to the speed it was making |
+| C3.9 Precise Turns and Slides *(optional)* | ✅ | Any turn taken at any template up to the ship's rate; half-inch slides |
+| J6.3 Arming the Crew *(optional)* | ✅ | Two squads per size class, at the cost of damage control, two power and the firing order |
+
+Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer, and **E11.4–E11.6**
+— abandon ship, transporter evacuation and escape pods.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 

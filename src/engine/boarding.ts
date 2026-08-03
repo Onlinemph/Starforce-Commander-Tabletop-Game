@@ -10,8 +10,8 @@ import type { DieFace, Maneuver } from './types'
  * Everything is rolled on blue dice: a Light hit kills one enemy squad, and
  * nothing else on the die matters.
  *
- * J6.3, arming the general crew to repel boarders, is an optional rule and is
- * not implemented here.
+ * Arming the general crew (J6.3) is an act of desperation the captain orders
+ * during this same segment; the squads it raises fight here like any other.
  */
 
 /** A Light hit kills one enemy squad; misses and Mediums do nothing (J6.2.2). */

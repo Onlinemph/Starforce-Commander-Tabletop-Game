@@ -51,6 +51,12 @@ export interface ShipState {
   /** Hits on each power point, keyed by reactor group id. */
   reactorDamage: Record<string, number[]>
   /**
+   * Arming the general crew to repel boarders (J6.3, optional). Holds the
+   * round through which the ship stays in that state — twenty rounds past the
+   * fight, per J6.3.2 — and zero when the crew is at its stations.
+   */
+  crewArmedUntil: number
+  /**
    * The force's flagship (S3.6). Damage scored against it is worth double to
    * the enemy, and its side gets free tactical scan points to hand out.
    */
@@ -175,6 +181,7 @@ export function createShip(args: {
     speed: args.speed,
     reactorDamage,
     // Batteries begin a scenario fully charged (B2.4.1).
+    crewArmedUntil: 0,
     flagship: args.flagship ?? false,
     arrivesRound: args.arrivesRound ?? 1,
     batteryDamaged: new Array(form.batteries).fill(false),
@@ -300,6 +307,15 @@ export function findLine(form: ShipForm, kind: string, match?: Partial<FunctionL
  * (B3.3.3), which is why this reads `structureHitsTaken` rather than current
  * damage.
  */
+/**
+ * Whether the general crew is under arms rather than at their stations (J6.3).
+ * The state expires on its own at the start of a round, so every caller can
+ * ask this without also knowing what round it is.
+ */
+export function crewIsArmed(ship: ShipState): boolean {
+  return ship.crewArmedUntil > 0
+}
+
 export function damageControlRating(ship: ShipState): number {
   const markers: number[] = []
   let passed = 0

@@ -12,6 +12,7 @@ import {
   armMount,
   autoArmIfChoiceFree,
   batterySpendError,
+  damageControlRefusal,
   resolveDamageControl,
   setAllocation,
   spendBattery,
@@ -32,6 +33,7 @@ import {
   cloudModifiers,
   commandStateFor,
   contestTractor,
+  armCrew,
   damageContext,
   declareCoordinatedFire,
   everyoneReady,
@@ -110,6 +112,11 @@ export type GameAction =
   | { type: 'plot-maneuver'; shipId: string; maneuver: Maneuver; direction: TurnDirection | null }
   | { type: 'plot-accel'; shipId: string; delta: number }
   | { type: 'plot-evasive'; shipId: string; points: number }
+  /** Precise turns and slides (C3.9): turn at less than the ship could manage. */
+  | { type: 'plot-turn-rate'; shipId: string; rate: number | null }
+  | { type: 'plot-half-slide'; shipId: string; on: boolean }
+  /** Emergency stop (C3.8): shut the drive field down and stand still. */
+  | { type: 'plot-emergency-stop'; shipId: string; on: boolean }
   | {
       type: 'plot-sensor'
       shipId: string
@@ -173,6 +180,8 @@ export type GameAction =
   // Boarding (J6.2)
   | { type: 'set-sabotage'; targetId: string; side: string; squads: number }
   | { type: 'fight-boarders'; targetId: string; side: string }
+  /** Arm the general crew to repel boarders (J6.3, optional). */
+  | { type: 'arm-crew'; shipId: string }
   // Flight operations (J8)
   | { type: 'launch-shuttle'; shipId: string; kind?: SmallCraftKind; marines?: number }
   | { type: 'move-craft'; craftId: string; x: number; y: number }
@@ -332,9 +341,23 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     }
 
     // ── Damage control ───────────────────────────────────────────────────
+    case 'arm-crew': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      // "The decision to use the crew to repel boarders is made during the
+      // Boarding Combat Segment" (J6.3.2).
+      if (game.segment !== 'boarding-combat') {
+        return said('The crew is armed during the Boarding Combat Segment (J6.3.2).')
+      }
+      const refused = armCrew(game, ship)
+      return refused ? said(refused) : ok
+    }
+
     case 'damage-control': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      const noCrew = damageControlRefusal(ship)
+      if (noCrew) return said(noCrew)
       const messages: string[] = []
       const outcomes = resolveDamageControl(ship, action.assignments, game.rng, (m) => {
         messages.push(m)
@@ -362,6 +385,40 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       card.speed = ship.speed + card.accel
       return ok
     }
+    case 'plot-turn-rate': {
+      const card = game.orders[action.shipId]
+      if (!card) return said('No command card for that ship.')
+      card.turnRate = action.rate === null ? undefined : Math.max(0, Math.round(action.rate))
+      return ok
+    }
+
+    case 'plot-half-slide': {
+      const card = game.orders[action.shipId]
+      if (!card) return said('No command card for that ship.')
+      card.halfSlide = action.on || undefined
+      return ok
+    }
+
+    case 'plot-emergency-stop': {
+      const ship = shipById(game, action.shipId)
+      const card = game.orders[action.shipId]
+      if (!ship || !card) return said('No command card for that ship.')
+      // Nothing to shut down when the drive is already off (C3.8.4).
+      if (action.on && ship.emergencyStopPhases > 0) {
+        return said(`${ship.name} is already stopped (C3.8.2).`)
+      }
+      card.emergencyStop = action.on || undefined
+      if (action.on) {
+        // The card reads speed zero, straight ahead — the rest of the plot is
+        // no longer the captain's to make (C3.8.1).
+        card.speed = 0
+        card.accel = 0
+        card.maneuver = 'straight'
+        card.direction = null
+      }
+      return ok
+    }
+
     case 'plot-evasive': {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]

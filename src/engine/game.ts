@@ -146,6 +146,7 @@ import {
 } from './navigation'
 import {
   beginRound,
+  crewIsArmed,
   damageLevel,
   mountIsReady,
   structureRemaining,
@@ -924,7 +925,31 @@ export function lentScanPoints(game: GameState): Record<string, number> {
  * may push a ship past the cap its own sensor rating imposes (H5.2.2).
  */
 export function tacticalScanOf(game: GameState, ship: ShipState): number {
+  // A ship fought by its own crew fires last, whatever its scan says (J6.3.4).
+  if (crewIsArmed(ship)) return -1
   return ship.sensors.tacticalScan + (lentScanPoints(game)[ship.id] ?? 0)
+}
+
+/**
+ * Arm the general crew to repel boarders (J6.3): two extra squads per size
+ * class, and the ship stops being a warship for twenty rounds after the
+ * fighting ends — no damage control, two points less power, and it fires
+ * last. Returns a refusal, or null when the order stands.
+ */
+export function armCrew(game: GameState, ship: ShipState): string | null {
+  if (crewIsArmed(ship)) return `${ship.name}'s crew is already under arms.`
+  if (ship.capturedBy) return 'Too late — the ship is already taken (J6.3.1).'
+  const raised = 2 * ship.form.sizeClass
+  ship.marineSquads += raised
+  // "In effect for 20 rounds after the attacking marine squads are defeated"
+  // (J6.3.2); while any are still aboard the clock keeps being pushed back.
+  ship.crewArmedUntil = game.round + 20
+  pushLog(
+    game,
+    `${ship.name}: the crew is armed — ${raised} improvised squads, and a ship that can no ` +
+      `longer repair, spare the power, or fire on time (J6.3.4).`,
+  )
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -1443,6 +1468,19 @@ function startNewRound(game: GameState): void {
   game.ops.probesThisRound = {}
   pruneFormations(game.formations, game.ships)
   for (const ship of activeShips(game)) beginRound(ship)
+  /**
+   * The twenty rounds only start once the boarders are beaten (J6.3.2), and
+   * the state clears itself when they run out — so nothing else has to know
+   * what round it is to ask whether a crew is still under arms.
+   */
+  for (const ship of activeShips(game)) {
+    if (ship.crewArmedUntil === 0) continue
+    if (Object.values(ship.boarders).some((n) => n > 0)) ship.crewArmedUntil = game.round + 20
+    else if (game.round > ship.crewArmedUntil) {
+      ship.crewArmedUntil = 0
+      pushLog(game, `${ship.name}: the crew stands down and returns to stations (J6.3.2).`)
+    }
+  }
   pushLog(game, `— Round ${game.round} —`)
   // Reinforcements make the board (S3.2). Announced, because a squadron
   // appearing across the exit is the whole point of the clock.

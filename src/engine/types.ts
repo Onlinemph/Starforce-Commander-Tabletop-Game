@@ -429,8 +429,21 @@ export interface CommandCard {
   accel: number
   /** Speed the ship will be moving at once the change takes effect (C1.2.4). */
   speed: number
-  /** Half-inch slide instead of a full inch (C2.4.1). */
+  /** Half-inch slide instead of a full inch (C2.4.1, C3.9.5). */
   halfSlide?: boolean
+  /**
+   * A turn taken at less than the ship could manage (C3.9.1). The chosen
+   * template must be at or below the rate the Sublight Drive table allows at
+   * this speed; leave it unset to turn as hard as the ship is able.
+   */
+  turnRate?: number
+  /**
+   * Emergency stop (C3.8): the drive field is shut down and the ship stops
+   * dead. Speed zero this phase and the next, straight ahead, stress equal to
+   * the speed it was making — and none of it counts against the round's
+   * acceleration limits.
+   */
+  emergencyStop?: boolean
   /**
    * Acceleration points thrown into evasive maneuvers (C3.6, optional). The
    * plot is the number in the card's EVASIVE box: leave it at the ship's

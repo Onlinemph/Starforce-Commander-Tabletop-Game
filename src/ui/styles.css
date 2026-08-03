@@ -3852,3 +3852,10 @@ button.chip:hover:not(:disabled) {
 .mission-status .is-done {
   color: var(--lc-green, #57c46f);
 }
+
+/* Precise turns (C3.9): one chip per template the ship may choose. */
+.turn-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}

@@ -46,6 +46,12 @@ export function CommandCardPanel({ game, ship }: Props) {
   const setEvasive = (points: number) =>
     dispatch({ type: 'plot-evasive', shipId: ship.id, points })
 
+  /** The turn templates the printed counters offer (C3.9.3). */
+  const RATES = [20, 25, 30, 35, 40, 45, 60]
+  const maxTurn = turnTemplateAt(ship, card.speed)
+  const turning = card.direction !== null && card.maneuver !== 'slide' && maxTurn > 0
+  const sliding = card.maneuver === 'slide'
+
   const setSensor = (key: keyof typeof card.sensors, value: number) =>
     dispatch({ type: 'plot-sensor', shipId: ship.id, key, value })
 
@@ -148,7 +154,81 @@ export function CommandCardPanel({ game, ship }: Props) {
             ? `Rerolls ${evasive} attack ${evasive === 1 ? 'die' : 'dice'} from every incoming volley — and hands ${evasive} back to anything this ship fires at (C3.6.3).`
             : 'Spend acceleration on evasive maneuvers: harder to hit, and less accurate yourself (C3.6).'}
         </p>
+
+        {/*
+          Emergency stop (C3.8). The drive field is shut down: the ship stands
+          still this phase and the next, takes stress equal to the speed it was
+          making, and none of it counts against the round's acceleration.
+        */}
+        <div className="accel-row">
+          <button
+            type="button"
+            className={card.emergencyStop ? 'chip is-on' : 'chip'}
+            disabled={ship.emergencyStopPhases > 0}
+            title={
+              ship.emergencyStopPhases > 0
+                ? 'The drive is already shut down — the ship is stationary until it restarts (C3.8.2).'
+                : `Shut the drive field down: speed 0 this phase and the next, and ${Math.abs(ship.speed)} stress (C3.8.3).`
+            }
+            onClick={() =>
+              dispatch({
+                type: 'plot-emergency-stop',
+                shipId: ship.id,
+                on: !card.emergencyStop,
+              })
+            }
+          >
+            EMER STOP
+          </button>
+          {ship.emergencyStopPhases > 0 && (
+            <span className="speed-value">DRIVE DOWN · {ship.emergencyStopPhases}</span>
+          )}
+        </div>
       </div>
+
+      {/*
+        Precise turns and slides (C3.9), which only matter once a turn or a
+        slide is actually plotted — so the block appears when it can be used.
+      */}
+      {(turning || sliding) && (
+        <div className="cc-block">
+          <h4>Precise maneuver</h4>
+          {turning && (
+            <>
+              <div className="turn-rates">
+                {[null, ...RATES.filter((r) => r <= maxTurn)].map((rate) => (
+                  <button
+                    key={rate ?? 'max'}
+                    type="button"
+                    className={`chip${(card.turnRate ?? null) === rate ? ' is-on' : ''}`}
+                    onClick={() => dispatch({ type: 'plot-turn-rate', shipId: ship.id, rate })}
+                  >
+                    {rate === null ? `Max ${maxTurn}°` : `${rate}°`}
+                  </button>
+                ))}
+              </div>
+              <p className="hint">
+                Any turn may be taken at less than the ship could manage (C3.9.1) — a shallower
+                turn holds a firing arc that a hard one throws away.
+              </p>
+            </>
+          )}
+          {sliding && (
+            <>
+              <button
+                type="button"
+                className={card.halfSlide ? 'chip is-on' : 'chip'}
+                onClick={() =>
+                  dispatch({ type: 'plot-half-slide', shipId: ship.id, on: !card.halfSlide })
+                }
+              >
+                ½-inch slide
+              </button>
+              <p className="hint">Slide half an inch instead of the full inch (C3.9.5).</p>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="cc-block">
         <h4>Sensors</h4>

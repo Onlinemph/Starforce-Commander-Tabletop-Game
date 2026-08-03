@@ -9,7 +9,7 @@ import {
   tightQuarters,
   CAPTURED_FTL_LOCKOUT,
 } from '../engine/boarding'
-import type { ShipState } from '../engine/shipState'
+import { crewIsArmed, type ShipState } from '../engine/shipState'
 import { dispatch } from './store'
 
 /**
@@ -117,6 +117,32 @@ function BoardingAction({ game, target }: { game: GameState; target: ShipState }
           </div>
         )
       })}
+
+      {/*
+        Arming the crew (J6.3): two more squads per size class, and a ship that
+        stops being a warship for twenty rounds after the fighting ends.
+      */}
+      {boardersAboard(target) > 0 && (
+        <div className="board-crew">
+          <button
+            type="button"
+            className={crewIsArmed(target) ? 'chip is-on' : 'chip'}
+            disabled={crewIsArmed(target)}
+            title={
+              crewIsArmed(target)
+                ? 'The crew is already under arms — no damage control, two points less power, and the ship fires last (J6.3.4).'
+                : `Arm the general crew: ${2 * target.form.sizeClass} improvised squads, at the cost of damage control, two power and the firing order for twenty rounds (J6.3.4).`
+            }
+            onClick={() => setError(dispatch({ type: 'arm-crew', shipId: target.id }).message)}
+          >
+            {crewIsArmed(target) ? 'Crew under arms' : 'Arm the crew (J6.3)'}
+          </button>
+          <span className="hint">
+            An act of desperation: it raises {2 * target.form.sizeClass} squads and leaves a
+            skeleton crew running the ship.
+          </span>
+        </div>
+      )}
 
       {boardersAboard(target) === 0 && <p className="hint">No boarders left aboard.</p>}
       {error && <p className="fire-error">{error}</p>}
