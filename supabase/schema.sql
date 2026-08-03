@@ -311,3 +311,9 @@ grant execute on function sfc_open_match(text, text)                   to anon, 
 grant execute on function sfc_append_action(text, text, integer, jsonb) to anon, authenticated;
 grant execute on function sfc_undo(text, text, integer)                to anon, authenticated;
 grant execute on function sfc_replace_match(text, text, jsonb, jsonb)  to anon, authenticated;
+
+-- PostgREST answers from a cached picture of the schema, and it matches
+-- functions by their exact argument names — so a stale cache reports a
+-- brand-new function as "could not find the function ... in the schema
+-- cache". Supabase reloads on its own within a moment; this makes it now.
+notify pgrst, 'reload schema';

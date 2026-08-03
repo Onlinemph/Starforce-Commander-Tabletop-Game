@@ -76,6 +76,19 @@ function reasonFrom(error: { message?: string } | null, fallback: string): strin
   return message.replace(/^error:\s*/i, '').split('\n')[0]
 }
 
+/**
+ * A function the database does not have (PostgREST's PGRST202). Always means
+ * the same thing here: the project is running an older schema.sql than the
+ * client expects.
+ */
+function isMissingFunction(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  return error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? '')
+}
+
+const OUT_OF_DATE =
+  'This Supabase project is running an older schema — re-run supabase/schema.sql in the SQL Editor.'
+
 function saveFrom(setup: unknown, actions: unknown): SavedGame {
   return {
     version: 1,
@@ -104,6 +117,8 @@ export async function listSupabaseMatches(
 ): Promise<{ matches?: MatchSummary[]; error?: string }> {
   const client = clientFor(config)
   const { data, error } = await client.rpc('sfc_list_matches', { p_limit: limit })
+  // A project set up before the browser existed simply has nothing to list.
+  if (isMissingFunction(error)) return { matches: [], error: OUT_OF_DATE }
   if (error) return { error: reasonFrom(error, 'Could not list matches.') }
   const rows = Array.isArray(data) ? data : []
   return {
@@ -130,13 +145,22 @@ export async function createSupabaseMatch(
   isPublic = true,
 ): Promise<{ id?: string; error?: string }> {
   const client = clientFor(config)
-  const { data, error } = await client.rpc('sfc_create_match', {
+  const core = {
     p_name: name,
     p_password: password,
     p_sides: sides,
     p_setup: save.setup,
-    p_public: isPublic,
-  })
+  }
+  let { data, error } = await client.rpc('sfc_create_match', { ...core, p_public: isPublic })
+  /**
+   * A project still on the first schema has the four-argument version, and
+   * PostgREST matches functions by their exact argument names — so the call
+   * lands nowhere rather than defaulting. Hosting still works there; only the
+   * public/private choice does not exist yet, so fall back rather than fail.
+   */
+  if (isMissingFunction(error)) {
+    ;({ data, error } = await client.rpc('sfc_create_match', core))
+  }
   if (error || typeof data !== 'string') {
     return { error: reasonFrom(error, 'The project refused the match.') }
   }
