@@ -297,9 +297,27 @@ that one fact.
   reactor work at Step A. The control lives on the command card, showing only the lines the rule
   could ever reach and greying out the rest with the reason.
 
-  One gap, stated plainly: the computer does not yet spend batteries mid-round. It still uses them
-  the printed way, as power at Resource Allocation, so in a solo game under this option the human
-  has a tool the AI does not. Teaching it the doctrine is a measured change, not a guessed one.
+  **The computer plays it too**, and the doctrine is the same one a good captain plays: keep the
+  reserve until it buys something the round cannot buy any other way. That starts at Resource
+  Allocation, where the printed allocation would spend into the batteries without noticing — a
+  captain who means to keep one plans the round on reactor power alone. Then, in a combat phase's
+  Command Segment, it spends on the first of these that applies: a mount one circle short of ready
+  with an enemy inside its reach — the largest swing a single power point buys anywhere in the
+  game, since a half-charged mount fires exactly as often as a broken one, and the points bought
+  are spent in the same breath so the volley is ready *this* phase; then the shield the fire is
+  coming from, if it has lost at least a generator's worth of boxes, repaired on the spot; then the
+  drive, but only for a hull whose plan is distance and whose acceleration is already gone.
+
+  Measured one side against the other, mirrored over the same seeds: duel at admiral **39W–23L**,
+  squadron at admiral **29W–18L**, duel at captain level at 32W–31L. Ablated as well, because the
+  doctrine has two halves and only one of them turned out to matter — holding the battery back and
+  never spending it is **32W–32L**, exactly level, so the win is the spending and not the hoarding.
+  Every baseline with the option off is untouched, the doctrine being inert there by construction.
+
+  One honest note: the recharge line never actually gets a point on the hulls in the season, their
+  reactors being fully committed to the guns and the eyes, so in practice the reserve is a one-shot
+  per battle. Moving the recharge ahead of the spare change measures identically — there is no
+  spare point either way.
 - **Deep space: a map-size option.** Choose Forces now offers the printed 36" map or a 72"
   deep-space board — bounds, terrain and deployment anchors scale together, so the fleets open
   proportionally further apart. Measured consequence: room to turn, repair and reload is worth

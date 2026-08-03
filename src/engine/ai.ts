@@ -12,6 +12,7 @@ import {
   shipsUnderBoarding,
   tractorableHoming,
   tacticalScanOf,
+  isCombatPhase,
   terrainObstacles,
   tractorBeamsFree,
   victoryPoints,
@@ -21,6 +22,7 @@ import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from 
 import { cloakFullyPowered, cloakOperational, isCloaked, mayDecloak } from './cloaking'
 import {
   armingPointsAvailable,
+  batterySpendError,
   powerRemaining,
   repairTargets,
   type RepairCategory,
@@ -47,7 +49,9 @@ import {
   lineValue,
   maxReverseSpeed,
   mountIsReady,
+  batteryPower,
   sensorFunctionCap,
+  shieldGeneratorRating,
   structureRemaining,
   type ShipState,
 } from './shipState'
@@ -248,8 +252,14 @@ export function aiNextActions(
       return planAllocation(game, fleet, memo, difficulty)
     case 'damage-control':
       return planDamageControl(game, fleet, memo, difficulty)
-    case 'command':
+    case 'command': {
+      // Reserve power is plotted in the Command Segment (B2.5.2), before the
+      // card it may change — a battery into the drive is acceleration the
+      // helm can then actually plot.
+      const reserve = planBatteries(game, fleet, memo, difficulty)
+      if (reserve.length > 0) return reserve
       return planOrders(game, fleet, difficulty, memo)
+    }
     case 'operations':
       return planOperations(game, fleet, memo, difficulty)
     case 'combat':
@@ -327,7 +337,16 @@ function planAllocation(
   const actions: GameAction[] = []
 
   for (const ship of fleet) {
-    let budget = powerRemaining(ship)
+    /**
+     * Under the optional battery rules the reserve is only worth having if it
+     * survives Resource Allocation. The printed allocation spends into the
+     * batteries without noticing — they are simply part of the total — so a
+     * captain who means to keep one has to hold the line here, and plan the
+     * round on reactor power alone.
+     */
+    const doctrine = game.optionalBatteries && difficulty !== 'ensign'
+    const reserve = doctrine ? batteryPower(ship) : 0
+    let budget = powerRemaining(ship) - reserve
 
     /**
      * Fill a line to `circles`, if the difference is affordable. Each exact
@@ -455,6 +474,21 @@ function planAllocation(
     // Spare change: deeper sensors, then a second acceleration point.
     for (const line of byKind('sensor')) fill(line.id, line.steps.length)
     for (const line of byKind('accel')) fill(line.id, 2)
+    /**
+     * Last, put an empty battery back on charge (B2.4.3): it buys nothing
+     * this round by design — the point arrives next round, as a reserve — so
+     * it takes only power the round had no other use for.
+     *
+     * Measured against the opposite ordering, ahead of the spare change, and
+     * the two are indistinguishable: on the hulls in the season the reactors
+     * are fully committed by the guns and the eyes, so neither placement ever
+     * finds a spare point. The conservative one is kept for the hull that
+     * does — a ship with its weapons shot away has power going begging.
+     */
+    if (doctrine) {
+      const empty = ship.batteryCharged.filter((c, i) => !c && !ship.batteryDamaged[i]).length
+      if (empty > 0) for (const line of byKind('battery-recharge')) fill(line.id, empty)
+    }
   }
 
   if (actions.length > 0) return actions
@@ -496,8 +530,17 @@ function planAllocation(
  * Exported for tests.
  */
 export function armingPlan(ship: ShipState, weapon: WeaponSystemDef): GameAction[] {
-  let points = armingPointsAvailable(ship, weapon.id)
-  if (points === 0) return []
+  return spendArmingPoints(ship, weapon, armingPointsAvailable(ship, weapon.id))
+}
+
+/**
+ * The same concentration, over a stated number of points rather than the ones
+ * on hand — so points a battery is about to buy can be spent in the same
+ * batch, before the engine has applied the purchase.
+ */
+function spendArmingPoints(ship: ShipState, weapon: WeaponSystemDef, budget: number): GameAction[] {
+  let points = budget
+  if (points <= 0) return []
   const order = weapon.mounts
     .map((mount, index) => {
       const state = ship.mounts[weapon.id][index]
@@ -520,6 +563,125 @@ export function armingPlan(ship: ShipState, weapon: WeaponSystemDef): GameAction
     if (points === 0) break
   }
   return actions
+}
+
+// ---------------------------------------------------------------------------
+// Reserve power (B2.5, optional): what a battery is worth mid-round
+// ---------------------------------------------------------------------------
+
+/**
+ * Under the optional rules a battery is a decision rather than an accounting
+ * detail, and the doctrine is the same one a good captain plays: keep it until
+ * it buys something the round cannot buy any other way, then spend it on the
+ * thing that changes what happens next.
+ *
+ * The order is worth stating, because it is not obvious. A volley comes first:
+ * a mount one circle short of ready is worth nothing at all this phase and a
+ * whole battery's damage the moment it is finished, which is the largest
+ * swing a single point of power can buy anywhere in the game. Only then the
+ * shield the fire is coming from — a repair equal to the generator rating,
+ * landed *now* rather than next round, is a volley's worth of blue boxes.
+ * Then the legs, but only for a hull whose plan is distance and whose
+ * acceleration is already spent; for anyone else a point of speed changes
+ * nothing this phase.
+ *
+ * Everything here is public: our own ship, the enemy's printed charts, the
+ * range between them.
+ */
+function batteryPlan(
+  game: GameState,
+  ship: ShipState,
+  difficulty: AiDifficulty,
+): GameAction[] {
+  const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  if (enemies.length === 0) return []
+  const closest = nearest(ship, enemies)
+  if (!closest) return []
+  const range = actualRange(ship.placement.position, closest.placement.position)
+
+  const spend = (lineId: string, extra: GameAction[] = []): GameAction[] => [
+    { type: 'spend-battery', shipId: ship.id, lineId },
+    ...extra,
+  ]
+
+  // 1. A mount one circle short of firing. The points the purchase buys are
+  //    spent in the same batch, so the volley is ready this phase.
+  for (const line of ship.form.functions) {
+    if (line.kind !== 'weapon' || !line.weaponSystemId) continue
+    if (batterySpendError(ship, line.id) !== null) continue
+    const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
+    if (!weapon) continue
+    // Out of reach is out of the question: the round would end with the
+    // points unspent and the battery gone.
+    const reach = Math.max(0, ...weapon.brackets.map((b) => b.max))
+    if (range > reach) continue
+    const filled = ship.allocation[line.id] ?? 0
+    const gain = (line.steps[filled]?.value ?? 0) - lineValue(ship, line.id)
+    if (gain <= 0) continue
+    // Only worth it if the gain actually finishes a mount — a half-charged
+    // battery fires exactly as often as an empty one (E4.2.3).
+    const short = weapon.mounts
+      .map((mount, index) => ({
+        index,
+        need: Math.max(0, mount.armingCircles - ship.mounts[weapon.id][index].armed),
+        capacity: armingCapacityThisRound(weapon, index, ship.mounts[weapon.id][index]),
+      }))
+      .filter((m) => m.need > 0 && m.capacity > 0)
+      .sort((a, b) => a.need - b.need)[0]
+    if (!short || short.need > Math.min(gain, short.capacity)) continue
+    return spend(line.id, spendArmingPoints(ship, weapon, gain))
+  }
+
+  // 2. The shield the fire is coming from, repaired on the spot (B2.5.8).
+  const rating = shieldGeneratorRating(ship)
+  if (rating > 0 && estimatedVolleyDamage(closest, ship.placement.position, ship.sensors.jamming) > 0) {
+    const threatened = shieldsFacing(
+      threatPoint(game, ship) ?? closest.placement.position,
+      ship.placement.position,
+      ship.placement.heading,
+    )
+    for (const line of ship.form.functions) {
+      if (line.kind !== 'shield-repair' || !line.shieldSide) continue
+      if (!threatened.includes(line.shieldSide)) continue
+      if (batterySpendError(ship, line.id) !== null) continue
+      // Repairing one box with a whole battery is a bad trade; repairing a
+      // generator's worth of them is the reason the rule exists.
+      if (ship.blueShieldDamage[line.shieldSide] < rating) continue
+      return spend(line.id)
+    }
+  }
+
+  // 3. Legs, for a hull whose plan is distance and whose budget is spent.
+  const running = wantsToLeave(game, ship, difficulty) || kiteBand(game, ship, enemies) !== null
+  if (running && ship.accelUsedThisRound >= accelerationBudget(ship)) {
+    const accel = ship.form.functions.find((l) => l.kind === 'accel')
+    if (accel && batterySpendError(ship, accel.id) === null) return spend(accel.id)
+  }
+
+  return []
+}
+
+function planBatteries(
+  game: GameState,
+  fleet: ShipState[],
+  memo: AiMemo,
+  difficulty: AiDifficulty,
+): GameAction[] {
+  // An ensign does not touch the exotic systems, and this is one.
+  if (!game.optionalBatteries || difficulty === 'ensign') return []
+  if (!isCombatPhase(game.phase)) return []
+  for (const ship of fleet) {
+    if (batteryPower(ship) === 0 || ship.derelict) continue
+    // One considered spend per hull per phase; the reserve is small and the
+    // decision does not improve by being asked twice.
+    const key = `battery:${game.round}:${game.phase}:${ship.id}`
+    if (memo.done.has(key)) continue
+    const plan = batteryPlan(game, ship, difficulty)
+    if (plan.length === 0) continue
+    memo.done.add(key)
+    return plan
+  }
+  return []
 }
 
 // ---------------------------------------------------------------------------
