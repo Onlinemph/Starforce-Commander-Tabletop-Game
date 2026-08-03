@@ -1,10 +1,11 @@
 import {
   applyVolley,
+  currentChoices,
   drawAndResolve,
-  autoChoices,
   newDeck,
   setDestructionOptions,
   STANDARD_DESTRUCTION,
+  type DamageChoice,
   type DamageContext,
   type DeckState,
   type DestructionOptions,
@@ -394,6 +395,13 @@ export interface GameState {
    */
   pendingVolleys: HeldVolley[]
   /**
+   * Damage-card choices a player has already made, waiting to be consumed by
+   * the action that draws those cards (E8.4.1). Written by
+   * `queue-damage-choices` and emptied as the cards resolve, so a battle file
+   * replays the captain's decisions instead of re-deciding them.
+   */
+  damageScript: DamageChoice[]
+  /**
    * The table's public record of shield punishment: every volley resolves in
    * the open — the struck side is declared and the absorption narrated — so
    * both players can tally what each facing has soaked. Keyed by ship id,
@@ -491,6 +499,7 @@ export function createGame(args: {
     log: [],
     firedThisSegment: new Set(),
     pendingVolleys: [],
+    damageScript: [],
     shieldHitsSeen: {},
     shieldChangedThisPhase: new Set(),
     command,
@@ -515,11 +524,28 @@ export function pushLog(game: GameState, message: string): void {
   game.log.push({ round: game.round, phase: game.phase, segment: game.segment, message })
 }
 
+/**
+ * A throwaway copy of the whole battle.
+ *
+ * Used to ask a resolution what it will do before letting it do it — the
+ * engine is deterministic, so a copy taken now draws exactly the cards the
+ * original is about to. `structuredClone` handles the state, including its
+ * Sets; only the RNG needs its prototype back, being the one class instance in
+ * here rather than plain data.
+ */
+export function cloneGame(game: GameState): GameState {
+  const copy = structuredClone(game)
+  Object.setPrototypeOf(copy.rng, Rng.prototype)
+  return copy
+}
+
 export function damageContext(game: GameState): DamageContext {
   return {
     deck: game.deck,
     rng: game.rng,
-    choices: autoChoices,
+    // The probe's provider if one is installed, otherwise the queued script,
+    // otherwise the doctrine (B: nobody is at the console).
+    choices: currentChoices(game.damageScript),
     log: (message) => pushLog(game, message),
     // Explosions reach neighbours, and everyone sharing a formation's counter
     // takes the blast on the aft shield (E11.3.2, E11.3.4, C5).

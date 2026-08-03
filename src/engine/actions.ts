@@ -6,6 +6,7 @@ import {
   DETECTION_LABELS,
 } from './cloaking'
 import { firingOrder, resolveVolley, type FireMode, type MountSelection, type VolleyResult } from './combat'
+import type { DamageChoice } from './damage'
 import { setCommandAssignment } from './command'
 import {
   armMount,
@@ -125,6 +126,12 @@ export type GameAction =
       chosenShield?: ShieldSide
     }
   | { type: 'pass-fire'; shipId: string }
+  /**
+   * Damage-card choices for the action that follows (E8.4.1). Journalled like
+   * anything else, so a replay makes the captain's decision rather than its
+   * own.
+   */
+  | { type: 'queue-damage-choices'; choices: DamageChoice[] }
   | { type: 'declare-coordinated'; shipIds: string[]; targetId: string }
   | { type: 'fire-small-target'; attackerId: string; targetId: string; weaponId: string; mountIndex: number }
   | { type: 'catch-missile'; shipId: string; homingId: string; beams: number }
@@ -202,9 +209,23 @@ function maybeFlushTieGroup(game: GameState): FlushedVolley[] | undefined {
 /**
  * Apply one action to the game. The single mutation switchboard: the store
  * calls it live, and replay calls it again with the same journal.
+ *
+ * A queued damage script belongs to exactly one action — the next one — so it
+ * is cleared afterwards whether the cards consumed it or not. Anything left
+ * behind would be answers to questions a later volley never asked.
  */
 export function applyAction(game: GameState, action: GameAction): ActionOutcome {
+  const outcome = resolveAction(game, action)
+  if (action.type !== 'queue-damage-choices') game.damageScript = []
+  return outcome
+}
+
+function resolveAction(game: GameState, action: GameAction): ActionOutcome {
   switch (action.type) {
+    case 'queue-damage-choices':
+      // The captain's decisions, made before the cards come out (E8.4.1).
+      game.damageScript = [...action.choices]
+      return ok
     // ── Sequence of play ─────────────────────────────────────────────────
     case 'advance-segment':
       advanceSegment(game)

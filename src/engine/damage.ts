@@ -177,6 +177,312 @@ export const autoChoices: DamageChoices = {
 }
 
 // ---------------------------------------------------------------------------
+// Choices a human captain can be asked to make
+// ---------------------------------------------------------------------------
+
+/**
+ * A decision, written down.
+ *
+ * `autoChoices` decides in the moment, which is fine for a doctrine and no use
+ * at all for a person: a battle is (setup + actions) and nothing else, so a
+ * choice a player makes has to survive into the journal or the replay will
+ * quietly make a different one. Hence a *script* — the answers, in the order
+ * the resolution asks for them, carried in the action stream and consumed as
+ * the cards come out.
+ */
+export type DamageChoice =
+  | { kind: 'any-hit'; hit: DamageHit }
+  | { kind: 'weapon-mount'; weaponId: string; index: number }
+  | { kind: 'weapon-discharge'; weaponId: string; index: number }
+  | { kind: 'shield-power-loss'; side: ShieldSide }
+  | { kind: 'battery'; index: number }
+  | { kind: 'main-reactor'; groupId: string }
+
+export interface DamageOption {
+  choice: DamageChoice
+  label: string
+  /** What the doctrine would have taken, offered as the default. */
+  recommended: boolean
+}
+
+/** A question to put to a player, with every legal answer already worked out. */
+export interface DamageDecision {
+  shipId: string
+  shipName: string
+  kind: DamageChoice['kind']
+  prompt: string
+  options: DamageOption[]
+}
+
+/**
+ * The hits a captain may name for an Any Hit (E8.4.1): any general,
+ * engineering, weapon, shield-generator or sensor box.
+ *
+ * Not here, and deliberately: the power-loss hits, which drain a system rather
+ * than mark a box; casualties, which are marines; SIF, which is a stress
+ * marker; the critical hits, which E8.4.1 forbids outright; and structure,
+ * which is only legal when nothing else is and so is added at the end.
+ */
+const ANY_HIT_BOXES: DamageHit[] = [
+  'quarters',
+  'shuttle-bay',
+  'transporter',
+  'tractor-beam',
+  'sciences',
+  'sensors',
+  'special-system',
+  'shield-generator',
+  'any-weapon',
+  'battery',
+  'sublight-drive',
+  'ftl-drive',
+  'aux-reactor',
+  'sublight-reactor',
+  'left-main-reactor',
+  'right-main-reactor',
+]
+
+function option(choice: DamageChoice, label: string, recommended: boolean): DamageOption {
+  return { choice, label, recommended }
+}
+
+/**
+ * Working out what is *available* must never itself ask a question — the
+ * doctrine answers those, so listing the options cannot recurse into the
+ * script or the prompt.
+ */
+function availabilityContext(): DamageContext {
+  return { choices: autoChoices } as DamageContext
+}
+
+export interface MountFilter {
+  facingArcs?: Arc[]
+  heavyOnly?: boolean
+}
+
+/** Every legal answer to a decision, the doctrine's own among them. */
+export function decisionFor(
+  ship: ShipState,
+  kind: DamageChoice['kind'],
+  filter: MountFilter = {},
+): DamageDecision {
+  const ctx = availabilityContext()
+  const base = { shipId: ship.id, shipName: ship.name, kind }
+  switch (kind) {
+    case 'any-hit': {
+      const auto = autoChoices.anyHit(ship)
+      const legal = ANY_HIT_BOXES.filter((hit) => hitIsAvailable(ship, hit, ctx))
+      // Structure only when nothing else will take it (E8.4.1).
+      const hits = legal.length > 0 ? legal : (['structure'] as DamageHit[])
+      return {
+        ...base,
+        prompt: 'Any Hit — choose the system box to mark as damaged (E8.4.1).',
+        options: hits.map((hit) => option({ kind: 'any-hit', hit }, HIT_LABELS[hit], hit === auto)),
+      }
+    }
+    case 'weapon-mount':
+    case 'weapon-discharge': {
+      const discharge = kind === 'weapon-discharge'
+      const auto = discharge
+        ? autoChoices.weaponToDischarge(ship)
+        : autoChoices.weaponMount(ship, filter)
+      /**
+       * Heavy Weapon takes the reds before the yellows (E8.3.4), so a captain
+       * offered the choice is only offered what the card actually reaches.
+       */
+      const dieClass = (weapon: (typeof ship.form.weapons)[number], colour: 'red' | 'yellow') =>
+        weapon.brackets.some((b) => b.dice.includes(colour))
+      const undamaged = (weapon: (typeof ship.form.weapons)[number], index: number) =>
+        !mountIsDamaged(weapon, index, (ship.mounts[weapon.id] ?? [])[index])
+      const anyRed =
+        filter.heavyOnly &&
+        ship.form.weapons.some((w) => dieClass(w, 'red') && w.mounts.some((_, i) => undamaged(w, i)))
+
+      const options: DamageOption[] = []
+      for (const weapon of ship.form.weapons) {
+        if (filter.heavyOnly) {
+          const colour = anyRed ? 'red' : 'yellow'
+          if (!dieClass(weapon, colour)) continue
+        }
+        const states = ship.mounts[weapon.id] ?? []
+        states.forEach((state, index) => {
+          if (mountIsDamaged(weapon, index, state)) return
+          if (discharge && state.armed === 0) return
+          const arcs = weapon.mounts[index].arcs
+          if (filter.facingArcs?.length && !filter.facingArcs.some((a) => arcs.includes(a))) return
+          const charge = state.armed > 0 ? ` — ${state.armed} armed` : ' — unarmed'
+          options.push(
+            option(
+              { kind: discharge ? 'weapon-discharge' : 'weapon-mount', weaponId: weapon.id, index },
+              `${weapon.name} mount ${index + 1} (${arcs.join('/')})${charge}`,
+              auto?.weaponId === weapon.id && auto.index === index,
+            ),
+          )
+        })
+      }
+      const prompt = discharge
+        ? 'Weapon Power Loss — choose the mount to discharge (E8.3.5).'
+        : filter.facingArcs?.length
+          ? 'Facing Weapon — choose which mount bearing on the attacker takes the hit (E8.3.3).'
+          : filter.heavyOnly
+            ? 'Heavy Weapon — choose which of the heavy mounts is degraded (E8.3.4).'
+            : 'Any Weapon — choose the mount that takes the hit (E8.3.2).'
+      return { ...base, prompt, options }
+    }
+    case 'shield-power-loss': {
+      const auto = autoChoices.shieldPowerLoss(ship)
+      return {
+        ...base,
+        prompt: 'Shield Power Loss — choose the shield that loses three boxes (E8.2.2).',
+        options: SHIELD_SIDES.filter((side) => blueShieldRemaining(ship, side) > 0).map((side) =>
+          option(
+            { kind: 'shield-power-loss', side },
+            `${side} shield — ${blueShieldRemaining(ship, side)} left`,
+            side === auto,
+          ),
+        ),
+      }
+    }
+    case 'battery': {
+      const auto = autoChoices.battery(ship)
+      const options: DamageOption[] = []
+      ship.batteryDamaged.forEach((damaged, index) => {
+        if (damaged) return
+        options.push(
+          option(
+            { kind: 'battery', index },
+            `Battery ${index + 1} — ${ship.batteryCharged[index] ? 'charged' : 'empty'}`,
+            index === auto,
+          ),
+        )
+      })
+      return { ...base, prompt: 'Battery — choose which battery is damaged (E8.5.3).', options }
+    }
+    case 'main-reactor': {
+      const auto = autoChoices.mainReactor(ship)
+      return {
+        ...base,
+        prompt: 'Choose which main reactor takes the hit (E8.5.10).',
+        options: reactorGroupsFor(ship, ['left-main', 'right-main', 'center-main']).map((groupId) =>
+          option({ kind: 'main-reactor', groupId }, groupId, groupId === auto),
+        ),
+      }
+    }
+  }
+}
+
+/**
+ * A provider that plays a written-down script, and falls back to the doctrine.
+ *
+ * `onUnscripted` is how the UI discovers what to ask: run the resolution on a
+ * throwaway copy of the game with the answers so far, and the first question
+ * nobody has answered yet comes back out. Answers are checked against the
+ * legal options before they are used, so a hand-edited save cannot mark a box
+ * the rules would not allow.
+ */
+export function scriptedChoices(
+  script: DamageChoice[],
+  onUnscripted?: (decision: DamageDecision) => never,
+): DamageChoices {
+  function take<K extends DamageChoice['kind']>(
+    ship: ShipState,
+    kind: K,
+    filter: MountFilter = {},
+  ): Extract<DamageChoice, { kind: K }> | null {
+    const decision = decisionFor(ship, kind, filter)
+    const next = script[0]
+    if (next?.kind === kind) {
+      script.shift()
+      const legal = decision.options.some(
+        (o) => JSON.stringify(o.choice) === JSON.stringify(next),
+      )
+      if (legal) return next as Extract<DamageChoice, { kind: K }>
+    }
+    if (onUnscripted && decision.options.length > 0) onUnscripted(decision)
+    return null
+  }
+
+  const provider: DamageChoices = {
+    anyHit(ship) {
+      return take(ship, 'any-hit')?.hit ?? autoChoices.anyHit(ship)
+    },
+    weaponMount(ship, filter) {
+      // Facing and Heavy narrow the field rather than removing the choice:
+      // E8.3.4 says outright that the target player picks among them, and
+      // E8.3.3 is silent, which reads the same way beside E8.3.2.
+      const picked = take(ship, 'weapon-mount', filter)
+      return picked
+        ? { weaponId: picked.weaponId, index: picked.index }
+        : autoChoices.weaponMount(ship, filter)
+    },
+    weaponToDischarge(ship) {
+      const picked = take(ship, 'weapon-discharge')
+      return picked
+        ? { weaponId: picked.weaponId, index: picked.index }
+        : autoChoices.weaponToDischarge(ship)
+    },
+    shieldPowerLoss(ship) {
+      return take(ship, 'shield-power-loss')?.side ?? autoChoices.shieldPowerLoss(ship)
+    },
+    battery(ship) {
+      const picked = take(ship, 'battery')
+      return picked ? picked.index : autoChoices.battery(ship)
+    },
+    mainReactor(ship) {
+      return take(ship, 'main-reactor')?.groupId ?? autoChoices.mainReactor(ship)
+    },
+  }
+  return provider
+}
+
+/**
+ * A provider installed for the length of one call, ahead of anything the game
+ * state carries. The probe uses it to ask the resolution what it wants to know
+ * without touching the battle.
+ */
+let override: DamageChoices | null = null
+
+export function withChoices<T>(provider: DamageChoices, run: () => T): T {
+  const previous = override
+  override = provider
+  try {
+    return run()
+  } finally {
+    override = previous
+  }
+}
+
+/** The provider a resolution should use: the probe's, or the game's script. */
+export function currentChoices(script: DamageChoice[]): DamageChoices {
+  return override ?? scriptedChoices(script)
+}
+
+/** Thrown to stop a probe the instant it finds a question nobody has answered. */
+const ASKED = Symbol('damage-decision')
+
+/**
+ * Ask a resolution what it wants to know, without letting it happen.
+ *
+ * `run` is handed a throwaway copy of the game — the engine is deterministic,
+ * so the copy draws exactly the cards the real one will — and stops at the
+ * first decision the script does not already answer. Null means the script is
+ * complete and the action can be dispatched for real.
+ */
+export function probeDecision(script: DamageChoice[], run: () => void): DamageDecision | null {
+  let asked: DamageDecision | null = null
+  const provider = scriptedChoices([...script], (decision) => {
+    asked = decision
+    throw ASKED
+  })
+  try {
+    withChoices(provider, run)
+  } catch (error) {
+    if (error !== ASKED) throw error
+  }
+  return asked
+}
+
+// ---------------------------------------------------------------------------
 // Damage context
 // ---------------------------------------------------------------------------
 
@@ -271,11 +577,14 @@ export function hitIsAvailable(ship: ShipState, hit: DamageHit, ctx: DamageConte
       return SHIELD_SIDES.some((s) => blueShieldRemaining(ship, s) > 0)
     case 'any-weapon':
     case 'heavy-weapon':
-      return ctx.choices.weaponMount(ship, { heavyOnly: hit === 'heavy-weapon' }) !== null
+      // Availability is a legality question, never a decision: asking the
+      // live provider here would consume a scripted answer — and then the
+      // real pick below would consume a second one, for one card.
+      return autoChoices.weaponMount(ship, { heavyOnly: hit === 'heavy-weapon' }) !== null
     case 'facing-weapon':
-      return ctx.choices.weaponMount(ship, { facingArcs: ctx.attackerArcs }) !== null
+      return autoChoices.weaponMount(ship, { facingArcs: ctx.attackerArcs }) !== null
     case 'weapon-power-loss':
-      return ctx.choices.weaponToDischarge(ship) !== null
+      return autoChoices.weaponToDischarge(ship) !== null
     case 'any-hit':
       return true
     case 'casualties':

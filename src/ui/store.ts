@@ -9,7 +9,8 @@ import {
 } from '../data/savedGame'
 import { applyAction, type ActionOutcome, type GameAction } from '../engine/actions'
 import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
-import type { GameState } from '../engine/game'
+import { probeDecision, type DamageChoice, type DamageDecision } from '../engine/damage'
+import { cloneGame, type GameState } from '../engine/game'
 import { fxAfter, fxBefore, type BattleFx } from './fx'
 import { soundFx } from './sound'
 
@@ -40,6 +41,9 @@ function subscribe(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
+
+/** For components that watch something other than the game itself. */
+export const subscribeStore = subscribe
 
 // ---------------------------------------------------------------------------
 // Battle visuals
@@ -146,13 +150,89 @@ export function dispatch(action: GameAction): ActionOutcome {
   // Before the human closes a segment, the AI settles anything it was still
   // waiting on — a firing slot later in the Tactical Scan order, above all —
   // so a segment never ends with its guns silent.
-  if (action.type === 'advance-segment') driveAi(true)
+  if (action.type === 'advance-segment') void driveAi(true)
   const outcome = applyJournaled(action)
   autosave()
   emit()
   net?.onAction(action, journal.length)
-  driveAi()
+  void driveAi()
   return outcome
+}
+
+// ---------------------------------------------------------------------------
+// Damage-card choices (E8.4.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asking the defending captain which box to mark, without breaking replay.
+ *
+ * A battle is (setup + actions), so a decision made in the moment has to end
+ * up in the journal or the replay will make its own. It cannot be asked
+ * *during* resolution either: `applyAction` is synchronous, and a prompt is
+ * not. So the question is put first, on a throwaway copy of the battle — the
+ * engine being deterministic, the copy draws exactly the cards the real one is
+ * about to — and once every question is answered the answers are journalled
+ * ahead of the action that consumes them.
+ *
+ * A ship the local player does not command is answered by the doctrine, which
+ * covers the AI, and covers the far side of an online match: the attacker's
+ * browser must not stop to ask the defender's, and cannot ask on their behalf.
+ */
+let pending: { decision: DamageDecision; answer: (choice: DamageChoice) => void } | null = null
+
+export function pendingDamageDecision(): DamageDecision | null {
+  return pending?.decision ?? null
+}
+
+export function answerDamageDecision(choice: DamageChoice): void {
+  const waiting = pending
+  pending = null
+  emit()
+  waiting?.answer(choice)
+}
+
+/** Whether the player at this console commands the ship being asked about. */
+function playerCommands(shipId: string): boolean {
+  const ship = game.ships.find((s) => s.id === shipId)
+  if (!ship) return false
+  if ((setup.aiSides ?? []).includes(ship.side)) return false
+  // A guest's actions come over the wire already resolved; only the side
+  // driving the battle can be at a console to answer.
+  return !aiSuppressed
+}
+
+/**
+ * Dispatch an action, stopping to ask about any damage-card choice it raises.
+ * Panels that can cause damage use this instead of `dispatch`.
+ */
+async function askAbout(action: GameAction): Promise<DamageChoice[]> {
+  const script: DamageChoice[] = []
+  for (let guard = 0; guard < 64; guard++) {
+    const decision = probeDecision(script, () => {
+      applyAction(cloneGame(game), action)
+    })
+    if (!decision || decision.options.length === 0) break
+    const fallback = decision.options.find((o) => o.recommended) ?? decision.options[0]
+    script.push(
+      playerCommands(decision.shipId)
+        ? await new Promise<DamageChoice>((resolve) => {
+            pending = { decision, answer: resolve }
+            emit()
+          })
+        : fallback.choice,
+    )
+  }
+  return script
+}
+
+export async function dispatchWithChoices(action: GameAction): Promise<ActionOutcome> {
+  // The same settling `dispatch` does, done before the probe rather than after
+  // it: the AI's closing volleys move the deck, and a script written against
+  // the state before them would be answering different cards.
+  if (action.type === 'advance-segment') await driveAi(true)
+  const script = await askAbout(action)
+  if (script.length > 0) dispatch({ type: 'queue-damage-choices', choices: script })
+  return dispatch(action)
 }
 
 /** Start a fresh battle from a setup. Custom designs are embedded into it. */
@@ -164,7 +244,7 @@ export function newGame(next: GameSetup): void {
   autosave()
   emit()
   net?.onReplace(saved())
-  driveAi()
+  void driveAi()
 }
 
 /** The setup of the battle in progress — what "Rematch" rolls a new seed for. */
@@ -187,6 +267,9 @@ export function canUndo(): boolean {
 export function undo(): void {
   if (journal.length === 0) return
   journal = journal.slice(0, -1)
+  // A queued script belongs to the action it was queued for; taking one back
+  // without the other would leave answers waiting for a question nobody asks.
+  while (journal.at(-1)?.type === 'queue-damage-choices') journal = journal.slice(0, -1)
   game = replayGame(saved())
   // The rewound action may have been the AI's; a fresh memo lets it owe the
   // duty again instead of remembering having done it in an unmade past.
@@ -220,7 +303,7 @@ export function importBattle(text: string): string | null {
   autosave()
   emit()
   net?.onReplace(saved())
-  driveAi()
+  void driveAi()
   return null
 }
 
@@ -263,11 +346,11 @@ export function currentSave(): SavedGame {
  */
 export function applyRemoteAction(action: GameAction, seq: number, force: boolean): 'ok' | 'mismatch' {
   if (!force && seq !== journal.length + 1) return 'mismatch'
-  if (action.type === 'advance-segment') driveAi(true)
+  if (action.type === 'advance-segment') void driveAi(true)
   applyJournaled(action)
   autosave()
   emit()
-  driveAi()
+  void driveAi()
   return 'ok'
 }
 
@@ -311,12 +394,19 @@ let aiSuppressed = false
 /** In remote play only the host drives the AI — the guest gets its actions over the wire. */
 export function suppressAi(on: boolean): void {
   aiSuppressed = on
-  if (!on) driveAi()
+  if (!on) void driveAi()
 }
 
 let driving = false
 
-function driveAi(closing = false): void {
+/**
+ * Asynchronous because of one case that matters more than any other in solo
+ * play: the computer firing at *your* ship. Its volley draws cards like
+ * anyone's, and the captain those cards ask questions of is you — so the
+ * driver stops here too, and the modal is what it is waiting on. The prompt
+ * covers the screen while it does, so nothing else can be clicked mid-batch.
+ */
+async function driveAi(closing = false): Promise<void> {
   if (driving || aiSuppressed) return
   const sides = (setup.aiSides ?? []).filter((side) => game.ships.some((s) => s.side === side))
   if (sides.length === 0) return
@@ -335,6 +425,12 @@ function driveAi(closing = false): void {
       )
       if (batch.length === 0) break
       for (const action of batch) {
+        const script = await askAbout(action)
+        if (script.length > 0) {
+          const queue: GameAction = { type: 'queue-damage-choices', choices: script }
+          applyJournaled(queue)
+          net?.onAction(queue, journal.length)
+        }
         applyJournaled(action)
         net?.onAction(action, journal.length)
         changed = true
@@ -371,4 +467,4 @@ export function useGame(): GameState {
 // A restored battle may owe AI duties (a save from before the AI finished a
 // segment, or one made as a suppressed remote guest). Settle up once the
 // module is fully initialised.
-queueMicrotask(() => driveAi())
+queueMicrotask(() => void driveAi())

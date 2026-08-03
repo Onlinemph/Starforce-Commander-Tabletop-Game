@@ -1072,10 +1072,29 @@ To add one in code, write a `Scenario` plus a function returning its starting sh
   and the new result is final even if worse. Rather than reroll blindly, the engine rerolls a die
   only when doing so helps the player holding the reroll — the attacker rerolls below-average
   results, the defender rerolls above-average ones.
-- **Defender choices are automated.** Damage cards constantly ask the defender to pick a system
-  (E8.4.1 Any Hit, E8.3.2 Any Weapon, E8.2.2 Shield Power Loss). `autoChoices` in `damage.ts` plays
-  a competent defence — soak on quarters and cargo first, keep weapons and reactors alive longest.
-  The `DamageChoices` interface is pluggable, so an interactive prompt can replace it.
+- **The defender is asked, and the answer is journalled.** Damage cards constantly hand the
+  defender a decision — E8.4.1 Any Hit, E8.3.2/E8.3.3/E8.3.4 which mount, E8.3.5 which mount to
+  discharge, E8.2.2 which shield, E8.5.3 which battery, E8.5.10 which main reactor — and a ship
+  its player commands now stops and asks. The engine works out what is legal: structure only when
+  nothing else will take the hit, never a Critical Hit (E8.4.1 forbids it), and Heavy Weapon
+  offers the reds before the yellows (E8.3.4). The doctrine's own pick is marked, for a player
+  who would rather not think about it.
+
+  Getting that in without breaking replay is the interesting part. A battle is (setup + actions)
+  and nothing else, so an answer given in the moment has to reach the journal or a replay will
+  quietly make a different one — and it cannot be asked *during* resolution either, because
+  `applyAction` is synchronous and a prompt is not. So the question is put first, on a throwaway
+  copy of the battle: the engine is deterministic, so the copy draws exactly the cards the real
+  one is about to. Each answer is added to a script, the copy is re-run to find the next question,
+  and when the script is complete it is journalled as `queue-damage-choices` immediately ahead of
+  the action that consumes it. Undo takes the pair back together; a scripted answer is checked
+  against the legal options before it is used, so a hand-edited save cannot mark a box the rules
+  would refuse.
+
+  `autoChoices` still plays every ship nobody at this console commands — the computer's, and the
+  far side of an online match, since the attacker's browser must neither stall waiting for the
+  defender's nor answer on their behalf. And the computer firing at *you* asks too: the AI driver
+  is asynchronous for exactly that case.
 - **Arming points are derived, not stored.** E4.2.1 puts point generation and point spending in the
   same segment, so `armingPointsAvailable` computes them live from the FUNCTIONS line minus what has
   been spent this round. Points left over when the segment ends are lost, per E4.2.10.

@@ -35,6 +35,7 @@ import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
 import { ReplayTheater } from './ReplayTheater'
 import { OperationsPanel } from './OperationsPanel'
+import { DamageChoicePrompt } from './DamageChoicePrompt'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
   activeFx,
@@ -42,6 +43,7 @@ import {
   currentSave,
   currentSetup,
   dispatch,
+  dispatchWithChoices,
   exportBattle,
   importBattle,
   newGame,
@@ -268,6 +270,8 @@ export function App() {
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
       {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
+      {/* Sits above everything: a volley stops here until the captain answers. */}
+      <DamageChoicePrompt />
       {linking && <RemotePanel onClose={() => setLinking(false)} />}
 
       {/*
@@ -673,7 +677,7 @@ function SequenceBar({ game }: { game: GameState }) {
       >
         ↶ Undo
       </button>
-      <button type="button" className="primary" onClick={() => dispatch({ type: 'advance-segment' })}>
+      <button type="button" className="primary" onClick={() => void dispatchWithChoices({ type: 'advance-segment' })}>
         Complete {SEGMENT_LABELS[game.segment]} →
       </button>
     </div>

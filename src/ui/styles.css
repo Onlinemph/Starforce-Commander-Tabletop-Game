@@ -3761,3 +3761,46 @@ button.chip:hover:not(:disabled) {
   accent-color: var(--accent, #ffb851);
   cursor: pointer;
 }
+
+/*
+  The damage-control decision (E8.4.1). Narrow, because it is a question with
+  a short answer, and the battle is waiting on it. Red down the spine: this is
+  the one modal that opens because something went wrong.
+*/
+.picker.damage-choice {
+  width: min(460px, 100%);
+  border-left-color: var(--lc-red, #ff4d4d);
+}
+
+.damage-choice > header {
+  display: block;
+  background: linear-gradient(90deg, rgba(255, 77, 77, 0.18), transparent 60%);
+}
+
+.damage-choice > header h2 {
+  margin: 0;
+}
+
+.damage-choice > header .hint {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.damage-choice-options {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.damage-choice-options button {
+  width: 100%;
+  text-align: left;
+}
+
+.damage-choice-options em {
+  opacity: 0.75;
+  font-style: normal;
+}

@@ -35,7 +35,7 @@ import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
 import { ArcRose } from './ArcRose'
-import { dispatch } from './store'
+import { dispatch, dispatchWithChoices } from './store'
 
 /**
  * Offensive Fire (E6.2). Ships fire in descending order of Tactical Scan; the
@@ -123,7 +123,7 @@ export function CombatPanel({ game, attacker }: Props) {
       return next
     })
 
-  const fire = () => {
+  const fire = async () => {
     if (!target) return
     const mounts: MountSelection[] = [...selected].map((key) => {
       const [weaponId, indexStr] = key.split('|')
@@ -132,7 +132,7 @@ export function CombatPanel({ game, attacker }: Props) {
 
     // One action carries the whole volley: the handler re-derives every
     // modifier from game state, resolves it, and journals the intent.
-    const outcome = dispatch({
+    const outcome = await dispatchWithChoices({
       type: 'fire-volley',
       attackerId: attacker.id,
       targetId: target.id,
@@ -358,13 +358,15 @@ export function CombatPanel({ game, attacker }: Props) {
             cloak.targetUnshootable !== undefined ||
             (game.coordinatedFire && !mayFire)
           }
-          onClick={fire}
+          onClick={() => void fire()}
         >
           Fire volley
         </button>
         <button
           type="button"
-          onClick={() => dispatch({ type: 'pass-fire', shipId: attacker.id })}
+          // Passing can land another ship's held volley (H2.4.2), which is
+          // damage, which may be a question for its captain.
+          onClick={() => void dispatchWithChoices({ type: 'pass-fire', shipId: attacker.id })}
         >
           Pass
         </button>
@@ -626,8 +628,8 @@ function SmallTargets({ game, attacker }: { game: GameState; attacker: ShipState
                     ? 'Point defense: full damage (E12.4.3)'
                     : 'No point defense trait: degraded fire control halves the damage (E12.4.4)'
                 }
-                onClick={() => {
-                  const outcome = dispatch({
+                onClick={async () => {
+                  const outcome = await dispatchWithChoices({
                     type: 'fire-small-target',
                     attackerId: attacker.id,
                     targetId: chosen.id,
@@ -796,7 +798,11 @@ function HomingImpacts({ game, target }: { game: GameState; target: ShipState })
         type="button"
         className="primary"
         onClick={() => {
-          dispatch({ type: 'resolve-homing-impacts', shipId: target.id, pointDefense: pd })
+          void dispatchWithChoices({
+            type: 'resolve-homing-impacts',
+            shipId: target.id,
+            pointDefense: pd,
+          })
           setPd({})
         }}
       >
