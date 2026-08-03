@@ -114,12 +114,27 @@ that one fact.
   half-loaded guns. Tick the box and every mount deploys with its circles full, power unspent,
   and the shooting starts on turn one. It rides in the save like any other setup value, so a
   replay opens exactly as the battle did.
-- **Replay to video.** The theater's *Export video* button plays the battle through and records
-  it to a file — WebM, or MP4 where the browser offers it. The map is live SVG styled by the
-  page's stylesheet, which a browser will not rasterise on its own, so each frame is made
-  self-contained first: the CSS folded in, the terrain art embedded as data URLs, then drawn to
-  a canvas a MediaRecorder is watching. Recording runs in real time (a 200-action battle takes
-  about a minute), the button shows progress, and stopping early still saves what was captured.
+- **Replay to video.** The theater's *Export video* button plays the battle through and films it
+  to a file — WebM, or MP4 where the browser offers it. The map is live SVG styled by the page's
+  stylesheet, which a browser will not rasterise on its own, so each frame is made
+  self-contained first: the terrain art embedded as data URLs, then drawn to a canvas a
+  MediaRecorder is watching. Three things separate a video from a slideshow, and all three were
+  measured in a real browser rather than assumed:
+  - **Frames are sampled continuously, not once per action.** Ships glide for most of a second
+    and the guns fire over the top of that; one snapshot per step threw all of it away.
+  - **Animated values are measured, not read off the DOM.** A CSS transition animates what is
+    *rendered* while the element's own style still holds the value it is travelling towards — so
+    the old recorder serialised `translate(540px)` while the browser was drawing 658px. Every
+    frame now copies the computed paint, transform and stroke of every node it keeps.
+  - **No stylesheet rides along.** Once every value is stated outright, 59KB of CSS re-parsed
+    per frame is pure cost — and the scenery (starfield, nebulae, grid: several hundred nodes
+    that never change) is photographed once and reused. Together: **765 frames over a
+    29-second recording where the original managed 90.**
+
+  Framing is locked to the whole board for the length of the recording, so looking around while
+  it films — zoom, pan — stays out of the file. Narrated moments are held; bookkeeping steps are
+  hurried past, so the length is spent where there is something to watch. Recording runs in real
+  time, the button shows progress, and stopping early still saves what was captured.
 - **A real table feel.** Ships glide along their moves when the Navigation Segment reveals the
   plots; a ghost previews your own plot while you write it; wheel to zoom, drag to pan; a ruler
   measures in the rules' own inches; ship counters carry faction hull art. The site installs to a

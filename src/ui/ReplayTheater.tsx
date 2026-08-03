@@ -131,10 +131,21 @@ export function ReplayTheater({ initial, onClose }: Props) {
   const points = victoryPoints(game)
 
   /**
+   * Which steps the video should linger on. The same read the auto-play loop
+   * uses: a step somebody narrates is a moment, everything else is
+   * bookkeeping the recording can hurry past — which keeps the file shorter
+   * *and* spends its length where there is something to watch.
+   */
+  const narrated = (index: number) => (timeline.frames[index]?.captions.length ?? 0) > 0
+  const narratedCount = timeline.frames.filter((f) => f.captions.length > 0).length
+
+  /**
    * Record the battle as a video file. The theater owns the playhead, so it
-   * drives: set the step, let React paint it, and let the recorder take the
-   * frame. Two animation frames is the reliable "it is on screen now" —
-   * one schedules the paint, the second lands after it.
+   * drives: set the step, let React paint it, and let the recorder film the
+   * map for as long as the step is held. Two animation frames is the reliable
+   * "it is on screen now" — one schedules the paint, the second lands after
+   * it — and the recorder takes it from there, sampling the glide and the
+   * gunfire as they happen rather than snapshotting the end of them.
    */
   const exportVideo = async () => {
     if (recording) {
@@ -156,6 +167,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
         },
         {
           ...DEFAULT_RECORD,
+          narrated,
           signal: controller.signal,
           onProgress: (done, total) => setRecording({ done, total }),
         },
@@ -201,7 +213,10 @@ export function ReplayTheater({ initial, onClose }: Props) {
               title={
                 recording
                   ? 'Stop recording and save what has been captured'
-                  : `Record the whole replay as a video file — about ${estimateSeconds(last)} seconds, played through in real time`
+                  : `Record the whole replay as a video file — about ${estimateSeconds(
+                      narratedCount,
+                      last - narratedCount,
+                    )} seconds, filmed in real time. Zooming and panning while it records is not captured.`
               }
             >
               {recording

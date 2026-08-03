@@ -281,6 +281,12 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       className={`map${view.zoom > 1 ? ' is-zoomed' : ''}${rulerMode ? ' is-ruler' : ''}`}
       ref={svgRef}
       viewBox={viewBox}
+      /*
+        The whole board, ignoring zoom and pan. The video recorder frames on
+        this instead of on the live viewBox, so looking around while a replay
+        records does not end up in the file.
+      */
+      data-full-viewbox={`${-MARGIN} ${-MARGIN} ${fullW} ${fullH}`}
       role="img"
       aria-label="Play surface"
       onWheel={onWheel}
@@ -291,7 +297,16 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
     >
       <SpaceDefs />
 
-      {/* ── Deep space ──────────────────────────────────────────────────── */}
+      {/*
+        ── Deep space ────────────────────────────────────────────────────
+        Everything in here is scenery: it depends on the board, not on the
+        battle, and never changes while a game is played. Grouping it says so
+        out loud — the video recorder photographs this layer once and reuses
+        the picture, which is most of what makes a recording keep up with the
+        action, since the starfield alone is several hundred nodes to
+        rasterise.
+      */}
+      <g className="map-backdrop">
       <rect
         x={-MARGIN}
         y={-MARGIN}
@@ -338,6 +353,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       {/* The edge of the play area (A2.9): leaving it is disengagement (J9), so
           it has to stay visible now that space is drawn beyond it. */}
       <rect x={0} y={0} width={w} height={h} className="map-edge" />
+      </g>
 
       {/* Terrain (Section K) */}
       {game.scenario.terrain.map((feature) => (
