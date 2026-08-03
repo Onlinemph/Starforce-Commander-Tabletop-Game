@@ -25,9 +25,10 @@ That is the whole setup. There is no server to start, no database, no API keys a
 the game is a single static page and the rules engine runs in the browser.
 
 ```bash
-npm test             # 494 rules and data-integrity tests
+npm test             # 688 rules and data-integrity tests
 npm run typecheck
 npm run check        # both of the above
+npm run season       # the AI's standing baselines, measured (tools/README.md)
 npm run build        # static site in dist/
 npm run serve        # preview the built site on your network at :4173
 ```
@@ -298,6 +299,15 @@ that one fact.
   players get the full rule and an EVASIVE control on the card. Every baseline held: duel
   admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L of 64, and the
   outnumbered capital unchanged at 11W–13L.
+- **The measuring instrument is in the box.** Every balance claim here was made with mirrored
+  self-play, and `npm run season` is the harness that made them — committed, so they can be
+  checked rather than believed. It plays every seed from both hulls (otherwise a scenario that
+  favours the eastern deployment is indistinguishable from a doctrine that wins), reads the result
+  from health rather than victory points (a fleet that wins on points while losing every hull has
+  not won anything), and reproduces the three standing baselines in about twenty seconds:
+  admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L. `--games 256` when a
+  result is close, `--scenario` to point it at any matchup. It is deliberately outside `npm test`,
+  because a suite nobody runs is worse than one that measures nothing.
 - **The optional maneuvers, now orderable.** Three rules the engine could already perform and no
   captain could actually order, because nothing on the command card said them. **Emergency stop**
   (C3.8) shuts the drive field down: the ship is stationary this phase *and* the next, even across

@@ -15,6 +15,7 @@
     "serve": "vite preview --host --port 4173",
     "test": "vitest run",
     "test:watch": "vitest",
+    "season": "vite-node tools/season.ts",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test"
   },
@@ -29,6 +30,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
+    "vite-node": "^6.0.0",
     "vitest": "^2.1.8"
   }
 }

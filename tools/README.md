@@ -1,3 +1,35 @@
+# Tools
+
+Two of them: the importer that turns the printed ship books into `ships.json`, and the season
+harness the balance claims are made with.
+
+## Season harness
+
+```bash
+npm run season                    # the three standing baselines, 64 mirrored games each
+npm run season -- --games 256     # a deeper look when a result is close
+npm run season -- --list          # the baselines and what they mean
+npm run season -- --scenario s3.6-target-the-flagship --hi admiral --lo captain
+```
+
+Every balance claim in this repository was measured this way, and the harness is committed so
+they can be checked rather than believed. Three things about the method are load-bearing:
+
+- **Mirrored.** Every seed is played twice, once from each hull. Without that, a scenario that
+  favours whoever deploys in the east is indistinguishable from a doctrine that wins.
+- **Sixty-four games is the floor.** Thirty-two is noise — it has swung by six wins on changes
+  later shown to do nothing. When a result is close, raise `--games` rather than believe it.
+- **Ablate before shipping.** A doctrine with two halves usually has one that does the work. The
+  battery doctrine measured 39W–23L; holding the battery back and never spending it measured
+  32W–32L, which is how we know the win was the spending and not the hoarding.
+
+Health, not victory points, decides a season: structure still floating, nothing for a hull that
+left, a penalty for one that died. A fleet that wins on points while losing every hull has not
+won anything.
+
+It is deliberately outside `npm test`. A full season takes minutes, and a test suite nobody runs
+is worse than one that measures nothing.
+
 # Ship Book importer
 
 Regenerates `src/data/ships.json` from the StarForce Commander **Master Ship Book** PDF.
