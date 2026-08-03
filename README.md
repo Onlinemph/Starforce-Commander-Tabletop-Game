@@ -89,6 +89,16 @@ that one fact.
   the path of least effort rather than a cryptographic guarantee. On Supabase there is also a
   **match browser**: hosts can list a match publicly, and anyone on the project sees its name,
   sides and progress — never its battle, and joining still costs the password.
+- **Sound, synthesised and off by default.** No audio files — every voice is built from
+  oscillators and filtered noise, a few hundred bytes of code instead of a megabyte of samples.
+  Phasers are a bright bolt falling fast, disruptors dirtier and lower, torpedoes a thump with
+  the seeker running away; shields shimmer as they absorb, hulls take a low hit with debris in
+  it. It starts muted, because a page that makes noise on load is a bad guest, and the toggle
+  and volume sit under the map. The anti-annoyance work is mostly measurement: every envelope
+  ramps so nothing clicks, a master low-pass takes the glare off, simultaneous voices are
+  counted and attenuated so an eight-mount broadside lands *quieter* than one hull hit rather
+  than as a machine gun, and a limiter on the master bus catches pileups — rendered offline,
+  thirty-two voices in the same instant peak at 0.71 without a clipped sample.
 - **Damage you can read across the board.** Every counter wears its four shields as arcs: a faint
   track for what the facing would hold intact, a bright segment for what is still standing, so a
   stripped flank is obvious from the far side of the map without clicking anything. Green through

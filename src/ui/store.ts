@@ -11,6 +11,7 @@ import { applyAction, type ActionOutcome, type GameAction } from '../engine/acti
 import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
 import type { GameState } from '../engine/game'
 import { fxAfter, fxBefore, type BattleFx } from './fx'
+import { soundFx } from './sound'
 
 /**
  * The store journals every action it applies, so the battle on screen is
@@ -62,7 +63,10 @@ export function activeFx(): BattleFx[] {
 function queueFx(...groups: BattleFx[][]): void {
   const batch = groups.flat()
   if (batch.length === 0) return
-  fxQueue = [...fxQueue, ...batch.map((fx) => ({ ...fx, delay: fx.delay + fxBase }))]
+  const staggered = batch.map((fx) => ({ ...fx, delay: fx.delay + fxBase }))
+  fxQueue = [...fxQueue, ...staggered]
+  // The battle heard, on the same clock as the battle seen.
+  soundFx(staggered)
   const span = Math.max(...batch.map((fx) => fx.delay)) + 700
   // Stagger later volleys of the same burst, but never queue a minute of it.
   fxBase = Math.min(fxBase + span, 3600)

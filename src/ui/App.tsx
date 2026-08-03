@@ -30,6 +30,7 @@ import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
 import { inMatch, useOnline } from './online'
+import { setMuted, setVolume, useSound } from './sound'
 import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
 import { ReplayTheater } from './ReplayTheater'
@@ -373,6 +374,7 @@ export function App() {
                 <input type="checkbox" checked={rulerMode} onChange={(e) => setRulerMode(e.target.checked)} />
                 Ruler
               </label>
+              <SoundControl />
               <div className="ship-tabs">
                 {game.ships.map((ship) => (
                   <button
@@ -533,6 +535,46 @@ function battleReport(game: GameState): string {
  * file is small, replays exactly, and carries any custom designs it needs —
  * hand it to another player and they resume your game to the die roll.
  */
+/**
+ * Sound, and the two things a player wants from it: off, and quieter.
+ *
+ * Off is the default — a game that starts making noise the moment it loads is
+ * a bad guest — and the choice is remembered. The slider only appears once
+ * sound is on, because a volume control for silence is furniture.
+ */
+function SoundControl() {
+  const sound = useSound()
+  return (
+    <span className="sound-control">
+      <button
+        type="button"
+        className={`chip${sound.muted ? '' : ' is-on'}`}
+        aria-pressed={!sound.muted}
+        title={
+          sound.muted
+            ? 'Turn on weapon fire and impact sounds'
+            : 'Mute weapon fire and impact sounds'
+        }
+        onClick={() => setMuted(!sound.muted)}
+      >
+        {sound.muted ? '🔇 Sound off' : '🔊 Sound on'}
+      </button>
+      {!sound.muted && (
+        <input
+          className="sound-volume"
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(sound.volume * 100)}
+          aria-label="Sound volume"
+          title="Volume"
+          onChange={(e) => setVolume(Number(e.target.value) / 100)}
+        />
+      )}
+    </span>
+  )
+}
+
 function BattleMenu({
   game,
   locked,

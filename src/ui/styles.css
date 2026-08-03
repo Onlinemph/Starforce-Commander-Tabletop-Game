@@ -3748,3 +3748,16 @@ button.chip:hover:not(:disabled) {
     transition: none;
   }
 }
+
+/* Sound: a toggle, and a volume slider that only exists once it is on. */
+.sound-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sound-volume {
+  width: 5.5rem;
+  accent-color: var(--accent, #ffb851);
+  cursor: pointer;
+}
