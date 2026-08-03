@@ -164,7 +164,10 @@ input:focus-visible {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
-  grid-template-rows: 74px minmax(0, 1fr);
+  /* The header row is 74px when the bar fits on one line and taller when it
+     wraps — the elbow grows with it rather than the buttons hiding under the
+     stage. */
+  grid-template-rows: minmax(74px, auto) minmax(0, 1fr);
   background: var(--bg);
   padding: 10px 12px 12px;
 }
@@ -304,8 +307,12 @@ input:focus-visible {
   grid-row: 1;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.35rem 0.9rem 0 0.9rem;
+  /* Wrapping at every width, not just on a phone: a laptop at 1280px cannot
+     fit this row either, and a control that runs off the edge is a control
+     nobody can reach. */
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  padding: 0.35rem 0.9rem 0.35rem 0.9rem;
   background: var(--panel);
   /* The horizontal half of the elbow: thinner than the vertical stub, flat
      where the two meet, rounded away at the far end. */
@@ -318,13 +325,24 @@ input:focus-visible {
   line-height: 1.1;
 }
 .brand .subtitle {
+  display: block;
   font-size: 0.68rem;
   color: var(--ink-dim);
   text-transform: uppercase;
   letter-spacing: 0.07em;
+  /* Never break mid-word: the strapline either fits on its line or is not
+     worth reading. */
+  white-space: nowrap;
 }
 .topbar .field {
   margin-left: auto;
+}
+/* Narrow enough that the strapline would take the whole first row to itself:
+   drop it and keep the controls. */
+@media (max-width: 1180px) {
+  .brand .subtitle {
+    display: none;
+  }
 }
 
 /* "Load file" is a label wrapping a hidden file input, dressed as a button. */
@@ -380,7 +398,6 @@ input:focus-visible {
   .topbar {
     grid-column: 1;
     grid-row: 2;
-    flex-wrap: wrap;
     border-top: none;
     border-top-right-radius: 0;
     padding: 0.5rem 0.7rem;
@@ -904,6 +921,21 @@ input:focus-visible {
   stroke: rgba(0, 0, 0, 0.85);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+/* Names ride in a layer above every counter so none can be painted over, and
+   that layer must not swallow clicks meant for the hull beneath it. */
+.ship-label {
+  pointer-events: none;
+}
+.ship-label.is-cloaked {
+  opacity: 0.55;
+}
+/* Drawn only when a name has stepped down past a neighbour's, so the reader
+   can still tell which hull a stacked label belongs to. */
+.ship-name-leader {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1px;
+  stroke-dasharray: 2 2;
 }
 
 .map-controls {

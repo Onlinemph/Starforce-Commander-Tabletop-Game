@@ -16,6 +16,7 @@ import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
 import type { BattleFx } from './fx'
+import { labelHalfWidth, stackLabels } from './mapLabels'
 
 /**
  * The asteroid photographs from the Print and Play counter sheet, bundled and
@@ -42,6 +43,31 @@ const DENSITY_COLOR: Record<string, string> = {
  */
 
 const SCALE = 20
+
+/** A ship counter is 1.5 inches square (A2.1). */
+const SHIP_SIZE = 1.5 * SCALE
+
+/**
+ * Where a name sits below its counter's centre, before any stacking. The
+ * shield readouts rotate with the hull, so on a diagonal heading the aft
+ * readout swings round to roughly where a name set close under the counter
+ * would sit; this clears the whole ring at any heading while still keeping the
+ * name plainly under its own ship.
+ */
+const LABEL_TOP = SHIP_SIZE / 2 + 25
+
+/**
+ * What a counter prints under itself. Shared with the label layout, which has
+ * to know how wide a name is before it can decide where to put it.
+ */
+function shipLabelText(ship: ShipState, formationSize: number): string {
+  return (
+    `${ship.name} · spd ${ship.speed}` +
+    (formationSize > 1 ? ` · formation of ${formationSize}` : '') +
+    (ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : '') +
+    (ship.derelict ? ' · DERELICT' : '')
+  )
+}
 
 /**
  * A margin of space drawn outside the play area, in pixels. It carries no
@@ -288,6 +314,50 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
   const { dust, bright } = useStarfield(w, h)
   const nebulae = useNebulae(w, h)
+
+  /*
+    Only the lead ship's counter stays on the map when ships fly in formation
+    (C5.1.3), so members are drawn as a strength badge on the lead rather than
+    as counters stacked in the same square. A cloaked ship that has not been
+    detected is not drawn at all (H6.2.2).
+  */
+  const drawn = game.ships
+    .filter((ship) => {
+      if (ship.destroyed || ship.disengaged) return false
+      // Reinforcements are not on the board until their round (S3.2).
+      if (ship.arrivesRound > game.round) return false
+      const cloak = game.cloaks[ship.id]
+      // A cloaked, undetected ship is off the table (H6.2.2) — except to its
+      // own commander, who tracks it in secret. The open table hides it from
+      // everyone, since both players share that screen.
+      if (cloak && positionIsHidden(cloak) && ship.side !== viewSide) return false
+      const formation = formationOf(game.formations, ship.id)
+      return !formation || formation.leadId === ship.id
+    })
+    .map((ship) => ({
+      ship,
+      formationSize: (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1,
+    }))
+
+  /* Names under packed hulls step down a line rather than print on top of
+     each other — a squadron in formation is exactly when they matter most. */
+  const labelShifts = stackLabels(
+    drawn.map(({ ship, formationSize }) => ({
+      id: ship.id,
+      x: ship.placement.position.x * SCALE,
+      y: ship.placement.position.y * SCALE + LABEL_TOP,
+      halfWidth: labelHalfWidth(shipLabelText(ship, formationSize)),
+    })),
+    // The counters themselves, so a name steps past a neighbouring hull rather
+    // than printing across its silhouette. The margin covers the shield
+    // readouts, which sit just outside the counter.
+    drawn.map(({ ship }) => {
+      const x = ship.placement.position.x * SCALE
+      const y = ship.placement.position.y * SCALE
+      const reach = SHIP_SIZE / 2 + 16
+      return { x1: x - reach, x2: x + reach, y1: y - reach, y2: y + reach }
+    }),
+  )
 
   return (
     <svg
@@ -567,40 +637,31 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         </g>
       ))}
 
-      {/*
-        Only the lead ship's counter stays on the map when ships fly in
-        formation (C5.1.3), so members are drawn as a strength badge on the
-        lead rather than as counters stacked in the same square. A cloaked ship
-        that has not been detected is not drawn at all (H6.2.2).
-      */}
-      {game.ships
-        .filter((ship) => {
-          // Reinforcements are not on the board until their round (S3.2).
-          if (ship.arrivesRound > game.round) return false
-          const cloak = game.cloaks[ship.id]
-          // A cloaked, undetected ship is off the table (H6.2.2) — except to
-          // its own commander, who tracks it in secret. The open table hides
-          // it from everyone, since both players share that screen.
-          if (cloak && positionIsHidden(cloak) && ship.side !== viewSide) return false
-          const formation = formationOf(game.formations, ship.id)
-          return !formation || formation.leadId === ship.id
-        })
-        .map((ship) => (
-          <ShipToken
-            key={ship.id}
-            game={game}
-            ship={ship}
-            selected={ship.id === selectedId}
-            targeted={ship.id === targetId}
-            formationSize={
-              (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1
-            }
-            cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
-            redacted={viewSide !== null && ship.side !== viewSide}
-            displayHeading={continuousHeading(ship.id, ship.placement.heading)}
-            onSelect={select}
-          />
-        ))}
+      {drawn.map(({ ship, formationSize }) => (
+        <ShipToken
+          key={ship.id}
+          game={game}
+          ship={ship}
+          selected={ship.id === selectedId}
+          targeted={ship.id === targetId}
+          formationSize={formationSize}
+          cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
+          redacted={viewSide !== null && ship.side !== viewSide}
+          displayHeading={continuousHeading(ship.id, ship.placement.heading)}
+          onSelect={select}
+        />
+      ))}
+
+      {/* Names last, so no counter can paint over one. */}
+      {drawn.map(({ ship, formationSize }) => (
+        <ShipLabel
+          key={ship.id}
+          ship={ship}
+          formationSize={formationSize}
+          shift={labelShifts[ship.id] ?? 0}
+          cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
+        />
+      ))}
 
       {/*
         Weapon fire and damage, played over the counters as the actions that
@@ -1015,7 +1076,7 @@ function ShipToken({
 }) {
   if (ship.destroyed || ship.disengaged) return null
 
-  const size = 1.5 * SCALE
+  const size = SHIP_SIZE
   const cx = ship.placement.position.x * SCALE
   const cy = ship.placement.position.y * SCALE
   // The third side of the Aurelian Raid keeps the purple the fleet picker
@@ -1103,26 +1164,60 @@ function ShipToken({
         </g>
       ))}
 
-      {/* Counter-rotate so labels stay upright regardless of ship heading. */}
-      <g className="map-mover" style={{ transform: `rotate(${-displayHeading}deg)` }}>
-        {formationSize > 1 && (
+      {/* Counter-rotate so the badge stays upright whatever the heading. */}
+      {formationSize > 1 && (
+        <g className="map-mover" style={{ transform: `rotate(${-displayHeading}deg)` }}>
           <text x={size / 2 - 3} y={-size / 2 + 11} className="ship-formation" textAnchor="end">
             ×{formationSize}
           </text>
-        )}
-        {/*
-          Just clear of the shield readouts. Those rotate with the hull, so on
-          a diagonal heading the aft label swings round to roughly where a name
-          set close under the counter would sit; 25px puts the name outside the
-          whole ring at any heading, while still staying under its own ship.
-        */}
-        <text y={size / 2 + 25} className="ship-name" textAnchor="middle">
-          {ship.name} · spd {ship.speed}
-          {formationSize > 1 ? ` · formation of ${formationSize}` : ''}
-          {ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : ''}
-          {ship.derelict ? ' · DERELICT' : ''}
-        </text>
-      </g>
+        </g>
+      )}
+    </g>
+  )
+}
+
+/**
+ * A ship's name and speed, drawn in a layer of its own above every counter.
+ *
+ * It used to hang off the counter, which meant the next hull drawn painted
+ * over it — in a formation, the ships you most wanted to tell apart were the
+ * ones whose names vanished. Here the whole fleet's counters go down first and
+ * every name goes on top, at the offset the layout gave it.
+ */
+function ShipLabel({
+  ship,
+  formationSize,
+  shift,
+  cloaked,
+}: {
+  ship: ShipState
+  formationSize: number
+  /** How far this name stepped down to clear its neighbours, in pixels. */
+  shift: number
+  cloaked: boolean
+}) {
+  const cx = ship.placement.position.x * SCALE
+  const cy = ship.placement.position.y * SCALE
+
+  return (
+    <g
+      className={`ship-label map-mover${cloaked ? ' is-cloaked' : ''}`}
+      style={{ transform: `translate(${cx}px, ${cy}px)` }}
+    >
+      {/* A leader line when the name has stepped aside for a neighbour, so a
+          stacked label still points at the hull it belongs to. */}
+      {shift > 0 && (
+        <line
+          x1={0}
+          y1={LABEL_TOP - 7}
+          x2={0}
+          y2={LABEL_TOP + shift - 6}
+          className="ship-name-leader"
+        />
+      )}
+      <text y={LABEL_TOP + shift} className="ship-name" textAnchor="middle">
+        {shipLabelText(ship, formationSize)}
+      </text>
     </g>
   )
 }
