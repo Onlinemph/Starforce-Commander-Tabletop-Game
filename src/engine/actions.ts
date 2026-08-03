@@ -34,6 +34,7 @@ import {
   contestTractor,
   damageContext,
   declareCoordinatedFire,
+  everyoneReady,
   dockShuttle,
   fightBoarders,
   fireAtSmallTarget,
@@ -53,6 +54,7 @@ import {
   setMaxSystem,
   setSabotageSquads,
   setShieldDown,
+  sidesAwaited,
   flushPendingVolleys,
   recordShieldHit,
   tacticalScanOf,
@@ -89,6 +91,11 @@ import type { SmallCraftKind } from './smallCraft'
 export type GameAction =
   // Sequence of play (A3)
   | { type: 'advance-segment' }
+  /**
+   * Online matches: a side declares itself finished with the segment. When
+   * the last one does, the segment closes — nobody advances it by hand.
+   */
+  | { type: 'signal-ready'; side: string; ready: boolean }
   | { type: 'ops-next-step' }
   | { type: 'advance-firing-step' }
   | { type: 'set-coordinated-fire'; on: boolean }
@@ -233,8 +240,33 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return ok
     // ── Sequence of play ─────────────────────────────────────────────────
     case 'advance-segment':
+      /**
+       * Under the ready gate the segment closes when the sides agree it is
+       * closed, and not before (B1.9.1). Refused rather than ignored, so a
+       * client that still has the old button cannot quietly move the battle
+       * on while the other player is mid-plot.
+       */
+      if (game.readyGate && !everyoneReady(game)) {
+        const waiting = sidesAwaited(game).filter((side) => !game.readySides.includes(side))
+        return said(`Waiting for ${waiting.join(' and ')} to finish the segment.`)
+      }
       advanceSegment(game)
       return ok
+
+    case 'signal-ready': {
+      if (!game.readyGate) return said('This battle does not use ready checks.')
+      if (!sidesAwaited(game).includes(action.side)) return said('That side has no ships left.')
+      const already = game.readySides.includes(action.side)
+      if (action.ready === already) return ok
+      game.readySides = action.ready
+        ? [...game.readySides, action.side]
+        : game.readySides.filter((side) => side !== action.side)
+      if (action.ready) pushLog(game, `${action.side} is ready.`)
+      // The last one to be ready closes the segment. Both ends work that out
+      // from the same journal, so neither has to be told.
+      if (everyoneReady(game)) advanceSegment(game)
+      return ok
+    }
     case 'ops-next-step':
       advanceOperationsStep(game)
       return ok

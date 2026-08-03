@@ -235,6 +235,25 @@ export async function dispatchWithChoices(action: GameAction): Promise<ActionOut
   return dispatch(action)
 }
 
+/**
+ * Turn on the ready gate for this battle (online matches).
+ *
+ * Only before the first action. A battle already under way has bare
+ * `advance-segment` actions in its journal, and those would be refused by the
+ * gate on the next replay — a save that no longer replays is a worse bug than
+ * the one the gate fixes. In the normal flow a match is created before anyone
+ * has moved, so this is the case that matters.
+ */
+export function enableReadyGate(): boolean {
+  if (setup.readyGate) return true
+  if (journal.length > 0) return false
+  setup = { ...setup, readyGate: true }
+  game = buildGame(setup)
+  autosave()
+  emit()
+  return true
+}
+
 /** Start a fresh battle from a setup. Custom designs are embedded into it. */
 export function newGame(next: GameSetup): void {
   setup = withEmbeddedForms(next)

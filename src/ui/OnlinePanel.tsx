@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useGame } from './store'
+import { journalLength, useGame } from './store'
 import {
   browseMatches,
   claimSide,
@@ -201,6 +201,11 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                     The scenario, fleets, terrain and options are fixed into the match as it is
                     created — set the battle up before hosting, because nobody can change it
                     afterwards.
+                  </p>
+                  <p className="hint">
+                    {journalLength() === 0
+                      ? 'Each segment will close by agreement: both players say when they are finished, so nobody moves the battle on while the other is still plotting (B1.9.1).'
+                      : 'This battle is already under way, so it will be hosted without ready checks — a segment closes as soon as either player says so. Start a fresh battle to host with them.'}
                   </p>
                 </section>
 

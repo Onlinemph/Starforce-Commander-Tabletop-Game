@@ -7,6 +7,7 @@ import {
   applyRemoteSave,
   applyRemoteUndo,
   currentSave,
+  enableReadyGate,
   journalLength,
   setNetHooks,
   suppressAi,
@@ -403,6 +404,12 @@ export async function createMatch(
   key?: string,
   isPublic = true,
 ): Promise<string | null> {
+  /**
+   * A match plots in two places at once, so the segment has to close by
+   * agreement rather than by whoever clicks first (B1.9.1). Turned on before
+   * the save is published, so the guest's copy arrives already gated.
+   */
+  enableReadyGate()
   const save = currentSave()
 
   if (key && looksLikeSupabase(server)) {

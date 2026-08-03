@@ -7,6 +7,7 @@ import {
   PHASE_LABELS,
   PHASE_SEGMENTS,
   SEGMENT_LABELS,
+  sidesAwaited,
   victoryPoints,
   type GameState,
 } from '../engine/game'
@@ -304,7 +305,7 @@ export function App() {
       <StatusRail game={game} />
 
       <div className="lcars-stage">
-        <SequenceBar game={game} />
+        <SequenceBar game={game} mySide={lockedView} />
 
         <main className="layout">
           <section className="map-column">
@@ -656,7 +657,7 @@ function BattleMenu({
 }
 
 /** The Sequence of Play strip (A3.1). */
-function SequenceBar({ game }: { game: GameState }) {
+function SequenceBar({ game, mySide }: { game: GameState; mySide: string | null }) {
   const segments = PHASE_SEGMENTS[game.phase]
   return (
     <div className="sequence-bar">
@@ -677,9 +678,17 @@ function SequenceBar({ game }: { game: GameState }) {
       >
         ↶ Undo
       </button>
-      <button type="button" className="primary" onClick={() => void dispatchWithChoices({ type: 'advance-segment' })}>
-        Complete {SEGMENT_LABELS[game.segment]} →
-      </button>
+      {game.readyGate ? (
+        <ReadyCheck game={game} mySide={mySide} />
+      ) : (
+        <button
+          type="button"
+          className="primary"
+          onClick={() => void dispatchWithChoices({ type: 'advance-segment' })}
+        >
+          Complete {SEGMENT_LABELS[game.segment]} →
+        </button>
+      )}
     </div>
   )
 }
@@ -884,6 +893,55 @@ function LogPanel({ game }: { game: GameState }) {
           </li>
         ))}
       </ol>
+    </div>
+  )
+}
+
+/**
+ * The ready check that closes a segment in an online match.
+ *
+ * A shared table enforces simultaneity by itself: nobody reveals until both
+ * pencils are down. Two browsers do not, so the segment closes on agreement
+ * instead — you say you are finished, and when the last side does, the
+ * engine moves the battle on. Nobody presses "next" for anybody else.
+ */
+function ReadyCheck({ game, mySide }: { game: GameState; mySide: string | null }) {
+  const awaited = sidesAwaited(game)
+  const waiting = awaited.filter((side) => !game.readySides.includes(side))
+  const iAmReady = mySide !== null && game.readySides.includes(mySide)
+  const others = waiting.filter((side) => side !== mySide)
+
+  return (
+    <div className="ready-check">
+      <span className="ready-tally">
+        {awaited.map((side) => (
+          <span key={side} className={game.readySides.includes(side) ? 'is-ready' : ''}>
+            {side}
+            {game.readySides.includes(side) ? ' ✓' : ' …'}
+          </span>
+        ))}
+      </span>
+      <button
+        type="button"
+        className={iAmReady ? 'chip is-on' : 'primary'}
+        disabled={mySide === null}
+        title={
+          mySide === null
+            ? 'Only the players commanding a side may close the segment.'
+            : iAmReady
+              ? 'Change your mind while the others are still working.'
+              : `Finished with ${SEGMENT_LABELS[game.segment]}. The segment closes when everyone is.`
+        }
+        onClick={() =>
+          mySide && void dispatchWithChoices({ type: 'signal-ready', side: mySide, ready: !iAmReady })
+        }
+      >
+        {iAmReady
+          ? others.length > 0
+            ? `Ready — waiting for ${others.join(' and ')}`
+            : 'Ready ✓'
+          : `Ready — ${SEGMENT_LABELS[game.segment]} done`}
+      </button>
     </div>
   )
 }

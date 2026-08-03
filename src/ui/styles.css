@@ -3815,3 +3815,24 @@ button.chip:hover:not(:disabled) {
 .reserve-power .chip {
   font-size: 0.75rem;
 }
+
+/* The ready check: who has finished the segment, and your own say in it. */
+.ready-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ready-tally {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.ready-tally .is-ready {
+  color: var(--lc-green, #57c46f);
+  opacity: 1;
+}

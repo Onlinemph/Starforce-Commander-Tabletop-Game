@@ -273,6 +273,8 @@ export interface SetupOptions {
    * combat phase's Command Segment, instead of only at Resource Allocation.
    */
   optionalBatteries?: boolean
+  /** Online matches: both sides must signal ready before a segment closes. */
+  readyGate?: boolean
 }
 
 /**
@@ -752,6 +754,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
     optionalBatteries: options.optionalBatteries ?? false,
+    readyGate: options.readyGate ?? false,
     options: {
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,

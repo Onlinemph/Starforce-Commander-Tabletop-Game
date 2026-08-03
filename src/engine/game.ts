@@ -421,6 +421,16 @@ export interface GameState {
    * the game, and carried in the setup so a replay plays the same game.
    */
   optionalBatteries: boolean
+  /**
+   * Both sides must signal ready before a segment closes (online matches).
+   * The printed game plots in secret and reveals together (B1.9.1), which a
+   * shared table enforces by itself and two browsers do not: without this,
+   * either player can close the Command Segment while the other is still
+   * writing, and the half-written card is what moves.
+   */
+  readyGate: boolean
+  /** Sides that have signalled ready for the segment in progress. */
+  readySides: string[]
   /** Position in the ten-step firing sequence while H4 is in force (H4.2.3). */
   firingStepIndex: number
   /** `faction->targetId` pairs already attacked this phase (H4.3.1). */
@@ -470,6 +480,7 @@ export function createGame(args: {
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
   optionalBatteries?: boolean
+  readyGate?: boolean
   /** Play with the optional jamming-versus-homing rules (E5.10). */
   jammingVsHoming?: boolean
 }): GameState {
@@ -512,6 +523,8 @@ export function createGame(args: {
     command,
     coordinatedFire: args.coordinatedFire ?? false,
     optionalBatteries: args.optionalBatteries ?? false,
+    readyGate: args.readyGate ?? false,
+    readySides: [],
     firingStepIndex: 0,
     attackedThisPhase: new Set(),
     coordinatedGroup: null,
@@ -545,6 +558,22 @@ export function cloneGame(game: GameState): GameState {
   const copy = structuredClone(game)
   Object.setPrototypeOf(copy.rng, Rng.prototype)
   return copy
+}
+
+/**
+ * The sides that have to agree before a segment closes: everyone still in the
+ * battle. A side whose last hull is gone or gone home has nothing left to
+ * plot and cannot be waited for.
+ */
+export function sidesAwaited(game: GameState): string[] {
+  const sides = new Set(activeShips(game).map((ship) => ship.side))
+  return [...sides].sort()
+}
+
+/** Whether every side has signalled ready for the segment in progress. */
+export function everyoneReady(game: GameState): boolean {
+  const awaited = sidesAwaited(game)
+  return awaited.length > 0 && awaited.every((side) => game.readySides.includes(side))
 }
 
 export function damageContext(game: GameState): DamageContext {
@@ -1068,6 +1097,8 @@ export function resolveHomingImpacts(
 /** Run automatic effects on entering a segment, then advance the pointer. */
 export function advanceSegment(game: GameState): void {
   runSegmentExit(game)
+  // A new segment is a new question; nobody is ready for it yet.
+  game.readySides = []
 
   const segments = PHASE_SEGMENTS[game.phase]
   const index = segments.indexOf(game.segment)

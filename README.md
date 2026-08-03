@@ -78,6 +78,19 @@ that one fact.
   The Supabase client is fetched only when a match is actually opened, so solo play carries none
   of its weight.
 
+  **A segment closes by agreement.** On a shared table nobody reveals until both pencils are
+  down — B1.9.1 has orders written in secret and revealed together, and the table enforces that
+  by itself. Two browsers do not: before this, either player could close the Command Segment
+  while the other was still writing, and the half-written card was what moved. In a match the
+  *Complete* button is replaced by a ready check that shows where each side stands, and the
+  segment closes when the last one says it is finished. Nobody presses next for anybody else,
+  and you can take your ready back while the others are still working. It is the engine's rule
+  rather than a message between clients: `signal-ready` is journalled like any other action, so
+  both ends work out the same closing from the same record, and a client still showing the old
+  button is refused rather than obeyed. Ready checks need a battle that has not started yet —
+  a journal with bare segment advances in it could no longer replay under the gate — so the
+  Online panel says which kind of match you are about to host.
+
   A match is also a sealed table. Its scenario, fleets, terrain and options are frozen at
   creation, and while you are enrolled every control that would rebuild the battle — scenario
   picker, fleet picker, ship builder, scenario designer, rematch, coordinated fire, loading a
