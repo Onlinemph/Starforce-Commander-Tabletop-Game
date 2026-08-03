@@ -43,6 +43,8 @@ export interface RecordOptions {
   maxEdge: number
   /** Whether the step at this index is a narrated moment. Default: all are. */
   narrated?: (index: number) => boolean
+  /** Set false to redraw every frame by hand rather than ask to film the tab. */
+  preferTabCapture?: boolean
   onProgress?: (done: number, total: number) => void
   signal?: AbortSignal
 }
@@ -302,10 +304,151 @@ function fullViewBox(svg: SVGSVGElement): string {
 }
 
 /**
+ * Drive the playhead through the battle, holding each step for as long as it
+ * deserves, and call `tick` as often as it will run while a step is held.
+ *
+ * Both recorders share this: the difference between them is only what happens
+ * on a tick — one has to photograph the map, the other has nothing to do
+ * because the browser is already filming it.
+ */
+async function playThrough(
+  steps: number,
+  showStep: (index: number) => Promise<void>,
+  options: RecordOptions,
+  tick?: () => Promise<void>,
+): Promise<void> {
+  const frameMs = 1000 / options.fps
+  for (let index = 0; index <= steps; index++) {
+    if (options.signal?.aborted) break
+    await showStep(index)
+    const hold = (options.narrated?.(index) ?? true) ? options.holdMs : options.quietMs
+    const until = performance.now() + hold
+    let ticks = 0
+    while (ticks === 0 || performance.now() < until) {
+      if (options.signal?.aborted) break
+      const started = performance.now()
+      if (tick) await tick()
+      ticks++
+      const spare = frameMs - (performance.now() - started)
+      if (spare > 1) await wait(spare)
+    }
+    options.onProgress?.(index, steps)
+  }
+  // A held final frame keeps players from missing the last volley.
+  await wait(options.holdMs)
+}
+
+// ---------------------------------------------------------------------------
+// The easy way: let the browser film its own tab
+// ---------------------------------------------------------------------------
+
+/**
+ * Chrome's Region Capture, which is the whole trick. Tab capture on its own
+ * would film the theater, the narration column and the browser's own
+ * furniture; cropping the track to the map element means the stream *is* the
+ * map, at whatever frame rate the compositor is already running at.
+ */
+interface CropTargetApi {
+  fromElement(element: Element): Promise<unknown>
+}
+type CroppableTrack = MediaStreamTrack & { cropTo?: (target: unknown) => Promise<void> }
+
+function cropTargetApi(): CropTargetApi | null {
+  const api = (globalThis as { CropTarget?: CropTargetApi }).CropTarget
+  return api && typeof api.fromElement === 'function' ? api : null
+}
+
+/** Whether this browser can film the map directly instead of redrawing it. */
+export function canCaptureTab(): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.mediaDevices?.getDisplayMedia === 'function' &&
+    cropTargetApi() !== null
+  )
+}
+
+/** Which way a recording will be made here — the UI says so before asking. */
+export function recordMethod(): 'tab' | 'canvas' {
+  return canCaptureTab() ? 'tab' : 'canvas'
+}
+
+/**
+ * Ask for the tab, crop the track to the map, and hand back the stream.
+ *
+ * Null on any refusal — the picker dismissed, a different window chosen, an
+ * older browser — and the caller falls back to drawing frames by hand. The
+ * crop is not optional: without it the file would contain the whole page, and
+ * recording the UI around the map is precisely what nobody wants.
+ *
+ * Must be called before anything else awaits, or the click that got us here
+ * will no longer count as the gesture the permission prompt requires.
+ */
+async function captureMapStream(element: Element): Promise<MediaStream | null> {
+  const api = cropTargetApi()
+  if (!api) return null
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30 },
+      audio: false,
+      // Chrome-only hints: offer this tab first, and do not let the capture
+      // wander to another surface half way through the battle.
+      preferCurrentTab: true,
+      selfBrowserSurface: 'include',
+      surfaceSwitching: 'exclude',
+    } as DisplayMediaStreamOptions)
+  } catch {
+    return null
+  }
+  const track = stream.getVideoTracks()[0] as CroppableTrack | undefined
+  try {
+    if (!track?.cropTo) throw new Error('no crop')
+    await track.cropTo(await api.fromElement(element))
+    return stream
+  } catch {
+    // Whatever was picked, it is not this tab's map. Leave it alone.
+    for (const t of stream.getTracks()) t.stop()
+    return null
+  }
+}
+
+/** Film the map itself, at the frame rate the browser is already drawing it. */
+async function recordFromStream(
+  stream: MediaStream,
+  format: string,
+  steps: number,
+  showStep: (index: number) => Promise<void>,
+  options: RecordOptions,
+): Promise<Blob> {
+  const recorder = new MediaRecorder(stream, { mimeType: format, videoBitsPerSecond: 8_000_000 })
+  const chunks: BlobPart[] = []
+  recorder.ondataavailable = (event) => {
+    if (event.data.size > 0) chunks.push(event.data)
+  }
+  const finished = new Promise<Blob>((resolve) => {
+    recorder.onstop = () => resolve(new Blob(chunks, { type: format }))
+  })
+  recorder.start()
+  try {
+    await playThrough(steps, showStep, options)
+  } finally {
+    recorder.stop()
+    for (const track of stream.getTracks()) track.stop()
+  }
+  return finished
+}
+
+/**
  * Play the replay through, filming it, and return the finished video.
  *
  * `showStep` must set the replay to that step and resolve once the DOM has
  * painted it — the caller owns the React state, so only it can do that.
+ *
+ * Two ways to do this. Where the browser can film its own tab and crop the
+ * stream to the map, it does: the pixels are the ones on screen, at the frame
+ * rate the compositor is already running, and there is nothing to redraw. Any
+ * other browser — or a declined prompt — falls back to rebuilding every frame
+ * by hand, which is slower and dearer but asks nobody's permission.
  */
 export async function recordReplay(
   getSvg: () => SVGSVGElement | null,
@@ -318,6 +461,10 @@ export async function recordReplay(
 
   const first = getSvg()
   if (!first) throw new Error('The map is not on screen.')
+
+  // Before any other await: the permission prompt needs the click still live.
+  const live = options.preferTabCapture === false ? null : await captureMapStream(first)
+  if (live) return recordFromStream(live, format, steps, showStep, options)
 
   // Frame on the board, at the board's own proportions — so neither zooming
   // nor resizing the window mid-recording changes the shape of the picture.
@@ -380,31 +527,12 @@ export async function recordReplay(
     context.drawImage(image, 0, 0, width, height)
   }
 
-  const frameMs = 1000 / options.fps
   recorder.start()
   try {
-    for (let index = 0; index <= steps; index++) {
-      if (options.signal?.aborted) break
-      await showStep(index)
-      const hold = (options.narrated?.(index) ?? true) ? options.holdMs : options.quietMs
-      const until = performance.now() + hold
-      // Keep filming for as long as the step is held: this is where a glide,
-      // a beam and a fireball become motion instead of one frozen instant.
-      let taken = 0
-      while (taken === 0 || performance.now() < until) {
-        if (options.signal?.aborted) break
-        const started = performance.now()
-        await drawFrame()
-        taken++
-        // No point running ahead of the frame rate being recorded.
-        const spare = frameMs - (performance.now() - started)
-        if (spare > 1) await wait(spare)
-      }
-      options.onProgress?.(index, steps)
-    }
+    // Photographing the map for as long as each step is held is what turns a
+    // glide, a beam and a fireball into motion instead of one frozen instant.
+    await playThrough(steps, showStep, options, drawFrame)
   } finally {
-    // A held final frame keeps players from missing the last volley.
-    await wait(options.holdMs)
     recorder.stop()
     for (const track of stream.getTracks()) track.stop()
   }

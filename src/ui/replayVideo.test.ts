@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_RECORD, estimateSeconds, localiseRefs } from './replayVideo'
+import { canCaptureTab, DEFAULT_RECORD, estimateSeconds, localiseRefs, recordMethod } from './replayVideo'
 
 /**
- * The recorder's arithmetic. Everything else about it — that frames come out
- * mid-glide rather than at the destination, that zooming while it records
- * stays out of the file — needs a browser to mean anything, and was measured
- * in one: 765 frames over a 29-second recording where the old pipeline
- * managed 90, with the live map zoomed six notches in throughout and the
- * whole board still in every frame.
+ * The recorder's arithmetic and its feature detection. Everything else needs a
+ * browser to mean anything, and was measured in one (Chromium, 141-action
+ * battle):
+ *
+ *  - Filming the tab: the track crops to the map — 774×710 out of a 1400×900
+ *    page — and the finished file holds the board and nothing else. Zero
+ *    frames drawn by hand.
+ *  - Drawing frames by hand, for browsers without Region Capture: 765 frames
+ *    over a 29-second recording, where the original pipeline managed 90.
+ *  - Either way the view is locked: zoomed five notches in, the recording
+ *    snapped back to the whole board and refused to move.
  */
 
 describe('references inside a frame', () => {
@@ -22,6 +27,15 @@ describe('references inside a frame', () => {
       'matrix(0, -1, 1, 0, 658.607, 360)',
     )
     expect(localiseRefs('rgb(12, 200, 140)')).toBe('rgb(12, 200, 140)')
+  })
+})
+
+describe('choosing how to record', () => {
+  it('falls back to drawing frames where the browser cannot film its own tab', () => {
+    // Node has no getDisplayMedia and no Region Capture, which is exactly the
+    // shape of a browser that has to take the slow road.
+    expect(canCaptureTab()).toBe(false)
+    expect(recordMethod()).toBe('canvas')
   })
 })
 

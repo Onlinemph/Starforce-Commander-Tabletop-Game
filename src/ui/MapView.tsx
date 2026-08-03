@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
@@ -145,6 +145,12 @@ interface Props {
   rulerMode: boolean
   /** Weapon fire and damage flashes, derived from the action stream. */
   fx?: BattleFx[]
+  /**
+   * Hold the whole board in view and refuse to zoom or pan. Set while a
+   * replay is being recorded: the recording films what is on screen, and
+   * nobody wants somebody else's sightseeing in their video.
+   */
+  viewLock?: boolean
 }
 
 export interface RangeRing {
@@ -153,7 +159,7 @@ export interface RangeRing {
   band: 'green' | 'max'
 }
 
-export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide, rulerMode, fx = [] }: Props) {
+export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeRings, viewSide, rulerMode, fx = [], viewLock = false }: Props) {
   const { width, height } = game.scenario.bounds
   const w = width * SCALE
   const h = height * SCALE
@@ -171,6 +177,12 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 })
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
 
+  // Locking does not just refuse to move: it snaps back to the whole board,
+  // so a recording started mid-zoom still opens on the battle.
+  useEffect(() => {
+    if (viewLock) setView({ x: 0, y: 0, zoom: 1 })
+  }, [viewLock])
+
   const fullW = w + MARGIN * 2
   const fullH = h + MARGIN * 2
   const viewBox = `${-MARGIN + view.x} ${-MARGIN + view.y} ${fullW / view.zoom} ${fullH / view.zoom}`
@@ -185,6 +197,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
   }
 
   const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (viewLock) return
     const at = toBoard(e)
     setView((v) => {
       const zoom = Math.min(8, Math.max(1, v.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2)))
@@ -204,7 +217,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       svgRef.current?.setPointerCapture(e.pointerId)
       return
     }
-    if (view.zoom === 1) return
+    if (viewLock || view.zoom === 1) return
     drag.current = { x: e.clientX, y: e.clientY, moved: false }
     svgRef.current?.setPointerCapture(e.pointerId)
   }

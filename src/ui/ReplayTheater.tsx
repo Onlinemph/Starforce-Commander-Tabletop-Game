@@ -9,6 +9,7 @@ import {
   canRecordVideo,
   DEFAULT_RECORD,
   estimateSeconds,
+  recordMethod,
   recordReplay,
   videoExtension,
 } from './replayVideo'
@@ -216,7 +217,11 @@ export function ReplayTheater({ initial, onClose }: Props) {
                   : `Record the whole replay as a video file — about ${estimateSeconds(
                       narratedCount,
                       last - narratedCount,
-                    )} seconds, filmed in real time. Zooming and panning while it records is not captured.`
+                    )} seconds, filmed in real time. The map is held on the whole board while it records.${
+                      recordMethod() === 'tab'
+                        ? ' Your browser will ask permission to film this tab; decline and it will draw the frames itself instead.'
+                        : ''
+                    }`
               }
             >
               {recording
@@ -256,6 +261,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
               viewSide={null}
               rulerMode={false}
               fx={fxRef.current}
+              viewLock={recording !== null}
             />
 
             <div className="theater-controls">
