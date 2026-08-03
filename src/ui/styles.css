@@ -3804,3 +3804,14 @@ button.chip:hover:not(:disabled) {
   opacity: 0.75;
   font-style: normal;
 }
+
+/* Reserve power (B2.5): one chip per function line the battery may fill. */
+.reserve-power {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.reserve-power .chip {
+  font-size: 0.75rem;
+}

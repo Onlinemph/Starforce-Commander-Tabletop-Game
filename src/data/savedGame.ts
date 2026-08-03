@@ -24,6 +24,8 @@ export interface GameSetup {
   scenarioId: string
   seed: number
   coordinatedFire?: boolean
+  /** Optional batteries (B2.5): stored power spendable mid-round. */
+  optionalBatteries?: boolean
   /** One form id per side — the ship builder's quick launch. */
   forms?: Partial<Record<string, string>>
   /** A whole force per side, one form id per hull (S2.5.1). */
@@ -68,6 +70,7 @@ export function buildGame(setup: GameSetup): GameState {
   return startScenario(setup.scenarioId, {
     seed: setup.seed,
     coordinatedFire: setup.coordinatedFire ?? false,
+    optionalBatteries: setup.optionalBatteries ?? false,
     forms: setup.forms,
     fleets: setup.fleets,
     terrain: setup.terrain,

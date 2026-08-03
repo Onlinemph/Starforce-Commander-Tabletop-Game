@@ -415,6 +415,12 @@ export interface GameState {
   command: Record<string, CommandState>
   /** H4 Coordinated Fire is optional (H4.1) and off unless switched on. */
   coordinatedFire: boolean
+  /**
+   * Optional batteries (B2.5): stored power may be spent during a combat
+   * phase's Command Segment, not only at Resource Allocation. Chosen before
+   * the game, and carried in the setup so a replay plays the same game.
+   */
+  optionalBatteries: boolean
   /** Position in the ten-step firing sequence while H4 is in force (H4.2.3). */
   firingStepIndex: number
   /** `faction->targetId` pairs already attacked this phase (H4.3.1). */
@@ -463,6 +469,7 @@ export function createGame(args: {
   options?: DestructionOptions
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
+  optionalBatteries?: boolean
   /** Play with the optional jamming-versus-homing rules (E5.10). */
   jammingVsHoming?: boolean
 }): GameState {
@@ -504,6 +511,7 @@ export function createGame(args: {
     shieldChangedThisPhase: new Set(),
     command,
     coordinatedFire: args.coordinatedFire ?? false,
+    optionalBatteries: args.optionalBatteries ?? false,
     firingStepIndex: 0,
     attackedThisPhase: new Set(),
     coordinatedGroup: null,

@@ -11,8 +11,10 @@ import { setCommandAssignment } from './command'
 import {
   armMount,
   autoArmIfChoiceFree,
+  batterySpendError,
   resolveDamageControl,
   setAllocation,
+  spendBattery,
   type RepairAssignment,
 } from './engineering'
 import { chooseLead, joinFormation, leaveFormation } from './formation'
@@ -35,6 +37,7 @@ import {
   dockShuttle,
   fightBoarders,
   fireAtSmallTarget,
+  isCombatPhase,
   launchHoming,
   launchProbe,
   launchShuttle,
@@ -92,6 +95,8 @@ export type GameAction =
   // Resource Allocation (B2, E4.2)
   | { type: 'allocate'; shipId: string; lineId: string; circles: number }
   | { type: 'arm-mount'; shipId: string; weaponId: string; mountIndex: number }
+  /** Optional batteries (B2.5.2): one battery, into one empty function circle. */
+  | { type: 'spend-battery'; shipId: string; lineId: string }
   // Damage Control (B3.2)
   | { type: 'damage-control'; shipId: string; assignments: RepairAssignment[] }
   // Command card plotting (C1)
@@ -245,6 +250,31 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return ok
 
     // ── Resource allocation ──────────────────────────────────────────────
+    case 'spend-battery': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      if (!game.optionalBatteries) return said('Optional battery rules are not in play (B2.5).')
+      /**
+       * Plotted in the Command Segment of a combat phase (B2.5.2). Outside
+       * one there is nothing optional about it — batteries are simply part of
+       * the power available at Resource Allocation (B2.4.1).
+       */
+      if (!isCombatPhase(game.phase) || game.segment !== 'command') {
+        return said('Battery power is plotted during a combat phase’s Command Segment (B2.5.2).')
+      }
+      if (ship.derelict) return said('A derelict allocates nothing (E11.2.4).')
+      const refused = batterySpendError(ship, action.lineId)
+      if (refused) return said(refused)
+      pushLog(game, spendBattery(ship, action.lineId))
+      // The same courtesy the allocation panel gets: when the fresh points
+      // cover every circle that may legally be filled, fill them (E4.2.2).
+      const line = ship.form.functions.find((l) => l.id === action.lineId)
+      if (line?.kind === 'weapon' && line.weaponSystemId) {
+        autoArmIfChoiceFree(ship, line.weaponSystemId)
+      }
+      return ok
+    }
+
     case 'allocate': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')

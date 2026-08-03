@@ -1,3 +1,4 @@
+import { hasTrait } from './combat'
 import { rollForSpecial, type Rng } from './dice'
 import {
   armingCapacityThisRound,
@@ -535,4 +536,124 @@ export function resolveDamageControl(
   }
 
   return outcomes
+}
+
+// ---------------------------------------------------------------------------
+// Optional batteries (B2.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Spending stored power in the middle of a round.
+ *
+ * Under the printed rules a battery is just extra power at Resource
+ * Allocation: it is drained to cover whatever the round's plan overspends,
+ * and that is the end of it. The optional rules make it what a battery is
+ * *for* — power held in reserve against something the plan did not foresee.
+ * It is plotted in the Command Segment of a combat phase (B2.5.2 Step B) and
+ * fills one empty green circle under Functions, which is why this reads as an
+ * allocation rather than a special case: the circle is filled, the battery is
+ * emptied, and every rule that derives a value from the FUNCTIONS line picks
+ * the change up on its own.
+ *
+ * What does *not* follow automatically is the handful of effects the printed
+ * game applies once, as the allocation is committed — a shield's repair and
+ * reinforcement, and the GEN SYS level. Those are applied here, on the spot,
+ * because B2.5.8 says the repair happens immediately.
+ */
+/**
+ * Whether a line can *ever* take battery power under B2.5 — as opposed to
+ * cannot right now. The distinction is the difference between a control that
+ * is greyed out with a reason and one that has no business being on screen.
+ */
+export function batteryLineEligible(ship: ShipState, lineId: string): boolean {
+  const line = ship.form.functions.find((l) => l.id === lineId)
+  if (!line || line.steps.length === 0) return false
+  if (line.kind === 'battery-recharge') return false
+  if (line.kind === 'weapon') {
+    const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
+    if (!weapon) return false
+    if (hasTrait(weapon, 'NoBAT')) return false
+    if (weapon.mounts.some((m) => (m.roundGates ?? []).some(Boolean))) return false
+  }
+  return true
+}
+
+export function batterySpendError(ship: ShipState, lineId: string): string | null {
+  const line = ship.form.functions.find((l) => l.id === lineId)
+  if (!line) return 'No such function line.'
+  if (batteryPower(ship) === 0) return 'No charged battery.'
+
+  const filled = ship.allocation[lineId] ?? 0
+  // "A single green circle on the resource allocation track may never be
+  // filled in twice", and a full line takes no more (B2.5.3).
+  if (filled >= line.steps.length) return `${line.label} is already at full power.`
+
+  switch (line.kind) {
+    case 'battery-recharge':
+      // Reactor power recharges a battery, during Step A (B2.5.1). A battery
+      // recharging a battery is a closed loop with a hole in it.
+      return 'Batteries are recharged with reactor power during Resource Allocation (B2.5.1).'
+    case 'shield-reinforce':
+      // Only a shield that has not already had power applied (B2.5.7).
+      return filled > 0 ? 'That shield is already reinforced this round.' : null
+    case 'shield-repair':
+      // Only while that shield's power circle is blank (B2.5.8).
+      return filled > 0 ? 'That shield has already been repaired this round.' : null
+    case 'weapon': {
+      const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
+      if (!weapon) return null
+      // A slow-arming heavy cannot be charged off a battery mid-round, and
+      // NoBAT is the trait that says so (B2.5.6).
+      if (hasTrait(weapon, 'NoBAT')) return `${weapon.name} may not be armed from batteries (NoBAT).`
+      if (weapon.mounts.some((m) => (m.roundGates ?? []).some(Boolean))) {
+        return `${weapon.name} takes more than a round to arm (E4.2.8).`
+      }
+      return null
+    }
+    default:
+      return null
+  }
+}
+
+/** Spend one battery on a function line (B2.5.2). Returns a log line. */
+export function spendBattery(ship: ShipState, lineId: string): string {
+  const line = ship.form.functions.find((l) => l.id === lineId)!
+  const index = ship.batteryCharged.findIndex((charged, i) => charged && !ship.batteryDamaged[i])
+  ship.batteryCharged[index] = false
+  ship.allocation[lineId] = (ship.allocation[lineId] ?? 0) + 1
+
+  let detail = ''
+  switch (line.kind) {
+    case 'shield-repair': {
+      if (!line.shieldSide) break
+      // Repaired on the spot, not at the next commit (B2.5.8).
+      const repaired = Math.min(
+        ship.blueShieldDamage[line.shieldSide],
+        shieldGeneratorRating(ship),
+      )
+      ship.blueShieldDamage[line.shieldSide] -= repaired
+      detail = ` — ${line.shieldSide} shield repaired by ${repaired}`
+      break
+    }
+    case 'shield-reinforce': {
+      if (!line.shieldSide) break
+      const capacity = ship.form.shields.green[line.shieldSide]
+      const activated = Math.min(capacity, shieldGeneratorRating(ship))
+      ship.greenShieldActive[line.shieldSide] = activated
+      detail = ` — ${line.shieldSide} shield reinforced by ${activated}`
+      break
+    }
+    case 'gen-sys':
+      ship.genSysLevel = genSysSetting(ship)
+      detail = ` — general systems at ${ship.genSysLevel.toUpperCase()}`
+      break
+    case 'weapon':
+      if (line.weaponSystemId) {
+        detail = ` — ${armingPointsAvailable(ship, line.weaponSystemId)} arming points available`
+      }
+      break
+    default:
+      break
+  }
+  return `${ship.name}: battery power to ${line.label}${detail} (B2.5).`
 }

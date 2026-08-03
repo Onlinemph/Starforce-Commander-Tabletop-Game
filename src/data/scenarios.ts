@@ -268,6 +268,11 @@ export interface SetupOptions {
    * them — the fleets simply arrive loaded for bear.
    */
   armedStart?: boolean
+  /**
+   * Optional batteries (B2.5): stored power may be spent mid-round, during a
+   * combat phase's Command Segment, instead of only at Resource Allocation.
+   */
+  optionalBatteries?: boolean
 }
 
 /**
@@ -746,6 +751,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     ships,
     seed: options.seed,
     coordinatedFire: options.coordinatedFire ?? false,
+    optionalBatteries: options.optionalBatteries ?? false,
     options: {
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,

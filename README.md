@@ -285,6 +285,21 @@ that one fact.
   players get the full rule and an EVASIVE control on the card. Every baseline held: duel
   admiral-over-captain 39W–24L, admiral-over-ensign 55W–9L, squadron 51W–13L of 64, and the
   outnumbered capital unchanged at 11W–13L.
+- **Batteries as a reserve, not a rounding error (B2.5, optional).** Ticked in Choose Forces, and
+  it changes what a battery is *for*. Normally stored power is spent before anyone has moved — it
+  simply covers whatever the round's allocation overspends. Under the optional rule it can be held
+  back and spent during a combat phase's Command Segment instead: a burst of acceleration nobody
+  planned for, SIF to swallow the stress it causes, a shield repaired on the spot (immediately, per
+  B2.5.8), a fired weapon rearmed and fired again, sensors deepened in the same segment they are
+  plotted, general systems pushed to MAX. The restrictions come with it — a circle is never filled
+  twice, so a shield already reinforced this round is closed; slow-arming heavies (the NoBAT trait)
+  cannot be charged off a battery mid-round; and a battery cannot recharge a battery, that being
+  reactor work at Step A. The control lives on the command card, showing only the lines the rule
+  could ever reach and greying out the rest with the reason.
+
+  One gap, stated plainly: the computer does not yet spend batteries mid-round. It still uses them
+  the printed way, as power at Resource Allocation, so in a solo game under this option the human
+  has a tool the AI does not. Teaching it the doctrine is a measured change, not a guessed one.
 - **Deep space: a map-size option.** Choose Forces now offers the printed 36" map or a 72"
   deep-space board — bounds, terrain and deployment anchors scale together, so the fleets open
   proportionally further apart. Measured consequence: room to turn, repair and reload is worth
@@ -407,6 +422,7 @@ exemption (K2.2.1) all apply at the table.
 | B1 Starship Forms | ✅ | Full data-driven schema; rendered as an interactive form |
 | B2 Resource Allocation | ✅ | Free power, sequential vs. free-order lines, multi-power circles (E4.2.11) |
 | B2.4 Simplified Batteries | ✅ | Spend during allocation, recharge, damage |
+| B2.5 Batteries *(optional)* | ✅ | Stored power spent in a combat phase's Command Segment, with the restrictions |
 | B3 Damage Control | ✅ | Red-dice repair by category, DC rating decay along the structure track |
 | C1 Command Segment | ✅ | Plotting with full validation; illegal plots fall back to straight (C1.1.2) |
 | C2 Basic Maneuvers | ✅ | Forward, standard, easy (always 20°), slide (incl. half-inch) |
@@ -450,10 +466,9 @@ exemption (K2.2.1) all apply at the table.
 | **F5 Plasma Torpedoes** *(Expansion 5)* | ✅ | Imported as homing particle weapons with per-phase bonus damage |
 | **F1.13 / F1.16 Missile & Particle** *(Expansion 5)* | ✅ | `MISL X` destruction thresholds; particle damage worn down one point per three |
 | **H6 Cloaking Systems** *(Expansion 5)* | ✅ | Four detection levels, datum tracking, search and evasion rolls, all eleven cloaking effects |
-
 | C3.6 Evasive Maneuvers *(optional)* | ✅ | Plotted on the card, spent at reveal, rerolls against every incoming volley and the same handed to anything it shoots |
 
-Optional rules (B2.5 full batteries, B3.4 repelling boarders, C3.7 reverse movement, C3.8 emergency
+Optional rules (B3.4 repelling boarders, C3.7 reverse movement, C3.8 emergency
 stop, C3.9 precise turns, E11.2 derelicts, E11.3 explosions, J6.3 arming the crew) are partly
 implemented in the engine — reverse movement, emergency stop, repelling boarders, derelicts and
 explosions all work — but are not yet surfaced as UI toggles beyond the destruction options.

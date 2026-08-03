@@ -85,6 +85,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [aiRetreats, setAiRetreats] = useState(true)
   const [mapScale, setMapScale] = useState<1 | 2>(1)
   const [armedStart, setArmedStart] = useState(false)
+  const [optionalBatteries, setOptionalBatteries] = useState(false)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -133,6 +134,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       aiRetreats: ai.length > 0 && !aiRetreats ? false : undefined,
       mapScale: mapScale !== 1 ? mapScale : undefined,
       armedStart: armedStart || undefined,
+      optionalBatteries: optionalBatteries || undefined,
     })
     onClose()
   }
@@ -221,6 +223,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setArmedStart(e.target.checked)}
             />
             Weapons armed at start
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rule B2.5. Normally a battery is just extra power at Resource Allocation, spent before anyone has moved. Tick this and stored power may be held back and spent during a combat phase's Command Segment instead — a burst of acceleration, a shield repaired on the spot, a fired weapon rearmed. Slow-arming heavies (NoBAT) still cannot be charged from a battery mid-round."
+          >
+            <input
+              type="checkbox"
+              checked={optionalBatteries}
+              onChange={(e) => setOptionalBatteries(e.target.checked)}
+            />
+            Batteries usable mid-round (B2.5)
           </label>
           {[...aiSides].some((s) => sides.includes(s)) && (
             <label

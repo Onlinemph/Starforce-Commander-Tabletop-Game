@@ -1,6 +1,7 @@
-import { lentScanPoints, type GameState } from '../engine/game'
+import { batteryLineEligible, batterySpendError } from '../engine/engineering'
+import { isCombatPhase, lentScanPoints, type GameState } from '../engine/game'
 import { accelerationBudget, validatePlot } from '../engine/navigation'
-import { currentMaxSpeed, lineValue, maxReverseSpeed, sensorFunctionCap, turnTemplateAt, type ShipState } from '../engine/shipState'
+import { batteryPower, currentMaxSpeed, lineValue, maxReverseSpeed, sensorFunctionCap, turnTemplateAt, type ShipState } from '../engine/shipState'
 import type { Maneuver, ShieldSide, TurnDirection } from '../engine/types'
 import { dispatch } from './store'
 
@@ -194,6 +195,8 @@ export function CommandCardPanel({ game, ship }: Props) {
         </div>
       </div>
 
+      {game.optionalBatteries && <ReservePower game={game} ship={ship} />}
+
       {errors.length > 0 && (
         <ul className="plot-errors">
           {errors.map((e, i) => (
@@ -204,6 +207,53 @@ export function CommandCardPanel({ game, ship }: Props) {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/**
+ * Reserve power (B2.5), on the card where it is plotted.
+ *
+ * Only under the optional rules, and only in a combat phase's Command Segment
+ * — everywhere else a battery is simply part of the power the round was
+ * allocated. The lines it may go to are the ones the engine will accept, each
+ * with the reason when it will not: a shield already reinforced, a heavy too
+ * slow to charge off a battery, a line already at full power.
+ */
+function ReservePower({ game, ship }: { game: GameState; ship: ShipState }) {
+  const charged = batteryPower(ship)
+  const inWindow = isCombatPhase(game.phase) && game.segment === 'command'
+  if (!inWindow) return null
+
+  // A line that can never take battery power is noise. One that cannot take it
+  // *right now* — a shield already reinforced, a line at full power, an empty
+  // battery — is worth showing greyed out, with the reason on the tooltip.
+  const lines = ship.form.functions
+    .filter((line) => batteryLineEligible(ship, line.id))
+    .map((line) => ({ line, refusal: batterySpendError(ship, line.id) }))
+
+  return (
+    <div className="cc-block">
+      <h4>Reserve power</h4>
+      <p className="hint">
+        {charged === 0
+          ? 'Batteries are empty — recharge with BTY RECH at Resource Allocation (B2.4.3).'
+          : `${charged} charged ${charged === 1 ? 'battery' : 'batteries'}. One point fills one empty circle.`}
+      </p>
+      <div className="reserve-power">
+        {lines.map(({ line, refusal }) => (
+          <button
+            key={line.id}
+            type="button"
+            className="chip"
+            disabled={refusal !== null}
+            title={refusal ?? `Spend one battery on ${line.label}`}
+            onClick={() => dispatch({ type: 'spend-battery', shipId: ship.id, lineId: line.id })}
+          >
+            {line.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
