@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { findShipForm, VALLARI_CRUISER } from '../data/ships'
 import { THE_DUEL } from '../data/scenarios'
 import { applyAction } from './actions'
-import { engageCloak } from './cloaking'
+import { cloakOperational, engageCloak } from './cloaking'
 import {
   advanceSegment,
   cloakOf,
@@ -13,8 +13,11 @@ import {
   performScan,
   performTransport,
   attemptTractorLock,
+  cloakModifiers,
+  cloudModifiers,
   setShieldDown,
   shipIsCloaked,
+  shipUnderCloakRestrictions,
   repositionCloaked,
   type GameState,
 } from './game'
@@ -278,6 +281,98 @@ describe('events that give a cloaked ship away (H6.15)', () => {
     const { game, hunter } = battle()
     damageRevealsCloak(game, hunter, 12)
     expect(game.log.some((l) => l.message.includes('H6.15'))).toBe(false)
+  })
+})
+
+describe('losing power to the cloak (H6.3.2, H6.6.8)', () => {
+  /** Empty the CLOAK line, as a captain who spent the power elsewhere would. */
+  function depower(s: ShipState): void {
+    const line = s.form.functions.find((l) => l.label === 'CLOAK')!
+    s.allocation[line.id] = 0
+  }
+
+  /** Wind on to the close of the next Resource Allocation Segment. */
+  function throughAllocation(game: GameState): void {
+    for (let i = 0; i < 60; i++) {
+      const closing = game.segment === 'resource-allocation'
+      advanceSegment(game)
+      if (closing) return
+    }
+    throw new Error('never reached a Resource Allocation Segment')
+  }
+
+  it('forces the cloak off in Phase 1 when the power is not renewed (H6.3.2)', () => {
+    const { game, ghost } = battle()
+    cloak(game, ghost)
+    // Serve the minimum phase first, so this is a clean choice and not a
+    // violent one.
+    for (let i = 0; i < 40 && cloakOf(game, ghost)!.phasesCloaked < 1; i++) advanceSegment(game)
+
+    depower(ghost)
+    throughAllocation(game)
+    expect(cloakOf(game, ghost)!.powerCut).toBe(true)
+    expect(shipIsCloaked(game, ghost)).toBe(true) // not off yet
+
+    // It comes off entering Operations in Phase 1, not before.
+    for (let i = 0; i < 20 && shipIsCloaked(game, ghost); i++) advanceSegment(game)
+    expect(shipIsCloaked(game, ghost)).toBe(false)
+    expect(game.log.some((l) => l.message.includes('H6.3.2'))).toBe(true)
+  })
+
+  it('damages the cloak when the power goes before its minimum phase (H6.6.8)', () => {
+    const { game, ghost } = battle()
+    cloak(game, ghost)
+    expect(cloakOperational(ghost)).toBe(true)
+
+    depower(ghost)
+    throughAllocation(game)
+    expect(ghost.systemDamage['CLOAK']).toBe(1)
+    expect(cloakOperational(ghost)).toBe(false)
+    expect(game.log.some((l) => l.message.includes('H6.6.8'))).toBe(true)
+  })
+
+  it('keeps every restriction on the ship for the rest of Phase 1 (H6.6.8)', () => {
+    const { game, ghost, hunter } = battle()
+    cloak(game, ghost)
+    depower(ghost)
+    throughAllocation(game)
+    // Into Phase 1, past the forced decloak.
+    for (let i = 0; i < 20 && shipIsCloaked(game, ghost); i++) advanceSegment(game)
+
+    expect(game.phase).toBe('combat-1')
+    expect(shipIsCloaked(game, ghost)).toBe(false)
+    // Visible and shootable — but with none of its own systems back.
+    expect(shipUnderCloakRestrictions(game, ghost)).toBe(true)
+    expect(performScan(game, ghost, hunter.id).refusal).toMatch(/H6\.4\.3/)
+    expect(setShieldDown(game, ghost, 'F', false)).toMatch(/cannot raise shields/)
+    expect(cloudModifiers(game, hunter, ghost).targetShieldsInoperative).toBe(true)
+    // But it is no longer hidden: the hunter may fire at it normally.
+    expect(cloakModifiers(game, hunter, ghost).targetUnshootable).toBeUndefined()
+  })
+
+  it('lets the restrictions lapse once Phase 1 is over', () => {
+    const { game, ghost, hunter } = battle()
+    cloak(game, ghost)
+    depower(ghost)
+    throughAllocation(game)
+    // Into Phase 1 — the cloak is still up until Operations takes it down.
+    for (let i = 0; i < 40 && game.phase !== 'combat-1'; i++) advanceSegment(game)
+    for (let i = 0; i < 40 && shipIsCloaked(game, ghost); i++) advanceSegment(game)
+    expect(shipUnderCloakRestrictions(game, ghost)).toBe(true)
+
+    // ...and out the other side of it.
+    for (let i = 0; i < 40 && game.phase === 'combat-1'; i++) advanceSegment(game)
+    expect(game.phase).not.toBe('combat-1')
+    expect(shipUnderCloakRestrictions(game, ghost)).toBe(false)
+    expect(performScan(game, ghost, hunter.id).refusal ?? '').not.toContain('H6.4.3')
+  })
+
+  it('leaves a properly powered cloak alone', () => {
+    const { game, ghost } = battle()
+    cloak(game, ghost)
+    throughAllocation(game)
+    expect(cloakOf(game, ghost)!.powerCut).toBe(false)
+    expect(ghost.systemDamage['CLOAK'] ?? 0).toBe(0)
   })
 })
 

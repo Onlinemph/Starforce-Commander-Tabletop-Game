@@ -62,6 +62,7 @@ import {
   setSabotageSquads,
   setShieldDown,
   shipIsCloaked,
+  shipUnderCloakRestrictions,
   sidesAwaited,
   flushPendingVolleys,
   recordShieldHit,
@@ -803,11 +804,11 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const commandShip = game.ships.find((s) => s.id === state.commandShipId)
       // H6.4.10: command systems go dark with the cloak, so a cloaked flagship
       // lends nothing and a cloaked ship is past hearing.
-      if (commandShip && shipIsCloaked(game, commandShip)) {
+      if (commandShip && shipUnderCloakRestrictions(game, commandShip)) {
         return said(`${commandShip.name}'s command systems are disabled while cloaked (H6.4.10).`)
       }
       const recipientShip = game.ships.find((s) => s.id === action.targetId)
-      if (recipientShip && shipIsCloaked(game, recipientShip)) {
+      if (recipientShip && shipUnderCloakRestrictions(game, recipientShip)) {
         return said(`${recipientShip.name} cannot receive command points while cloaked (H6.4.10).`)
       }
       const message = setCommandAssignment(state, game.ships, action.targetId, action.points)

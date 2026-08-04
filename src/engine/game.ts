@@ -24,6 +24,9 @@ import {
   bestDetection,
   bonusSearch,
   cloakEffects,
+  cloakFullyPowered,
+  cutCloakPower,
+  underCloakRestrictions,
   damageSearchDice,
   firingPermission,
   isCloaked,
@@ -112,7 +115,7 @@ import {
   type OperationsStep,
   type ScanTarget,
 } from './operations'
-import { scoutSupportFor, type ScoutSupport } from './scouting'
+import { scanCapability, scoutSupportFor, type ScoutSupport } from './scouting'
 import {
   craftOf,
   dockingRefusal,
@@ -621,7 +624,7 @@ export function damageContext(game: GameState): DamageContext {
     // engages, and anything that reaches the hull goes straight inside
     // (H6.4.1). Weapon fire says so through the volley as well; this catches
     // terrain, exploding neighbours, and every other source.
-    shieldsBypassed: (ship) => shipIsCloaked(game, ship),
+    shieldsBypassed: (ship) => shipUnderCloakRestrictions(game, ship),
   }
 }
 
@@ -696,7 +699,7 @@ export function cloakModifiers(
     ? firingPermission(targetCloak!, attacker.id)
     : { mayFire: true, degraded: false, reason: undefined }
   return {
-    attackerCloaked: shipIsCloaked(game, attacker),
+    attackerCloaked: shipUnderCloakRestrictions(game, attacker),
     targetCloaked: cloaked,
     ...(permission.mayFire ? {} : { targetUnshootable: permission.reason }),
   }
@@ -778,7 +781,8 @@ export function cloudModifiers(
       (cloaked && bestDetection(cloak!) === 2),
     lowSpeedNegated: lowSpeedPenaltyNegated(conditions, target),
     // A cloaked ship's shields are down whatever the terrain (H6.4.1).
-    targetShieldsInoperative: shieldsInoperative(conditions, target) || cloaked,
+    targetShieldsInoperative:
+      shieldsInoperative(conditions, target) || shipUnderCloakRestrictions(game, target),
   }
 }
 
@@ -802,6 +806,21 @@ export function cloakOf(game: GameState, ship: ShipState): CloakState | undefine
 
 export function shipIsCloaked(game: GameState, ship: ShipState): boolean {
   return isCloaked(game.cloaks[ship.id])
+}
+
+/**
+ * Whether the ship is living under the cloak's restrictions (H6.4) — which is
+ * not the same question as whether it is hidden.
+ *
+ * A cloak torn down for want of power keeps every one of its costs for the
+ * rest of Phase 1 and gives back none of its concealment (H6.6.8): the ship is
+ * in plain sight and can be shot at normally, but its shields are still down,
+ * its guns still cold, its scans, tractors, transporters and command link all
+ * still dead. Use this wherever the question is what the *ship* can do, and
+ * `shipIsCloaked` wherever it is what others can see or do to it.
+ */
+export function shipUnderCloakRestrictions(game: GameState, ship: ShipState): boolean {
+  return underCloakRestrictions(game.cloaks[ship.id], game.round, game.phase)
 }
 
 /** What the cloak is currently costing this ship (H6.4). */
@@ -918,6 +937,48 @@ export function repositionCloaked(
   )
   disengageCloak(cloak)
   return null
+}
+
+/**
+ * A cloak whose power was not renewed (H6.3.2, H6.6.8).
+ *
+ * Allocation has just been committed, so this is the moment the ship finds out
+ * it cannot keep the cloak up. It must come off during the Operations Segment
+ * of Phase 1 — the captain does not get to choose. And if the power went
+ * before the cloak had served its minimum phase, the drop is violent enough to
+ * damage the system, which then stays dead until damage control repairs it,
+ * while the ship spends the rest of Phase 1 with every cloaking restriction
+ * still on it and none of the concealment.
+ */
+function cutUnpoweredCloaks(game: GameState): void {
+  for (const ship of activeShips(game)) {
+    const cloak = game.cloaks[ship.id]
+    if (!cloak?.engaged || cloakFullyPowered(ship)) continue
+    const { damaged } = cutCloakPower(cloak, game.round)
+    if (damaged) {
+      ship.systemDamage['CLOAK'] = (ship.systemDamage['CLOAK'] ?? 0) + 1
+      pushLog(
+        game,
+        `${ship.name} loses power to its cloak before it had run a full phase: the system is ` +
+          `damaged and the ship stays under cloaking restrictions through Phase 1 (H6.6.8).`,
+      )
+    } else {
+      pushLog(game, `${ship.name} has stopped powering its cloak; it decloaks in Phase 1 (H6.3.2).`)
+    }
+  }
+}
+
+/**
+ * The forced decloak itself, at Operations step A of Phase 1 (H6.3.2).
+ */
+function resolveForcedDecloaks(game: GameState): void {
+  if (game.phase !== 'combat-1') return
+  for (const ship of activeShips(game)) {
+    const cloak = game.cloaks[ship.id]
+    if (!cloak?.engaged || !cloak.powerCut) continue
+    disengageCloak(cloak)
+    pushLog(game, `${ship.name} decloaks: there is no power for it (H6.3.2).`)
+  }
 }
 
 /** Nebulae blind cloaks: all the restrictions, none of the benefit (H6.8.11). */
@@ -1189,7 +1250,7 @@ export function launchHoming(
 ): string | null {
   if (!isHoming(weapon)) return `${weapon.name} is not a homing weapon (F1.10).`
   // H6.4.2: a cloaked ship may not launch.
-  if (shipIsCloaked(game, launcher)) {
+  if (shipUnderCloakRestrictions(game, launcher)) {
     return `${launcher.name} is cloaked and may not launch homing weapons (H6.4.2).`
   }
   // H6.2 / E5.2.2: you need at least a Track on a cloaked target.
@@ -1331,6 +1392,7 @@ function runSegmentExit(game: GameState): void {
         const result = commitAllocation(ship)
         for (const line of result.log) pushLog(game, line)
       }
+      cutUnpoweredCloaks(game)
       break
     }
 
@@ -1345,6 +1407,9 @@ function runSegmentExit(game: GameState): void {
       // A formation plots one set of movement orders (C5.1.3). Sensors, weapons
       // and everything else stay independent (C5.2).
       applyFormationOrders(game)
+      // Operations step A is next, and that is where a cloak with no power to
+      // hold it up comes off (H6.3.2, H6.6.2).
+      resolveForcedDecloaks(game)
       break
     }
 
@@ -1621,8 +1686,8 @@ function startNewRound(game: GameState): void {
  */
 export function setShieldDown(game: GameState, ship: ShipState, side: ShieldSide, down: boolean): string | null {
   // H6.4.1: the shields went down with the cloak and stay down until it does.
-  if (!down && shipIsCloaked(game, ship)) {
-    return `${ship.name} cannot raise shields while its cloak is running (H6.4.1).`
+  if (!down && shipUnderCloakRestrictions(game, ship)) {
+    return `${ship.name} cannot raise shields while under cloaking restrictions (H6.4.1).`
   }
   const key = `${ship.id}:${side}`
   if (game.shieldChangedThisPhase.has(key)) {
@@ -1843,7 +1908,7 @@ export function attemptTractorLock(
   if (!target) return { refusal: 'No such target.' }
   // H6.4.7: a cloak bars tractor beams in both directions, and a cloaked ship
   // may not be gripped at any detection level.
-  if (shipIsCloaked(game, source)) {
+  if (shipUnderCloakRestrictions(game, source)) {
     return { refusal: `${source.name} cannot use tractor beams while cloaked (H6.4.7).` }
   }
   {
@@ -1943,7 +2008,7 @@ export function performScan(game: GameState, ship: ShipState, targetId: string):
   const captured = capturedRefusal(ship, 'scan')
   if (captured) return { refusal: captured }
   // H6.4.3: a cloaked ship is listening, not looking.
-  if (shipIsCloaked(game, ship)) {
+  if (shipUnderCloakRestrictions(game, ship)) {
     return { refusal: `${ship.name} cannot perform information scans while cloaked (H6.4.3).` }
   }
   const target = scanTargets(game, ship).find((t) => t.id === targetId)
@@ -1958,22 +2023,34 @@ export function performScan(game: GameState, ship: ShipState, targetId: string):
   const range = other
     ? effectiveRangeTo(game, ship, other)
     : distance(ship.placement.position, target.position)
+  // A scout with sensors turned to the scan reaches further and brings back
+  // more (H3.6.1, H3.6.2). Its own sciences still count: the scout adds to the
+  // scan rather than standing in for it.
+  const scout = scanCapability(ship)
   const refusal = scanRefusal(
     ship,
     target,
     Math.floor(range),
     terrainObstacles(game.scenario.terrain),
     maxSystemOf(game, ship),
+    scout?.range ?? 0,
   )
   if (refusal) return { refusal }
 
-  const yielded = scanYield(ship, maxSystemOf(game, ship), ship.sensors.tacticalScan)
+  const yielded = scanYield(
+    ship,
+    maxSystemOf(game, ship),
+    ship.sensors.tacticalScan,
+    scout?.bonusPoints ?? 0,
+  )
   addInfoPoints(game.ops.info, ship.side, targetId, yielded.total)
   game.ops.scannedThisPhase.add(key)
   pushLog(
     game,
     `${ship.name}: scans ${target.name} for ${yielded.total} info point(s) ` +
-      `(${yielded.fromSciences} sciences at ${yielded.power.toUpperCase()}, ${yielded.fromSensors} sensors).`,
+      `(${yielded.fromSciences} sciences at ${yielded.power.toUpperCase()}, ${yielded.fromSensors} sensors` +
+      (yielded.fromScout > 0 ? `, ${yielded.fromScout} scout` : '') +
+      ').',
   )
   return { refusal: null, gained: yielded.total, total: game.ops.info[ship.side][targetId] }
 }
@@ -2000,7 +2077,7 @@ export function performTransport(
   squads: number,
 ): TransportOutcome {
   // H6.4.8: nothing beams off a cloaked ship, and nothing beams onto one.
-  if (shipIsCloaked(game, from)) {
+  if (shipUnderCloakRestrictions(game, from)) {
     return { refusal: `${from.name} cannot use transporters while cloaked (H6.4.8).` }
   }
   if (shipIsCloaked(game, to)) {

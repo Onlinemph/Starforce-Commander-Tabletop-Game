@@ -69,6 +69,19 @@ export interface CloakState {
   phasesUncloaked: number
   /** Searchers that have already climbed a level this segment (H6.15.1). */
   raisedThisSegment: string[]
+  /**
+   * Power was cut at Resource Allocation, so the cloak comes off in Phase 1
+   * whatever the captain wants (H6.3.2).
+   */
+  powerCut: boolean
+  /**
+   * H6.6.8 — the power went before the minimum cloak time was served. The
+   * cloak took a point of damage on the way down and the ship stays under
+   * every cloaking restriction for the rest of this round's Phase 1, visible
+   * and shootable but with its shields still down and its guns still cold.
+   * The round it applies to, or null.
+   */
+  restrictedRound: number | null
 }
 
 export function newCloakState(placement: Placement): CloakState {
@@ -80,6 +93,8 @@ export function newCloakState(placement: Placement): CloakState {
     phasesCloaked: 0,
     phasesUncloaked: Infinity,
     raisedThisSegment: [],
+    powerCut: false,
+    restrictedRound: null,
   }
 }
 
@@ -249,6 +264,44 @@ export function disengageCloak(state: CloakState): void {
   state.phasesUncloaked = 0
   state.detection = {}
   state.speedLog = []
+  state.powerCut = false
+}
+
+/**
+ * The cloak's power was cut during Resource Allocation (H6.3.2): it must come
+ * off during the Operations Segment of Phase 1. If that cut lands before the
+ * minimum cloak time has been served, the abrupt loss damages the system and
+ * the ship stays under cloaking restrictions for the rest of Phase 1 (H6.6.8).
+ *
+ * Returns whether the cloak was damaged, so the caller can mark the box and
+ * say so in the log.
+ */
+export function cutCloakPower(state: CloakState, round: number): { damaged: boolean } {
+  if (!state.engaged || state.powerCut) return { damaged: false }
+  state.powerCut = true
+  // H6.6.7 wants a full phase; anything less and the drop is violent.
+  const damaged = state.phasesCloaked < 1
+  if (damaged) state.restrictedRound = round
+  return { damaged }
+}
+
+/**
+ * Whether the ship is still living under the cloak's restrictions — either
+ * because the cloak is running, or because it was torn down mid-cycle and
+ * H6.6.8 keeps the effects in force for the rest of Phase 1.
+ *
+ * Distinct from `isCloaked`, which answers whether the ship is *hidden*. A
+ * ship in the H6.6.8 window is in plain sight and can be shot at normally; it
+ * simply cannot shoot back, raise a shield, or run a scan.
+ */
+export function underCloakRestrictions(
+  state: CloakState | undefined,
+  round: number,
+  phase: string,
+): boolean {
+  if (!state) return false
+  if (state.engaged) return true
+  return state.restrictedRound === round && phase === 'combat-1'
 }
 
 // ---------------------------------------------------------------------------

@@ -97,20 +97,36 @@ export interface ScanYield {
   fromSciences: number
   /** Points from sensor points assigned to Tactical Scan. */
   fromSensors: number
+  /** One per scout sensor turned to the scan (H3.6.2). */
+  fromScout: number
   total: number
   power: PowerLevel
 }
 
 /**
  * What one scan is worth: a point per science box at normal power, two at
- * maximum, plus a point per sensor point on Tactical Scan (J4.2.2 item 3).
+ * maximum, plus a point per sensor point on Tactical Scan (J4.2.2 item 3) and
+ * one more per scout sensor dedicated to the scan (H3.6.2). A scout adds to
+ * what its own sciences already gather rather than replacing it.
  */
-export function scanYield(ship: ShipState, maxSystem: SystemKind | null, tacticalScan: number): ScanYield {
+export function scanYield(
+  ship: ShipState,
+  maxSystem: SystemKind | null,
+  tacticalScan: number,
+  scoutSensors = 0,
+): ScanYield {
   const power = systemPower(ship, 'SCNC', maxSystem)
   const boxes = undamagedSystemBoxes(ship, 'SCNC')
   const fromSciences = power === 'off' ? 0 : boxes * (power === 'max' ? 2 : 1)
   const fromSensors = Math.max(0, tacticalScan)
-  return { fromSciences, fromSensors, total: fromSciences + fromSensors, power }
+  const fromScout = Math.max(0, scoutSensors)
+  return {
+    fromSciences,
+    fromSensors,
+    fromScout,
+    total: fromSciences + fromSensors + fromScout,
+    power,
+  }
 }
 
 export interface ScanTarget {
@@ -132,6 +148,8 @@ export function scanRefusal(
   effectiveRange: number,
   obstacles: CircleObstacle[],
   maxSystem: SystemKind | null,
+  /** A scout turned to the scan reaches further than eight inches (H3.6.1). */
+  scoutRange = 0,
 ): string | null {
   if (undamagedSystemBoxes(ship, 'SCNC') === 0 && ship.sensors.tacticalScan === 0) {
     return `${ship.name} has no undamaged SCNC boxes and no Tactical Scan points (J4.2.2).`
@@ -142,8 +160,12 @@ export function scanRefusal(
   if (!hasLineOfSight(ship.placement.position, target.position, obstacles)) {
     return `No line of sight to ${target.name} (J4.2.2 item 1).`
   }
-  if (effectiveRange > SCAN_RANGE) {
-    return `${target.name} is at effective range ${effectiveRange}"; a scan needs ${SCAN_RANGE}" or less (J4.2.1).`
+  const reach = Math.max(SCAN_RANGE, scoutRange)
+  if (effectiveRange > reach) {
+    return (
+      `${target.name} is at effective range ${effectiveRange}"; a scan needs ${reach}" or less ` +
+      (reach > SCAN_RANGE ? '(H3.6.1).' : '(J4.2.1).')
+    )
   }
   return null
 }

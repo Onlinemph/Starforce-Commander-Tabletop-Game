@@ -173,8 +173,9 @@ export function scoutSupportFor(
 
 /**
  * Range and bonus information points for a scan run with scout sensors
- * (H3.6.1, H3.6.2). J4.2's scan procedure itself is not interactive yet, so
- * this reports what the scout contributes rather than resolving a scan.
+ * (H3.6.1, H3.6.2). Consumed by `performScan`: the scout's reach replaces the
+ * flat eight inches, and its sensors add a point each on top of whatever the
+ * ship's own sciences bring back.
  */
 export function scanCapability(scout: ShipState): { range: number; bonusPoints: number } | null {
   const block = scout.form.scoutSensor
