@@ -5,9 +5,15 @@
  * Every doctrine change here is argued with numbers, and the numbers come from
  * mirrored self-play — the same seed played from both hulls, so a scenario
  * that favours one side cannot be mistaken for a doctrine that favours one
- * side. Thirty-two games is noise; the defaults below are 64 and 128, which is
- * the smallest sample that has reliably distinguished a real effect from a
- * lucky afternoon in this codebase.
+ * side. The default is 192 games, and that is a consequence of the board.
+ *
+ * Seasons are fought on 72 inches (see SEASON_MAP_SCALE), where the rank gaps
+ * are far narrower than they were on the printed 36 — the squadron admiral
+ * beat an ensign 83% of the time on the small map and 59% here, because room
+ * to recover from a mistake is room the better captain cannot punish. Smaller
+ * effects need more games to see: at 64 the squadron baseline read 32W-32L,
+ * a dead heat, which three times the sample shows was an afternoon's luck
+ * rather than parity. 192 is the floor for a claim about doctrine now.
  *
  * Run it:
  *
@@ -38,21 +44,43 @@ import { structureRemaining } from '../src/engine/shipState'
  * or show its gain somewhere else and leave these alone.
  */
 export const BASELINES = [
-  { label: 'duel adm-vs-capt', scenario: 's3.1-the-duel', hi: 'admiral', lo: 'captain', expect: '39W-24L of 64' },
-  { label: 'duel adm-vs-ens', scenario: 's3.1-the-duel', hi: 'admiral', lo: 'ensign', expect: '55W-9L of 64' },
+  /*
+   * Re-measured on the 72-inch board, at 192 games. The old numbers were taken
+   * on the printed 36 at 64 games and are kept here because the size of the
+   * change is the interesting part: every rank gap narrows on a big board,
+   * because room to recover from a mistake is room the better captain cannot
+   * punish. Nothing about the AI changed between these two columns — only the
+   * board it was measured on.
+   *
+   *                        36" / 64 games        72" / 192 games
+   *     duel adm-vs-capt   41W-23L   (64%)       104W-85L   (54%)
+   *     duel adm-vs-ens    54W-10L   (84%)       117W-75L   (61%)
+   *     squadron adm-ens   53W-11L   (83%)       114W-77L   (59%)
+   */
+  {
+    label: 'duel adm-vs-capt',
+    scenario: 's3.1-the-duel',
+    hi: 'admiral',
+    lo: 'captain',
+    expect: '104W-85L of 192',
+  },
+  {
+    label: 'duel adm-vs-ens',
+    scenario: 's3.1-the-duel',
+    hi: 'admiral',
+    lo: 'ensign',
+    expect: '117W-75L of 192',
+  },
   {
     label: 'squadron adm-vs-ens',
     scenario: 'exp2-squadron-engagement',
     hi: 'admiral',
     lo: 'ensign',
-    // 51W-13L → 51W-12L when scout sensors were wired into informational scans
-    // (H3.6): both fleets here carry a scout, and one whose scan reaches 21"
-    // for three extra points instead of 8" for none changes what its captain
-    // knows. Then → 52W-11L when E8.5.4's restriction was tied to the damage
-    // rather than a phase count: a hull with its drive shot away can no longer
-    // spin to show a fresh shield, so a wreck stays a wreck and the side
-    // winning the damage race keeps its advantage.
-    expect: '52W-11L of 64',
+    // On the printed board this ran 51W-13L → 51W-12L when scout sensors were
+    // wired into informational scans (H3.6), → 52W-11L when E8.5.4's
+    // restriction was tied to the damage rather than a phase count, → 53W-11L
+    // with the board-edge margin. All of that history is small-map history.
+    expect: '114W-77L of 192',
   },
 ] as const
 
@@ -93,8 +121,29 @@ export interface GameOptions {
   setup?: Record<string, unknown>
 }
 
+/**
+ * Every season is fought on a 72-inch board — `mapScale: 2`, the printed 36
+ * doubled in both directions — and that is the house standard for measurement
+ * here, not a per-run choice.
+ *
+ * The printed map is small enough to be a participant. A hull that needs
+ * twenty inches to come to a stop, or that cannot turn at all at its best
+ * speed (C2.2.2 prints a `0` in that row for several), runs out of board
+ * before it runs out of options: the UNION dreadnoughts sailed off the edge in
+ * most duels they were winning, which says more about 36 inches than about the
+ * ships. At 72 there is room to be out-fought rather than out-run, so what the
+ * numbers measure is doctrine instead of geometry.
+ *
+ * Pass `setup: { mapScale: 1 }` to fight on the printed board deliberately.
+ */
+export const SEASON_MAP_SCALE = 2
+
 export function playOne(options: GameOptions): GameState {
-  const game = startScenario(options.scenario, { seed: options.seed, ...options.setup })
+  const game = startScenario(options.scenario, {
+    seed: options.seed,
+    mapScale: SEASON_MAP_SCALE,
+    ...options.setup,
+  })
   const sides = [...new Set(game.ships.map((s) => s.side))]
   const blue: Side = { game, memo: createAiMemo(), sides: [sides[0]], difficulty: options.blue }
   const red: Side = { game, memo: createAiMemo(), sides: [sides[1]], difficulty: options.red }
@@ -210,11 +259,11 @@ function main(): void {
   if (process.argv.includes('--list')) {
     console.log('Standing baselines — a change that moves these owes an explanation:\n')
     for (const b of BASELINES) console.log(`  ${b.label.padEnd(24)} ${b.expect}`)
-    console.log('\nMirrored: every seed is played from both hulls. 32 games is noise; 64 is the floor.')
+    console.log('\nMirrored: every seed is played from both hulls, on a 72" board. 192 is the floor.')
     return
   }
 
-  const games = Number(flag('games', '64'))
+  const games = Number(flag('games', '192'))
   const scenario = flag('scenario')
   const started = Date.now()
 
