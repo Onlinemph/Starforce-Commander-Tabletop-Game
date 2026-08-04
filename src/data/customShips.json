@@ -2109,10 +2109,10 @@
       }
     },
     "armor": {
-      "F": 0,
-      "S": 0,
-      "A": 0,
-      "P": 0
+      "F": 9,
+      "S": 7,
+      "A": 5,
+      "P": 7
     },
     "systems": [
       {
@@ -2283,7 +2283,7 @@
     },
     "marineSquads": 12,
     "shuttles": 6,
-    "pointValue": 94,
+    "pointValue": 103.4,
     "year": 2245,
     "availability": "rare"
   }

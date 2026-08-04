@@ -648,30 +648,35 @@ const OMEGA: ShipForm = {
  * lose the battle.
  *
  * Which is why this hull's results spread wider than any other here. Jamming
- * is a threshold, not a slope: an enemy whose targeting can nearly match it
- * fights an even battle, and one whose targeting cannot is simply out of range
- * under H2.3.7. So it is not priced by finding the hull it draws with — there
- * isn't one — but by where the whole ladder balances. Forty-eight mirrored
+ * is a threshold, not a slope: an enemy that can shoot through it fights an
+ * even battle, and one that cannot is simply out of range under H2.3.7, with
+ * nothing in between. So it is not priced by finding the hull it draws with —
+ * there isn't one — but by where the whole ladder balances. Forty mirrored
  * games at captain against each:
  *
- *     YORKTOWN III   43.2   45W- 3L      PREDATOR V-11B    72.6   17W-30L
- *     UNION I        52.2   33W-14L      EXETER I          85.2   13W-34L
- *     UNION II       75.4   39W- 9L      EXETER II         95.6    3W-45L
- *     PREDATOR V-11C  147   42W- 6L      UNION III        158.6   28W-20L
+ *     YORKTOWN III   43.2   44W- 4L      PREDATOR V-11B    72.6   16W-31L
+ *     UNION I        52.2   31W-12L      EXETER I          85.2   19W-28L
+ *     UNION II       75.4   44W- 2L      EXETER II         95.6    8W-40L
+ *     PREDATOR V-11C  147   44W- 4L      UNION III        158.6   28W-14L
  *
- * Read by price that is nonsense. Read by the opponent's sensor suite it is
- * exactly the ship: the EXETERs carry the best sensors in the printed game —
- * four boxes and an eight-point line — and they are the two hulls that beat
- * it, because four targeting against six jamming is a fight. The dreadnoughts
- * it walks through are the ones with three sensor boxes, whatever they cost:
- * the V-11C is a 147-point ship that cannot get a lock. Against those it wins
- * without killing anything — it is not out-shooting them, they are out of
- * range.
+ * Read by price that is nonsense, and an earlier version of this note claimed
+ * it read cleanly by the opponent's sensor suite instead. It does not, and the
+ * check is worth keeping written down: UNION I and the V-11B both carry three
+ * sensor boxes and a twenty-inch gun, and it beats one and loses to the other;
+ * UNION III and the EXETERs all carry four boxes and a twenty-six-inch gun,
+ * same split. Neither targeting nor reach separates the winners from the
+ * losers on their own, and no single variable found so far does.
  *
- * Left at the model's own 94 with no thumb on the scale. That is above where
- * the median matchup puts it, and deliberately so: a hull that hard-counters
- * whole classes of opponent should be the expensive answer rather than the
- * efficient one.
+ * What can be said honestly is the shape: three of the eight beat it, five
+ * lose badly, and almost nothing lands in the middle — which is what a
+ * threshold rule does to a matchup table. Against the hulls it beats it
+ * frequently kills nothing at all; it is not out-shooting them, they are out
+ * of range.
+ *
+ * Left at the model's own number with no thumb on the scale. That is above
+ * where the median matchup puts it, and deliberately so: a hull that
+ * hard-counters whole classes of opponent should be the expensive answer
+ * rather than the efficient one.
  *
  * The rest of the brief, in mechanics:
  *  - **Tough.** Twenty-two structure boxes, the most of any hull here, and a
@@ -779,7 +784,26 @@ const SHARLIN: ShipForm = {
     blue: { F: 12, A: 8, P: 10, S: 10 },
     green: { F: 3, S: 3, A: 3, P: 3 },
   },
-  armor: { F: 0, S: 0, A: 0, P: 0 },
+  /*
+   * The crystalline hull under the screens: a modest layer, and the one part
+   * of this ship's defence that does not come back (G2.2.2). It makes the pair
+   * read correctly — the screens drink energy and regenerate on the REPR line,
+   * the hull beneath them simply endures and is used up.
+   *
+   * Kept small deliberately. Armour was tried at 28, 44 and 60 boxes, and it
+   * does not do here what it does on an Earth Alliance hull: against the
+   * EXETER II — the ship that can actually see through the jamming — it barely
+   * moved the result (3W-37L to 7W-33L, still dying in more than three
+   * quarters of the games), because that matchup is lost to weight of fire and
+   * not to chip damage. What it did change was the games this ship was already
+   * winning, where the little that gets through is now stopped entirely: 6
+   * deaths in 40 against the V-11C became 4 at 28 boxes and 2 at 44.
+   *
+   * So armour on this hull widens the gap between its free wins and its hard
+   * counters rather than closing it, and the smallest layer that reads as a
+   * layer is the right one.
+   */
+  armor: { F: 9, S: 7, A: 5, P: 7 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 5 },
