@@ -1,4 +1,5 @@
 import { hasTrait, traitValue } from './combat'
+import { ARC_ORDER } from './geometry'
 import type {
   DieColor,
   FunctionLineDef,
@@ -196,7 +197,13 @@ const MARINE_MODIFIER = 0.25
  */
 export function traitModifier(raw: string): number {
   const squash = (s: string) => s.toUpperCase().replace(/[^A-Z0-9+]/g, '')
-  const target = squash(raw)
+  /*
+   * The designers' cost table writes the missile trait `MISSILE-N`; the rules
+   * and the engine both write `MISL N` (F1.13, and `missileHitPoints`). They
+   * are the same trait, and without this every missile weapon prices at zero —
+   * a seam nothing had touched, because no printed hull carries one.
+   */
+  const target = squash(raw).replace(/^MISL(\d+)$/, 'MISSILE$1')
   for (const [name, value] of Object.entries(TRAIT_MODIFIERS)) {
     if (squash(name) === target) return value
   }
@@ -605,6 +612,18 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
     if (weapon.brackets.length === 0) error(`${label} has no firing chart (E3.2.1).`)
     for (const mount of weapon.mounts) {
       if (mount.arcs.length === 0) error(`${label} has a mount with no firing arc (E2.2.2).`)
+      // An arc outside the printed eight never matches a bearing, so the mount
+      // silently never fires — the ship looks armed on paper and loses every
+      // battle. Worth an error rather than trusting the type: designs arrive
+      // here from JSON files and from other people's browsers.
+      for (const arc of mount.arcs) {
+        if (!(ARC_ORDER as readonly string[]).includes(arc)) {
+          error(
+            `${label} has a mount with the firing arc "${arc}", which is not one of the ` +
+              `eight printed arcs ${ARC_ORDER.join(', ')} (E2.2.2). It would never bear on anything.`,
+          )
+        }
+      }
       if (mount.armingCircles < 1) error(`${label} has a mount with no arming circles (E4.2.2).`)
       if (mount.hitBoxes < 1) error(`${label} has a mount with no damage boxes (E8.3.1).`)
     }

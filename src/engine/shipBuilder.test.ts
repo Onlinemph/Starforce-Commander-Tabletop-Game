@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SHIP_FORMS, shipFormById } from '../data/ships'
+import { ARC_ORDER } from './geometry'
 import {
   blankForm,
   blankScoutSensor,
@@ -14,7 +15,7 @@ import {
   POWER_MULTIPLIER,
   REFERENCE_POWER,
 } from './shipBuilder'
-import type { ShipForm, WeaponSystemDef } from './types'
+import type { Arc, ShipForm, WeaponSystemDef } from './types'
 
 /**
  * The valuation model is a transcription of the designers' own spreadsheet
@@ -250,6 +251,33 @@ describe('design validation', () => {
     expect(validateDesign(form).filter((p) => p.severity === 'error')).toEqual([])
     // And it is now worth something.
     expect(pointValue(form).totalOffense).toBeGreaterThan(0)
+  })
+
+  /*
+   * A mount whose arc is not one of the printed eight never matches a bearing,
+   * so it silently never fires. The ship reads as fully armed on its form and
+   * loses every battle it is taken into — which is exactly how this arrived: a
+   * fan design carried a broadside written as `S` and `P` instead of the four
+   * arcs either side, and nobody could see why the hull would not shoot.
+   */
+  it('catches a firing arc that is not one of the printed eight', () => {
+    const form = blankForm('x')
+    const { weapon, line } = blankWeapon('w1')
+    weapon.mounts[0].arcs = ['S', 'P'] as unknown as Arc[]
+    form.weapons.push(weapon)
+    form.functions.push(line)
+    const problems = validateDesign(form)
+    expect(problems.some((p) => p.severity === 'error' && p.message.includes('"S"'))).toBe(true)
+    expect(problems.some((p) => p.severity === 'error' && p.message.includes('"P"'))).toBe(true)
+  })
+
+  it('accepts every arc the geometry actually recognises', () => {
+    const form = blankForm('x')
+    const { weapon, line } = blankWeapon('w1')
+    weapon.mounts[0].arcs = [...ARC_ORDER]
+    form.weapons.push(weapon)
+    form.functions.push(line)
+    expect(validateDesign(form).filter((p) => p.severity === 'error')).toEqual([])
   })
 
   it('flags a shot limit the point model cannot see', () => {
