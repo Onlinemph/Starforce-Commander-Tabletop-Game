@@ -50,13 +50,16 @@
  * below has the eight-hull ladder that settled on the number, and the reason
  * the model cannot see it.
  *
- * Four corrections got it there, none of which the point model could have
+ * Five corrections got it there, none of which the point model could have
  * told us about, each recorded at the place it applies:
  *
  *   - a broadside whose arcs were not arcs, so the battery never bore;
  *   - a reactor that could not feed four weapon systems;
  *   - a turn table with a zero in the top row;
- *   - armour priced as though it were a shield that repairs.
+ *   - armour priced as though it were a shield that repairs;
+ *   - a slow-arming diamond on every gun of both ships, courtesy of the
+ *     helper below, halving the rate of fire of hulls whose problem was
+ *     already that they did not shoot enough.
  */
 
 import { writeFileSync } from 'node:fs'
@@ -78,8 +81,10 @@ const ALL_ROUND: Arc[][] = [
   ['FS', 'SF', 'SA', 'AS'],
 ]
 
-/** Four mounts firing dead ahead, the way a torpedo battery is carried. */
-const FORWARD: Arc[][] = [['FS', 'FP'], ['FS', 'FP'], ['FS', 'FP'], ['FS', 'FP']]
+/** `n` mounts firing dead ahead, the way a torpedo battery is carried. */
+const forward = (n: number): Arc[][] => Array.from({ length: n }, () => ['FS', 'FP'] as Arc[])
+
+const FORWARD = forward(4)
 
 const step = (value: number) => ({ powerCost: 1, value })
 
@@ -117,6 +122,17 @@ function weapon(args: {
   hitBoxes: number
   brackets: WeaponSystemDef['brackets']
   traits?: string[]
+  /**
+   * A slow-arming diamond between the circles (E4.2.8): the mount may fill
+   * only one circle per Resource Allocation Segment, so a two-circle mount
+   * fires every other round, and B2.5.6 bars topping it up from a battery.
+   *
+   * Off by default, which is what the printed ships do — only the A/MAT
+   * torpedo batteries carry a diamond, while every phaser and light phaser
+   * charges in one round. This defaulted to *on* to begin with, quietly
+   * halving the rate of fire of every gun on both designs.
+   */
+  slowArming?: boolean
 }): WeaponSystemDef {
   return {
     id: args.id,
@@ -127,7 +143,7 @@ function weapon(args: {
       arcs,
       armingCircles: args.armingCircles,
       hitBoxes: args.hitBoxes,
-      roundGates: [true],
+      ...(args.slowArming ? { roundGates: [true] } : {}),
     })),
     brackets: args.brackets,
     traits: args.traits ?? [],
@@ -251,6 +267,9 @@ const HYPERION: ShipForm = {
       mounts: [['FS', 'FP'], ['FS', 'FP']],
       armingCircles: 2,
       hitBoxes: 1,
+      // The one gun on either ship that deserves the diamond, for the same
+      // reason the printed A/MAT batteries carry it.
+      slowArming: true,
       traits: ['HOMING 3', 'MISL 2', 'NoBAT'],
       brackets: [
         { min: 0, max: 4, band: 'green', dice: ['red'], bonus: 3, endurancePhase: 1 },
@@ -334,6 +353,211 @@ const HYPERION: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * MINBARI SHARLIN-class warcruiser (Babylon 5).
+ *
+ * The ship the Earth Alliance could not hit. Everything else about it follows
+ * from finding an honest way to say that in these rules, and there is one:
+ * jamming. Under H2.3.3 a target's jamming is added to the actual range before
+ * the attacker reads its firing chart, and under **H2.3.7, if jamming pushes
+ * the effective range past a weapon's maximum, that weapon may not fire at
+ * all**. Not a to-hit penalty — no shot.
+ *
+ * H2.2.3 is what makes that a design problem rather than a free win: the cap
+ * on points assignable to any one sensor function is the ship's undamaged
+ * SENS boxes. Every printed hull in the game tops out at four — four boxes and
+ * an eight-point line, so the best jamming anyone can raise is 4, and spending
+ * it means spending the whole line. The SHARLIN carries six boxes and a
+ * twelve-point line, so it runs 6 jamming and 6 targeting at the same time:
+ * enemies fire at +6 range while it fires at −6. A YORKTOWN III's phaser
+ * reaches 13 inches, so from nine inches out it simply cannot shoot back.
+ *
+ * The counterplay is printed on the ship. Six SENS boxes are six damage boxes,
+ * every one of them lowers the cap under H2.2.3, and a Sharlin with its
+ * sensors shot out is an ordinary ship with thin shields. Kill the sensors or
+ * lose the battle.
+ *
+ * Which is why this hull's results spread wider than any other here. Jamming
+ * is a threshold, not a slope: an enemy whose targeting can nearly match it
+ * fights an even battle, and one whose targeting cannot is simply out of range
+ * under H2.3.7. So it is not priced by finding the hull it draws with — there
+ * isn't one — but by where the whole ladder balances. Forty-eight mirrored
+ * games at captain against each:
+ *
+ *     YORKTOWN III   43.2   45W- 3L      PREDATOR V-11B    72.6   17W-30L
+ *     UNION I        52.2   33W-14L      EXETER I          85.2   13W-34L
+ *     UNION II       75.4   39W- 9L      EXETER II         95.6    3W-45L
+ *     PREDATOR V-11C  147   42W- 6L      UNION III        158.6   28W-20L
+ *
+ * Read by price that is nonsense. Read by the opponent's sensor suite it is
+ * exactly the ship: the EXETERs carry the best sensors in the printed game —
+ * four boxes and an eight-point line — and they are the two hulls that beat
+ * it, because four targeting against six jamming is a fight. The dreadnoughts
+ * it walks through are the ones with three sensor boxes, whatever they cost:
+ * the V-11C is a 147-point ship that cannot get a lock. Against those it wins
+ * without killing anything — it is not out-shooting them, they are out of
+ * range.
+ *
+ * Left at the model's own 94 with no thumb on the scale. That is above where
+ * the median matchup puts it, and deliberately so: a hull that hard-counters
+ * whole classes of opponent should be the expensive answer rather than the
+ * efficient one.
+ *
+ * The rest of the brief, in mechanics:
+ *  - **Tough.** Twenty-two structure boxes, the most of any hull here, and a
+ *    Damage Control Rating of 6 that no printed ship matches.
+ *  - **Hits hard.** Three heavy neutron lasers firing two red dice each out to
+ *    eight inches and still reaching twenty-eight — and with six targeting up,
+ *    "eight inches" means fourteen on the ruler.
+ *  - **Small shields.** Twelve boxes forward against a dreadnought's thirty:
+ *    enough to represent a hull that drinks energy weapons, nowhere near
+ *    enough to trade blows with something that can actually see it.
+ */
+const SHARLIN: ShipForm = {
+  id: 'fan-b5-sharlin-warcruiser',
+  name: 'SHARLIN-class Warcruiser',
+  faction: 'Minbari Federation',
+  sizeClass: 6,
+  stressRating: 5,
+  damageControlRating: 6,
+
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
+  ],
+  batteries: 3,
+  ftlDriveBoxes: 3,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [2, 3, 4], { freeValue: 1 }),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2], { sequential: false }),
+    line('ftl', 'JUMP ENG', 'ftl-drive', [1, 2, 3]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    /*
+     * The whole ship. Four points for nothing, twelve at two power — half again
+     * the best line in the printed game, and paired with six SENS boxes so
+     * H2.2.3 lets all of it reach a single function.
+     */
+    line('sensor', 'SENSORS', 'sensor', [8, 12], { freeValue: 4 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [1, 2], { freeValue: 1, sequential: false }),
+    line('f-neutron', 'NEUT LASER', 'weapon', [3, 5, 7], {
+      freeValue: 1,
+      weaponSystemId: 'mb-neutron-laser',
+    }),
+    line('f-fusion', 'FUSION CAN', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'mb-fusion-cannon',
+    }),
+  ],
+
+  weapons: [
+    // The main battery. Two red dice a mount inside eight inches, and it still
+    // reaches twenty-eight — the range band where its targeting does the most.
+    weapon({
+      id: 'mb-neutron-laser',
+      name: 'HEAVY NEUTRON LASER',
+      weaponClass: 'phaser',
+      mounts: forward(3),
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 2'],
+      brackets: [
+        { min: 0, max: 8, band: 'green', dice: ['red', 'red'] },
+        { min: 9, max: 16, band: 'black', dice: ['red', 'yellow'] },
+        { min: 17, max: 22, band: 'red', dice: ['red'] },
+        { min: 23, max: 28, band: 'red', dice: ['yellow'] },
+      ],
+    }),
+    // Fusion cannon on the printed all-round mounting, so something always
+    // bears while the lasers are being brought to bear.
+    weapon({
+      id: 'mb-fusion-cannon',
+      name: 'FUSION CANNON',
+      weaponClass: 'disruptor',
+      mounts: ALL_ROUND,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 4, band: 'green', dice: ['yellow', 'green'] },
+        { min: 5, max: 9, band: 'black', dice: ['green', 'green'] },
+        { min: 10, max: 14, band: 'black', dice: ['green', 'blue'] },
+        { min: 15, max: 18, band: 'red', dice: ['blue'] },
+      ],
+    }),
+  ],
+
+  // Thin for the tonnage on purpose: the hull drinks a certain amount and then
+  // stops, and the ship's real defence was never the shield.
+  shields: {
+    generatorBoxes: 3,
+    blue: { F: 12, A: 8, P: 10, S: 10 },
+    green: { F: 3, S: 3, A: 3, P: 3 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 5 },
+    // Six. Every printed hull in the game has three or four, and under H2.2.3
+    // this number *is* the jamming ceiling — which is also why shooting them
+    // off is the way to fight this ship.
+    { kind: 'SENS', label: 'Sensors', boxes: 6 },
+    { kind: 'TRAC', label: 'Tractors', boxes: 2 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 2 },
+    { kind: 'SHTL', label: 'Flyer Bays', boxes: 3 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 4 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 2 },
+  ],
+
+  structure: [
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  sublight: {
+    maxSpeed: 6,
+    // Agile for its size, and able to come about at full burn — gravitic drive
+    // rather than reaction thrust.
+    turnBySpeed: [45, 40, 40, 35, 30, 25, 20],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 3,
+    driveBoxes: 6,
+    dmgTopSpeed: [5, 4, 3, 2, 1, 0],
+  },
+
+  marineSquads: 12,
+  // Nial flyers.
+  shuttles: 6,
+
+  pointValue: 0,
+  year: 2245,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -368,16 +592,24 @@ const DESIGNS: Design[] = [
      *     YORKTOWN IIc   32.4   34W-12L      HAVOC V-10D    58.6    9W-32L
      *     YORKTOWN III   43.2   27W-21L
      *
-     * It trades evenly with the YORKTOWN III at 43.2 and loses to everything
-     * from 45.6 up, so it is priced where it fights rather than where it
-     * totals. (The YORKTOWN IV is the one hull out of line with the rest at
-     * 33W-15L; its weapons are identical to the III's, so the difference is in
-     * how that matchup plays out, not in the Hyperion. One outlier does not
-     * move the price.)
+     * Re-measured after the slow-arming diamond came off the guns, which is
+     * what these numbers are:
+     *
+     *     YORKTOWN II    30.4   36W-11L      YORKTOWN IV   49.5   34W-13L
+     *     YORKTOWN IIc   32.4   44W- 3L      KURSK I       51.9   29W-17L
+     *     YORKTOWN III   43.2   43W- 5L      UNION I       52.2   30W-14L
+     *     HAVOC V-10B    45.6   15W-33L      YORKTOWN V    76.8   11W-34L
+     *
+     * It takes everything up to the low fifties and loses to the high
+     * seventies, so it is priced near sixty rather than at the 68.3 the model
+     * totals. The HAVOC is the one hull below that line which beats it, and
+     * that is a matchup rather than a mispricing — Vallari particle weapons go
+     * through armour the way nothing in the Union inventory does.
      */
-    costModifier: 0.73,
+    costModifier: 0.85,
     costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',
   },
+  { form: SHARLIN },
 ]
 
 /**

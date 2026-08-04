@@ -79,7 +79,7 @@ import {
   type GameState,
 } from './game'
 import { setScoutAssignment, setScoutSensorActive } from './scouting'
-import { sensorFunctionCap, type ShipState } from './shipState'
+import { sensorFunctionCap, sensorPointsAvailable, type ShipState } from './shipState'
 import type { Maneuver, ShieldSide, SystemKind, TurnDirection } from './types'
 import type { ScoutFunction } from './types'
 import type { SmallCraftKind } from './smallCraft'
@@ -481,7 +481,32 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
       if (!ship || !card) return said('No command card for that ship.')
-      card.sensors[action.key] = Math.max(0, Math.min(action.value, sensorFunctionCap(ship)))
+      /*
+       * Two separate limits, and both bind (H2.2).
+       *
+       * H2.2.3 caps any single function at the ship's undamaged sensor boxes,
+       * and that one was already here. H2.2.2 is the other half: the captain
+       * divides *the points the sensor line generated* between the three
+       * functions, so the three together cannot exceed the line's output. That
+       * was checked in validatePlot — which reports to the command card panel
+       * and is never consulted before the split is copied onto the ship — so
+       * in practice a ship could run targeting, jamming and Tactical Scan all
+       * at their cap at once, spending as much as three times what it had.
+       *
+       * Clamping against what the other two functions already hold is what a
+       * player does filling circles on the card: the last function gets what
+       * is left, not a fresh allowance.
+       */
+      const spentElsewhere = (['targeting', 'jamming', 'tacticalScan'] as const)
+        .filter((key) => key !== action.key)
+        .reduce((n, key) => n + card.sensors[key], 0)
+      const budget = Math.max(0, sensorPointsAvailable(ship) - spentElsewhere)
+      card.sensors[action.key] = Math.max(
+        0,
+        Math.min(action.value, sensorFunctionCap(ship), budget),
+      )
+      // The card is trimmed again on its way onto the ship (clampSensors), for
+      // sensors shot away between plotting and the Command Segment.
       return ok
     }
     case 'plot-shield': {

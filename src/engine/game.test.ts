@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { BLUE, RED, startScenario } from '../data/scenarios'
 import { advanceSegment, PHASE_ORDER, PHASE_SEGMENTS, victoryPoints, type GameState } from './game'
-import { markStructure } from './shipState'
+import { applyAction } from './actions'
+import { markStructure, sensorFunctionCap, sensorPointsAvailable } from './shipState'
 
 /** Walk the sequence of play until the given round/phase/segment is reached. */
 function runTo(game: GameState, predicate: (g: GameState) => boolean, limit = 200): void {
@@ -62,6 +63,76 @@ describe('sequence of play (A3)', () => {
     const blue = game.ships.find((s) => s.id === 'blue-1')!
     expect(blue.sensors.targeting).toBe(1)
     expect(blue.sensors.jamming).toBe(1)
+  })
+
+  /*
+   * H2.2 sets two separate limits on the sensor split and both bind. The
+   * per-function cap was enforced; the budget was not, so a ship could run
+   * targeting, jamming and Tactical Scan all at their cap at once and spend
+   * three times the points its sensor line had produced. Jamming is added to
+   * the range of every shot taken at it (H2.3.3) and can put a weapon out of
+   * range entirely (H2.3.7), so the surplus was not a rounding matter.
+   */
+  describe('the sensor split is limited twice (H2.2)', () => {
+    const plotted = (game: ReturnType<typeof startScenario>, id: string) => {
+      const ship = game.ships.find((s) => s.id === id)!
+      return { ship, available: sensorPointsAvailable(ship), cap: sensorFunctionCap(ship) }
+    }
+
+    it('never lets the three functions outspend the line that fed them (H2.2.2)', () => {
+      const game = startScenario('s3.1-the-duel', { seed: 1 })
+      runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'command')
+      const { ship, available } = plotted(game, 'blue-1')
+
+      // Ask for the maximum on all three at once.
+      for (const key of ['targeting', 'jamming', 'tacticalScan'] as const) {
+        applyAction(game, { type: 'plot-sensor', shipId: ship.id, key, value: 99 })
+      }
+      const card = game.orders['blue-1'].sensors
+      expect(card.targeting + card.jamming + card.tacticalScan).toBeLessThanOrEqual(available)
+      expect(available).toBeGreaterThan(0)
+    })
+
+    it('still caps any one function at the undamaged sensor boxes (H2.2.3)', () => {
+      const game = startScenario('s3.1-the-duel', { seed: 1 })
+      runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'command')
+      const { ship, cap, available } = plotted(game, 'blue-1')
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'jamming', value: 99 })
+      // Whichever limit is tighter is the one that binds — here the unpowered
+      // line's free points are fewer than the boxes.
+      expect(game.orders['blue-1'].sensors.jamming).toBe(Math.min(cap, available))
+    })
+
+    it('lowers the cap as the sensors are shot away (H2.2.3)', () => {
+      const game = startScenario('s3.1-the-duel', { seed: 1 })
+      runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'command')
+      const { ship } = plotted(game, 'blue-1')
+      ship.systemDamage['SENS'] = (ship.systemDamage['SENS'] ?? 0) + 1
+      const hurtCap = sensorFunctionCap(ship)
+
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'jamming', value: 99 })
+      expect(game.orders['blue-1'].sensors.jamming).toBeLessThanOrEqual(hurtCap)
+
+      // And with the boxes gone entirely there is no jamming to be had.
+      ship.systemDamage['SENS'] = 99
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'jamming', value: 99 })
+      expect(game.orders['blue-1'].sensors.jamming).toBe(0)
+    })
+
+    it('gives a later function only what the earlier ones left (H2.2.2)', () => {
+      const game = startScenario('s3.1-the-duel', { seed: 1 })
+      runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'command')
+      const { ship, available } = plotted(game, 'blue-1')
+
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'targeting', value: available })
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'jamming', value: available })
+      expect(game.orders['blue-1'].sensors.jamming).toBe(0)
+
+      // Freeing the first hands the points straight back to the second.
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'targeting', value: 0 })
+      applyAction(game, { type: 'plot-sensor', shipId: ship.id, key: 'jamming', value: available })
+      expect(game.orders['blue-1'].sensors.jamming).toBeGreaterThan(0)
+    })
   })
 
   it('resets per-round state at the start of each round (G1.3.2)', () => {

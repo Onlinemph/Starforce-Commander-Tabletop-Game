@@ -270,10 +270,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 2,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 2
           },
           {
             "id": "ea-heavy-laser-m2",
@@ -282,10 +279,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 2,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 2
           },
           {
             "id": "ea-heavy-laser-m3",
@@ -294,10 +288,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 2,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 2
           },
           {
             "id": "ea-heavy-laser-m4",
@@ -306,10 +297,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 2,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 2
           }
         ],
         "brackets": [
@@ -356,10 +344,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-particle-cannon-m2",
@@ -370,10 +355,7 @@
               "FP"
             ],
             "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-particle-cannon-m3",
@@ -384,10 +366,7 @@
               "PA"
             ],
             "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-particle-cannon-m4",
@@ -398,10 +377,7 @@
               "AS"
             ],
             "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           }
         ],
         "brackets": [
@@ -450,10 +426,7 @@
               "FP"
             ],
             "armingCircles": 1,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-interceptor-m2",
@@ -464,10 +437,7 @@
               "FP"
             ],
             "armingCircles": 1,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-interceptor-m3",
@@ -478,10 +448,7 @@
               "PA"
             ],
             "armingCircles": 1,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           },
           {
             "id": "ea-interceptor-m4",
@@ -492,10 +459,7 @@
               "AS"
             ],
             "armingCircles": 1,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
+            "hitBoxes": 1
           }
         ],
         "brackets": [
@@ -753,8 +717,719 @@
     },
     "marineSquads": 8,
     "shuttles": 8,
-    "pointValue": 44,
+    "pointValue": 58.1,
     "year": 2245,
     "availability": "common"
+  },
+  {
+    "id": "fan-b5-sharlin-warcruiser",
+    "name": "SHARLIN-class Warcruiser",
+    "faction": "Minbari Federation",
+    "sizeClass": 6,
+    "stressRating": 5,
+    "damageControlRating": 6,
+    "reactors": [
+      {
+        "id": "l-main",
+        "label": "L MAIN",
+        "hitKind": "left-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "r-main",
+        "label": "R MAIN",
+        "hitKind": "right-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "sl-reac",
+        "label": "SL REAC",
+        "hitKind": "sublight-reactor",
+        "points": [
+          {
+            "boxes": 2
+          }
+        ]
+      },
+      {
+        "id": "aux-pwr",
+        "label": "AUX PWR",
+        "hitKind": "aux",
+        "points": [
+          {
+            "boxes": 2
+          }
+        ]
+      }
+    ],
+    "batteries": 3,
+    "ftlDriveBoxes": 3,
+    "functions": [
+      {
+        "id": "accel",
+        "label": "ACC/DEC",
+        "kind": "accel",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "sif",
+        "label": "SIF/IDF",
+        "kind": "sif",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "emer",
+        "label": "EMER",
+        "kind": "emergency-turn",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "bat-rech",
+        "label": "BTY RECH",
+        "kind": "battery-recharge",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "ftl",
+        "label": "JUMP ENG",
+        "kind": "ftl-drive",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "rnfc-F",
+        "label": "SHLD RNFC F",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "rnfc-P",
+        "label": "SHLD RNFC P",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "rnfc-S",
+        "label": "SHLD RNFC S",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "rnfc-A",
+        "label": "SHLD RNFC A",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "repr-F",
+        "label": "SHLD REPR F",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "repr-P",
+        "label": "SHLD REPR P",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "repr-S",
+        "label": "SHLD REPR S",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "repr-A",
+        "label": "SHLD REPR A",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "sensor",
+        "label": "SENSORS",
+        "kind": "sensor",
+        "freeValue": 4,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 8
+          },
+          {
+            "powerCost": 1,
+            "value": 12
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "gen-sys",
+        "label": "GEN SYS",
+        "kind": "gen-sys",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "f-neutron",
+        "label": "NEUT LASER",
+        "kind": "weapon",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 5
+          },
+          {
+            "powerCost": 1,
+            "value": 7
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "mb-neutron-laser"
+      },
+      {
+        "id": "f-fusion",
+        "label": "FUSION CAN",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 6
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "mb-fusion-cannon"
+      }
+    ],
+    "weapons": [
+      {
+        "id": "mb-neutron-laser",
+        "name": "HEAVY NEUTRON LASER",
+        "weaponClass": "phaser",
+        "mounts": [
+          {
+            "id": "mb-neutron-laser-m1",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "mb-neutron-laser-m2",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "mb-neutron-laser-m3",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 8,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ]
+          },
+          {
+            "min": 9,
+            "max": 16,
+            "band": "black",
+            "dice": [
+              "red",
+              "yellow"
+            ]
+          },
+          {
+            "min": 17,
+            "max": 22,
+            "band": "red",
+            "dice": [
+              "red"
+            ]
+          },
+          {
+            "min": 23,
+            "max": 28,
+            "band": "red",
+            "dice": [
+              "yellow"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 2"
+        ]
+      },
+      {
+        "id": "mb-fusion-cannon",
+        "name": "FUSION CANNON",
+        "weaponClass": "disruptor",
+        "mounts": [
+          {
+            "id": "mb-fusion-cannon-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "mb-fusion-cannon-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "mb-fusion-cannon-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "mb-fusion-cannon-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 4,
+            "band": "green",
+            "dice": [
+              "yellow",
+              "green"
+            ]
+          },
+          {
+            "min": 5,
+            "max": 9,
+            "band": "black",
+            "dice": [
+              "green",
+              "green"
+            ]
+          },
+          {
+            "min": 10,
+            "max": 14,
+            "band": "black",
+            "dice": [
+              "green",
+              "blue"
+            ]
+          },
+          {
+            "min": 15,
+            "max": 18,
+            "band": "red",
+            "dice": [
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 1",
+          "PD MODE"
+        ]
+      }
+    ],
+    "shields": {
+      "generatorBoxes": 3,
+      "blue": {
+        "F": 12,
+        "A": 8,
+        "P": 10,
+        "S": 10
+      },
+      "green": {
+        "F": 3,
+        "S": 3,
+        "A": 3,
+        "P": 3
+      }
+    },
+    "armor": {
+      "F": 0,
+      "S": 0,
+      "A": 0,
+      "P": 0
+    },
+    "systems": [
+      {
+        "kind": "SCNC",
+        "label": "Sciences",
+        "boxes": 5
+      },
+      {
+        "kind": "SENS",
+        "label": "Sensors",
+        "boxes": 6
+      },
+      {
+        "kind": "TRAC",
+        "label": "Tractors",
+        "boxes": 2
+      },
+      {
+        "kind": "TRAN",
+        "label": "Transporters",
+        "boxes": 2
+      },
+      {
+        "kind": "SHTL",
+        "label": "Flyer Bays",
+        "boxes": 3
+      },
+      {
+        "kind": "QTRS",
+        "label": "Quarters",
+        "boxes": 4
+      },
+      {
+        "kind": "CRGO",
+        "label": "Cargo",
+        "boxes": 2
+      }
+    ],
+    "structure": [
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 5
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 4
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 3
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 2
+      }
+    ],
+    "sublight": {
+      "maxSpeed": 6,
+      "turnBySpeed": [
+        45,
+        40,
+        40,
+        35,
+        30,
+        25,
+        20
+      ],
+      "maxAccelPerPhase": 2,
+      "safeAccelPerRound": 2,
+      "stressAccelPerRound": 3,
+      "driveBoxes": 6,
+      "dmgTopSpeed": [
+        5,
+        4,
+        3,
+        2,
+        1,
+        0
+      ]
+    },
+    "marineSquads": 12,
+    "shuttles": 6,
+    "pointValue": 94,
+    "year": 2245,
+    "availability": "rare"
   }
 ]

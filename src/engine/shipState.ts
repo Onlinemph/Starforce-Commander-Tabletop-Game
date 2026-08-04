@@ -401,6 +401,33 @@ export function sensorFunctionCap(ship: ShipState): number {
   return sensorBoxesRemaining(ship)
 }
 
+/**
+ * A sensor split trimmed to what the ship can actually run right now: each
+ * function within the undamaged sensor boxes (H2.2.3), and the three together
+ * within the points the sensor line produced (H2.2.2).
+ *
+ * Applied both when the split is plotted and again when it is copied onto the
+ * ship, because the two happen in different segments — a card written with six
+ * boxes' worth of jamming is not honoured by a ship that has had four of them
+ * shot off since, which is exactly what H2.2.3's second sentence is about.
+ * Order is fixed so a replay trims identically: targeting, then jamming, then
+ * Tactical Scan.
+ */
+export function clampSensors(
+  ship: ShipState,
+  sensors: { targeting: number; jamming: number; tacticalScan: number },
+): { targeting: number; jamming: number; tacticalScan: number } {
+  const cap = sensorFunctionCap(ship)
+  let left = sensorPointsAvailable(ship)
+  const trimmed = { targeting: 0, jamming: 0, tacticalScan: 0 }
+  for (const key of ['targeting', 'jamming', 'tacticalScan'] as const) {
+    const value = Math.max(0, Math.min(sensors[key], cap, left))
+    trimmed[key] = value
+    left -= value
+  }
+  return trimmed
+}
+
 // ---------------------------------------------------------------------------
 // Scouting sensors (H3)
 // ---------------------------------------------------------------------------

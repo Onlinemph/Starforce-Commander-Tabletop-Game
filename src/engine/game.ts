@@ -179,6 +179,7 @@ import {
 } from './navigation'
 import {
   beginRound,
+  clampSensors,
   crewIsArmed,
   damageLevel,
   mountIsReady,
@@ -1471,7 +1472,9 @@ function runSegmentExit(game: GameState): void {
       for (const ship of activeShips(game)) {
         const card = game.orders[ship.id]
         if (!card) continue
-        ship.sensors = { ...card.sensors }
+        // Trimmed on the way across: the card was written a segment ago and
+        // the sensors may have been shot since (H2.2.2, H2.2.3).
+        ship.sensors = clampSensors(ship, card.sensors)
       }
       // A formation plots one set of movement orders (C5.1.3). Sensors, weapons
       // and everything else stay independent (C5.2).
