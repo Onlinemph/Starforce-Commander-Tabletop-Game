@@ -922,6 +922,39 @@ input:focus-visible {
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+/* Escape pods (E11.6): small, dim, and not combatants — but the crew count
+   has to be readable, because it is the reason to go and collect one. */
+.escape-pod circle {
+  fill: #cfd6ee;
+  opacity: 0.75;
+}
+.escape-pod .pod-halo {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.6;
+}
+.escape-pod.pod-blue {
+  color: var(--lc-blue, #58a6ff);
+}
+.escape-pod.pod-red {
+  color: #ff6b6b;
+}
+.escape-pod.pod-aurelian {
+  color: #b57bff;
+}
+.pod-label {
+  fill: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 /* Names ride in a layer above every counter so none can be painted over, and
    that layer must not swallow clicks meant for the hull beneath it. */
 .ship-label {

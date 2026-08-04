@@ -568,9 +568,26 @@ exemption (K2.2.1) all apply at the table.
 | C3.8 Emergency Stop *(optional)* | ✅ | Drive shut down: stationary this phase and the next, stress equal to the speed it was making |
 | C3.9 Precise Turns and Slides *(optional)* | ✅ | Any turn taken at any template up to the ship's rate; half-inch slides |
 | J6.3 Arming the Crew *(optional)* | ✅ | Two squads per size class, at the cost of damage control, two power and the firing order |
+| E11.2 Derelict Ships *(optional)* | ✅ | A gutted hull stays on the map: no systems but damage control, shields gone, speed zero |
+| E11.3 Ship Explosions *(optional)* | ✅ | A red die per point of excess damage; an `S` takes the ship and a blue die per size class off everything within an inch |
+| E11.4–E11.6 Abandoning Ship *(optional)* | ✅ | Crew units, emergency transporter evacuation, escape pods, self-destruct, rescue and capture, two victory points a unit |
 
-Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer, and **E11.4–E11.6**
-— abandon ship, transporter evacuation and escape pods.
+The optional endgame is switched on in the fleet picker, where **Derelict ships (E11.2)** gates the
+other two — a hull has to linger before it can explode or be abandoned. Turning on **Abandon ship**
+makes the crew something to play for. Every ship carries two crew units per size class (E11.5.4),
+and each one saved *or captured* is worth two victory points (E11.4.2), so a battle that is lost on
+hulls can still be won on people.
+
+Two ways off, and the choice is real. **Emergency transport** (E11.5) is instant and can be ordered
+the moment a ship is dying, but the safety protocols come off: a green die per crew unit, and a Miss
+is a unit that did not survive the trip. **Escape pods** (E11.6) save everyone aboard and let the
+captain scuttle the hull on the way out — but they need the ship to still be there to leave, because
+a hull blown apart under weapon fire takes its crew with it (E11.6.1), and the pods then sit where
+they were dropped until somebody comes for them. Anybody: a pod is taken aboard by a stopped ship
+within an inch, or beamed across a unit at a time, and an enemy who collects one scores exactly what
+a friend would. Pods still adrift when the shooting stops go to whoever is left holding the field.
+
+Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 
@@ -1128,10 +1145,7 @@ line — which is exactly what E7.2.5 describes.
 - **Fighters and carriers** (E12.1.3) — the terminology, degraded-fire and point-defense rules are
   in the engine and shuttles and probes fly, but fighters need a carrier book that has not been
   published. Nothing to do until it exists.
-- **Scout sensors and scans** (H3.6) — informational scans are fully playable (J4.2), but a scout's
-  own contribution to them is not wired in: `scanCapability` computes the extended scan range and
-  the bonus information point per sensor, and the scout panel displays both, while `performScan`
-  still measures against the flat 8-inch range and counts only the scanning ship's own sciences.
+
 - **Expansion 6** — the Master Ship List carries ten classes flagged for it with point values but no
   printed form yet: the Invictus II, Aquila Bellum VI, Tonitrus IV and V, Defensor Alatus II, III
   and IV, Corvus II, and Passer III and IV. Nothing to do until the book exists.

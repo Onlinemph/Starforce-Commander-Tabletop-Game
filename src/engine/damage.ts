@@ -1049,10 +1049,16 @@ export interface DestructionOptions {
   derelicts: boolean
   /** E11.3 — derelicts may explode. */
   explosions: boolean
+  /** E11.4–E11.6 — crews may be got off a dying ship, and are worth points. */
+  abandonShip: boolean
 }
 
 /** Standard rules: a ship is removed the moment its last structure box is marked. */
-export const STANDARD_DESTRUCTION: DestructionOptions = { derelicts: false, explosions: false }
+export const STANDARD_DESTRUCTION: DestructionOptions = {
+  derelicts: false,
+  explosions: false,
+  abandonShip: false,
+}
 
 let destructionOptions: DestructionOptions = STANDARD_DESTRUCTION
 

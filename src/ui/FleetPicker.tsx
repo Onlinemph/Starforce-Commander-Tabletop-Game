@@ -86,6 +86,10 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [mapScale, setMapScale] = useState<1 | 2>(1)
   const [armedStart, setArmedStart] = useState(false)
   const [optionalBatteries, setOptionalBatteries] = useState(false)
+  // E11's optional endgame: derelicts, explosions, and getting the crew off.
+  const [derelicts, setDerelicts] = useState(false)
+  const [explosions, setExplosions] = useState(false)
+  const [abandonShip, setAbandonShip] = useState(false)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -135,6 +139,11 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       mapScale: mapScale !== 1 ? mapScale : undefined,
       armedStart: armedStart || undefined,
       optionalBatteries: optionalBatteries || undefined,
+      derelicts: derelicts || undefined,
+      // A ship cannot linger long enough to explode or be abandoned unless it
+      // lingers at all, so both of those imply derelicts (E11.3, E11.6.2).
+      explosions: explosions || undefined,
+      abandonShip: abandonShip || undefined,
     })
     onClose()
   }
@@ -234,6 +243,47 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setOptionalBatteries(e.target.checked)}
             />
             Batteries usable mid-round (B2.5)
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rule E11.2. A ship whose last structure box is marked stops being removed from play and becomes a derelict instead: dead in space, shields gone, no systems but damage control, and a decision for both captains — repair it, abandon it, capture it, or finish it off."
+          >
+            <input
+              type="checkbox"
+              checked={derelicts}
+              onChange={(e) => {
+                setDerelicts(e.target.checked)
+                if (!e.target.checked) {
+                  setExplosions(false)
+                  setAbandonShip(false)
+                }
+              }}
+            />
+            Derelict ships (E11.2)
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rule E11.3. Damage past the structure track may set off the main reactor: one red die per point of excess damage, and an S takes the ship — and a blue die per size class off everything within an inch of it."
+          >
+            <input
+              type="checkbox"
+              disabled={!derelicts}
+              checked={explosions}
+              onChange={(e) => setExplosions(e.target.checked)}
+            />
+            Ship explosions (E11.3)
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rules E11.4–E11.6. The crew becomes something to play for: two units per size class, worth two victory points each to whoever saves or captures them. Beam them out under emergency protocols and lose some in the transport, or take to the escape pods and hope somebody comes before the enemy does."
+          >
+            <input
+              type="checkbox"
+              disabled={!derelicts}
+              checked={abandonShip}
+              onChange={(e) => setAbandonShip(e.target.checked)}
+            />
+            Abandon ship (E11.4–E11.6)
           </label>
           {[...aiSides].some((s) => sides.includes(s)) && (
             <label

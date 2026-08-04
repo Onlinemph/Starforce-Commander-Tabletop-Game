@@ -542,7 +542,7 @@ describe('flying in formation (C5.2)', () => {
 
 describe('ship explosions (E11.3)', () => {
   it('catches every ship within range 1 (E11.3.2)', () => {
-    setDestructionOptions({ derelicts: true, explosions: true })
+    setDestructionOptions({ derelicts: true, explosions: true, abandonShip: false })
     const doomed = ship({ id: 'doomed', form: VALLARI_CRUISER, side: 'Red' })
     const near = ship({ id: 'near', x: 1 })
     const far = ship({ id: 'far', x: 5 })
@@ -559,7 +559,7 @@ describe('ship explosions (E11.3)', () => {
   })
 
   it('strikes the aft shield of ships sharing the wreck’s counter (E11.3.4)', () => {
-    setDestructionOptions({ derelicts: true, explosions: true })
+    setDestructionOptions({ derelicts: true, explosions: true, abandonShip: false })
     const formations: Formation[] = []
     const lead = ship({ id: 'lead' })
     const wing = ship({ id: 'wing', x: 0.5 })
@@ -582,7 +582,7 @@ describe('ship explosions (E11.3)', () => {
     expect(explosionCheck(doomed, 3, context)).toBe(false)
 
     // Half a red die's faces are Special, so three dice explode almost always.
-    setDestructionOptions({ derelicts: true, explosions: true })
+    setDestructionOptions({ derelicts: true, explosions: true, abandonShip: false })
     expect(explosionCheck(doomed, 3, { ...context, rng: new Rng(1) })).toBe(true)
     expect(doomed.destroyed).toBe(true)
 

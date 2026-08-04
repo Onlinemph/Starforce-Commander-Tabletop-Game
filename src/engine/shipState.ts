@@ -122,6 +122,11 @@ export interface ShipState {
   emergencyStopPhases: number
 
   marineSquads: number
+  /**
+   * Crew units still aboard: two per size class (E11.5.4), and what abandoning
+   * ship is trying to save. Marines are counted within them (E11.4.2).
+   */
+  crewUnits: number
   /** Enemy marine squads currently aboard, keyed by their owner. */
   boarders: Record<string, number>
   shuttlesAboard: number
@@ -209,6 +214,7 @@ export function createShip(args: {
     emergencyTurnUsed: false,
     emergencyStopPhases: 0,
     marineSquads: form.marineSquads,
+    crewUnits: form.sizeClass * 2,
     boarders: {},
     shuttlesAboard: form.shuttles,
     derelict: false,

@@ -33,6 +33,7 @@ import {
   attemptTractorLock,
   cloakModifiers,
   cloakOf,
+  abandonToPods,
   cloudModifiers,
   commandStateFor,
   contestTractor,
@@ -40,6 +41,7 @@ import {
   damageContext,
   damageRevealsCloak,
   declareCoordinatedFire,
+  evacuateCrew,
   everyoneReady,
   dockShuttle,
   fightBoarders,
@@ -53,6 +55,7 @@ import {
   performTransport,
   pushLog,
   recordAttack,
+  recoverPod,
   recoverShuttle,
   releaseTractor,
   repositionCloaked,
@@ -199,6 +202,13 @@ export type GameAction =
   | { type: 'move-craft'; craftId: string; x: number; y: number }
   | { type: 'recover-shuttle'; craftId: string; shipId: string }
   | { type: 'dock-shuttle'; craftId: string; shipId: string }
+  // Abandoning ship (E11.4–E11.6, optional)
+  /** E11.5 — emergency beam-out to a nearby ship, one green die per crew unit. */
+  | { type: 'evacuate-crew'; shipId: string; toShipId: string }
+  /** E11.6 — take to the pods, optionally scuttling the hull on the way out. */
+  | { type: 'abandon-ship'; shipId: string; selfDestruct: boolean }
+  /** E11.6.5 — take a pod aboard, by landing it or beaming its crew across. */
+  | { type: 'recover-pod'; podId: string; shipId: string; method: 'land' | 'beam' }
   // Disengagement (J9)
   | { type: 'disengage'; shipId: string }
 
@@ -861,6 +871,24 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return said(dockShuttle(game, action.craftId, ship))
     }
 
+    // ── Abandoning ship (E11.4–E11.6) ────────────────────────────────────
+    case 'evacuate-crew': {
+      const from = shipById(game, action.shipId)
+      const to = shipById(game, action.toShipId)
+      if (!from || !to) return said('No such ship.')
+      return said(evacuateCrew(game, from, to))
+    }
+    case 'abandon-ship': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(abandonToPods(game, ship, action.selfDestruct))
+    }
+    case 'recover-pod': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(recoverPod(game, action.podId, ship, action.method))
+    }
+
     // ── Disengagement ────────────────────────────────────────────────────
     case 'disengage': {
       const ship = shipById(game, action.shipId)
@@ -905,6 +933,7 @@ export function actionSide(game: GameState, action: GameAction): string | null {
     case 'move-craft':
     case 'recover-shuttle':
     case 'dock-shuttle':
+    case 'recover-pod':
       return of('shipId' in action ? action.shipId : undefined)
     case 'advance-segment':
     case 'ops-next-step':

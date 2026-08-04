@@ -26,6 +26,12 @@ export interface GameSetup {
   coordinatedFire?: boolean
   /** Optional batteries (B2.5): stored power spendable mid-round. */
   optionalBatteries?: boolean
+  /** E11.2 — a gutted hull becomes a derelict instead of leaving the map. */
+  derelicts?: boolean
+  /** E11.3 — excess structure damage may set off the main reactor. */
+  explosions?: boolean
+  /** E11.4–E11.6 — crews may be got off a dying ship, and are worth points. */
+  abandonShip?: boolean
   /** Online matches: a segment closes only when every side says so. */
   readyGate?: boolean
   /** One form id per side — the ship builder's quick launch. */
@@ -79,6 +85,9 @@ export function buildGame(setup: GameSetup): GameState {
     terrain: setup.terrain,
     mapScale: setup.mapScale,
     armedStart: setup.armedStart,
+    derelicts: setup.derelicts ?? false,
+    explosions: setup.explosions ?? false,
+    abandonShip: setup.abandonShip ?? false,
   })
 }
 

@@ -111,11 +111,21 @@ import {
   systemPower,
   transport,
   transportRefusal,
+  transporterRange,
   type InfoLedger,
   type OperationsStep,
   type ScanTarget,
 } from './operations'
 import { scanCapability, scoutSupportFor, type ScoutSupport } from './scouting'
+import {
+  crewVictoryPoints,
+  evacRefusal,
+  evacuateByTransporter,
+  podMayLand,
+  podPosition,
+  podRefusal,
+  type EscapePod,
+} from './abandonShip'
 import {
   craftOf,
   dockingRefusal,
@@ -481,6 +491,10 @@ export interface GameState {
   ops: OperationsState
   /** Shuttles and probes on the map (E12, J7, J8). */
   smallCraft: SmallCraft[]
+  /** Escape pods adrift, waiting for somebody to pick them up (E11.6). */
+  escapePods: EscapePod[]
+  /** Crew units in safe hands, credited to the side holding them (E11.4.2). */
+  crewRescued: Record<string, number>
   options: DestructionOptions
 }
 
@@ -566,6 +580,8 @@ export function createGame(args: {
     jammingVsHoming: args.jammingVsHoming ?? false,
     ops: newOperationsState(),
     smallCraft: [],
+    escapePods: [],
+    crewRescued: {},
     options,
   }
   for (const ship of game.ships) beginRound(ship)
@@ -1228,6 +1244,15 @@ export function victoryPoints(game: GameState): Record<string, number> {
       if (side !== ship.side) totals[side] += earned
     }
   }
+  // Crews saved or captured, two points each (E11.4.2). Pods still adrift go
+  // to whoever is left holding the field.
+  if (game.options.abandonShip) {
+    const present = [...new Set(activeShips(game).map((s) => s.side))]
+    const crew = crewVictoryPoints(game.crewRescued, game.escapePods, present)
+    for (const [side, points] of Object.entries(crew)) {
+      if (side in totals) totals[side] += points
+    }
+  }
   for (const side of Object.keys(totals)) totals[side] = Math.round(totals[side] * 10) / 10
   return totals
 }
@@ -1362,6 +1387,13 @@ export function resolveHomingImpacts(
 /** Run automatic effects on entering a segment, then advance the pointer. */
 export function advanceSegment(game: GameState): void {
   runSegmentExit(game)
+  // E11.6.1: a hull that came apart under fire took its crew with it. Swept
+  // here rather than at each place damage lands, because the only thing that
+  // could have saved them — an evacuation order — is refused the moment the
+  // ship is destroyed, so there is no window in between to get wrong.
+  for (const ship of game.ships) {
+    if (ship.destroyed) crewLostWithShip(game, ship)
+  }
   // A new segment is a new question; nobody is ready for it yet.
   game.readySides = []
 
@@ -2104,6 +2136,144 @@ export function performTransport(
 }
 
 // ── J7/J8 Small craft ─────────────────────────────────────────────────────
+
+let podCounter = 0
+
+/** Test hook: pod ids restart, so a fixture reads the same twice. */
+export function resetPodIds(): void {
+  podCounter = 0
+}
+
+// ---------------------------------------------------------------------------
+// Section E11.4–E11.6 — abandoning ship
+// ---------------------------------------------------------------------------
+
+/** Crew credited to a side, and the running total (E11.4.2). */
+function creditCrew(game: GameState, side: string, units: number): void {
+  if (units <= 0) return
+  game.crewRescued[side] = (game.crewRescued[side] ?? 0) + units
+}
+
+/**
+ * Emergency transporter evacuation (E11.5). The crew goes to `to`, and every
+ * unit that survives the trip is credited to whoever owns that ship — which is
+ * how a captured crew scores for its captors.
+ */
+export function evacuateCrew(game: GameState, from: ShipState, to: ShipState): string | null {
+  if (!game.options.abandonShip) return 'Abandon-ship rules are not in play (E11.4).'
+  const refusal = evacRefusal(
+    from,
+    to,
+    // E11.5.1 measures against the MAX range, whatever is set this phase.
+    Math.max(transporterRange(from, 'TRAN'), transporterRange(to, 'TRAN')),
+    workingSystemBoxes(game, from, 'TRAN'),
+    workingSystemBoxes(game, to, 'TRAN'),
+  )
+  if (refusal) return refusal
+
+  const outcome = evacuateByTransporter(from, game.rng)
+  creditCrew(game, to.side, outcome.saved)
+  pushLog(
+    game,
+    `${from.name} evacuates by emergency transport to ${to.name}: ${outcome.faces.join(' ')} — ` +
+      `${outcome.saved} crew unit(s) across, ${outcome.lost} lost (E11.5.4).`,
+  )
+  return null
+}
+
+/**
+ * Take to the pods (E11.6). Everyone still aboard goes into one counter two
+ * inches off the hull, and the captain may scuttle the ship on the way out
+ * (E11.6.3) — the pods are clear of that blast.
+ */
+export function abandonToPods(game: GameState, ship: ShipState, selfDestruct: boolean): string | null {
+  if (!game.options.abandonShip) return 'Abandon-ship rules are not in play (E11.4).'
+  const refusal = podRefusal(ship)
+  if (refusal) return refusal
+
+  podCounter += 1
+  const crew = ship.crewUnits
+  game.escapePods.push({
+    id: `pod-${podCounter}`,
+    side: ship.side,
+    fromShipId: ship.id,
+    fromShipName: ship.name,
+    position: podPosition(ship),
+    crew,
+  })
+  ship.crewUnits = 0
+  pushLog(game, `${ship.name} abandons ship: ${crew} crew unit(s) away in escape pods (E11.6.4).`)
+
+  if (selfDestruct) {
+    ship.destroyed = true
+    pushLog(game, `${ship.name} self-destructs; the pods are clear of it (E11.6.3, E11.6.4).`)
+  }
+  return null
+}
+
+/**
+ * Pick a pod up (E11.6.5): landed aboard a stopped ship within range 1, or
+ * beamed across a transporter. The crew is credited to the ship that takes
+ * them, friend or enemy.
+ */
+export function recoverPod(
+  game: GameState,
+  podId: string,
+  ship: ShipState,
+  method: 'land' | 'beam',
+): string | null {
+  const pod = game.escapePods.find((p) => p.id === podId)
+  if (!pod) return 'No such escape pod.'
+
+  if (method === 'land') {
+    const refusal = podMayLand(pod, ship)
+    if (refusal) return refusal
+    creditCrew(game, ship.side, pod.crew)
+    pushLog(
+      game,
+      `${ship.name} takes ${pod.fromShipName}'s escape pod aboard — ${pod.crew} crew unit(s) ` +
+        `${pod.side === ship.side ? 'rescued' : 'captured'} (E11.6.5).`,
+    )
+    game.escapePods = game.escapePods.filter((p) => p.id !== podId)
+    return null
+  }
+
+  // E11.6.5: one transporter beams one crew unit aboard per phase.
+  const boxes = workingSystemBoxes(game, ship, 'TRAN')
+  if (boxes === 0) return `${ship.name} has no undamaged transporter (E11.6.5).`
+  const used = game.ops.transportedThisPhase[ship.id] ?? 0
+  if (used >= boxes) {
+    return `${ship.name}'s transporters have already run this phase (E11.6.5).`
+  }
+  const reach = transporterRange(ship, maxSystemOf(game, ship))
+  const range = actualRange(ship.placement.position, pod.position)
+  if (range > reach) return `The pod is ${range}" away; the transporter reaches ${reach}".`
+
+  pod.crew -= 1
+  game.ops.transportedThisPhase[ship.id] = used + 1
+  creditCrew(game, ship.side, 1)
+  pushLog(
+    game,
+    `${ship.name} beams a crew unit off ${pod.fromShipName}'s escape pod ` +
+      `(${pod.side === ship.side ? 'rescued' : 'captured'}, E11.6.5).`,
+  )
+  if (pod.crew <= 0) game.escapePods = game.escapePods.filter((p) => p.id !== podId)
+  return null
+}
+
+/**
+ * A ship blown apart by weapon fire takes its crew with it (E11.6.1): there is
+ * no time for the pods. Called wherever a hull is removed from play.
+ */
+export function crewLostWithShip(game: GameState, ship: ShipState): void {
+  if (!game.options.abandonShip || ship.crewUnits <= 0) return
+  pushLog(
+    game,
+    `${ship.name} goes up with ${ship.crewUnits} crew unit(s) still aboard — ` +
+      `no time for the pods (E11.6.1).`,
+  )
+  ship.crewUnits = 0
+}
 
 let craftCounter = 0
 

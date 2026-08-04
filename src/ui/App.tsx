@@ -15,6 +15,7 @@ import {
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
+import { AbandonShipPanel } from './AbandonShipPanel'
 import { BoardingPanel } from './BoardingPanel'
 import { CloakPanel } from './CloakPanel'
 import { CloudPanel } from './CloudPanel'
@@ -736,6 +737,7 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
         return (
           <>
             <OperationsPanel game={game} ship={ship} />
+            <AbandonShipPanel game={game} ship={ship} />
             <CloakPanel game={game} ship={ship} />
             <ScoutSensorPanel game={game} ship={ship} assigning={false} />
           </>

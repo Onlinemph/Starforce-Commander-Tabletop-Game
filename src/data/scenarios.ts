@@ -243,9 +243,10 @@ export interface SetupOptions {
   seed?: number
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
-  /** E11.2 / E11.3 optional rules, off by default in the Standard game. */
+  /** E11.2 / E11.3 / E11.4–E11.6 optional rules, off by default. */
   derelicts?: boolean
   explosions?: boolean
+  abandonShip?: boolean
   /**
    * A single ship form id per side — the quick pick that swaps a scenario's
    * flagship without changing the rest of the printed force.
@@ -1126,6 +1127,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     options: {
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,
+      abandonShip: options.abandonShip ?? false,
     },
   })
 }

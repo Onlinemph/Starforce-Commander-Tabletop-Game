@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { EscapePod } from '../engine/abandonShip'
 import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
@@ -55,6 +56,13 @@ const SHIP_SIZE = 1.5 * SCALE
  * name plainly under its own ship.
  */
 const LABEL_TOP = SHIP_SIZE / 2 + 25
+
+/** Where an escape pod's crew count sits below its counter. */
+const POD_LABEL_TOP = 19
+
+function podLabelText(pod: EscapePod): string {
+  return `PODS ×${pod.crew}`
+}
 
 /**
  * What a counter prints under itself. Shared with the label layout, which has
@@ -340,14 +348,24 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
     }))
 
   /* Names under packed hulls step down a line rather than print on top of
-     each other — a squadron in formation is exactly when they matter most. */
+     each other — a squadron in formation is exactly when they matter most.
+     Escape pods join the same pass: they are dropped two inches off a hull,
+     which is close enough that their labels would land on its name. */
   const labelShifts = stackLabels(
-    drawn.map(({ ship, formationSize }) => ({
-      id: ship.id,
-      x: ship.placement.position.x * SCALE,
-      y: ship.placement.position.y * SCALE + LABEL_TOP,
-      halfWidth: labelHalfWidth(shipLabelText(ship, formationSize)),
-    })),
+    [
+      ...drawn.map(({ ship, formationSize }) => ({
+        id: ship.id,
+        x: ship.placement.position.x * SCALE,
+        y: ship.placement.position.y * SCALE + LABEL_TOP,
+        halfWidth: labelHalfWidth(shipLabelText(ship, formationSize)),
+      })),
+      ...game.escapePods.map((pod) => ({
+        id: pod.id,
+        x: pod.position.x * SCALE,
+        y: pod.position.y * SCALE + POD_LABEL_TOP,
+        halfWidth: labelHalfWidth(podLabelText(pod)),
+      })),
+    ],
     // The counters themselves, so a name steps past a neighbouring hull rather
     // than printing across its silhouette. The margin covers the shield
     // readouts, which sit just outside the counter.
@@ -358,6 +376,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       return { x1: x - reach, x2: x + reach, y1: y - reach, y2: y + reach }
     }),
   )
+  const podShift = (id: string) => labelShifts[id] ?? 0
 
   return (
     <svg
@@ -650,6 +669,39 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
           displayHeading={continuousHeading(ship.id, ship.placement.heading)}
           onSelect={select}
         />
+      ))}
+
+      {/*
+        Escape pods (E11.6.4): stationary, defenceless, and worth points to
+        whoever reaches them. Drawn small and dim — they are not combatants —
+        but labelled with the crew aboard, because that is the whole reason to
+        go and get one.
+      */}
+      {game.escapePods.map((pod) => (
+        <g
+          key={pod.id}
+          className={`escape-pod pod-${pod.side.startsWith('Blue') ? 'blue' : pod.side.startsWith('Aurelian') ? 'aurelian' : 'red'}`}
+          transform={`translate(${pod.position.x * SCALE}, ${pod.position.y * SCALE})`}
+        >
+          <title>
+            {`${pod.fromShipName} — escape pods\n${pod.crew} crew unit(s) aboard\n` +
+              'Land on a stopped ship within 1", or beam them across (E11.6.5)'}
+          </title>
+          <circle r={5} />
+          <circle r={9} className="pod-halo" />
+          {podShift(pod.id) > 0 && (
+            <line
+              x1={0}
+              y1={12}
+              x2={0}
+              y2={13 + podShift(pod.id)}
+              className="ship-name-leader"
+            />
+          )}
+          <text y={POD_LABEL_TOP + podShift(pod.id)} className="pod-label" textAnchor="middle">
+            {podLabelText(pod)}
+          </text>
+        </g>
       ))}
 
       {/* Names last, so no counter can paint over one. */}

@@ -45,7 +45,11 @@ export const BASELINES = [
     scenario: 'exp2-squadron-engagement',
     hi: 'admiral',
     lo: 'ensign',
-    expect: '51W-13L of 64',
+    // Was 51W-13L until scout sensors were wired into informational scans
+    // (H3.6): both fleets here carry a scout, and one whose scan reaches 21"
+    // for three extra points instead of 8" for none changes what its captain
+    // knows. Same 51 wins; one loss became a draw.
+    expect: '51W-12L of 64',
   },
 ] as const
 
