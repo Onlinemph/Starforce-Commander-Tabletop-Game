@@ -55,7 +55,13 @@ export const BASELINES = [
    *                        36" / 64 games        72" / 192 games
    *     duel adm-vs-capt   41W-23L   (64%)       104W-85L   (54%)
    *     duel adm-vs-ens    54W-10L   (84%)       117W-75L   (61%)
-   *     squadron adm-ens   53W-11L   (83%)       114W-77L   (59%)
+   *     squadron adm-ens   53W-11L   (83%)       112W-78L   (58%)
+   *
+   * A useful side-effect: the board-edge margin that had to be widened to keep
+   * heavy hulls on the printed map is worth almost nothing here — the same
+   * three seasons run 104W-85L, 117W-75L, 114W-77L without it. Twice the board
+   * fixes the whole class of problem that margin was patching. It stays,
+   * because the printed map is still a legal board to fight on.
    */
   {
     label: 'duel adm-vs-capt',
@@ -80,7 +86,7 @@ export const BASELINES = [
     // wired into informational scans (H3.6), → 52W-11L when E8.5.4's
     // restriction was tied to the damage rather than a phase count, → 53W-11L
     // with the board-edge margin. All of that history is small-map history.
-    expect: '114W-77L of 192',
+    expect: '112W-78L of 192',
   },
 ] as const
 

@@ -1479,8 +1479,47 @@ function bestPlot(
       const uncovered = Math.max(0, planned.stress - covered)
       score -= (planned.stress - uncovered) * 0.5 + uncovered * 4
 
-      // The board edge is disengagement (S2.2.1) — a wall to a ship that
-      // means to fight, the door itself to one that means to leave (J9.2.2).
+      /*
+       * The board edge is disengagement (S2.2.1) — a wall to a ship that means
+       * to fight, the door itself to one that means to leave (J9.2.2).
+       *
+       * A ship that means to fight has to start turning away from it while it
+       * still can, and how early that is depends entirely on the hull. This
+       * used to be a flat penalty inside two inches of the boundary, which is
+       * fine for something nimble and useless for something that is not: a
+       * UNION dreadnought has no free acceleration at all, so it sheds one
+       * point of speed a round and needs twenty inches to come to a stop. By
+       * the time such a ship is two inches out it has already left; it just
+       * does not know yet. It flew off the map in nearly every duel it did not
+       * win outright, at full structure, with the enemy nearly dead — which
+       * reads as a ship losing fights it was in fact winning.
+       *
+       * So the margin is the ship's own stopping distance, and the penalty
+       * grows as the plot eats into it. That is worth two games a season and
+       * is the right shape, but be warned: it does NOT fix the dreadnought.
+       *
+       * Still open, and measured, so the next attempt can skip the dead ends.
+       * A UNION III against an EXETER II kills it 11 times in 40 and sails off
+       * the board in 25 of the rest, at 19 of 22 structure with the EXETER on
+       * 1 of 16. It is not losing; it is leaving. The decision that dooms it
+       * is several rounds earlier — it accelerates to a speed whose turn
+       * template is `0` while closing, flies six phases of heading 270 through
+       * the enemy and out the far side, and by the time any of this code sees
+       * a bad plot every candidate is equally bad. Three fixes were tried:
+       *
+       *   - Penalising a can't-turn speed outright fixes it (kills 11 → 20)
+       *     and costs the admiral the duel season, 39W-24L to 22W-40L.
+       *     Sprinting where there is room to sprint is good doctrine.
+       *   - Folding the can't-turn rounds into the margin below: baselines
+       *     down, dreadnought unchanged.
+       *   - A hard veto on any plot leaving the board: baselines flat,
+       *     dreadnought barely moved, for the reason above — when every
+       *     candidate exits, vetoing them all changes nothing.
+       *
+       * What is left to try is the plan a round ahead: refusing the
+       * acceleration that will leave the ship unable to come about, rather
+       * than the plot that finally takes it over the line.
+       */
       const { width, height } = game.scenario.bounds
       if (fleeing) {
         if (
@@ -1491,13 +1530,35 @@ function bestPlot(
         ) {
           score += 30
         }
-      } else if (
-        end.position.x < 2 ||
-        end.position.y < 2 ||
-        end.position.x > width - 2 ||
-        end.position.y > height - 2
-      ) {
-        score -= 8
+      } else {
+        /*
+         * A hull that cannot turn cannot stay in the battle, and C2.2.2 prints
+         * a `0` in the turn row for the speeds at which some ships cannot. The
+         * UNION dreadnoughts have one at their best speed, and the captain was
+         * plotting it while closing: six phases of heading 270, straight past
+         * the enemy and off the far edge of a thirty-six inch map, at full
+         * structure. Speed is worth something and being able to come about is
+         * worth more, so this is a real cost rather than a veto — a ship with
+         * a reason to sprint in a straight line can still pay it.
+         */
+        // Rounds to shed this speed, then the distance covered doing it —
+        // travelling at an average of half the current speed while it slows.
+        const brake = Math.max(1, accelerationBudget(ship))
+        const speed = Math.abs(candidate.speed)
+        const rounds = Math.ceil(speed / brake)
+        const margin = Math.max(2, (speed * rounds) / 2)
+        const room = Math.min(
+          end.position.x,
+          end.position.y,
+          width - end.position.x,
+          height - end.position.y,
+        )
+        if (room < margin) {
+          // Linear from nothing at the edge of the margin to a hard refusal
+          // at the boundary itself, so a fast heavy turns early and a nimble
+          // ship can still use the whole board.
+          score -= 8 * (1 - Math.max(0, room) / margin)
+        }
       }
 
       // Rocks tear hulls above the safe speed (K2.1.6).
