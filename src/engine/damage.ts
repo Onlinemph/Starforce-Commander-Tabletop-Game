@@ -91,6 +91,9 @@ export const autoChoices: DamageChoices = {
       ['QTRS', 'quarters'],
       ['CRGO', 'quarters'],
       ['SHTL', 'shuttle-bay'],
+      // Same card, and a hangar is no more use in a gunfight than a shuttle
+      // bay — so it goes early, with the other things worth losing (E8.4.6).
+      ['HNGR', 'shuttle-bay'],
       ['PROB', 'special-system'],
       ['SPCL', 'special-system'],
       ['TRAN', 'transporter'],
@@ -569,6 +572,14 @@ const SYSTEM_FOR_HIT: Partial<Record<DamageHit, SystemKind>> = {
 const ALTERNATE_SYSTEMS: Partial<Record<DamageHit, SystemKind[]>> = {
   'special-system': ['PROB', 'CMND'],
   quarters: ['CRGO', 'SPCL'],
+  /*
+   * The card is titled "Shuttle or Hangar Bay" and E8.4.6 means both: a ship
+   * that carries a hangar rather than a shuttle bay — "such as fighter/shuttle
+   * carriers" — takes this hit on the HNGR boxes. Without it a carrier's
+   * hangar was the one system on the form no damage card could ever reach, and
+   * a hull with a hangar and no shuttle bay treated its own card as an ALT HIT.
+   */
+  'shuttle-bay': ['HNGR'],
 }
 
 /**

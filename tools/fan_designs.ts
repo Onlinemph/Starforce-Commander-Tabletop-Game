@@ -354,6 +354,220 @@ const HYPERION: ShipForm = {
 // ---------------------------------------------------------------------------
 
 /**
+ * EA OMEGA-class destroyer (Babylon 5).
+ *
+ * The Hyperion's successor and the ship the Earth Alliance built once it had
+ * learned what the Minbari war cost. Same doctrine — no shields, armour and
+ * interceptors, lasers and pulse cannon — on a larger hull, with the two things
+ * the Hyperion conspicuously lacks: a rotating section, and a real hangar.
+ *
+ *  - **The rotating section.** QTRS 6 against the Hyperion's 2. It is the
+ *    visible difference between the classes and it buys crew volume, which
+ *    here means quarters boxes: free hits that soak damage cards, and under
+ *    J11.2.2 the place a Quarters hit lands before it spills anywhere that
+ *    matters.
+ *  - **The hangar.** Starfury capacity is carried in HNGR boxes, not as
+ *    shuttles. E8.4.6 names hangar bays as their own damageable system —
+ *    "such as fighter/shuttle carriers" — so a carrier's fighter capacity has
+ *    a printed home on the form that is not the shuttle bay, and when fighter
+ *    squadrons arrive they will be flying off these boxes. The eight SHTL
+ *    boxes' worth of "Starfuries" the Hyperion pretends to carry are a
+ *    placeholder; this is the real thing, waiting for the rules.
+ *
+ * Still no shields, still no transporters, still no tractors: it is an Earth
+ * Alliance ship, and the armour is what there is.
+ *
+ * Priced at 104.7 by the same ×0.85 the Hyperion carries, and calibrated on
+ * killability rather than on matching a printed number — because the printed
+ * numbers do not form a performance ladder. Measured in this harness the
+ * 158.6-point UNION III loses to the 95.6-point EXETER II, so "trades evenly
+ * with a ship of the same cost" has nothing stable to aim at up here. What can
+ * be aimed at is whether the thing can be killed, and this one can:
+ *
+ *     EXETER II   95.6   34W- 6L   killed 32, lost 6
+ *     V-11C        147   35W- 5L   killed  2, lost 5
+ *     UNION III  158.6   36W- 4L   killed  0, lost 4
+ *
+ * It beats the strongest hull in the printed roster and still dies four to six
+ * times in forty doing it.
+ */
+const OMEGA: ShipForm = {
+  id: 'fan-b5-omega-destroyer',
+  name: 'OMEGA-class Destroyer',
+  faction: 'Earth Alliance',
+  sizeClass: 7,
+  stressRating: 4,
+  damageControlRating: 6,
+
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
+  ],
+  batteries: 3,
+  ftlDriveBoxes: 4,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [2, 3], { freeValue: 1 }),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2], { sequential: false }),
+    line('ftl', 'JUMP ENG', 'ftl-drive', [1, 2, 3]),
+    // No RNFC or REPR lines: nothing to reinforce and, under G2.2.2, nothing
+    // that may be repaired.
+    line('sensor', 'SENSORS', 'sensor', [4, 6], { freeValue: 2 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [1, 2], { freeValue: 1, sequential: false }),
+    // Flight operations, which is what a hangar costs to run (J8.1).
+    line('flight', 'FLIGHT OPS', 'gen-sys', [1], { freeValue: 1, sequential: false }),
+    line('f-laser', 'HVY LASER', 'weapon', [4, 6, 8], {
+      freeValue: 2,
+      weaponSystemId: 'ea-omega-laser',
+    }),
+    line('f-pulse', 'PULSE CAN', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'ea-omega-pulse',
+    }),
+    line('f-intcpt', 'INTCPT GRID', 'weapon', [3], {
+      freeValue: 2,
+      weaponSystemId: 'ea-omega-interceptor',
+    }),
+    line('f-missile', 'MISSILE', 'weapon', [2], {
+      freeValue: 0,
+      weaponSystemId: 'ea-omega-missile',
+    }),
+  ],
+
+  weapons: [
+    // The Hyperion's battery grown up: four mounts instead of three, and
+    // reaching past thirty.
+    weapon({
+      id: 'ea-omega-laser',
+      name: 'HEAVY LASER CANNON',
+      weaponClass: 'phaser',
+      mounts: FORWARD,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1'],
+      brackets: [
+        { min: 0, max: 10, band: 'green', dice: ['red', 'yellow'] },
+        { min: 11, max: 20, band: 'black', dice: ['red'] },
+        { min: 21, max: 28, band: 'red', dice: ['yellow'] },
+        { min: 29, max: 34, band: 'red', dice: ['green'] },
+      ],
+    }),
+    // Pulse cannon: the Omega's answer to everything inside ten inches, on the
+    // printed all-round mounting.
+    weapon({
+      id: 'ea-omega-pulse',
+      name: 'PULSE CANNON',
+      weaponClass: 'disruptor',
+      mounts: ALL_ROUND,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PARTCL'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['yellow', 'green'] },
+        { min: 6, max: 10, band: 'black', dice: ['green', 'green'] },
+        { min: 11, max: 15, band: 'black', dice: ['green', 'blue'] },
+      ],
+    }),
+    weapon({
+      id: 'ea-omega-interceptor',
+      name: 'INTERCEPTOR GRID',
+      weaponClass: 'phaser',
+      mounts: ALL_ROUND,
+      armingCircles: 1,
+      hitBoxes: 1,
+      traits: ['PD MODE'],
+      brackets: [
+        { min: 0, max: 4, band: 'green', dice: ['green'] },
+        { min: 5, max: 9, band: 'black', dice: ['blue'] },
+      ],
+    }),
+    weapon({
+      id: 'ea-omega-missile',
+      name: 'Mk-VI NUCLEAR MISSILE',
+      weaponClass: 'plasma-torpedo',
+      mounts: [['FS', 'FP'], ['FS', 'FP'], ['FS', 'FP']],
+      armingCircles: 2,
+      hitBoxes: 1,
+      slowArming: true,
+      traits: ['HOMING 3', 'MISL 2', 'NoBAT'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['red'], bonus: 3, endurancePhase: 1 },
+        { min: 0, max: 10, band: 'green', dice: ['red'], bonus: 2, endurancePhase: 2 },
+        { min: 0, max: 15, band: 'green', dice: ['red'], bonus: 1, endurancePhase: 3 },
+      ],
+    }),
+  ],
+
+  shields: {
+    generatorBoxes: 0,
+    blue: { F: 0, A: 0, P: 0, S: 0 },
+    green: { F: 0, S: 0, A: 0, P: 0 },
+  },
+  /*
+   * Less plate than the Hyperion, not more, which looks wrong for the bigger
+   * ship until you count what it is spent on: nearly twice the offense and six
+   * more structure boxes. The first draft carried 232 boxes and could not be
+   * killed at all — zero losses across seven of eight printed opponents,
+   * including a dreadnought costing more than it did. Armour is linear in the
+   * point model and a step function in play: past the number an enemy can chew
+   * through in twelve rounds, every further box is a free win. 152 is under
+   * that line, and this ship dies four to six times in forty against the
+   * heavies.
+   */
+  armor: { F: 48, S: 38, A: 28, P: 38 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 4 },
+    { kind: 'SENS', label: 'Sensors', boxes: 4 },
+    // The hangar the Hyperion never had. Starfury capacity lives here rather
+    // than in SHTL, so it is fighter capacity when fighters exist (E8.4.6).
+    { kind: 'HNGR', label: 'Starfury Hangar', boxes: 6 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 2 },
+    // The rotating section: the whole visible difference from a Hyperion.
+    { kind: 'QTRS', label: 'Rotating Section', boxes: 6 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 3 },
+  ],
+
+  structure: [
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  sublight: {
+    maxSpeed: 6,
+    // Heavier than a Hyperion and it turns like it, but the same attitude
+    // thrusters mean it can still come about at speed.
+    turnBySpeed: [30, 30, 25, 25, 20, 15, 15],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 2,
+    driveBoxes: 6,
+    dmgTopSpeed: [5, 4, 3, 1, 0, 0],
+  },
+
+  marineSquads: 14,
+  // Shuttles only. The Starfuries are hangar capacity, and they fly when the
+  // fighter rules land.
+  shuttles: 4,
+
+  pointValue: 0,
+  year: 2258,
+  availability: 'common',
+}
+
+// ---------------------------------------------------------------------------
+
+/**
  * MINBARI SHARLIN-class warcruiser (Babylon 5).
  *
  * The ship the Earth Alliance could not hit. Everything else about it follows
@@ -606,6 +820,14 @@ const DESIGNS: Design[] = [
      * that is a matchup rather than a mispricing — Vallari particle weapons go
      * through armour the way nothing in the Union inventory does.
      */
+    costModifier: 0.85,
+    costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',
+  },
+  {
+    form: OMEGA,
+    // Same reason as the Hyperion, same measurement method: an armour-only
+    // hull, and the model cannot see that armour never comes back (G2.2.2).
+    // The ladder that set this number is in the note above the design.
     costModifier: 0.85,
     costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',
   },

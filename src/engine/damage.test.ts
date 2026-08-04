@@ -189,6 +189,40 @@ describe('specific damage cards (E8)', () => {
     expect(state.armed).toBe(0)
   })
 
+  /*
+   * The card is printed "Shuttle or Hangar Bay", and E8.4.6 means the or: a
+   * carrier that keeps its small craft in a hangar takes the hit there. Only
+   * SHTL was wired up, so a hull with a hangar and no shuttle bay treated its
+   * own damage card as an ALT HIT and its hangar could never be hurt.
+   */
+  it('a Shuttle or Hangar Bay hit falls on the hangar of a carrier (E8.4.6)', () => {
+    const ship = makeShip()
+    ship.form = {
+      ...YORKTOWN,
+      systems: YORKTOWN.systems
+        .filter((g) => g.kind !== 'SHTL')
+        .concat([{ kind: 'HNGR', label: 'Hangar Bay', boxes: 4 }]),
+    }
+    expect(undamagedSystemBoxes(ship, 'SHTL')).toBe(0)
+
+    resolveCard(ship, card('shuttle-bay'), makeContext())
+    expect(undamagedSystemBoxes(ship, 'HNGR')).toBe(3)
+  })
+
+  it('still prefers a real shuttle bay when the ship has both (E8.4.6)', () => {
+    const ship = makeShip()
+    ship.form = {
+      ...YORKTOWN,
+      systems: [...YORKTOWN.systems, { kind: 'HNGR', label: 'Hangar Bay', boxes: 4 }],
+    }
+    const shuttleBoxes = undamagedSystemBoxes(ship, 'SHTL')
+    expect(shuttleBoxes).toBeGreaterThan(0)
+
+    resolveCard(ship, card('shuttle-bay'), makeContext())
+    expect(undamagedSystemBoxes(ship, 'SHTL')).toBe(shuttleBoxes - 1)
+    expect(undamagedSystemBoxes(ship, 'HNGR')).toBe(4)
+  })
+
   it('Casualties removes three marine squads (E8.4.2)', () => {
     const ship = makeShip()
     resolveCard(ship, card('casualties'), makeContext())

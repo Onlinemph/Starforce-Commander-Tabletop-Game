@@ -722,6 +722,805 @@
     "availability": "common"
   },
   {
+    "id": "fan-b5-omega-destroyer",
+    "name": "OMEGA-class Destroyer",
+    "faction": "Earth Alliance",
+    "sizeClass": 7,
+    "stressRating": 4,
+    "damageControlRating": 6,
+    "reactors": [
+      {
+        "id": "l-main",
+        "label": "L MAIN",
+        "hitKind": "left-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "r-main",
+        "label": "R MAIN",
+        "hitKind": "right-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "sl-reac",
+        "label": "SL REAC",
+        "hitKind": "sublight-reactor",
+        "points": [
+          {
+            "boxes": 2
+          },
+          {
+            "boxes": 2
+          }
+        ]
+      },
+      {
+        "id": "aux-pwr",
+        "label": "AUX PWR",
+        "hitKind": "aux",
+        "points": [
+          {
+            "boxes": 2
+          }
+        ]
+      }
+    ],
+    "batteries": 3,
+    "ftlDriveBoxes": 4,
+    "functions": [
+      {
+        "id": "accel",
+        "label": "ACC/DEC",
+        "kind": "accel",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "sif",
+        "label": "SIF/IDF",
+        "kind": "sif",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "emer",
+        "label": "EMER",
+        "kind": "emergency-turn",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "bat-rech",
+        "label": "BTY RECH",
+        "kind": "battery-recharge",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "ftl",
+        "label": "JUMP ENG",
+        "kind": "ftl-drive",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "sensor",
+        "label": "SENSORS",
+        "kind": "sensor",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 6
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "gen-sys",
+        "label": "GEN SYS",
+        "kind": "gen-sys",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "flight",
+        "label": "FLIGHT OPS",
+        "kind": "gen-sys",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "f-laser",
+        "label": "HVY LASER",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 6
+          },
+          {
+            "powerCost": 1,
+            "value": 8
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "ea-omega-laser"
+      },
+      {
+        "id": "f-pulse",
+        "label": "PULSE CAN",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 6
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "ea-omega-pulse"
+      },
+      {
+        "id": "f-intcpt",
+        "label": "INTCPT GRID",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "ea-omega-interceptor"
+      },
+      {
+        "id": "f-missile",
+        "label": "MISSILE",
+        "kind": "weapon",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "ea-omega-missile"
+      }
+    ],
+    "weapons": [
+      {
+        "id": "ea-omega-laser",
+        "name": "HEAVY LASER CANNON",
+        "weaponClass": "phaser",
+        "mounts": [
+          {
+            "id": "ea-omega-laser-m1",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-laser-m2",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-laser-m3",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-laser-m4",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 10,
+            "band": "green",
+            "dice": [
+              "red",
+              "yellow"
+            ]
+          },
+          {
+            "min": 11,
+            "max": 20,
+            "band": "black",
+            "dice": [
+              "red"
+            ]
+          },
+          {
+            "min": 21,
+            "max": 28,
+            "band": "red",
+            "dice": [
+              "yellow"
+            ]
+          },
+          {
+            "min": 29,
+            "max": 34,
+            "band": "red",
+            "dice": [
+              "green"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 1"
+        ]
+      },
+      {
+        "id": "ea-omega-pulse",
+        "name": "PULSE CANNON",
+        "weaponClass": "disruptor",
+        "mounts": [
+          {
+            "id": "ea-omega-pulse-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-pulse-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-pulse-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "ea-omega-pulse-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 5,
+            "band": "green",
+            "dice": [
+              "yellow",
+              "green"
+            ]
+          },
+          {
+            "min": 6,
+            "max": 10,
+            "band": "black",
+            "dice": [
+              "green",
+              "green"
+            ]
+          },
+          {
+            "min": 11,
+            "max": 15,
+            "band": "black",
+            "dice": [
+              "green",
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PARTCL"
+        ]
+      },
+      {
+        "id": "ea-omega-interceptor",
+        "name": "INTERCEPTOR GRID",
+        "weaponClass": "phaser",
+        "mounts": [
+          {
+            "id": "ea-omega-interceptor-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "ea-omega-interceptor-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "ea-omega-interceptor-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "ea-omega-interceptor-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 4,
+            "band": "green",
+            "dice": [
+              "green"
+            ]
+          },
+          {
+            "min": 5,
+            "max": 9,
+            "band": "black",
+            "dice": [
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PD MODE"
+        ]
+      },
+      {
+        "id": "ea-omega-missile",
+        "name": "Mk-VI NUCLEAR MISSILE",
+        "weaponClass": "plasma-torpedo",
+        "mounts": [
+          {
+            "id": "ea-omega-missile-m1",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          },
+          {
+            "id": "ea-omega-missile-m2",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          },
+          {
+            "id": "ea-omega-missile-m3",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 5,
+            "band": "green",
+            "dice": [
+              "red"
+            ],
+            "bonus": 3,
+            "endurancePhase": 1
+          },
+          {
+            "min": 0,
+            "max": 10,
+            "band": "green",
+            "dice": [
+              "red"
+            ],
+            "bonus": 2,
+            "endurancePhase": 2
+          },
+          {
+            "min": 0,
+            "max": 15,
+            "band": "green",
+            "dice": [
+              "red"
+            ],
+            "bonus": 1,
+            "endurancePhase": 3
+          }
+        ],
+        "traits": [
+          "HOMING 3",
+          "MISL 2",
+          "NoBAT"
+        ]
+      }
+    ],
+    "shields": {
+      "generatorBoxes": 0,
+      "blue": {
+        "F": 0,
+        "A": 0,
+        "P": 0,
+        "S": 0
+      },
+      "green": {
+        "F": 0,
+        "S": 0,
+        "A": 0,
+        "P": 0
+      }
+    },
+    "armor": {
+      "F": 48,
+      "S": 38,
+      "A": 28,
+      "P": 38
+    },
+    "systems": [
+      {
+        "kind": "SCNC",
+        "label": "Sciences",
+        "boxes": 4
+      },
+      {
+        "kind": "SENS",
+        "label": "Sensors",
+        "boxes": 4
+      },
+      {
+        "kind": "HNGR",
+        "label": "Starfury Hangar",
+        "boxes": 6
+      },
+      {
+        "kind": "SHTL",
+        "label": "Shuttle Bay",
+        "boxes": 2
+      },
+      {
+        "kind": "QTRS",
+        "label": "Rotating Section",
+        "boxes": 6
+      },
+      {
+        "kind": "CRGO",
+        "label": "Cargo",
+        "boxes": 3
+      }
+    ],
+    "structure": [
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 5
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 4
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 3
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 2
+      }
+    ],
+    "sublight": {
+      "maxSpeed": 6,
+      "turnBySpeed": [
+        30,
+        30,
+        25,
+        25,
+        20,
+        15,
+        15
+      ],
+      "maxAccelPerPhase": 2,
+      "safeAccelPerRound": 2,
+      "stressAccelPerRound": 2,
+      "driveBoxes": 6,
+      "dmgTopSpeed": [
+        5,
+        4,
+        3,
+        1,
+        0,
+        0
+      ]
+    },
+    "marineSquads": 14,
+    "shuttles": 4,
+    "pointValue": 104.7,
+    "year": 2258,
+    "availability": "common"
+  },
+  {
     "id": "fan-b5-sharlin-warcruiser",
     "name": "SHARLIN-class Warcruiser",
     "faction": "Minbari Federation",
