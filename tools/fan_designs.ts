@@ -20,13 +20,18 @@
  * that famously lacks even that. Each of those is a real mechanical consequence
  * here:
  *
- *  - **No deflectors, an interceptor grid instead.** Modelled as blue shield
- *    boxes, because that is exactly what a blue box is — the layer that stops
- *    a hit before it reaches the hull. They are thinner than a Union cruiser's
- *    screens, and under them sits something no printed ship has: real armour,
- *    which absorbs after the shields and which damage control cannot put back.
- *    The Hyperion is harder to finish than its shield strength suggests and
- *    permanently worse for every fight it survives.
+ *  - **No shields whatsoever.** Not thin ones — none. Every blue and green box
+ *    is zero and there is no shield generator, so the ship carries no RNFC or
+ *    REPR lines either and its whole defence is grey armour under G2. That is
+ *    a harsher thing to be than it sounds: armour absorbs like a blue box, but
+ *    G2.2.2 says a ship may not repair armour during combat, so every point of
+ *    it the Hyperion loses is gone for the rest of the battle. A Union cruiser
+ *    puts its screens back up round after round; this one has a fixed pool and
+ *    a clock. It has to win early.
+ *  - **An interceptor grid, which is a weapon and not a screen.** It shoots
+ *    incoming fire down rather than soaking it, so it lives in the weapons
+ *    block with PD MODE, where the point-defence rules can actually reach it.
+ *    Modelling it as shield boxes would have been the easy lie.
  *  - **No transporters.** TRAN 0. It cannot beam marines across, cannot be
  *    boarded that way, and — under E11.5 — cannot evacuate its crew by
  *    transporter at all. Its people leave by shuttle or not at all.
@@ -35,21 +40,23 @@
  *  - **No rotating section.** QTRS 2, the lowest of any cruiser here: the crew
  *    works in zero gravity and the ship carries almost no habitable volume.
  *
- * What it gets in exchange is armour, damage control, a reactor two points
- * larger than any printed cruiser's, and a fighter complement twice as big.
+ * What it gets in exchange is 192 boxes of armour, damage control, a reactor
+ * two points larger than any printed cruiser's, and a fighter complement twice
+ * as big.
  *
- * It is calibrated by playing it, not by trusting the price. Mirrored duels at
- * captain against the Union heavy cruisers, 48 games each:
+ * It is calibrated by playing it, not by trusting the price — and here the two
+ * disagree by a lot, which is the whole story of the hull. It is printed at 44
+ * points against a model that totals it at 60.3; the note beside `costModifier`
+ * below has the eight-hull ladder that settled on the number, and the reason
+ * the model cannot see it.
  *
- *     vs YORKTOWN II   (30.4 pt)   37W- 9L
- *     vs YORKTOWN III  (43.2 pt)   24W-23L
- *     vs YORKTOWN IV   (49.5 pt)    3W-45L
+ * Four corrections got it there, none of which the point model could have
+ * told us about, each recorded at the place it applies:
  *
- * — beats what it outcosts, dead even with its own price, loses to what
- * outcosts it. Getting there took three corrections the point model could not
- * have told us about, all of them recorded at the place they apply: a broadside
- * whose arcs were not arcs, a reactor that could not feed four weapon systems,
- * and a turn table with a zero in the top row.
+ *   - a broadside whose arcs were not arcs, so the battery never bore;
+ *   - a reactor that could not feed four weapon systems;
+ *   - a turn table with a zero in the top row;
+ *   - armour priced as though it were a shield that repairs.
  */
 
 import { writeFileSync } from 'node:fs'
@@ -156,19 +163,11 @@ const HYPERION: ShipForm = {
     line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
     line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2], { sequential: false }),
     line('ftl', 'JUMP ENG', 'ftl-drive', [1, 2, 3]),
-    // The interceptor grid, powered facing by facing like any other screen.
-    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
-      line(`rnfc-${side}`, `INTCPT ${side}`, 'shield-reinforce', [1], {
-        sequential: false,
-        shieldSide: side,
-      }),
-    ),
-    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
-      line(`repr-${side}`, `GRID REPR ${side}`, 'shield-repair', [1], {
-        sequential: false,
-        shieldSide: side,
-      }),
-    ),
+    // No RNFC or REPR lines. There is nothing to reinforce and, under G2.2.2,
+    // nothing that may be repaired — so the eight facing lines every other
+    // cruiser spends power on simply are not on this form, and that power goes
+    // into the guns instead.
+    //
     // Unremarkable rather than crippled: the same line the early YORKTOWNs
     // carry. Earth Alliance sensors are the weak end of a cruiser's, not a
     // shuttle's, and a hull that cannot see cannot shoot either (H2.2.3).
@@ -261,14 +260,24 @@ const HYPERION: ShipForm = {
     }),
   ],
 
-  // The interceptor grid stops what it can; the hull takes the rest.
+  // Nothing. No generator, no blue, no green — the only hull here without a
+  // shield of any kind.
   shields: {
-    generatorBoxes: 3,
-    blue: { F: 20, A: 15, P: 17, S: 17 },
-    green: { F: 3, S: 3, A: 3, P: 3 },
+    generatorBoxes: 0,
+    blue: { F: 0, A: 0, P: 0, S: 0 },
+    green: { F: 0, S: 0, A: 0, P: 0 },
   },
-  // Real armour plate, which no printed ship carries and which nothing repairs.
-  armor: { F: 6, S: 5, A: 4, P: 5 },
+  /*
+   * So the armour does the entire job, and it is deep the way the Vallari
+   * MARAUDER's five boxes over a full set of screens is not. Thick where an
+   * Earth Alliance ship is thick: the bow it turns toward you, and much less
+   * around the back of the drive block.
+   *
+   * None of it comes back. G2.2.2 forbids repairing armour in combat, and no
+   * damage-control roll in this engine can touch it, so the number below is
+   * the whole of what the ship will ever have.
+   */
+  armor: { F: 60, S: 48, A: 36, P: 48 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 3 },
@@ -325,7 +334,51 @@ const HYPERION: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
-const DESIGNS: ShipForm[] = [HYPERION]
+interface Design {
+  form: ShipForm
+  /**
+   * The sheet's `specialModifier` — its own designer's thumb on the scale, for
+   * a hull that plays better or worse than the sum of its parts. Left at 1
+   * unless measurement says otherwise, and never guessed: see the note on the
+   * Hyperion for the measurement that set its value.
+   */
+  costModifier?: number
+  /** Why the modifier is not 1, in one line, for whoever reads the roster. */
+  costNote?: string
+}
+
+const DESIGNS: Design[] = [
+  {
+    form: HYPERION,
+    /*
+     * The point model prices an armour box like a blue shield box. That is very
+     * nearly right for the nine printed Vallari hulls, which carry one to five
+     * boxes of it on top of a full set of screens — and badly wrong here, where
+     * armour is the entire defence, because the model has no term for the thing
+     * that actually separates them: a blue box comes back every round on the
+     * REPR line, and G2.2.2 says an armour box never comes back at all.
+     *
+     * So the model prints 60.3 and the ship does not fight like a 60-point
+     * ship. Mirrored duels at captain, 48 games against each of eight printed
+     * hulls, with health read as a fraction of each hull's own structure so
+     * that having more boxes than the other ship is not itself a win:
+     *
+     *     YORKTOWN I     23.0   36W-10L      KURSK I        51.9   11W-36L
+     *     YORKTOWN II    30.4   39W- 9L      HAVOC V-10B    45.6    9W-38L
+     *     YORKTOWN IIc   32.4   34W-12L      HAVOC V-10D    58.6    9W-32L
+     *     YORKTOWN III   43.2   27W-21L
+     *
+     * It trades evenly with the YORKTOWN III at 43.2 and loses to everything
+     * from 45.6 up, so it is priced where it fights rather than where it
+     * totals. (The YORKTOWN IV is the one hull out of line with the rest at
+     * 33W-15L; its weapons are identical to the III's, so the difference is in
+     * how that matchup plays out, not in the Hyperion. One outlier does not
+     * move the price.)
+     */
+    costModifier: 0.73,
+    costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',
+  },
+]
 
 /**
  * Price each design, report what the validator makes of it, and write the
@@ -333,8 +386,8 @@ const DESIGNS: ShipForm[] = [HYPERION]
  * computed here rather than typed in and left to drift.
  */
 let failed = false
-const roster = DESIGNS.map((form) => {
-  const value = pointValue(form)
+const roster = DESIGNS.map(({ form, costModifier = 1, costNote }) => {
+  const value = pointValue(form, costModifier)
   const problems = validateDesign(form)
   const points = Math.round(value.points * 10) / 10
 
@@ -343,6 +396,10 @@ const roster = DESIGNS.map((form) => {
     `   offense ${Math.round(value.totalOffense)}  defence ${Math.round(value.defence)}` +
       `  power ${Math.round(value.actualPower)}  boxes ${value.systemBoxes}`,
   )
+  if (costModifier !== 1) {
+    const raw = Math.round(pointValue(form).points * 10) / 10
+    console.log(`   ×${costModifier} from the model's ${raw} — ${costNote}`)
+  }
   for (const p of problems) {
     console.log(`   ${p.severity}: ${p.message}`)
     if (p.severity === 'error') failed = true
