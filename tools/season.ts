@@ -45,11 +45,14 @@ export const BASELINES = [
     scenario: 'exp2-squadron-engagement',
     hi: 'admiral',
     lo: 'ensign',
-    // Was 51W-13L until scout sensors were wired into informational scans
+    // 51W-13L → 51W-12L when scout sensors were wired into informational scans
     // (H3.6): both fleets here carry a scout, and one whose scan reaches 21"
     // for three extra points instead of 8" for none changes what its captain
-    // knows. Same 51 wins; one loss became a draw.
-    expect: '51W-12L of 64',
+    // knows. Then → 52W-11L when E8.5.4's restriction was tied to the damage
+    // rather than a phase count: a hull with its drive shot away can no longer
+    // spin to show a fresh shield, so a wreck stays a wreck and the side
+    // winning the damage race keeps its advantage.
+    expect: '52W-11L of 64',
   },
 ] as const
 

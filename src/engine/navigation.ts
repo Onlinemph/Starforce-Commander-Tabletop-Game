@@ -3,6 +3,7 @@ import { drawCard, resolveCard, type DamageContext } from './damage'
 import { applyManeuver, maneuverStress, type ManeuverResult } from './geometry'
 import {
   currentMaxSpeed,
+  driveDestroyed,
   findLine,
   lineValue,
   maxReverseSpeed,
@@ -79,13 +80,30 @@ export function validatePlot(ship: ShipState, card: CommandCard): PlotError[] {
     })
   }
 
-  // Emergency stop keeps the ship still for two phases (C3.8.2, E8.5.4).
-  if (ship.emergencyStopPhases > 0) {
+  /*
+   * An Emergency Stop holds the ship still for two phases (C3.8.2). A sublight
+   * drive with every box marked off holds it there indefinitely — E8.5.4 ties
+   * that restriction to the damage, not to a phase count, so it lasts until
+   * damage control repairs a box rather than lapsing while the drive is still
+   * wreckage.
+   */
+  const stopped = ship.emergencyStopPhases > 0 || driveDestroyed(ship)
+  if (stopped) {
     if (card.speed !== 0) {
-      errors.push({ message: 'Ship is performing an Emergency Stop and must remain at speed zero.', fallbackToStraight: true })
+      errors.push({
+        message: driveDestroyed(ship)
+          ? 'The sublight drive is destroyed; the ship cannot get under way (E8.5.4).'
+          : 'Ship is performing an Emergency Stop and must remain at speed zero.',
+        fallbackToStraight: true,
+      })
     }
     if (card.maneuver !== 'straight' && card.maneuver !== 'easy') {
-      errors.push({ message: 'While stopped the ship may only move straight or make a single Easy Turn (C3.8.4).', fallbackToStraight: true })
+      errors.push({
+        message: driveDestroyed(ship)
+          ? 'With the sublight drive destroyed the ship may only hold station or make a single Easy Turn (E8.5.4, C3.8.4).'
+          : 'While stopped the ship may only move straight or make a single Easy Turn (C3.8.4).',
+        fallbackToStraight: true,
+      })
     }
   }
 
@@ -144,7 +162,7 @@ export function plannedMovement(
   let speed = card.speed
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
-  if (ship.emergencyStopPhases > 0 || card.emergencyStop) speed = 0
+  if (ship.emergencyStopPhases > 0 || card.emergencyStop || driveDestroyed(ship)) speed = 0
 
   const travel =
     towedSpeed === undefined

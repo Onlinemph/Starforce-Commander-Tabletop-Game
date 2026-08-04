@@ -346,6 +346,18 @@ export function sublightDriveDamage(ship: ShipState): number {
   return ship.systemDamage['__sublight'] ?? 0
 }
 
+/**
+ * Every sublight drive box marked off (E8.5.4).
+ *
+ * Distinct from an ordinary Emergency Stop, which lasts two phases and then
+ * releases the ship: a drive that has been shot to pieces holds the ship to a
+ * standstill and a single Easy Turn *for as long as the boxes stay damaged*,
+ * which is until damage control puts one back.
+ */
+export function driveDestroyed(ship: ShipState): boolean {
+  return sublightDriveDamage(ship) >= ship.form.sublight.driveBoxes
+}
+
 /** Maximum speed after sublight drive damage (E8.5.4). */
 export function currentMaxSpeed(ship: ShipState): number {
   const hits = sublightDriveDamage(ship)

@@ -3,7 +3,14 @@ import { startScenario } from '../data/scenarios'
 import { applyAction } from './actions'
 import { defaultCommandCard, type GameState } from './game'
 import { executeMovement, plannedMovement } from './navigation'
-import { turnTemplateAt, type ShipState } from './shipState'
+import {
+  createShip,
+  currentMaxSpeed,
+  driveDestroyed,
+  turnTemplateAt,
+  type ShipState,
+} from './shipState'
+import { findShipForm } from '../data/ships'
 
 /**
  * The optional maneuvers the engine could already perform and no captain could
@@ -124,5 +131,109 @@ describe('emergency stop (C3.8)', () => {
     ship.emergencyStopPhases = 1
     const refused = applyAction(game, { type: 'plot-emergency-stop', shipId: ship.id, on: true })
     expect(refused.message).toContain('already stopped')
+  })
+})
+
+describe('sublight drive damage (E8.5.4)', () => {
+  /**
+   * How many hits it takes to lose a given speed is printed on each ship's own
+   * DMG line, so it differs hull to hull — a Yorktown has six drive boxes, a
+   * Passer three. The rulebook's worked example is the check that the ladder
+   * is read off the right column.
+   */
+  function wreckDrive(ship: ShipState, hits: number): void {
+    ship.systemDamage['__sublight'] = hits
+  }
+
+  it('reads the top speed off the ship’s own DMG ladder', () => {
+    const { ship } = duel()
+    expect(currentMaxSpeed(ship)).toBe(ship.form.sublight.maxSpeed)
+    for (let hits = 1; hits <= ship.form.sublight.driveBoxes; hits++) {
+      wreckDrive(ship, hits)
+      expect(currentMaxSpeed(ship)).toBe(ship.form.sublight.dmgTopSpeed[hits - 1])
+    }
+  })
+
+  it('matches the rulebook’s worked example: three hits, top speed 2', () => {
+    const yorktown = findShipForm('YORKTOWN IIIc-class Command Cruiser')!
+    const ship = createShip({
+      id: 'y',
+      side: 'Blue Force',
+      name: 'YORKTOWN',
+      form: yorktown,
+      placement: { position: { x: 10, y: 10 }, heading: 0 },
+      speed: 6,
+    })
+    wreckDrive(ship, 3)
+    expect(currentMaxSpeed(ship)).toBe(2)
+  })
+
+  it('gives different hulls different ladders', () => {
+    const passer = findShipForm('PASSER I-class Frigate')!
+    const yorktown = findShipForm('YORKTOWN IIIc-class Command Cruiser')!
+    // Same top speed, very different tolerance for damage.
+    expect(passer.sublight.maxSpeed).toBe(yorktown.sublight.maxSpeed)
+    expect(passer.sublight.driveBoxes).toBeLessThan(yorktown.sublight.driveBoxes)
+    expect(passer.sublight.dmgTopSpeed).not.toEqual(yorktown.sublight.dmgTopSpeed)
+  })
+
+  it('holds a ship with every box gone to a standstill and an easy turn, indefinitely', () => {
+    const { game, ship } = duel()
+    wreckDrive(ship, ship.form.sublight.driveBoxes)
+    ship.speed = 0
+    expect(currentMaxSpeed(ship)).toBe(0)
+
+    // Long past any Emergency Stop counter, which is the bug this pins: the
+    // restriction belongs to the damage, not to a phase count.
+    ship.emergencyStopPhases = 0
+    const heading = ship.placement.heading
+    const hard = plannedMovement(ship, {
+      ...defaultCommandCard(ship),
+      speed: 0,
+      accel: 0,
+      maneuver: 'hard',
+      direction: 'left',
+    })
+    expect(hard.maneuver).toBe('straight')
+    expect(hard.end.heading).toBe(heading)
+
+    // An Easy Turn from a standstill is still allowed.
+    const easy = plannedMovement(ship, {
+      ...defaultCommandCard(ship),
+      speed: 0,
+      accel: 0,
+      maneuver: 'easy',
+      direction: 'left',
+    })
+    expect(easy.maneuver).toBe('easy')
+    expect(easy.speed).toBe(0)
+
+    // ...and plotting a speed it cannot make is corrected to a standstill.
+    const running = plannedMovement(ship, {
+      ...defaultCommandCard(ship),
+      speed: 4,
+      accel: 2,
+      maneuver: 'easy',
+      direction: 'left',
+    })
+    expect(running.speed).toBe(0)
+    expect(applyAction(game, { type: 'plot-maneuver', shipId: ship.id, maneuver: 'easy', direction: 'left' }).message).toBeNull()
+  })
+
+  it('lets a repaired box release the ship again', () => {
+    const { ship } = duel()
+    wreckDrive(ship, ship.form.sublight.driveBoxes)
+    expect(driveDestroyed(ship)).toBe(true)
+    wreckDrive(ship, ship.form.sublight.driveBoxes - 1)
+    expect(driveDestroyed(ship)).toBe(false)
+
+    const hard = plannedMovement(ship, {
+      ...defaultCommandCard(ship),
+      speed: 0,
+      accel: 0,
+      maneuver: 'hard',
+      direction: 'left',
+    })
+    expect(hard.maneuver).toBe('hard')
   })
 })

@@ -593,7 +593,11 @@ a friend would. Pods still adrift when the shooting stops go to whoever is left 
 Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer; **J3.5 tractor
 displacement**, shoving a gripped ship about, and **J3.2.6 capture**, bringing a tractored craft
 aboard — both are written and tested in `tractor.ts` and `smallCraft.ts` and have no action or
-control wired to them, so the rules are modelled but unreachable.
+control wired to them, so the rules are modelled but unreachable; and **C4.2 deceleration from
+damage** *(optional)*, where a ship forced below its new top speed pays acceleration for the
+involuntary slowdown and takes stress for every point beyond its per-round allowance, with the
+feedback loop that implies. The engine clamps such a ship to its new maximum, which is the standard
+game's behaviour; C4.2's *cost* for doing so is not modelled.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 
