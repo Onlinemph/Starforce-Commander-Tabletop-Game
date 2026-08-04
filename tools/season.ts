@@ -38,8 +38,28 @@ import { structureRemaining } from '../src/engine/shipState'
  * or show its gain somewhere else and leave these alone.
  */
 export const BASELINES = [
-  { label: 'duel adm-vs-capt', scenario: 's3.1-the-duel', hi: 'admiral', lo: 'captain', expect: '39W-24L of 64' },
-  { label: 'duel adm-vs-ens', scenario: 's3.1-the-duel', hi: 'admiral', lo: 'ensign', expect: '55W-9L of 64' },
+  {
+    label: 'duel adm-vs-capt',
+    scenario: 's3.1-the-duel',
+    hi: 'admiral',
+    lo: 'captain',
+    // 39W-24L → 41W-23L when the board-edge margin stopped being a flat two
+    // inches and became the ship's own stopping distance. The captains here
+    // fly hulls that cannot turn at their best speed (C2.2.2 prints a `0` in
+    // that row), and a ship at that speed needs to start coming about long
+    // before two inches of board are left.
+    expect: '41W-23L of 64',
+  },
+  {
+    label: 'duel adm-vs-ens',
+    scenario: 's3.1-the-duel',
+    hi: 'admiral',
+    lo: 'ensign',
+    // 55W-9L → 54W-10L on the same change: one game, and in the other
+    // direction. Turning early is worth slightly less against an ensign, who
+    // was not going to punish the overshoot anyway.
+    expect: '54W-10L of 64',
+  },
   {
     label: 'squadron adm-vs-ens',
     scenario: 'exp2-squadron-engagement',
@@ -51,8 +71,10 @@ export const BASELINES = [
     // knows. Then → 52W-11L when E8.5.4's restriction was tied to the damage
     // rather than a phase count: a hull with its drive shot away can no longer
     // spin to show a fresh shield, so a wreck stays a wreck and the side
-    // winning the damage race keeps its advantage.
-    expect: '52W-11L of 64',
+    // winning the damage race keeps its advantage. Then → 53W-11L with the
+    // board-edge margin: a squadron has more hulls to fly off the map, so
+    // keeping them on it is worth marginally more here than in a duel.
+    expect: '53W-11L of 64',
   },
 ] as const
 
