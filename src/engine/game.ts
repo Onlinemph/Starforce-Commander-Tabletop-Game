@@ -137,6 +137,7 @@ import {
   jammingFromShuttles,
   launchPosition,
   launchRefusal,
+  captureRefusal,
   jammingLaunchRefusal,
   moveProbe,
   moveRefusal,
@@ -164,6 +165,8 @@ import {
   lockOnSmall,
   lockOnStarship,
   lockRefusal,
+  displaceRefusal,
+  displacedPosition,
   pruneLinks,
   tractorPower,
   type TractorLink,
@@ -2064,6 +2067,52 @@ export function attemptTractorLock(
 }
 
 /** Release a lock during Step C (J3.6.3). */
+/**
+ * Shove a tractored ship one inch (J3.5).
+ *
+ * The tactical point is not the inch itself: it is that the towing ship can
+ * push its captive out of the beam's own reach and break the lock, or nudge it
+ * into a friend's reach to gain a second one. Both fall out of moving the ship
+ * and re-checking the links, so neither is special-cased here.
+ */
+export function displaceTractored(
+  game: GameState,
+  source: ShipState,
+  targetId: string,
+  direction: 'F' | 'A' | 'P' | 'S',
+): string | null {
+  const target = shipById(game, targetId)
+  if (!target) return 'No such ship.'
+  if (game.segment !== 'navigation' && game.segment !== 'delayed-action') {
+    return 'A tractored ship is displaced after both ships have moved (J3.5.2).'
+  }
+  const power = tractorPower(source, maxSystemOf(game, source))
+  const refusal = displaceRefusal(source, target, game.ops.links, power)
+  if (refusal) return refusal
+
+  const to = displacedPosition(target, direction)
+  // J3.5.3: a gravity well will not have it. Terrain otherwise is allowed, and
+  // costs nothing now — the bill comes when the ship next flies through it.
+  const world = game.scenario.terrain.find(
+    (t) => (t.kind === 'planet' || t.kind === 'moon') &&
+      distance(to, t.center) <= t.radius,
+  )
+  if (world) {
+    return `${target.name} cannot be displaced into ${world.name}'s gravity well (J3.5.3).`
+  }
+
+  target.placement.position = to
+  pushLog(game, `${source.name} displaces ${target.name} one inch ${direction} (J3.5.2).`)
+
+  // The shove may have pushed it out of the beam that did the shoving.
+  const report = pruneLinks(game.ops.links, game.ships, (id) => positionOfObject(game, id))
+  for (const [i, link] of report.broken.entries()) {
+    const owner = shipById(game, link.sourceId)
+    pushLog(game, `Tractor lock ${owner?.name ?? link.sourceId} → ${link.targetId} broken: ${report.reasons[i]}.`)
+  }
+  return null
+}
+
 export function releaseTractor(game: GameState, sourceId: string, targetId: string): void {
   const link = linkBetween(game.ops.links, sourceId, targetId)
   if (!link) return
@@ -2409,6 +2458,36 @@ export function moveSmallCraft(game: GameState, craftId: string, to: { x: number
 }
 
 /** Land a shuttle back aboard a friendly ship (J8.2.4). */
+/**
+ * Bring a tractored craft aboard (J3.2.6), during Flight Operations step 5.B.
+ *
+ * Distinct from recovering your own shuttle: this is what you do with
+ * something you have caught. A friendly craft is simply recovered; an enemy's
+ * is a prize, and its crew goes into the bag with it.
+ */
+export function captureCraft(game: GameState, craftId: string, ship: ShipState): string | null {
+  const craft = game.smallCraft.find((c) => c.id === craftId)
+  if (!craft) return 'No such craft.'
+  if (game.segment !== 'flight-operations') {
+    return 'A tractored craft is brought aboard during Flight Operations (J3.2.6).'
+  }
+  const held = game.ops.links.some((l) => l.sourceId === ship.id && l.targetId === craftId)
+  const refusal = captureRefusal(craft, ship, held)
+  if (refusal) return refusal
+
+  game.smallCraft.splice(game.smallCraft.indexOf(craft), 1)
+  game.ops.links = game.ops.links.filter((l) => l.targetId !== craftId)
+  if (craft.side === ship.side) {
+    ship.shuttlesAboard += 1
+    ship.marineSquads += craft.marines ?? 0
+    pushLog(game, `${ship.name}: brings its own shuttle aboard from the beam (J3.2.6).`)
+  } else {
+    // A captured hull is a prize, not a shuttle this ship can fly out again.
+    pushLog(game, `${ship.name}: takes ${craft.side}'s shuttle aboard as a prize (J3.2.6).`)
+  }
+  return null
+}
+
 export function recoverShuttle(game: GameState, craftId: string, ship: ShipState): string | null {
   const craft = game.smallCraft.find((c) => c.id === craftId)
   if (!craft) return 'No such craft.'

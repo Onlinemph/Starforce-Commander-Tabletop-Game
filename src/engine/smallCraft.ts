@@ -258,15 +258,36 @@ export function dockingRefusal(
 // ---------------------------------------------------------------------------
 
 /**
- * Why a tractored object may not be brought aboard (J3.2.6). Live weapons and
- * armed enemy craft stay outside.
+ * Why a tractored object may not be brought aboard (J3.2.6).
+ *
+ * The rule's exceptions are all about not carrying something dangerous into
+ * your own hangar: "Armed enemy craft (armed shuttles or fighters that allowed
+ * themselves to be captured) and live weapons, such as a missile held in a
+ * tractor beam, may not be brought aboard a ship." A live homing weapon is a
+ * different kind of object entirely and never reaches this check; an enemy
+ * craft with marines aboard is the armed case that does.
  */
-export function captureRefusal(craft: SmallCraft, ship: ShipState): string | null {
+export function captureRefusal(
+  craft: SmallCraft,
+  ship: ShipState,
+  /** Whether this ship is actually holding the craft in a beam (J3.2.6). */
+  tractored: boolean,
+): string | null {
   if (undamagedSystemBoxes(ship, 'SHTL') === 0 && undamagedSystemBoxes(ship, 'HNGR') === 0) {
     return `${ship.name} has no shuttle or landing bay (J3.2.6).`
   }
+  if (!tractored) {
+    return `${ship.name} has no tractor lock on that craft (J3.2.6).`
+  }
   if (craft.kind === 'jamming-shuttle' && craft.side !== ship.side) {
     return 'An enemy jamming shuttle scuttles itself rather than be captured (J8.4.3).'
+  }
+  // An enemy craft with troops aboard is an armed craft, and stays outside.
+  if (craft.side !== ship.side && (craft.marines ?? 0) > 0) {
+    return 'An armed enemy craft may not be brought aboard (J3.2.6).'
+  }
+  if (craft.kind === 'probe') {
+    return 'A probe is a live device, not cargo (J3.2.6).'
   }
   return null
 }

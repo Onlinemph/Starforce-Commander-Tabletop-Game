@@ -605,10 +605,24 @@ The rulebook works the arithmetic twice on one ship, and both numbers are tests:
 stress**; a fourth hit the same round drops it to speed 1 — measured from the original speed 6, so
 5 of deceleration and **3 stress** in total.
 
-Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer; and **J3.5 tractor
-displacement**, shoving a gripped ship about, with **J3.2.6 capture**, bringing a tractored craft
-aboard — both are written and tested in `tractor.ts` and `smallCraft.ts` and have no action or
-control wired to them, so the rules are modelled but unreachable.
+| J3.5 Displacing a Towed Ship | ✅ | An inch in any of the captive's four facings, once everyone has moved, with the links re-checked after |
+| J3.2.6 Capturing Small Targets | ✅ | A tractored craft brought aboard during Flight Operations — your own back, an enemy's as a prize |
+
+**J3.5** is worth more than the inch it moves. A tractoring ship at MAX power, of similar size or
+larger, may shove its captive one inch forward, aft, to port or to starboard — measured in the
+*captive's* own facings, the same four its shields are printed on. The shove happens after both
+ships have moved and re-checks the beam's range first (J3.5.2), and the links are re-checked after,
+which is what makes the two tactics in the rulebook fall out for free: push a ship out of your own
+reach to be rid of it, or nudge it into a friend's reach so a second beam can help hold it. Gravity
+wells refuse the shove outright (J3.5.3); other terrain accepts it and bills the ship next time it
+flies through.
+
+**J3.2.6** lets anything held in a beam be brought aboard during Flight Operations. Your own craft
+is simply recovered; an enemy's is a prize, and the hull does not become a shuttle you can fly out
+again. The rule's exceptions are about not carrying something dangerous into your own hangar, so an
+armed enemy craft, a probe and an enemy jamming shuttle are all refused.
+
+Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 

@@ -72,6 +72,7 @@ import {
   TRACTOR_RANGE,
   type TractorLink,
 } from './tractor'
+import { applyAction } from './actions'
 import { arcTo } from './geometry'
 import type { SystemKind, WeaponSystemDef } from './types'
 
@@ -460,6 +461,9 @@ describe('displacing a towed ship (J3.5)', () => {
     const [a, b] = game.ships
     editForm(a, { sizeClass: sourceSize })
     editForm(b, { sizeClass: targetSize })
+    // A beam only holds what it can reach, and J3.5.2 re-checks that range
+    // before the shove — so put them where a lock could actually exist.
+    b.placement.position = { ...a.placement.position, x: a.placement.position.x + 1 }
     const links: TractorLink[] = [
       { id: 'x', sourceId: a.id, targetId: b.id, targetKind: 'ship', beams: 1, power: 'max' },
     ]
@@ -470,6 +474,12 @@ describe('displacing a towed ship (J3.5)', () => {
     const { a, b, links } = setup(5, 5)
     expect(displaceRefusal(a, b, links, 'nrm')).toMatch(/MAX power/)
     expect(displaceRefusal(a, b, links, 'max')).toBeNull()
+  })
+
+  it('refuses a target that has drifted out of the beam (J3.5.2)', () => {
+    const { a, b, links } = setup(5, 5)
+    b.placement.position = { x: a.placement.position.x + 30, y: a.placement.position.y }
+    expect(displaceRefusal(a, b, links, 'max')).toMatch(/J3\.5\.2/)
   })
 
   it('refuses when the tractoring ship is much smaller', () => {
@@ -1229,5 +1239,161 @@ describe('tractor beams against homing weapons (J3.2.2)', () => {
     expect(missile.brackets.length).toBe(2)
     expect(game.homing).toHaveLength(0)
     expect(game.ops.links).toHaveLength(0)
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// J3.5 / J3.2.6 played through the sequence of play
+// ---------------------------------------------------------------------------
+
+describe('shoving a captive about (J3.5, in play)', () => {
+  function locked() {
+    const game = duel(4)
+    const [big, small] = game.ships
+    editForm(big, { sizeClass: 6 })
+    editForm(small, { sizeClass: 4 })
+    place(big, 20, 20)
+    place(small, 20, 21)
+    grantSystem(big, 'TRAC', 3)
+    setGenSys(big, 'max')
+    setMaxSystem(game, big, 'TRAC')
+    // Set the lock up *after* the ships have moved: Navigation prunes links
+    // whose ends have drifted apart, which is J3.6.2 doing its job.
+    runTo(game, 'navigation')
+    place(big, 20, 20)
+    place(small, 20, 21)
+    game.ops.links.push({
+      id: 'l', sourceId: big.id, targetId: small.id, targetKind: 'ship', beams: 2, power: 'max',
+    })
+    return { game, big, small }
+  }
+
+  it('moves the captive an inch and says so', () => {
+    const { game, big, small } = locked()
+    const before = { ...small.placement.position }
+    expect(
+      applyAction(game, { type: 'displace-tractored', shipId: big.id, targetId: small.id, direction: 'S' })
+        .message,
+    ).toBeNull()
+    expect(small.placement.position).not.toEqual(before)
+    expect(game.log.some((l) => l.message.includes('J3.5.2'))).toBe(true)
+  })
+
+  it('is refused before both ships have moved (J3.5.2)', () => {
+    const { game, big, small } = locked()
+    game.segment = 'command'
+    expect(
+      applyAction(game, { type: 'displace-tractored', shipId: big.id, targetId: small.id, direction: 'F' })
+        .message,
+    ).toMatch(/after both ships have moved/)
+  })
+
+  it('will not push a ship into a gravity well (J3.5.3)', () => {
+    const { game, big, small } = locked()
+    game.scenario = {
+      ...game.scenario,
+      terrain: [
+        ...game.scenario.terrain,
+        { id: 'p', kind: 'planet', name: 'Vesta', center: { x: 20, y: 23 }, radius: 3 },
+      ],
+    }
+    small.placement = { ...small.placement, heading: 0 }
+    // Aft of a ship on heading 0 is +y, straight at the planet.
+    const refused = applyAction(game, {
+      type: 'displace-tractored', shipId: big.id, targetId: small.id, direction: 'A',
+    })
+    expect(refused.message).toMatch(/J3\.5\.3/)
+  })
+
+  it('can shove the captive clean out of its own beam, breaking the lock', () => {
+    const { game, big, small } = locked()
+    // Already at the edge of a MAX beam: one more inch and it is loose. The
+    // shove is measured against the captive's own facings, so pin its heading
+    // rather than assume one — aft of a ship on heading 0 is further from the
+    // towing ship at lower y.
+    small.placement = { position: { x: 20, y: 22 }, heading: 0 }
+    applyAction(game, { type: 'displace-tractored', shipId: big.id, targetId: small.id, direction: 'A' })
+    expect(game.ops.links.some((l) => l.targetId === small.id)).toBe(false)
+    expect(game.log.some((l) => l.message.includes('broken'))).toBe(true)
+  })
+})
+
+describe('taking a craft aboard from the beam (J3.2.6)', () => {
+  function caught(sameSide: boolean, marines = 0) {
+    const game = duel(6)
+    const [ship, other] = game.ships
+    grantSystem(ship, 'SHTL', 2)
+    grantSystem(ship, 'TRAC', 2)
+    place(ship, 20, 20)
+    // As above: build the catch after movement, or Navigation prunes it.
+    runTo(game, 'flight-operations')
+    place(ship, 20, 20)
+    game.smallCraft.push({
+      id: 'craft-1',
+      kind: 'shuttle',
+      side: sameSide ? ship.side : other.side,
+      motherId: sameSide ? ship.id : other.id,
+      position: { x: 20, y: 20.5 },
+      damage: 0,
+      activated: false,
+      ...(marines > 0 ? { marines } : {}),
+    })
+    game.ops.links.push({
+      id: 'lc', sourceId: ship.id, targetId: 'craft-1', targetKind: 'small', beams: 1, power: 'nrm',
+    })
+    return { game, ship }
+  }
+
+  it('brings a friendly shuttle in and releases the beam', () => {
+    const { game, ship } = caught(true)
+    const aboard = ship.shuttlesAboard
+    expect(applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message)
+      .toBeNull()
+    expect(game.smallCraft).toHaveLength(0)
+    expect(ship.shuttlesAboard).toBe(aboard + 1)
+    expect(game.ops.links.some((l) => l.targetId === 'craft-1')).toBe(false)
+  })
+
+  it('takes an unarmed enemy shuttle as a prize, not as a shuttle to fly again', () => {
+    const { game, ship } = caught(false)
+    const aboard = ship.shuttlesAboard
+    expect(applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message)
+      .toBeNull()
+    expect(game.smallCraft).toHaveLength(0)
+    expect(ship.shuttlesAboard).toBe(aboard)
+    expect(game.log.some((l) => l.message.includes('prize'))).toBe(true)
+  })
+
+  it('refuses an armed enemy craft (J3.2.6)', () => {
+    const { game, ship } = caught(false, 2)
+    expect(
+      applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message,
+    ).toMatch(/armed enemy craft/)
+    expect(game.smallCraft).toHaveLength(1)
+  })
+
+  it('refuses a craft nobody has hold of', () => {
+    const { game, ship } = caught(true)
+    game.ops.links = []
+    expect(
+      applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message,
+    ).toMatch(/no tractor lock/)
+  })
+
+  it('refuses a ship with no bay to put it in', () => {
+    const { game, ship } = caught(true)
+    ship.systemDamage['SHTL'] = 99
+    expect(
+      applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message,
+    ).toMatch(/no shuttle or landing bay/)
+  })
+
+  it('happens during Flight Operations and not before', () => {
+    const { game, ship } = caught(true)
+    game.segment = 'combat'
+    expect(
+      applyAction(game, { type: 'capture-craft', craftId: 'craft-1', shipId: ship.id }).message,
+    ).toMatch(/Flight Operations/)
   })
 })

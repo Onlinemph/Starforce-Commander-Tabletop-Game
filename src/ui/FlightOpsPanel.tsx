@@ -146,6 +146,14 @@ function CraftRow({
     )
   }
 
+  /* Ships that actually have this craft in a beam (J3.2.6). */
+  const holders = game.ships.filter(
+    (s) =>
+      !s.destroyed &&
+      !s.disengaged &&
+      game.ops.links.some((l) => l.sourceId === s.id && l.targetId === craft.id),
+  )
+
   const nearby = game.ships.filter(
     (s) =>
       !s.destroyed &&
@@ -216,7 +224,32 @@ function CraftRow({
                 board {s.name.split(' ').pop()}
               </button>
             ))}
-          {nearby.length === 0 && <em className="hint">nothing within range 1</em>}
+          {/*
+            J3.2.6 — anything caught in a beam can be brought aboard, which is
+            how you take a prize rather than merely shoot one down. Offered
+            only to a ship actually holding this craft; the engine refuses the
+            armed and the live regardless.
+          */}
+          {holders.map((s) => (
+            <button
+              key={`capture-${s.id}`}
+              type="button"
+              className="chip"
+              title={
+                s.side === craft.side
+                  ? 'Bring your own craft in off the beam (J3.2.6)'
+                  : 'Take the captured craft aboard as a prize (J3.2.6)'
+              }
+              onClick={() =>
+                onError(dispatch({ type: 'capture-craft', craftId: craft.id, shipId: s.id }).message)
+              }
+            >
+              {s.side === craft.side ? 'bring aboard' : 'take as prize'}
+            </button>
+          ))}
+          {nearby.length === 0 && holders.length === 0 && (
+            <em className="hint">nothing within range 1</em>
+          )}
         </div>
         {ship.id === craft.motherId && null}
       </td>

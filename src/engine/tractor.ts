@@ -265,10 +265,24 @@ export function displaceRefusal(
   if (mutual && source.form.sizeClass < target.form.sizeClass) {
     return `${target.name} is the larger ship, so only it may displace (J3.5.1).`
   }
+  // J3.5.2: the shove happens after both ships have moved, and only if the
+  // target is still in the beam once they have.
+  const range = actualRange(source.placement.position, target.placement.position)
+  const reach = tractorReach(power)
+  if (range > reach) {
+    return `${target.name} has drifted to ${range}"; the beam reaches ${reach}" (J3.5.2).`
+  }
   return null
 }
 
-/** Move a displaced ship one inch, relative to the ship doing the shoving. */
+/**
+ * Where a displaced ship ends up (J3.5.2): one inch forward, aft, to port or
+ * to starboard.
+ *
+ * Measured against the *towed* ship's own facings, which is what F/A/P/S mean
+ * everywhere else in the game — the same four sides its shields are printed
+ * on. The towing ship chooses the direction; it does not lend its heading.
+ */
 export function displacedPosition(target: ShipState, direction: 'F' | 'A' | 'P' | 'S'): Point {
   const bearing = { F: 0, S: 90, A: 180, P: 270 }[direction]
   const angle = ((target.placement.heading + bearing) * Math.PI) / 180

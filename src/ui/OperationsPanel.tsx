@@ -32,6 +32,14 @@ import { dispatch } from './store'
 /** Systems that can be run at maximum, in the order the form prints them. */
 const MAX_CANDIDATES: SystemKind[] = ['TRAC', 'TRAN', 'SCNC', 'SHTL', 'PROB', 'SENS']
 
+/** Which way an inch of displacement goes, in the captive's own frame (J3.5.2). */
+const DISPLACE_LABEL: Record<'F' | 'A' | 'P' | 'S', string> = {
+  F: 'the bow',
+  A: 'the stern',
+  P: 'port',
+  S: 'starboard',
+}
+
 export function OperationsPanel({ game, ship }: { game: GameState; ship: ShipState }) {
   const [error, setError] = useState<string | null>(null)
   const step = game.ops.step
@@ -217,6 +225,36 @@ function Tractors({
           {held.map((link) => (
             <li key={link.id}>
               holding <b>{labelFor(game, link.targetId)}</b> with {link.beams} beam(s)
+              {/*
+                J3.5 — shove a held ship an inch once everyone has moved. The
+                inch is rarely the point: it is for pushing a captive out of
+                your own beam to be rid of it, or into a friend's reach so a
+                second lock can hold it.
+              */}
+              {link.targetKind === 'ship' && (
+                <span className="ops-displace">
+                  {(['F', 'A', 'P', 'S'] as const).map((direction) => (
+                    <button
+                      key={direction}
+                      type="button"
+                      className="chip"
+                      title={`Displace one inch to ${DISPLACE_LABEL[direction]} of the held ship (J3.5)`}
+                      onClick={() =>
+                        onError(
+                          dispatch({
+                            type: 'displace-tractored',
+                            shipId: ship.id,
+                            targetId: link.targetId,
+                            direction,
+                          }).message,
+                        )
+                      }
+                    >
+                      {direction}
+                    </button>
+                  ))}
+                </span>
+              )}
               <button
                 type="button"
                 className="chip danger"

@@ -38,8 +38,10 @@ import {
   commandStateFor,
   contestTractor,
   armCrew,
+  captureCraft,
   damageContext,
   damageRevealsCloak,
+  displaceTractored,
   declareCoordinatedFire,
   evacuateCrew,
   everyoneReady,
@@ -201,6 +203,10 @@ export type GameAction =
   | { type: 'launch-shuttle'; shipId: string; kind?: SmallCraftKind; marines?: number }
   | { type: 'move-craft'; craftId: string; x: number; y: number }
   | { type: 'recover-shuttle'; craftId: string; shipId: string }
+  /** J3.2.6 — bring a craft held in a tractor beam aboard, friend or prize. */
+  | { type: 'capture-craft'; craftId: string; shipId: string }
+  /** J3.5 — shove a tractored ship an inch, once everyone has moved. */
+  | { type: 'displace-tractored'; shipId: string; targetId: string; direction: 'F' | 'A' | 'P' | 'S' }
   | { type: 'dock-shuttle'; craftId: string; shipId: string }
   // Abandoning ship (E11.4–E11.6, optional)
   /** E11.5 — emergency beam-out to a nearby ship, one green die per crew unit. */
@@ -860,6 +866,16 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     }
     case 'move-craft':
       return said(moveSmallCraft(game, action.craftId, { x: action.x, y: action.y }))
+    case 'capture-craft': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(captureCraft(game, action.craftId, ship))
+    }
+    case 'displace-tractored': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(displaceTractored(game, ship, action.targetId, action.direction))
+    }
     case 'recover-shuttle': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
@@ -933,6 +949,8 @@ export function actionSide(game: GameState, action: GameAction): string | null {
     case 'move-craft':
     case 'recover-shuttle':
     case 'dock-shuttle':
+    case 'capture-craft':
+    case 'displace-tractored':
     case 'recover-pod':
       return of('shipId' in action ? action.shipId : undefined)
     case 'advance-segment':
