@@ -295,8 +295,23 @@ const HYPERION: ShipForm = {
    * None of it comes back. G2.2.2 forbids repairing armour in combat, and no
    * damage-control roll in this engine can touch it, so the number below is
    * the whole of what the ship will ever have.
+   *
+   * Rebalanced the same way the Omega was, and for the same reason: armour
+   * absorbs without degrading anything, so a hull carrying too much of it
+   * comes home either untouched or not at all. Against the KURSK I and the
+   * YORKTOWN IV, forty mirrored games each:
+   *
+   *     armour 192 / struct 18    died 10 and 11 of 40   systems lost 4.7, 8.3
+   *     armour 160 / struct 22    died 14 and 15         systems lost 5.6, 9.2
+   *     armour 144 / struct 24    died 13 and 20         systems lost 7.8, 9.7
+   *     armour 112 / struct 28    died 16 and 18         systems lost 9.8, 10.0
+   *
+   * The third, which also happens to price itself: at 49.5 points it goes
+   * 20W-20L against the 49.5-point YORKTOWN IV. Down here the printed ladder
+   * still means something, so unlike the Omega this one could be calibrated
+   * against a peer rather than against its own survivability.
    */
-  armor: { F: 60, S: 48, A: 36, P: 48 },
+  armor: { F: 45, S: 36, A: 27, P: 36 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 3 },
@@ -307,14 +322,20 @@ const HYPERION: ShipForm = {
     { kind: 'CRGO', label: 'Cargo', boxes: 2 },
   ],
 
+  /*
+   * Twenty-four boxes over four Damage Control markers. Six more than the
+   * first draft, taken out of the armour: the damage that used to stop dead in
+   * the plate now comes through as cards, so the ship loses systems and repair
+   * rating as it fights instead of banking hits against a wall.
+   */
   structure: [
     ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 3 },
-    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
-    ...Array.from({ length: 3 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 1 },
   ],
 
@@ -831,29 +852,21 @@ const DESIGNS: Design[] = [
      * that actually separates them: a blue box comes back every round on the
      * REPR line, and G2.2.2 says an armour box never comes back at all.
      *
-     * So the model prints 60.3 and the ship does not fight like a 60-point
-     * ship. Mirrored duels at captain, 48 games against each of eight printed
-     * hulls, with health read as a fraction of each hull's own structure so
-     * that having more boxes than the other ship is not itself a win:
+     * So it is priced where it fights. Mirrored duels at captain, 48 games
+     * against each of eight printed hulls, wrecks deciding the result and
+     * condition only breaking ties:
      *
-     *     YORKTOWN I     23.0   36W-10L      KURSK I        51.9   11W-36L
-     *     YORKTOWN II    30.4   39W- 9L      HAVOC V-10B    45.6    9W-38L
-     *     YORKTOWN IIc   32.4   34W-12L      HAVOC V-10D    58.6    9W-32L
-     *     YORKTOWN III   43.2   27W-21L
+     *     YORKTOWN II    30.4   36W-11L      YORKTOWN IV   49.5   27W-21L
+     *     YORKTOWN IIc   32.4   46W- 2L      KURSK I       51.9   26W-18L
+     *     YORKTOWN III   43.2   32W-15L      UNION I       52.2   30W-16L
+     *     HAVOC V-10B    45.6    2W-46L      YORKTOWN V    76.8    3W-43L
      *
-     * Re-measured after the slow-arming diamond came off the guns, which is
-     * what these numbers are:
-     *
-     *     YORKTOWN II    30.4   36W-11L      YORKTOWN IV   49.5   34W-13L
-     *     YORKTOWN IIc   32.4   44W- 3L      KURSK I       51.9   29W-17L
-     *     YORKTOWN III   43.2   43W- 5L      UNION I       52.2   30W-14L
-     *     HAVOC V-10B    45.6   15W-33L      YORKTOWN V    76.8   11W-34L
-     *
-     * It takes everything up to the low fifties and loses to the high
-     * seventies, so it is priced near sixty rather than at the 68.3 the model
-     * totals. The HAVOC is the one hull below that line which beats it, and
-     * that is a matchup rather than a mispricing — Vallari particle weapons go
-     * through armour the way nothing in the Union inventory does.
+     * Even with the YORKTOWN IV at its own printed cost, winning below it and
+     * losing above it. The HAVOC is the exception and it is a matchup rather
+     * than a mispricing: Vallari particle weapons go through armour the way
+     * nothing in the Union inventory does, and a hull whose whole defence is
+     * armour has no second answer. It got worse when the plate came down, and
+     * it is meant to — this is the ship you do not bring against Vallari.
      */
     costModifier: 0.85,
     costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',

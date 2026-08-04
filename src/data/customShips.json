@@ -569,10 +569,10 @@
       }
     },
     "armor": {
-      "F": 60,
-      "S": 48,
-      "A": 36,
-      "P": 48
+      "F": 45,
+      "S": 36,
+      "A": 27,
+      "P": 36
     },
     "systems": [
       {
@@ -651,6 +651,10 @@
         "color": "black"
       },
       {
+        "kind": "box",
+        "color": "black"
+      },
+      {
         "kind": "dc",
         "rating": 3
       },
@@ -671,8 +675,28 @@
         "color": "red"
       },
       {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
         "kind": "dc",
         "rating": 2
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
       },
       {
         "kind": "box",
@@ -717,7 +741,7 @@
     },
     "marineSquads": 8,
     "shuttles": 8,
-    "pointValue": 58.1,
+    "pointValue": 49.5,
     "year": 2245,
     "availability": "common"
   },
