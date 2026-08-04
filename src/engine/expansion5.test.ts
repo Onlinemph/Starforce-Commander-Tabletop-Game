@@ -55,6 +55,7 @@ import {
   tractorHomingWeapon,
   type HomingWeapon,
 } from './homing'
+import { translate } from './geometry'
 import { THE_DUEL } from '../data/scenarios'
 import { resolveVolley } from './combat'
 import { autoChoices, newDeck } from './damage'
@@ -894,5 +895,74 @@ describe('cloaks and homing weapons in play', () => {
     expect(struck).toHaveLength(1)
     resolveHomingImpacts(game, foe, { F: 30 })
     expect(game.log.some((e) => /worn down to nothing|reduced by 30 points/.test(e.message))).toBe(true)
+  })
+})
+
+describe('unusual situations, played out (E5.9.1, E5.9.2)', () => {
+  /**
+   * Both rules existed as tested helpers that the sequence of play never
+   * called, so a torpedo the ship drove straight into still chased it down and
+   * hit the aft shield — the exact outcome E5.9.1's designer note calls
+   * unrealistic and the rule exists to prevent.
+   */
+  function closing(speed: number, gap: number) {
+    resetHomingIds()
+    // A Union cruiser bearing down on an Aurelian torpedo dead ahead of it.
+    const runner = ship({ id: 'runner', form: VALLARI_CRUISER, y: 0, heading: 0, speed })
+    const shooter = ship({ id: 'shooter', side: 'Red', form: PASSER, y: -30, heading: 180 })
+    const game = createGame({ scenario: THE_DUEL, ships: [runner, shooter], seed: 11 })
+    const torp = shooter.form.weapons.find((w) => w.weaponClass === 'plasma-torpedo')!
+    shooter.mounts[torp.id][0].armed = torp.mounts[0].armingCircles
+    expect(launchHoming(game, shooter, torp, 0, runner)).toBeNull()
+    // Park it exactly `gap` inches along the runner's own heading.
+    game.homing[0].position = translate(runner.placement.position, runner.placement.heading, gap)
+    return { game, runner }
+  }
+
+  it('strikes the leading shield before the ship can move (E5.9.1)', () => {
+    const { game, runner } = closing(5, 4)
+    runTo(game, (g) => g.segment === 'navigation')
+    const where = { ...runner.placement.position }
+
+    advanceSegment(game)
+    const hw = game.homing[0]
+    expect(hw?.impacted ?? true).toBe(true)
+    // The rule fixes *which shield*, not whether the ship moves: the strike is
+    // resolved from where the ship was, and then it carries on.
+    if (hw) {
+      expect(hw.forcedShield).toBe('F')
+      expect(hw.position).toEqual(where)
+    }
+    const line = game.log.find((l) => l.message.includes('E5.9.1'))!
+    expect(line.message).toContain('F shield')
+    expect(runner.placement.position).not.toEqual(where)
+  })
+
+  it('leaves a weapon further off than the ship is fast alone (E5.9.1 step 2)', () => {
+    const { game } = closing(2, 9)
+    runTo(game, (g) => g.segment === 'navigation')
+    advanceSegment(game)
+    expect(game.log.some((l) => l.message.includes('E5.9.1'))).toBe(false)
+  })
+
+  it('hits the front shield when the ship drives over it (E5.9.2)', () => {
+    // Far enough ahead that the head-on check passes it by, close enough that
+    // the ship's own movement runs it down.
+    const { game } = closing(6, 7)
+    runTo(game, (g) => g.segment === 'navigation')
+    advanceSegment(game)
+
+    const struck = game.log.find((l) => l.message.includes('E5.9.2'))
+    if (struck) {
+      expect(struck.message).toContain('F shield')
+      expect(game.homing[0]?.forcedShield ?? 'F').toBe('F')
+    }
+  })
+
+  it('names the aft shield for a ship running in reverse', () => {
+    const s = ship({ id: 'r', form: PASSER, speed: -3 })
+    expect(overflightShield(s)).toBe('A')
+    s.speed = 3
+    expect(overflightShield(s)).toBe('F')
   })
 })

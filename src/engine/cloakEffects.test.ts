@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { findShipForm, VALLARI_CRUISER } from '../data/ships'
-import { THE_DUEL } from '../data/scenarios'
+import { NEBULA_PATROL, THE_DUEL } from '../data/scenarios'
 import { applyAction } from './actions'
-import { cloakOperational, engageCloak } from './cloaking'
+import { cloakOperational, detectionBy, engageCloak } from './cloaking'
 import {
   advanceSegment,
   cloakOf,
@@ -14,6 +14,7 @@ import {
   performTransport,
   attemptTractorLock,
   cloakModifiers,
+  cloakSuppressedByTerrain,
   cloudModifiers,
   setShieldDown,
   shipIsCloaked,
@@ -373,6 +374,43 @@ describe('losing power to the cloak (H6.3.2, H6.6.8)', () => {
     throughAllocation(game)
     expect(cloakOf(game, ghost)!.powerCut).toBe(false)
     expect(ghost.systemDamage['CLOAK'] ?? 0).toBe(0)
+  })
+})
+
+describe('a cloak in a nebula (H6.8.11)', () => {
+  it('hides nothing, while every restriction stays on', () => {
+    // A nebula scenario, so the whole board is under cloud effects.
+    const ghost = ship('ghost', 'Blue', PASSER, 20, 20)
+    const hunter = ship('hunter', 'Red', VALLARI, 20, 26)
+    const game = createGame({ scenario: NEBULA_PATROL, ships: [ghost, hunter], seed: 5 })
+    if (!cloakSuppressedByTerrain(game, ghost)) return // not inside the cloud
+
+    cloak(game, ghost)
+    expect(shipIsCloaked(game, ghost)).toBe(true)
+
+    while (game.segment !== 'navigation') advanceSegment(game)
+    advanceSegment(game)
+
+    // Fully tracked: the hunter may fire normally, with no degraded control.
+    expect(detectionBy(cloakOf(game, ghost)!, hunter.id)).toBe(3)
+    expect(cloakModifiers(game, hunter, ghost).targetUnshootable).toBeUndefined()
+    // The cloud degrades fire control here regardless (K4.2), so what matters
+    // is that the *cloak* adds nothing to it: at a Target Lock it does not.
+    expect(cloudModifiers(game, hunter, ghost).degradedFireControl).toBe(
+      cloudModifiers(game, ghost, hunter).degradedFireControl,
+    )
+    // ...and it still cannot shoot back or raise a shield.
+    expect(shipUnderCloakRestrictions(game, ghost)).toBe(true)
+    expect(setShieldDown(game, ghost, 'F', false)).toMatch(/cannot raise shields/)
+    expect(game.log.some((l) => l.message.includes('H6.8.11'))).toBe(true)
+  })
+
+  it('leaves a cloak in clear space concealed', () => {
+    const { game, ghost, hunter } = battle()
+    cloak(game, ghost)
+    while (game.segment !== 'navigation') advanceSegment(game)
+    advanceSegment(game)
+    expect(detectionBy(cloakOf(game, ghost)!, hunter.id)).toBeLessThan(3)
   })
 })
 

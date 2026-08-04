@@ -26,6 +26,7 @@ import {
   cloakEffects,
   cloakFullyPowered,
   cutCloakPower,
+  detectionBy,
   underCloakRestrictions,
   damageSearchDice,
   firingPermission,
@@ -94,6 +95,9 @@ import {
   applyDefensiveFire,
   endurance,
   impactShield,
+  isHeadOn,
+  overflies,
+  overflightShield,
   isHoming,
   isMissile as isMissileWeapon,
   tractorHomingWeapon,
@@ -1002,6 +1006,34 @@ export function cloakSuppressedByTerrain(game: GameState, ship: ShipState): bool
   return underCloudEffects(cloudConditions(game.scenario), ship)
 }
 
+/**
+ * A cloak inside a nebula hides nothing (H6.8.11(2)): "Cloaking systems don't
+ * prevent detection in a nebula, and cloaked ships suffer all restrictions of
+ * being cloaked without any benefits."
+ *
+ * Modelled by handing every enemy a Target Lock rather than by carving an
+ * exception into concealment. It comes to the same thing — position known,
+ * normal weapon fire, no degraded control — and it keeps the ship's own
+ * restrictions running off `engaged`, which is exactly what the rule asks for.
+ * A lock granted this way then decays like any other if the ship gets out and
+ * shakes its pursuers (H6.13).
+ */
+function nebulaRevealsCloaks(game: GameState): void {
+  for (const ship of activeShips(game)) {
+    const cloak = game.cloaks[ship.id]
+    if (!cloak?.engaged || !cloakSuppressedByTerrain(game, ship)) continue
+    const hunters = activeShips(game).filter((s) => s.side !== ship.side && !s.derelict)
+    const newly = hunters.filter((h) => detectionBy(cloak, h.id) < 3)
+    if (newly.length === 0) continue
+    for (const hunter of newly) cloak.detection[hunter.id] = 3
+    pushLog(
+      game,
+      `${ship.name}'s cloak gives it nothing in the cloud: it is fully tracked while keeping ` +
+        `every cloaking restriction (H6.8.11).`,
+    )
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -1322,7 +1354,9 @@ export function resolveHomingImpacts(
 
   const bySide = new Map<ShieldSide, HomingWeapon[]>()
   for (const hw of arrived) {
-    const side = impactShield(hw, target)
+    // E5.9.1 / E5.9.2 name the facing outright; otherwise it comes off the
+    // counter's bearing (E5.4 Step 2).
+    const side = hw.forcedShield ?? impactShield(hw, target)
     if (!bySide.has(side)) bySide.set(side, [])
     bySide.get(side)!.push(hw)
   }
@@ -1451,6 +1485,10 @@ function runSegmentExit(game: GameState): void {
       // roughly where it is — measured from where the hunters are now, before
       // anyone moves.
       speedSearches(game)
+      // E5.9.1 resolves before anything moves, by definition.
+      resolveHeadOnHoming(game)
+      // A cloak is no help in a nebula (H6.8.11).
+      nebulaRevealsCloaks(game)
       for (const ship of activeShips(game)) {
         const card = game.orders[ship.id]
         if (!card || ship.derelict) continue
@@ -1479,6 +1517,8 @@ function runSegmentExit(game: GameState): void {
         if (result.illegal) pushLog(game, `${ship.name}: illegal plot — ${result.illegal}`)
         if (result.stress > 0) pushLog(game, `${ship.name}: +${result.stress} stress from maneuver.`)
         applyTerrainDamage(game, ship, result.path)
+        // E5.9.2: the ship has just driven over its own incoming torpedo.
+        resolveOverflownHoming(game, ship, result.path)
       }
       // Only the lead ship's counter is on the map, so the rest of a formation
       // finish the move sharing its position exactly (C5.1.3).
@@ -1641,6 +1681,51 @@ function logCloakedSpeeds(game: GameState): void {
  * Impacts are held over to the Combat Segment, where the target may answer with
  * point defense first (E5.1.7).
  */
+/**
+ * Head-on interceptions (E5.9.1), checked before anybody moves.
+ *
+ * Without this the ship simply flies past the torpedo and the torpedo, chasing
+ * from behind, hits it in the back — which is the exact outcome the designer's
+ * note calls unrealistic and the rule exists to prevent. If the weapon lies in
+ * the arc the target is travelling into and is no further off than the target's
+ * speed, it strikes the leading shield now.
+ */
+function resolveHeadOnHoming(game: GameState): void {
+  for (const hw of game.homing) {
+    if (hw.destroyed || hw.impacted || hw.tractored) continue
+    const target = shipById(game, hw.targetId)
+    if (!target || target.destroyed || target.disengaged) continue
+    if (!isHeadOn(hw, target)) continue
+    hw.impacted = true
+    hw.forcedShield = overflightShield(target)
+    hw.position = { ...target.placement.position }
+    pushLog(
+      game,
+      `${hw.weaponName} intercepts ${target.name} head-on and strikes its ${hw.forcedShield} ` +
+        `shield before the ship can move (E5.9.1).`,
+    )
+  }
+}
+
+/**
+ * A ship that runs over a homing weapon aimed at it is hit as it passes
+ * (E5.9.2), on the leading shield — front going forward, aft in reverse.
+ */
+function resolveOverflownHoming(game: GameState, ship: ShipState, path: readonly Point[]): void {
+  for (const hw of game.homing) {
+    if (hw.destroyed || hw.impacted || hw.tractored) continue
+    if (hw.targetId !== ship.id) continue
+    if (!overflies(path, hw)) continue
+    hw.impacted = true
+    hw.forcedShield = overflightShield(ship)
+    hw.position = { ...ship.placement.position }
+    pushLog(
+      game,
+      `${ship.name} overflies ${hw.weaponName}, which impacts its ${hw.forcedShield} shield (E5.9.2).`,
+    )
+  }
+}
+
 function moveHomingWeapons(game: GameState): void {
   for (const hw of game.homing) {
     if (hw.destroyed || hw.impacted) continue

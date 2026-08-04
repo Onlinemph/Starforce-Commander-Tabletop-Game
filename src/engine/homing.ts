@@ -94,6 +94,12 @@ export interface HomingWeapon {
   destroyed: boolean
   /** Set once it has struck, so it is removed after the volley. */
   impacted: boolean
+  /**
+   * A shield the rules name outright rather than deriving from geometry: a
+   * head-on interception or an overflight always lands on the leading facing
+   * (E5.9.1, E5.9.2), whatever the counters look like afterwards.
+   */
+  forcedShield?: ShieldSide
 }
 
 let sequence = 0

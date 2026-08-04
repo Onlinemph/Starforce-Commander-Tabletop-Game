@@ -587,7 +587,10 @@ they were dropped until somebody comes for them. Anybody: a pod is taken aboard 
 within an inch, or beamed across a unit at a time, and an enemy who collects one scores exactly what
 a friend would. Pods still adrift when the shooting stops go to whoever is left holding the field.
 
-Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer.
+Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer; **J3.5 tractor
+displacement**, shoving a gripped ship about, and **J3.2.6 capture**, bringing a tractored craft
+aboard — both are written and tested in `tractor.ts` and `smallCraft.ts` and have no action or
+control wired to them, so the rules are modelled but unreachable.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 
