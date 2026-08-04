@@ -7,6 +7,7 @@ import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geom
 import { shipIsCloaked, type GameState, type TerrainKind } from '../engine/game'
 import { plannedMovement } from '../engine/navigation'
 import {
+  armorRemaining,
   blueShieldRemaining,
   damageLevel,
   greenShieldRemaining,
@@ -909,7 +910,11 @@ function PlotPreview({ game, ship }: { game: GameState; ship: ShipState }) {
         points={planned.path.map((p) => `${p.x * SCALE},${p.y * SCALE}`).join(' ')}
       />
       <g transform={`translate(${ex} ${ey}) rotate(${planned.end.heading})`}>
-        <rect x={-size / 2} y={-size / 2} width={size} height={size} className="plot-ghost" />
+        {/* Round, to match the counter it previews. It was a square back when
+            counters were drawn as squares; with those gone it was the last
+            box on the map and read as an outline around the hull rather than
+            as the footprint the ship is about to occupy. */}
+        <circle r={size / 2} className="plot-ghost" />
         <path d={`M 0 ${-size / 2 - 5} L -4 ${-size / 2 + 2} L 4 ${-size / 2 + 2} Z`} className="plot-ghost-bow" />
       </g>
       <text x={ex} y={ey + size / 2 + 12} className="plot-label" textAnchor="middle">
@@ -1063,6 +1068,17 @@ function shieldBand(fraction: number): string {
   return 'is-strong'
 }
 
+/**
+ * True when this facing is protected by armour alone (G2) — no blue boxes, no
+ * green, nothing to raise or lower. The counter's ring and its strength
+ * readout both fall back to the armour for such a hull, because a bar pinned
+ * at zero and a printed `0` would otherwise say "defenceless" about a ship
+ * carrying sixty boxes of plate.
+ */
+function armorOnly(ship: ShipState, side: 'F' | 'S' | 'A' | 'P'): boolean {
+  return ship.form.shields.blue[side] + ship.form.shields.green[side] === 0 && ship.form.armor[side] > 0
+}
+
 function ShieldRing({
   game,
   ship,
@@ -1077,15 +1093,25 @@ function ShieldRing({
   return (
     <g className="shield-ring" aria-hidden="true">
       {SHIELD_ARCS.map(([side, from, to]) => {
-        const printed = ship.form.shields.blue[side] + ship.form.shields.green[side]
-        const down = ship.shieldsDown[side]
-        const remaining = redacted
-          ? estimatedShieldRemaining(game, ship, side)
-          : blueShieldRemaining(ship, side) + greenShieldRemaining(ship, side)
+        const armor = armorOnly(ship, side)
+        const printed = armor
+          ? ship.form.armor[side]
+          : ship.form.shields.blue[side] + ship.form.shields.green[side]
+        // Armour cannot be lowered and a cloak does not switch it off, so an
+        // armour-only facing is never "down".
+        const down = !armor && ship.shieldsDown[side]
+        const remaining = armor
+          ? armorRemaining(ship, side)
+          : redacted
+            ? estimatedShieldRemaining(game, ship, side)
+            : blueShieldRemaining(ship, side) + greenShieldRemaining(ship, side)
         const fraction = printed > 0 ? Math.min(1, remaining / printed) : 0
         const d = arcPath(radius, from, to)
         return (
-          <g key={side} className={`shield-arc ${down ? 'is-down' : shieldBand(fraction)}`}>
+          <g
+            key={side}
+            className={`shield-arc ${down ? 'is-down' : shieldBand(fraction)}${armor ? ' is-armor' : ''}`}
+          >
             <path className="shield-track" d={d} pathLength={100} />
             {!down && fraction > 0 && (
               <path className="shield-fill" d={d} pathLength={100} strokeDasharray={`${fraction * 100} 100`} />
@@ -1144,6 +1170,10 @@ function ShipToken({
   const cloakRunning = shipIsCloaked(game, ship)
 
   const shieldLabel = (side: 'F' | 'S' | 'A' | 'P') => {
+    // A hull with no screens on this facing shows what it actually has. Armour
+    // is not switched off by a cloak and cannot be lowered, so neither of the
+    // tests below applies to it.
+    if (armorOnly(ship, side)) return redacted ? '' : `${armorRemaining(ship, side)}`
     // A running cloak takes the shields with it (H6.4.1), so the counter must
     // not print a strength the ship no longer has.
     if (cloakRunning || ship.shieldsDown[side]) return '—'
@@ -1182,7 +1212,19 @@ function ShipToken({
           (ship.derelict ? '\nDERELICT' : '') +
           (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : '')}
       </title>
-      <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-base" />
+      {/*
+        The counter is 1.5 inches square (A2.1) and this rect is that square,
+        but it is drawn as nothing at all: the outline used to collide with the
+        four strength labels sitting on its edges, and the shield ring and the
+        arc rose already say where the ship is and which way it faces. What
+        stays is the click target — the glyph takes no pointer events, so
+        without a filled shape here only the silhouette itself would be
+        clickable. Everything the outline used to carry — side colour, the
+        damage wash, selection, targeting, a running cloak — is on the hull
+        below instead, where it reads as the ship being hurt rather than as a
+        box around it being hurt.
+      */}
+      <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-hit" />
 
       <ShieldRing game={game} ship={ship} radius={size * 0.62} redacted={redacted} />
 

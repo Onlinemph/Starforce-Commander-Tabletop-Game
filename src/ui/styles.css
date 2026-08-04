@@ -651,7 +651,9 @@ input:focus-visible {
 .ship.is-cloaked {
   opacity: 0.55;
 }
-.ship.is-cloaked .ship-base {
+/* A running cloak used to dash the counter outline. With no outline it dashes
+   the hull, which is the same signal on the thing that is actually hiding. */
+.ship.is-cloaked .glyph-hull {
   stroke-dasharray: 5 4;
 }
 
@@ -795,6 +797,27 @@ input:focus-visible {
   cursor: pointer;
 }
 /*
+  A counter is a focusable <g>, and the browser's default focus ring on one of
+  those is a rounded box around the whole bounding box — which here takes in
+  the four strength labels sitting outside the hull, so clicking a ship drew a
+  square across its own shield numbers. That was the box on the map, and it
+  came from the user agent rather than from anything drawn here.
+
+  Suppressing it outright would leave keyboard users with no way to tell which
+  counter has focus, so it is replaced rather than removed: the same halo
+  selection uses, on the hull instead of around it.
+*/
+.ship:focus {
+  outline: none;
+}
+.ship:focus-visible .ship-glyph {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95));
+}
+.ship:focus-visible .glyph-hull {
+  stroke: #ffffff;
+  stroke-width: 1.8;
+}
+/*
   The Navigation reveal, animated: everything positioned by a style transform
   glides to its new place instead of teleporting, which is the only way a
   human can read six simultaneous moves. The unwrapped display heading in
@@ -832,22 +855,23 @@ input:focus-visible {
 .map.is-ruler {
   cursor: crosshair;
 }
-.ship-base {
-  fill: rgba(8, 12, 22, 0.9);
-  stroke: var(--ink-dim);
-  stroke-width: 1.5;
+/* The counter's footprint: a click target and nothing else. The outline it
+   used to draw collided with the strength labels on its edges, and the shield
+   ring and arc rose already delimit the ship. */
+.ship-hit {
+  fill: transparent;
+  stroke: none;
 }
-.ship-blue .ship-base {
-  stroke: var(--blue);
-  filter: drop-shadow(0 0 4px rgba(90, 169, 255, 0.55));
+/* Side colour, which used to glow off the counter outline, now haloes the
+   hull itself. */
+.ship-blue .ship-glyph {
+  filter: drop-shadow(0 0 5px rgba(90, 169, 255, 0.6));
 }
-.ship-red .ship-base {
-  stroke: var(--red);
-  filter: drop-shadow(0 0 4px rgba(255, 92, 92, 0.55));
+.ship-red .ship-glyph {
+  filter: drop-shadow(0 0 5px rgba(255, 92, 92, 0.6));
 }
-.ship-aurelian .ship-base {
-  stroke: var(--lc-lilac);
-  filter: drop-shadow(0 0 4px rgba(204, 153, 204, 0.55));
+.ship-aurelian .ship-glyph {
+  filter: drop-shadow(0 0 5px rgba(204, 153, 204, 0.6));
 }
 /* The hull silhouette. Strokes are in screen pixels, not glyph units, so a
    corvette's outline is as crisp as a dreadnought's despite the scaling. */
@@ -893,14 +917,21 @@ input:focus-visible {
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
-.ship.is-selected .ship-base {
-  fill: rgba(23, 38, 58, 0.95);
-  stroke-width: 2.5;
+/* Selection and targeting brighten the hull rather than boxing it. These come
+   after the per-side rules above so they win the cascade on the same filter. */
+.ship.is-selected .ship-glyph {
+  filter: drop-shadow(0 0 9px rgba(190, 225, 255, 0.95));
 }
-.ship.is-targeted .ship-base {
+.ship.is-selected .glyph-hull {
+  stroke: #eaf4ff;
+  stroke-width: 1.6;
+}
+.ship.is-targeted .ship-glyph {
+  filter: drop-shadow(0 0 9px rgba(255, 176, 32, 0.9));
+}
+.ship.is-targeted .glyph-hull {
   stroke: var(--warn);
-  stroke-width: 2.5;
-  filter: drop-shadow(0 0 6px rgba(255, 176, 32, 0.7));
+  stroke-width: 1.6;
 }
 .ship-shield {
   fill: rgba(190, 205, 235, 0.9);
@@ -3784,25 +3815,45 @@ button.chip:hover:not(:disabled) {
   stroke-dasharray: 3 4;
 }
 
-/* How broken the hull is. The damage marker is public at the table (B1.9),
-   so the counter wears it: a deepening wash, and a hard edge once crippled. */
-.ship[data-damage='light'] .ship-base {
-  fill: rgba(255, 194, 71, 0.07);
+/* A facing with no screens at all shows its armour instead (G2), in the grey
+   the rules print armour boxes in (B1.1.2) — so a glance tells you not just
+   how much is left but that what is left will not come back (G2.2.2). The
+   colour bands above still apply, so an armour facing worn down to nothing
+   still goes amber and then red; this only cools the full end of the scale,
+   which is where the difference from a shield actually matters. */
+.shield-arc.is-armor .shield-track {
+  stroke: rgba(190, 196, 208, 0.22);
 }
 
-.ship[data-damage='moderate'] .ship-base {
-  fill: rgba(255, 152, 60, 0.13);
+.shield-arc.is-armor.is-strong .shield-fill {
+  stroke: #b9c2d2;
 }
 
-.ship[data-damage='heavy'] .ship-base {
-  fill: rgba(255, 90, 60, 0.2);
-  stroke: rgba(255, 120, 80, 0.55);
+/* How broken the hull is. The damage marker is public at the table (B1.9), so
+   the counter wears it — on the silhouette now rather than on a box around it,
+   which reads as this ship being hurt instead of its square being hurt. The
+   wash deepens through the hull plating and the outline goes hot once
+   crippled. */
+.ship[data-damage='light'] .glyph-hull {
+  fill: #3a3324;
 }
 
-.ship[data-damage='crippled'] .ship-base {
-  fill: rgba(255, 60, 50, 0.28);
+.ship[data-damage='moderate'] .glyph-hull {
+  fill: #4a3320;
+}
+
+.ship[data-damage='heavy'] .glyph-hull {
+  fill: #58291d;
+  stroke: rgba(255, 140, 100, 0.85);
+}
+
+.ship[data-damage='crippled'] .glyph-hull {
+  fill: #6b241c;
   stroke: #ff5a44;
   stroke-width: 1.6;
+}
+.ship[data-damage='crippled'] .ship-glyph {
+  filter: drop-shadow(0 0 7px rgba(255, 70, 55, 0.75));
 }
 
 /* A crippled hull is the loudest thing on the board, because it is. */
