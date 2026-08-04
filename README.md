@@ -421,7 +421,10 @@ that one fact.
   by exactly one, and presses tractor captures, marines beamed onto crippled hulls behind
   deliberately dropped shields, proximity-fused fire at extreme range and harder focus. In
   mirror-image self-play the ranks are worth points, not routs — a symmetric duel is decided by
-  dice, as it should be; the gap a human feels is the ensign's exploitable habits.
+  dice, as it should be; the gap a human feels is the ensign's exploitable habits. **Admiral is the
+  default**, everywhere a level is not named outright: the fleet picker opens on it, a saved battle
+  that never recorded one is played at it, and the engine falls back to it. Nobody should meet a
+  weak opponent by accident — if you want an easier game, ask for one.
 
 ## Hosting it
 

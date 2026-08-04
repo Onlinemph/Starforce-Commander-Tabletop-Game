@@ -80,7 +80,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [budget, setBudget] = useState<number | null>(null)
   const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
   const [aiSides, setAiSides] = useState<Set<string>>(new Set())
-  const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('captain')
+  const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('admiral')
   const [aiPersonality, setAiPersonality] = useState<'steady' | 'aggressive' | 'cautious'>('steady')
   const [aiRetreats, setAiRetreats] = useState(true)
   const [mapScale, setMapScale] = useState<1 | 2>(1)

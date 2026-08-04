@@ -46,7 +46,7 @@ export interface GameSetup {
   armedStart?: boolean
   /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
   aiSides?: string[]
-  /** How sharp the computer's captains are. Default 'captain'. */
+  /** How sharp the computer's captains are. Default 'admiral'. */
   aiDifficulty?: AiDifficulty
   /** The computer captains' temperament — how they read the scoreboard. Default 'steady'. */
   aiPersonality?: AiPersonality

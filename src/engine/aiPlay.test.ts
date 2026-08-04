@@ -205,3 +205,40 @@ describe('AI self-play', () => {
     expect(aiNextActions(d.game, d.sides, d.memo)).toHaveLength(0)
   })
 })
+
+describe('the default rank', () => {
+  /**
+   * Admiral is the default everywhere a level is not named outright, so nobody
+   * meets a weak opponent by accident. Pinned here because it is a one-word
+   * change in four files and exactly the kind of thing that drifts back.
+   */
+  it('is what the engine falls back to', () => {
+    const game = startScenario('s3.1-the-duel', { seed: 12 })
+    const sides = [...new Set(game.ships.map((s) => s.side))]
+
+    // Same seed, same fleet, once with the rank left unsaid and once with
+    // admiral named: the captains must give identical orders.
+    const implicitGame = startScenario('s3.1-the-duel', { seed: 12 })
+    const explicitGame = startScenario('s3.1-the-duel', { seed: 12 })
+    const implicit = aiNextActions(implicitGame, [sides[0]], createAiMemo(), false)
+    const explicit = aiNextActions(
+      explicitGame,
+      [sides[0]],
+      createAiMemo(),
+      false,
+      'admiral',
+    )
+    expect(implicit).toEqual(explicit)
+
+    // And plainly not the captain's orders, which differ.
+    const captainGame = startScenario('s3.1-the-duel', { seed: 12 })
+    const captain = aiNextActions(
+      captainGame,
+      [sides[0]],
+      createAiMemo(),
+      false,
+      'captain',
+    )
+    expect(JSON.stringify(implicit)).not.toBe(JSON.stringify(captain))
+  })
+})

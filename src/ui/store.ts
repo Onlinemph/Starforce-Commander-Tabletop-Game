@@ -533,7 +533,7 @@ async function driveAi(closing = false): Promise<void> {
         sides,
         aiMemo,
         closing,
-        setup.aiDifficulty ?? 'captain',
+        setup.aiDifficulty ?? 'admiral',
         setup.aiPersonality ?? 'steady',
         setup.aiRetreats ?? true,
       )

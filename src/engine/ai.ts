@@ -238,7 +238,7 @@ export function aiNextActions(
   sides: string[],
   memo: AiMemo,
   closing = false,
-  difficulty: AiDifficulty = 'captain',
+  difficulty: AiDifficulty = 'admiral',
   temperament: AiPersonality = 'steady',
   mayRetreat = true,
 ): GameAction[] {
@@ -2341,7 +2341,7 @@ function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameActio
 function planDisengagement(
   game: GameState,
   fleet: ShipState[],
-  difficulty: AiDifficulty = 'captain',
+  difficulty: AiDifficulty = 'admiral',
 ): GameAction[] {
   const actions: GameAction[] = []
   for (const ship of fleet) {
