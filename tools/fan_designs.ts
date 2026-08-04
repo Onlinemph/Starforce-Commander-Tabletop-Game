@@ -377,19 +377,28 @@ const HYPERION: ShipForm = {
  * Still no shields, still no transporters, still no tractors: it is an Earth
  * Alliance ship, and the armour is what there is.
  *
- * Priced at 104.7 by the same ×0.85 the Hyperion carries, and calibrated on
- * killability rather than on matching a printed number — because the printed
- * numbers do not form a performance ladder. Measured in this harness the
- * 158.6-point UNION III loses to the 95.6-point EXETER II, so "trades evenly
- * with a ship of the same cost" has nothing stable to aim at up here. What can
- * be aimed at is whether the thing can be killed, and this one can:
+ * Size 7, and deliberately not 8. Raising the class looks like the way to make
+ * a ship absorb more punishment and it is not: size drives the point cost
+ * (POWER_MULTIPLIER), the excess-damage threshold that breaks a hull apart
+ * (E11.2.3), tractor resistance, probe count and docking rate — and nothing
+ * else. Measured at size 7 and size 8 with everything else held equal, the two
+ * played *identically* across forty games against each of two opponents, and
+ * size 8 cost 5.8 points more for it. Capacity to take hits is the structure
+ * track, which is independent of the class.
  *
- *     EXETER II   95.6   34W- 6L   killed 32, lost 6
- *     V-11C        147   35W- 5L   killed  2, lost 5
- *     UNION III  158.6   36W- 4L   killed  0, lost 4
+ * Priced by the same ×0.85 the Hyperion carries, and calibrated on killability
+ * rather than on matching a printed number — because the printed numbers do
+ * not form a performance ladder. Measured in this harness the 158.6-point
+ * UNION III loses to the 95.6-point EXETER II, so "trades evenly with a ship
+ * of the same cost" has nothing stable to aim at up here. What can be aimed at
+ * is whether the thing can be killed, and how hard it is used up doing it:
  *
- * It beats the strongest hull in the printed roster and still dies four to six
- * times in forty doing it.
+ *     EXETER II   95.6   31W- 7L   died 9 of 40, and left having lost 17.8
+ *                                  system boxes and a point of repair rating
+ *     V-11C        147   31W- 9L   died 9 of 40
+ *
+ * It beats the strongest hull in the printed roster, dies about a fifth of the
+ * time doing it, and comes home wrecked either way.
  */
 const OMEGA: ShipForm = {
   id: 'fan-b5-omega-destroyer',
@@ -508,17 +517,37 @@ const OMEGA: ShipForm = {
     green: { F: 0, S: 0, A: 0, P: 0 },
   },
   /*
-   * Less plate than the Hyperion, not more, which looks wrong for the bigger
-   * ship until you count what it is spent on: nearly twice the offense and six
-   * more structure boxes. The first draft carried 232 boxes and could not be
-   * killed at all — zero losses across seven of eight printed opponents,
-   * including a dreadnought costing more than it did. Armour is linear in the
-   * point model and a step function in play: past the number an enemy can chew
-   * through in twelve rounds, every further box is a free win. 152 is under
-   * that line, and this ship dies four to six times in forty against the
-   * heavies.
+   * Less plate than the Hyperion, not more, and the reason is the structure
+   * track below rather than the tonnage.
+   *
+   * Armour and structure both absorb, but they do it differently, and only one
+   * of them hurts. Armour is a wall: it soaks until it is gone and degrades
+   * nothing on the way. Structure is a track with Damage Control Rating
+   * markers down it (B3.1.2), and damage that gets past the armour is drawn as
+   * cards — so it lands on systems, knocks out mounts, and walks the ship down
+   * its own repair rating. A hull that leans on armour is either untouched or
+   * dead; a hull that leans on structure gets worse.
+   *
+   * The first draft was the former, and badly: 232 boxes, killed in none of
+   * forty games against seven of eight printed opponents. Armour is linear in
+   * the point model and a step function in play — past what an enemy can chew
+   * through in twelve rounds, every further box is a free win.
+   *
+   * Trading it down and the track up, measured against the EXETER II and the
+   * V-11C, forty mirrored games each:
+   *
+   *     armour 152 / struct 24    died  6 and  5 of 40   systems lost 12.9, 8.0
+   *     armour 128 / struct 28    died  9 and  5          systems lost 15.5, 10.5
+   *     armour 116 / struct 32    died  9 and  9          systems lost 17.8, 11.6
+   *     armour 100 / struct 34    died  9 and 13          systems lost 19.7, 12.9
+   *
+   * The third is the one shipped. It still beats both, it dies about a fifth
+   * of the time against either rather than shrugging one off and not the
+   * other, and it ends a battle having lost half again the systems the armour
+   * version did. That last column is the whole point: it is the difference
+   * between a ship that survived and a ship that has been fought.
    */
-  armor: { F: 48, S: 38, A: 28, P: 38 },
+  armor: { F: 36, S: 28, A: 22, P: 30 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 4 },
@@ -532,14 +561,20 @@ const OMEGA: ShipForm = {
     { kind: 'CRGO', label: 'Cargo', boxes: 3 },
   ],
 
+  /*
+   * Thirty-two boxes and four Damage Control markers — the longest track of
+   * any hull here, and where this ship's toughness actually lives. Each marker
+   * crossed drops the repair rating for good (B3.1.2), so the Omega is at its
+   * best in the first exchange and visibly less capable by the fourth.
+   */
   structure: [
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
-    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
   ],
 
