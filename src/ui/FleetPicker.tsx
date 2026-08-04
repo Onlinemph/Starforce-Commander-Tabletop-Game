@@ -12,6 +12,7 @@ import {
   type FleetEntry,
 } from '../engine/fleet'
 import type { Availability, ShipForm } from '../engine/types'
+import { isCanonForm } from '../data/ships'
 import { useCustomForms } from './customShips'
 import { useCustomScenarios } from './customScenarios'
 import { newGame } from './store'
@@ -150,15 +151,29 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
     onClose()
   }
 
+  /*
+    Printed ships and fan-made ones are grouped separately, even when the fan
+    design flies a canon flag — which it usually will, since a Union cruiser
+    somebody built is meant to be fielded beside the printed ones. Mixing them
+    into one list makes the canon roster hard to read and hard to trust; giving
+    each faction its own "fan designs" heading underneath keeps the printed
+    list exactly as it was while leaving the fan ships where you would look
+    for them.
+  */
   const visible = useMemo(() => {
     const needle = search.toLowerCase()
-    const groups = new Map<string, ShipForm[]>()
+    const canon = new Map<string, ShipForm[]>()
+    const fan = new Map<string, ShipForm[]>()
     for (const form of roster) {
       if (needle && !form.name.toLowerCase().includes(needle)) continue
-      if (!groups.has(form.faction)) groups.set(form.faction, [])
-      groups.get(form.faction)!.push(form)
+      const into = isCanonForm(form.id) ? canon : fan
+      const key = isCanonForm(form.id) ? form.faction : `${form.faction} · fan designs`
+      if (!into.has(key)) into.set(key, [])
+      into.get(key)!.push(form)
     }
-    return groups
+    // Every printed faction first, in the order the roster prints them, then
+    // the fan sections.
+    return new Map([...canon.entries(), ...fan.entries()])
   }, [roster, search])
 
   return (

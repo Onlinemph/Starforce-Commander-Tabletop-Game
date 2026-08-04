@@ -54,6 +54,27 @@ export const FILE_FORMS: ShipForm[] = customShipData as unknown as ShipForm[]
 const CUSTOM_FORMS: ShipForm[] = [...FILE_FORMS]
 
 /** Replace the custom roster wholesale. Called by the builder's store. */
+/** The three factions with printed ships (A1). Anything else is fan-made. */
+export const CANON_FACTIONS = [
+  'Union of Federated Systems',
+  'Vallari Imperium',
+  'Aurelian Empire',
+] as const
+
+const CANON_IDS = new Set(SHIP_FORMS.map((f) => f.id))
+
+/**
+ * Whether this is a printed ship rather than one somebody designed.
+ *
+ * Faction alone cannot answer it: a fan design is free to declare itself a
+ * Union cruiser, and should be — that is what makes it fieldable alongside
+ * one. So the test is identity, not tagging, and the roster keeps the two
+ * apart on that basis wherever both are listed.
+ */
+export function isCanonForm(id: string): boolean {
+  return CANON_IDS.has(id)
+}
+
 export function registerCustomForms(forms: ShipForm[]): void {
   CUSTOM_FORMS.splice(0, CUSTOM_FORMS.length, ...forms)
 }

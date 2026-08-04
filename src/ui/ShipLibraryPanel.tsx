@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   alreadyHave,
   importedForm,
+  LIBRARY_FACTIONS,
   type LibraryEntry,
 } from '../engine/shipLibrary'
 import { customForms, saveCustomForm, useCustomForms } from './customShips'
@@ -33,14 +34,15 @@ export function ShipLibraryPanel({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
+  const [faction, setFaction] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const config = libraryConfig()
 
-  const load = async (term: string) => {
+  const load = async (term: string, tag = faction) => {
     setBusy(true)
     setError(null)
     try {
-      setEntries(await browseLibrary(term))
+      setEntries(await browseLibrary(term, tag))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setEntries([])
@@ -108,6 +110,23 @@ export function ShipLibraryPanel({ onClose }: Props) {
                 }}
               />
             </label>
+            <label className="field inline">
+              <span>Faction</span>
+              <select
+                value={faction}
+                onChange={(e) => {
+                  setFaction(e.target.value)
+                  void load(search, e.target.value)
+                }}
+              >
+                <option value="">All factions</option>
+                {LIBRARY_FACTIONS.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="button" disabled={busy} onClick={() => void load(search)}>
               {busy ? 'Looking…' : 'Search'}
             </button>
@@ -124,7 +143,9 @@ export function ShipLibraryPanel({ onClose }: Props) {
             <p className="hint">Loading…</p>
           ) : entries.length === 0 ? (
             <p className="hint">
-              Nothing here yet. Designs published from the ship builder show up in this list.
+              {faction
+                ? `No ${faction} designs yet.`
+                : 'Nothing here yet. Designs published from the ship builder show up in this list.'}
             </p>
           ) : (
             <ul className="library-list">

@@ -1,7 +1,10 @@
 import {
   checkPublishable,
+  libraryFaction,
+  LIBRARY_FACTIONS,
   MAX_AUTHOR_CHARS,
   MAX_NOTES_CHARS,
+  type LibraryFaction,
 } from '../engine/shipLibrary'
 import { publishDesign } from './shipLibrary'
 import { useMemo, useRef, useState } from 'react'
@@ -1535,6 +1538,9 @@ function Problems({ problems }: { problems: ReturnType<typeof validateDesign> })
 function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void }) {
   const [author, setAuthor] = useState('')
   const [notes, setNotes] = useState('')
+  // Defaulted from the design and then the publisher's to change: a hull built
+  // as a Union cruiser is filed under Union unless they say otherwise.
+  const [faction, setFaction] = useState<LibraryFaction>(() => libraryFaction(form))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -1549,6 +1555,7 @@ function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void 
       await publishDesign({
         fingerprint: check.fingerprint,
         form,
+        faction,
         points: check.points,
         author,
         notes,
@@ -1592,6 +1599,20 @@ function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void 
             </ul>
           )}
 
+          <label className="field inline">
+            <span>Faction</span>
+            <select
+              value={faction}
+              title="How the library files it. Fan designs are always listed apart from the printed ships, whichever flag they fly."
+              onChange={(e) => setFaction(e.target.value as LibraryFaction)}
+            >
+              {LIBRARY_FACTIONS.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="field inline">
             <span>Your name</span>
             <input

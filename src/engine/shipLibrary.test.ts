@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { findShipForm } from '../data/ships'
+import { findShipForm, isCanonForm } from '../data/ships'
 import {
   alreadyHave,
   checkPublishable,
   designFingerprint,
   importedForm,
+  libraryFaction,
+  LIBRARY_FACTIONS,
   MAX_AUTHOR_CHARS,
   MAX_NOTES_CHARS,
   type LibraryEntry,
@@ -113,6 +115,54 @@ describe('what may be published', () => {
     const check = checkPublishable(heavy, '', '')
     expect(check.ok).toBe(true)
     expect(check.points).toBeGreaterThan(0)
+  })
+})
+
+describe('faction tags', () => {
+  it('keeps a design under a canon flag it declares', () => {
+    expect(libraryFaction(YORKTOWN)).toBe('Union of Federated Systems')
+    expect(libraryFaction(PASSER)).toBe('Aurelian Empire')
+  })
+
+  it('files anything else as Independent rather than inventing a tag', () => {
+    expect(libraryFaction({ ...YORKTOWN, faction: 'Somebody’s Homebrew' })).toBe('Independent')
+    expect(libraryFaction({ ...YORKTOWN, faction: '' })).toBe('Independent')
+  })
+
+  it('offers exactly the three printed factions plus the escape hatch', () => {
+    expect(LIBRARY_FACTIONS).toEqual([
+      'Union of Federated Systems',
+      'Vallari Imperium',
+      'Aurelian Empire',
+      'Independent',
+    ])
+  })
+})
+
+describe('canon and fan are told apart by identity, not by flag', () => {
+  it('knows a printed ship', () => {
+    expect(isCanonForm(YORKTOWN.id)).toBe(true)
+    expect(isCanonForm(PASSER.id)).toBe(true)
+  })
+
+  /*
+   * The point of the whole exercise: a fan design is free to fly a canon flag
+   * — a Union cruiser somebody built is *meant* to be fielded beside the
+   * printed ones — so the flag cannot be what separates them. Identity is.
+   */
+  it('does not mistake a fan design for canon just because it claims the flag', () => {
+    const impostor: ShipForm = {
+      ...YORKTOWN,
+      id: 'lib-deadbeefdeadbeef',
+      name: 'U.S.S. Definitely Official',
+      faction: 'Union of Federated Systems',
+    }
+    expect(libraryFaction(impostor)).toBe('Union of Federated Systems')
+    expect(isCanonForm(impostor.id)).toBe(false)
+  })
+
+  it('treats an imported library design as non-canon', () => {
+    expect(isCanonForm(importedForm(entryFor(YORKTOWN)).id)).toBe(false)
   })
 })
 

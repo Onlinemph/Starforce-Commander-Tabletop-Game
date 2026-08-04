@@ -72,6 +72,15 @@ that one fact.
   what enforces a budget. It runs on a Supabase project (`supabase/ship-library.sql`), is entirely
   optional, and is independent of online matches.
 
+  **Fan designs never mix into the printed roster.** Each is tagged with a faction when it is
+  published — one of the three printed flags, or Independent — and the library browses and filters
+  by that tag. But the tag is not what keeps the two apart, because a fan design *should* be free to
+  fly a canon flag: a Union cruiser somebody built is meant to be fielded beside the printed Union
+  ships. So the separation is by identity, not by flag. The fleet picker gives every faction its own
+  **“· fan designs”** heading underneath the printed one, and a design that calls itself a Union
+  cruiser lands there however convincingly it is named. The canon list reads exactly as it always
+  did.
+
 - **Online matches.** *Online* in the top bar hosts the battle on screen as a **persistent
   match**: it lives on a match service, gated by a password, shared by a short code — and it
   stays up when everyone leaves. Refresh, switch devices, come back tomorrow: enrollment is

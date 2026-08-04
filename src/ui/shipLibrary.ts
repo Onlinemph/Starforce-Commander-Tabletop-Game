@@ -117,6 +117,7 @@ export async function browseLibrary(
 export async function publishDesign(args: {
   fingerprint: string
   form: ShipForm
+  faction: string
   points: number
   author: string
   notes: string
@@ -125,7 +126,7 @@ export async function publishDesign(args: {
     p_fingerprint: args.fingerprint,
     p_form: args.form,
     p_name: args.form.name,
-    p_faction: args.form.faction ?? 'Custom',
+    p_faction: args.faction,
     p_size_class: args.form.sizeClass ?? 1,
     p_points: args.points,
     p_author: args.author,

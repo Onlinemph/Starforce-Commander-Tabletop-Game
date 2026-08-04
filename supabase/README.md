@@ -221,6 +221,13 @@ not anything dangerous. Read the table occasionally.
 | Function | What it does |
 | --- | --- |
 | `sfc_publish_design` | Insert an entry, keyed by fingerprint; a repeat is a no-op |
-| `sfc_browse_designs` | Search by name or author, filter by faction, newest first |
+| `sfc_browse_designs` | Search by name or author, filter by faction tag, newest first |
 | `sfc_record_download` | Count an import — "somebody fielded this" |
 | `sfc_report_design` | Flag an entry for you to look at |
+
+Every entry carries a faction tag — one of the three printed flags or
+`Independent` — chosen when it is published and defaulted from the design's own
+faction. It is what the browser filters on. It is deliberately *not* what tells
+a fan design from a printed one: a design may fly any flag it likes, and the
+game separates the two by identity instead, so nothing published here can slip
+into the canon roster however it is tagged or named.

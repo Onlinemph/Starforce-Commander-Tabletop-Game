@@ -22,6 +22,32 @@
 import { pointValue, validateDesign, type DesignProblem } from './shipBuilder'
 import type { ShipForm } from './types'
 
+/**
+ * The tags a design may be published under.
+ *
+ * The three printed factions plus an escape hatch, because a fan design is
+ * usually meant to fly one of the canon flags — a Union cruiser somebody built
+ * is for fielding beside the printed Union ships — while some are their own
+ * thing entirely. The tag is what the library filters on; it is never what
+ * tells canon from fan, since a design is free to claim any flag it likes.
+ */
+export const LIBRARY_FACTIONS = [
+  'Union of Federated Systems',
+  'Vallari Imperium',
+  'Aurelian Empire',
+  'Independent',
+] as const
+
+export type LibraryFaction = (typeof LIBRARY_FACTIONS)[number]
+
+/** A design's declared faction, pinned to a tag the library can filter on. */
+export function libraryFaction(form: ShipForm): LibraryFaction {
+  const declared = (form.faction ?? '').trim()
+  return (LIBRARY_FACTIONS as readonly string[]).includes(declared)
+    ? (declared as LibraryFaction)
+    : 'Independent'
+}
+
 /** Anything larger than this is not a ship design; it is someone testing us. */
 export const MAX_DESIGN_BYTES = 64 * 1024
 
