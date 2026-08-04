@@ -32,6 +32,8 @@ export interface GameSetup {
   explosions?: boolean
   /** E11.4–E11.6 — crews may be got off a dying ship, and are worth points. */
   abandonShip?: boolean
+  /** C4.2 — drive damage forces a slowdown that costs acceleration and stress. */
+  decelerationFromDamage?: boolean
   /** Online matches: a segment closes only when every side says so. */
   readyGate?: boolean
   /** One form id per side — the ship builder's quick launch. */
@@ -88,6 +90,7 @@ export function buildGame(setup: GameSetup): GameState {
     derelicts: setup.derelicts ?? false,
     explosions: setup.explosions ?? false,
     abandonShip: setup.abandonShip ?? false,
+    decelerationFromDamage: setup.decelerationFromDamage ?? false,
   })
 }
 

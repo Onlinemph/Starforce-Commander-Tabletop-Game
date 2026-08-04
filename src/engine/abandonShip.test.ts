@@ -47,7 +47,7 @@ function battle(abandonShip = true, gap = 2): { game: GameState; dying: ShipStat
     scenario: THE_DUEL,
     ships: [dying, friend],
     seed: 9,
-    options: { derelicts: true, explosions: false, abandonShip },
+    options: { derelicts: true, explosions: false, abandonShip, decelerationFromDamage: false },
   })
   // Emergency beaming takes the safeties off; it does not need the shields
   // down at either end, but the ordinary transporter checks do, and a ship
@@ -194,7 +194,7 @@ describe('picking pods up (E11.6.5)', () => {
       scenario: THE_DUEL,
       ships: [dying, raider],
       seed: 4,
-      options: { derelicts: true, explosions: false, abandonShip: true },
+      options: { derelicts: true, explosions: false, abandonShip: true, decelerationFromDamage: false },
     })
     applyAction(game, { type: 'abandon-ship', shipId: dying.id, selfDestruct: false })
     const pod = game.escapePods[0]

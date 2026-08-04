@@ -590,14 +590,25 @@ they were dropped until somebody comes for them. Anybody: a pod is taken aboard 
 within an inch, or beamed across a unit at a time, and an enemy who collects one scores exactly what
 a friend would. Pods still adrift when the shooting stops go to whoever is left holding the field.
 
-Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer; **J3.5 tractor
-displacement**, shoving a gripped ship about, and **J3.2.6 capture**, bringing a tractored craft
+| C4.2 Deceleration from Damage *(optional)* | ✅ | A forced slowdown charged to the round's acceleration track, with stress for everything past the green circles |
+
+**C4.2** is the rule that makes a damaged drive frightening rather than merely inconvenient. Without
+it a ship shot below its top speed simply travels slower. With it, the slowdown is *charged*: the
+points go on the same per-round acceleration track the captain spends voluntarily, so a forced
+deceleration competes with whatever they have already used, and everything past the green circles
+comes back as stress at the check — which can damage the drive again, force another slowdown, and
+take the ship apart. A derelict's drop to a standstill pays the same price (C4.2.3, E11.2.4), and
+reverse is held to half the already-reduced maximum (C4.2.4).
+
+The rulebook works the arithmetic twice on one ship, and both numbers are tests: a cruiser at speed
+6 with two green circles takes three drive hits, drops to speed 2, decelerates 4 and suffers **2
+stress**; a fourth hit the same round drops it to speed 1 — measured from the original speed 6, so
+5 of deceleration and **3 stress** in total.
+
+Still to do: **B3.5 campaign repair limits**, which belongs with a campaign layer; and **J3.5 tractor
+displacement**, shoving a gripped ship about, with **J3.2.6 capture**, bringing a tractored craft
 aboard — both are written and tested in `tractor.ts` and `smallCraft.ts` and have no action or
-control wired to them, so the rules are modelled but unreachable; and **C4.2 deceleration from
-damage** *(optional)*, where a ship forced below its new top speed pays acceleration for the
-involuntary slowdown and takes stress for every point beyond its per-round allowance, with the
-feedback loop that implies. The engine clamps such a ship to its new maximum, which is the standard
-game's behaviour; C4.2's *cost* for doing so is not modelled.
+control wired to them, so the rules are modelled but unreachable.
 
 ## Expansion 1 — Formation Maneuvering and Scouting Sensors
 

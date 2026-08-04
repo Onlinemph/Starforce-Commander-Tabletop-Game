@@ -256,7 +256,7 @@ describe('destruction (E11.1)', () => {
   })
 
   it('leaves a derelict instead when the optional rule is on (E11.2)', () => {
-    setDestructionOptions({ derelicts: true, explosions: false, abandonShip: false })
+    setDestructionOptions({ derelicts: true, explosions: false, abandonShip: false, decelerationFromDamage: false })
     const ship = makeShip()
     const ctx = makeContext()
     ship.blueShieldDamage.F = YORKTOWN.shields.blue.F
@@ -268,7 +268,7 @@ describe('destruction (E11.1)', () => {
   })
 
   it('breaks a derelict apart at excess damage equal to its size class (E11.2.3)', () => {
-    setDestructionOptions({ derelicts: true, explosions: false, abandonShip: false })
+    setDestructionOptions({ derelicts: true, explosions: false, abandonShip: false, decelerationFromDamage: false })
     const ship = makeShip()
     const ctx = makeContext()
     ship.blueShieldDamage.F = YORKTOWN.shields.blue.F

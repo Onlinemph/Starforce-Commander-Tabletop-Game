@@ -90,6 +90,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [derelicts, setDerelicts] = useState(false)
   const [explosions, setExplosions] = useState(false)
   const [abandonShip, setAbandonShip] = useState(false)
+  const [decelFromDamage, setDecelFromDamage] = useState(false)
 
   const changeScenario = (id: string) => {
     setScenario(id)
@@ -144,6 +145,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       // lingers at all, so both of those imply derelicts (E11.3, E11.6.2).
       explosions: explosions || undefined,
       abandonShip: abandonShip || undefined,
+      decelerationFromDamage: decelFromDamage || undefined,
     })
     onClose()
   }
@@ -284,6 +286,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setAbandonShip(e.target.checked)}
             />
             Abandon ship (E11.4–E11.6)
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rule C4.2. Drive damage that drops a ship's top speed below the speed it is making forces an immediate slowdown, and the slowdown is charged to the same per-round acceleration track a captain spends voluntarily. Everything past the green circles becomes stress at the check — which can damage the drive again, force another slowdown, and take the ship apart."
+          >
+            <input
+              type="checkbox"
+              checked={decelFromDamage}
+              onChange={(e) => setDecelFromDamage(e.target.checked)}
+            />
+            Deceleration from damage (C4.2)
           </label>
           {[...aiSides].some((s) => sides.includes(s)) && (
             <label

@@ -247,6 +247,7 @@ export interface SetupOptions {
   derelicts?: boolean
   explosions?: boolean
   abandonShip?: boolean
+  decelerationFromDamage?: boolean
   /**
    * A single ship form id per side — the quick pick that swaps a scenario's
    * flagship without changing the rest of the printed force.
@@ -1128,6 +1129,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,
       abandonShip: options.abandonShip ?? false,
+    decelerationFromDamage: options.decelerationFromDamage ?? false,
     },
   })
 }

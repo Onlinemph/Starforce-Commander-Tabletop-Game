@@ -783,6 +783,7 @@ function applyHit(ship: ShipState, hit: DamageHit, ctx: DamageContext): { extraC
 
     case 'sublight-drive': {
       ship.systemDamage['__sublight'] = (ship.systemDamage['__sublight'] ?? 0) + 1
+      decelerateFromDamage(ship, ctx)
       if (ship.systemDamage['__sublight'] >= ship.form.sublight.driveBoxes) {
         // Involuntary Emergency Stop (E8.5.4).
         ship.stressMarkers += Math.abs(ship.speed)
@@ -1051,6 +1052,8 @@ export interface DestructionOptions {
   explosions: boolean
   /** E11.4–E11.6 — crews may be got off a dying ship, and are worth points. */
   abandonShip: boolean
+  /** C4.2 — drive damage forces a slowdown that costs acceleration and stress. */
+  decelerationFromDamage: boolean
 }
 
 /** Standard rules: a ship is removed the moment its last structure box is marked. */
@@ -1058,12 +1061,61 @@ export const STANDARD_DESTRUCTION: DestructionOptions = {
   derelicts: false,
   explosions: false,
   abandonShip: false,
+  decelerationFromDamage: false,
 }
 
 let destructionOptions: DestructionOptions = STANDARD_DESTRUCTION
 
 export function setDestructionOptions(options: DestructionOptions): void {
   destructionOptions = options
+}
+
+/**
+ * Charge an involuntary slowdown to the round's acceleration track (C4.2.1).
+ *
+ * The points go on the same /ROUND line voluntary acceleration fills, which is
+ * what makes the rule bite: `accelerationStress` already turns everything past
+ * the green circles into stress at the Stress Check, so a forced deceleration
+ * competes with whatever the captain has already spent this round.
+ *
+ * The rulebook's example is the test. A ship at speed 6 with two green circles
+ * takes three drive hits, dropping its top speed to 2: it decelerates 4, two
+ * of those circles are green, and it suffers 2 stress. One more hit the same
+ * round drops the top speed to 1 — measured from the original speed 6, so the
+ * total deceleration is 5, and the total stress 3.
+ */
+function chargeDeceleration(
+  ship: ShipState,
+  points: number,
+  ctx: DamageContext,
+  why: string,
+): void {
+  if (!destructionOptions.decelerationFromDamage || points <= 0) return
+  ship.accelUsedThisRound += points
+  const beyond = Math.max(0, ship.accelUsedThisRound - ship.form.sublight.safeAccelPerRound)
+  ctx.log(
+    `${ship.name} decelerates ${points} involuntarily ${why} (C4.2.1)` +
+      (beyond > 0 ? ` — ${beyond} point(s) past its safe rate, for stress at the check (C4.2.2).` : '.'),
+  )
+}
+
+/**
+ * A drive hit that leaves the ship travelling faster than it now can (C4.2.1).
+ * The slowdown is immediate and not optional; the captain's ACC/DEC power buys
+ * nothing here, because the ship "will slow down anyway".
+ */
+function decelerateFromDamage(ship: ShipState, ctx: DamageContext): void {
+  if (!destructionOptions.decelerationFromDamage) return
+  const hits = ship.systemDamage['__sublight'] ?? 0
+  const table = ship.form.sublight.dmgTopSpeed
+  const top = hits === 0 ? ship.form.sublight.maxSpeed : (table[Math.min(hits, table.length) - 1] ?? 0)
+  // C4.2.4: in reverse the ceiling is half the (already reduced) maximum.
+  const ceiling = ship.speed < 0 ? Math.floor(top / 2) : top
+  const drop = Math.abs(ship.speed) - ceiling
+  if (drop <= 0) return
+
+  ship.speed = Math.sign(ship.speed) * ceiling
+  chargeDeceleration(ship, drop, ctx, `as its drive damage caps it at ${ceiling}`)
 }
 
 export function checkDestruction(ship: ShipState, ctx: DamageContext): void {
@@ -1079,6 +1131,10 @@ export function checkDestruction(ship: ShipState, ctx: DamageContext): void {
 
   if (!ship.derelict) {
     ship.derelict = true
+    // E11.2.4 sends a derelict to a standstill, and C4.2.3 makes it pay for
+    // the drop like any other involuntary deceleration — which is how a ship
+    // ends up tumbling out of control and going up.
+    chargeDeceleration(ship, Math.abs(ship.speed), ctx, 'coming to a stop as a derelict')
     ship.speed = 0
     ctx.log(`${ship.name} is a derelict.`)
   }
