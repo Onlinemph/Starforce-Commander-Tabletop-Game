@@ -1,3 +1,9 @@
+import {
+  checkPublishable,
+  MAX_AUTHOR_CHARS,
+  MAX_NOTES_CHARS,
+} from '../engine/shipLibrary'
+import { publishDesign } from './shipLibrary'
 import { useMemo, useRef, useState } from 'react'
 import { ArcRose } from './ArcRose'
 import { BLUE, RED } from '../data/scenarios'
@@ -86,6 +92,7 @@ export function ShipBuilder({ onClose }: Props) {
   const saved = useCustomForms()
   const [draft, setDraft] = useState<ShipForm>(() => blankForm(customFormId('New Class')))
   const [status, setStatus] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const cost = useMemo(() => pointValue(draft), [draft])
@@ -211,6 +218,13 @@ export function ShipBuilder({ onClose }: Props) {
           <button type="button" onClick={() => fileInput.current?.click()}>
             Load a roster file
           </button>
+          <button
+            type="button"
+            title="Share this design with everyone, through the online ship library"
+            onClick={() => setPublishing(true)}
+          >
+            Publish to library
+          </button>
           <input
             ref={fileInput}
             type="file"
@@ -240,6 +254,10 @@ export function ShipBuilder({ onClose }: Props) {
           )}
           {status && <span className="builder-status">{status}</span>}
         </div>
+
+        {publishing && (
+          <PublishDialog form={draft} onClose={() => setPublishing(false)} />
+        )}
 
         <p className="builder-where">
           Designs live in <code>src/data/customShips.json</code>, which is bundled with the site, so
@@ -1500,5 +1518,111 @@ function Problems({ problems }: { problems: ReturnType<typeof validateDesign> })
         </li>
       ))}
     </ul>
+  )
+}
+
+
+/**
+ * Publishing a design to the shared library.
+ *
+ * The dialog exists to make two things impossible to miss. The first is that
+ * publishing is permanent and public: an entry cannot be edited or withdrawn,
+ * because battles saved with it must go on replaying the same way, so an edit
+ * is a new entry rather than a change to this one. The second is that the
+ * design is checked before it goes — not for taste, but for whether the engine
+ * could field it at all.
+ */
+function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void }) {
+  const [author, setAuthor] = useState('')
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const check = checkPublishable(form, author, notes)
+  const warnings = check.problems.filter((p) => p.severity === 'warning')
+
+  const publish = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await publishDesign({
+        fingerprint: check.fingerprint,
+        form,
+        points: check.points,
+        author,
+        notes,
+      })
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="segment-help publish-dialog">
+      <h3>Publish “{form.name}” to the library</h3>
+
+      {done ? (
+        <>
+          <p className="hint">
+            Published. Anyone pointed at this library can now find and take a copy of it.
+          </p>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="hint">
+            This is public and permanent: an entry cannot be edited or withdrawn, because battles
+            saved with it have to keep replaying the same way. Publishing a changed version makes a
+            new entry rather than altering this one. Costed at{' '}
+            <strong>{check.points} points</strong> by the designers&apos; own model.
+          </p>
+
+          {check.refusal && <p className="fire-error">{check.refusal}</p>}
+          {warnings.length > 0 && (
+            <ul className="hint">
+              {warnings.map((w) => (
+                <li key={w.message}>{w.message}</li>
+              ))}
+            </ul>
+          )}
+
+          <label className="field inline">
+            <span>Your name</span>
+            <input
+              value={author}
+              maxLength={MAX_AUTHOR_CHARS}
+              placeholder="optional"
+              onChange={(e) => setAuthor(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Notes</span>
+            <textarea
+              value={notes}
+              maxLength={MAX_NOTES_CHARS}
+              rows={3}
+              placeholder="What is it for? optional"
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+
+          {error && <p className="fire-error">{error}</p>}
+          <div className="builder-row">
+            <button type="button" className="primary" disabled={!check.ok || busy} onClick={() => void publish()}>
+              {busy ? 'Publishing…' : 'Publish'}
+            </button>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

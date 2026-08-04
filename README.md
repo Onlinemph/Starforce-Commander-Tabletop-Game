@@ -59,6 +59,19 @@ that one fact.
   the codes travel over any channel you already share. Once linked, every action syncs live in
   both directions; the host's journal is the authority, so crossed actions heal automatically.
   Works across home networks in most cases (a very strict NAT may refuse the direct path).
+- **A shared ship library.** *Ship library* in the top bar browses designs other players have
+  built, and takes a copy of any of them into your roster with one click. The ship builder
+  publishes to the same library. Entries are **immutable and content-addressed**, which is forced
+  by how a battle is stored: a save carries its custom ship forms inside it so it replays anywhere,
+  so an entry that could be edited would quietly rewrite every battle that named it. Publishing a
+  changed design therefore makes a new entry and leaves the old battles meaning what they meant.
+  Taking a copy is literal — the whole design lands in your roster and keeps working if the library
+  goes away. Designs are checked before they go: the builder's own validator has to agree the
+  engine could field the ship, and the designers' point model prices it so the browser can sort by
+  cost. Cost never refuses a design — an expensive ship is a legal ship, and the fleet picker is
+  what enforces a budget. It runs on a Supabase project (`supabase/ship-library.sql`), is entirely
+  optional, and is independent of online matches.
+
 - **Online matches.** *Online* in the top bar hosts the battle on screen as a **persistent
   match**: it lives on a match service, gated by a password, shared by a short code — and it
   stays up when everyone leaves. Refresh, switch devices, come back tomorrow: enrollment is

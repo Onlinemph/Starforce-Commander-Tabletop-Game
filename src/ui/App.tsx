@@ -17,6 +17,7 @@ import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
 import { AbandonShipPanel } from './AbandonShipPanel'
 import { BoardingPanel } from './BoardingPanel'
+import { ShipLibraryPanel } from './ShipLibraryPanel'
 import { CloakPanel } from './CloakPanel'
 import { CloudPanel } from './CloudPanel'
 import { CombatPanel } from './CombatPanel'
@@ -77,6 +78,7 @@ export function App() {
   const [rulerMode, setRulerMode] = useState(false)
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
+  const [library, setLibrary] = useState(false)
   const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
   const [lobby, setLobby] = useState(false)
@@ -212,6 +214,14 @@ export function App() {
         <button
           type="button"
           disabled={enrolledInMatch}
+          onClick={() => setLibrary(true)}
+          title="Browse ships other players have designed and take a copy"
+        >
+          Ship library
+        </button>
+        <button
+          type="button"
+          disabled={enrolledInMatch}
           onClick={() => setBuilding(true)}
           title={enrolledInMatch ? LOCKED_HINT : "Design a ship on the designers' own point model"}
         >
@@ -260,6 +270,8 @@ export function App() {
         </button>
         <BattleMenu game={game} locked={enrolledInMatch} onReplay={() => setReplaying(true)} />
       </header>
+
+      {library && <ShipLibraryPanel onClose={() => setLibrary(false)} />}
 
       {picking && (
         <FleetPicker

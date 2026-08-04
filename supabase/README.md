@@ -182,3 +182,45 @@ about whether a match will work.
   `supabase_realtime` publication.
 - **The match opens but the board is wrong** — the two players are on
   different builds of the game. Both should reload the same deployed site.
+
+## The shared ship library (optional, independent)
+
+`ship-library.sql` is a second, separate feature: a public library of fan-made
+ship designs that anyone can browse and take a copy from, and publish to from
+the ship builder. Run it the same way — paste the file into the SQL Editor
+once. It shares nothing with the match tables, so you can run either, both, or
+neither.
+
+**Entries are immutable, and that is not a policy.** A saved battle is a setup
+plus a journal, and custom ship forms travel *inside* it so a battle replays on
+a machine that has never seen the design. If a library entry could be edited in
+place, every saved battle and every online match that named it would quietly
+replay into a different board. So an entry is keyed by a hash of the design
+itself: publishing the same ship twice is one entry, and publishing an edited
+one is a new entry. There is no update path and no delete path for clients.
+
+Taking a copy is literal — the whole design is written into that browser's
+roster, so it keeps working if the library goes away entirely.
+
+**What you are on the hook for.** Anyone with the publishable key can publish,
+so this is a public write surface. The guard rails in the SQL are:
+
+- Row level security with **no policies**, so the four functions below are the
+  entire API. No client can read a hidden entry, edit one, or delete one.
+- A 64 KB cap on a design and length caps on the free text, enforced in the
+  database rather than only in the browser.
+- `sfc_report_design` lets players flag an entry; five reports takes it out of
+  the browse results pending your look.
+- `hidden` is your switch, settable only from the dashboard or with the service
+  key. Set it to confirm a report, or zero the `reports` count to clear one.
+
+Designs are pure data — there is no code in a ship form, and the game escapes
+every string it renders — so the realistic risk is junk and offensive names,
+not anything dangerous. Read the table occasionally.
+
+| Function | What it does |
+| --- | --- |
+| `sfc_publish_design` | Insert an entry, keyed by fingerprint; a repeat is a no-op |
+| `sfc_browse_designs` | Search by name or author, filter by faction, newest first |
+| `sfc_record_download` | Count an import — "somebody fielded this" |
+| `sfc_report_design` | Flag an entry for you to look at |
