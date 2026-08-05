@@ -1725,29 +1725,44 @@ const UNION_X: ShipForm = {
  *
  * **What every Aurelian hull agrees on:**
  *
- *  - **Plasma torpedoes, and they are knife-fighting weapons.** Every RP in
- *    the inventory — A, B, C, D, F, G — reaches nine inches and no further,
- *    and inside that it is savage: the INVICTUS's RP-A throws three red dice
- *    with +8 inside three inches, +7 to six, and +1 to nine. There is no Union
- *    weapon remotely like it. It is HOMING 3, PARTCL, NoBAT, and carries the
- *    slow-arming diamond over six arming circles, so it takes most of a battle
- *    to charge and empties in one exchange.
+ *  - **Plasma torpedoes, which are long-ranged and fade as they fly.** The
+ *    numbers on an RP chart are not firing ranges — they are how far the
+ *    counter travels in each phase of its flight, one bracket per endurance
+ *    box (E5.1.5). The RP-A goes 3 inches in its first phase, 6 in the second
+ *    and 9 in each of the last two: twenty-seven inches of reach, not nine.
+ *    What falls away is its strength, and steeply — +8 in the first phase, +7
+ *    in the second, +1 in the third and fourth. So it is not a knife, it is a
+ *    weapon fired early that arrives weaker the longer it has to travel, and
+ *    the Empire's problem is getting it to land while it still hurts. It is
+ *    HOMING 3, PARTCL, NoBAT, and the slow-arming diamonds across six circles
+ *    mean it takes most of a battle to charge and empties in one exchange.
  *  - **Short disruptors.** The ADM line runs 11 to 13 inches where a Union
  *    phaser of the same era makes 15, and every one of them is PD MODE and
  *    ATMO.
  *  - **No armour, anywhere.** Fourteen hulls, not one plate between them.
- *  - **No marines on the capital ship.** The INVICTUS carries zero squads and
- *    twenty shuttles — more small craft than any other hull in the game.
+ *  - **Marines, and rather a lot of them.** The INVICTUS carries twenty
+ *    squads against the UNION III's eighteen, and the AQUILA BELLUM V assault
+ *    cruiser carries twenty-eight on a size 4 hull. Small-craft complements
+ *    are ordinary — two on most hulls, six on the dreadnought.
+ *
+ *    This bullet used to say the opposite, because the ship book extractor
+ *    was reading the Aurelian forms wrong: their rocket badge is drawn taller
+ *    than the master book's, fell outside the size filter, and left one badge
+ *    to be taken as the shuttle count by position. Every Aurelian hull
+ *    therefore read as zero marines carrying its marine squads in the shuttle
+ *    field. Fixed in the extractor and re-read from the book.
  *  - **A cloak.** The INVICTUS is the only dreadnought in the printed roster
  *    with one, and on a fleet whose guns die at nine inches that is not a
  *    luxury, it is the delivery system.
  *
- * So the doctrine writes the ship: **it cannot fight at range and does not
- * try.** It goes dark, crosses the board unengaged, and arrives inside three
- * inches with everything charged. What it does when it gets there should be
- * the most violent thing on the table; what happens if it is caught crossing
- * should be its death. That is a genuinely different animal from the UNION X
- * above, which cannot be killed and cannot kill.
+ * So the doctrine writes the ship: **it opens early and closes while its own
+ * shot is still in the air.** A plasma salvo launched at long range arrives
+ * with almost nothing left of its bonus, so the Empire fires, runs in behind
+ * its own torpedoes, and wants the last phases of their flight to happen at
+ * short range where they still bite. The cloak is how it survives the run and
+ * the disruptors are what it fights with once it is there. That is a
+ * genuinely different animal from the UNION X above, which cannot be killed
+ * and cannot kill.
  *
  * **Size 9, not 10, on purpose.** The Aurelians build light — their
  * dreadnought is 75 points where the contemporary UNION II is 76 and the later
@@ -1756,10 +1771,10 @@ const UNION_X: ShipForm = {
  * size 9 is the Empire's whole aesthetic.
  *
  * The one place this departs from the printed hulls deliberately: the INVICTUS
- * has a zero in the top row of its turn table, and this ship does not. A
- * design that must arrive at three inches and stay there cannot have a speed
- * at which it may not turn — it would cross the board, miss, and never come
- * back. Every other Aurelian handling figure is kept.
+ * has a zero in the top row of its turn table, and this ship does not. A hull
+ * that has to keep chasing its own torpedoes in cannot have a speed at which
+ * it may not turn — it would cross the board, miss, and never come back.
+ * Every other Aurelian handling figure is kept.
  *
  * **543.3 points, and it is the strongest thing in this file by a distance.**
  * Mirrored, 40 games each at admiral, retreat off:
@@ -1838,10 +1853,12 @@ const IMPERATOR: ShipForm = {
   weapons: [
     /*
      * Four heavy tubes where the INVICTUS carries one. The bracket table keeps
-     * the printed plasma shape exactly — overlapping ranges resolved in order,
-     * so the bonus falls away in steps as the range opens: enormous at three
-     * inches, still huge at six, nearly nothing at nine, and beyond nine it
-     * does not fire at all.
+     * the printed plasma shape exactly: one entry per endurance box, and the
+     * figure is the distance the counter covers in that phase of flight —
+     * 3, then 6, then 9, then 9. Twenty-seven inches of reach in total, with
+     * the bonus collapsing from +10 to +2 along the way, so a torpedo that
+     * has to fly the whole distance arrives as a rounding error and one
+     * launched late arrives whole.
      */
     weapon({
       id: 'rp-omega-hvy-plasma',
@@ -1971,10 +1988,11 @@ const IMPERATOR: ShipForm = {
     dmgTopSpeed: [6, 5, 5, 4, 3, 2, 1, 1, 0],
   },
 
-  // No marine squads at all, exactly as the INVICTUS, and a small-craft
-  // complement to match the Empire's habit of carrying them by the dozen.
-  marineSquads: 0,
-  shuttles: 30,
+  // Twenty-six squads, above the INVICTUS's twenty, and eight shuttles — the
+  // Empire carries marines heavily and small craft sparingly. Both of these
+  // were wrong in the first draft because the printed data was.
+  marineSquads: 26,
+  shuttles: 8,
 
   pointValue: 0,
   year: 3690,

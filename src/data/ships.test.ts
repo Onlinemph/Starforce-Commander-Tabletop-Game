@@ -306,3 +306,39 @@ describe('customShips.json', () => {
     }
   })
 })
+
+/**
+ * Guards against a whole-faction extraction failure, which is how twenty-one
+ * Aurelian hulls came to carry their marine squads in the shuttle field.
+ *
+ * Their ship book draws a taller rocket badge than the master book — 38x65
+ * against 28x51 — so it fell outside the extractor's size filter, only one
+ * badge survived the page, and it was taken as the shuttle count by position.
+ * Every Aurelian ship read as zero marines and a wildly inflated small-craft
+ * complement: an assault cruiser with twenty-eight shuttles and no troops.
+ *
+ * No single ship looked impossible, which is exactly why it survived. The
+ * shape of the bug is per-faction, so the check has to be too.
+ */
+describe('the printed roster, faction by faction', () => {
+  const factions = [...new Set(FILE_FORMS.map((f) => f.faction))]
+
+  it('gives every faction some ships that carry marines', () => {
+    for (const faction of factions) {
+      const hulls = FILE_FORMS.filter((f) => f.faction === faction)
+      const armed = hulls.filter((f) => (f.marineSquads ?? 0) > 0)
+      expect(armed.length, `${faction}: ${hulls.length} hulls, none with marines`).toBeGreaterThan(0)
+    }
+  })
+
+  it('never gives a hull more shuttles than marine squads', () => {
+    // True of every printed ship in every book, and the inversion is the
+    // signature of the two badges being read the wrong way round.
+    for (const form of FILE_FORMS) {
+      const shuttles = form.shuttles ?? 0
+      const marines = form.marineSquads ?? 0
+      if (marines === 0) continue
+      expect(shuttles, `${form.name} carries ${shuttles} shuttles to ${marines} squads`).toBeLessThanOrEqual(marines)
+    }
+  })
+})

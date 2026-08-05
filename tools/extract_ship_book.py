@@ -434,7 +434,14 @@ def parse_ship(pno):
     badges = []
     for info in page.get_image_info(xrefs=True):
         w, h, b = info['width'], info['height'], info['bbox']
-        if not (470 <= b[1] <= 545 and 20 <= w <= 60 and 30 <= h <= 60):
+        # The height bound reaches 70 because the Aurelian book (Expansion 5)
+        # draws a taller rocket than the master book: 38x65 against 28x51,
+        # while both draw the same 40x47 soldiers. At h <= 60 the Aurelian
+        # rocket was rejected, only one badge survived, and it was taken as
+        # the shuttle count by position — which is why all twenty-one
+        # Aurelian hulls read as 0 marines and carried their marine squads in
+        # the shuttle field. The Empire has marines, and not 28 shuttles.
+        if not (470 <= b[1] <= 545 and 20 <= w <= 60 and 30 <= h <= 70):
             continue
         digits = sorted([c for c in gl if abs(c['y'] - b[1]) <= 8 and c['ch'].isdigit()
                          and b[2] <= c['x'] <= b[2] + 26], key=lambda c: c['x'])

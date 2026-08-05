@@ -6306,9 +6306,9 @@
         0
       ]
     },
-    "marineSquads": 0,
-    "shuttles": 30,
-    "pointValue": 543.3,
+    "marineSquads": 26,
+    "shuttles": 8,
+    "pointValue": 544,
     "year": 3690,
     "availability": "rare"
   }
