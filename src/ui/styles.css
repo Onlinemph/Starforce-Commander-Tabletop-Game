@@ -417,6 +417,75 @@ input:focus-visible {
   min-width: 0;
 }
 
+/*
+  One screen for the battle.
+
+  The two columns used to grow the document instead of scrolling inside it: on
+  a 1440×900 window the page ran to 1760px, so the battle log — every die roll
+  and damage card the engine writes — sat 200px below the fold while six
+  hundred more of empty black sat under the map. You had to scroll away from
+  the board to read what had just happened to it.
+
+  So above the stacking breakpoint the stage is exactly the viewport, each
+  column scrolls on its own, and the board takes whatever height is left after
+  the things that must stay visible: the view toggles, the ship tabs, and the
+  log pinned under it. The long ship form scrolls in its own column without
+  moving the map an inch.
+
+  Below the breakpoint none of this applies — a narrow window stacks into one
+  column and scrolls as a document, which is the right behaviour on a phone.
+*/
+@media (min-width: 1001px) {
+  .app {
+    height: 100vh;
+    min-height: 0;
+  }
+  /* The stage is a flex column; the layout takes what the sequence bar
+     leaves, and neither may grow past the grid track it sits in. */
+  .lcars-stage {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .layout {
+    flex: 1 1 0;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .map-column,
+  .control-column {
+    min-height: 0;
+  }
+  /* The ship form is long by nature; it gets its own scrollbar. */
+  .control-column {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .map-column {
+    overflow: hidden;
+  }
+  /*
+    The board absorbs the slack, and never squeezes to nothing. The basis has
+    to be 0 rather than auto: an <svg> with a viewBox carries an intrinsic
+    aspect ratio, and on `auto` that ratio wins over the flex and pushes the
+    column past the viewport again. At 0 the flex decides the height and the
+    board letterboxes inside it, which is what preserveAspectRatio is for.
+  */
+  .map-column > .map {
+    flex: 1 1 0;
+    min-height: 260px;
+  }
+  /* Pinned under the board rather than below the fold. */
+  .map-column > .log {
+    flex: 0 0 auto;
+    max-height: 30vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .map-column > .scenario-brief {
+    flex: 0 0 auto;
+  }
+}
+
 /* ── Sequence bar (A3) ──────────────────────────────────────────────────── */
 
 .sequence-bar {
