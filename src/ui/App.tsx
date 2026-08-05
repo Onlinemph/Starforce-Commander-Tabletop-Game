@@ -56,6 +56,7 @@ import {
   exportBattle,
   importBattle,
   newGame,
+  unattendedSides,
   undo,
   useGame,
 } from './store'
@@ -711,8 +712,24 @@ function BattleMenu({
 /** The Sequence of Play strip (A3.1). */
 function SequenceBar({ game, mySide }: { game: GameState; mySide: string | null }) {
   const segments = PHASE_SEGMENTS[game.phase]
+  /*
+   * A side nobody is commanding is a silent walkover: it never plots, never
+   * fires, and is shot to pieces while the game says nothing, because giving
+   * no orders is legal. It is one missed checkbox away in Choose Forces, and
+   * it makes every battle after it read as a crushing win for a ship that was
+   * never really tested.
+   */
+  const unattended = unattendedSides()
   return (
     <div className="sequence-bar">
+      {unattended.length > 0 && (
+        <span className="unattended" role="status">
+          ⚠ {unattended.join(' and ')} {unattended.length === 1 ? 'has' : 'have'} given no orders all
+          battle — {unattended.length === 1 ? 'it is' : 'they are'} not set to AI, so{' '}
+          {unattended.length === 1 ? 'its' : 'their'} ships will not fight back. Turn AI on in Choose
+          Forces, or command {unattended.length === 1 ? 'it' : 'them'} yourself.
+        </span>
+      )}
       <div className="round">Round {game.round}</div>
       <div className="phase">{PHASE_LABELS[game.phase]}</div>
       <ol className="segments">

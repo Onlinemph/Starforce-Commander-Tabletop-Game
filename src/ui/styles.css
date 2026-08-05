@@ -584,6 +584,25 @@ input:focus-visible {
   border-radius: 0 999px 999px 0;
   flex-wrap: wrap;
 }
+/* A force nobody is commanding — takes the whole row, ahead of everything
+   else on the bar, because every result after it is worthless. */
+.sequence-bar .unattended {
+  flex: 1 0 100%;
+  order: -1;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+/* The AI toggle in Choose Forces states which way it is set, not just "AI". */
+.ai-toggle.is-on {
+  color: var(--accent);
+}
+
 .sequence-bar .round,
 .sequence-bar .phase {
   font-family: var(--font-lcars);

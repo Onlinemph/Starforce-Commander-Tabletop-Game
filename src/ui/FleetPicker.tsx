@@ -518,9 +518,24 @@ function ForceList({
           {total} PV · {hulls}/{MAX_SHIPS_PER_SIDE} hulls
           {budget !== null && ` · ${budget - total >= 0 ? `${budget - total} left` : 'over budget'}`}
         </span>
-        <label className="checkbox" title="The computer commands this force — it allocates, plots, fires and repairs on its own as you play through the segments">
+        {/*
+          Which side the computer commands is the single most consequential
+          box on this screen, and it used to read as a bare "AI" that was easy
+          to miss on one force. A side left unticked and unplayed does not put
+          up a fight — it is destroyed without ever firing, and the battle
+          reads as a rout by a ship that was never tested. So it says which it
+          is, either way.
+        */}
+        <label
+          className={ai ? 'checkbox ai-toggle is-on' : 'checkbox ai-toggle'}
+          title={
+            ai
+              ? 'The computer commands this force — it allocates, plots, fires and repairs on its own as you play through the segments.'
+              : 'Nobody is assigned to this force. Tick this to hand it to the computer, or plan to give its orders yourself — a force with no orders never fights back.'
+          }
+        >
           <input type="checkbox" checked={ai} onChange={(e) => onAi(e.target.checked)} />
-          AI
+          {ai ? 'AI commands' : 'You command'}
         </label>
         <button type="button" className="chip" onClick={onReset}>
           printed force

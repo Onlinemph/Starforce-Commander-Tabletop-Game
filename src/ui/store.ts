@@ -403,6 +403,40 @@ export function journalLength(): number {
 }
 
 /**
+ * Sides nobody is commanding: not handed to the computer, and not given a
+ * single order since the round began.
+ *
+ * A side like this does not lose — it never fights at all. Its ships sit at
+ * the speed they started, never plot, never fire, and are shot to pieces by
+ * whoever *is* being played, and the game says nothing about it because
+ * "gave no orders" is a legal, if suicidal, way to spend a round. That is a
+ * silent walkover, and it is easy to arrange by accident: tick the AI box for
+ * one side in Choose Forces, miss the other, and every battle after reads as
+ * a crushing victory for a ship that was never actually tested.
+ *
+ * Measured, on the two fan destroyers: with both sides driven the Sharlin
+ * loses to the Omega 0-40; with the Omega left untended the same duel reads
+ * 40-0 the other way. The hull did not change. Only who was flying it.
+ */
+export function unattendedSides(): string[] {
+  // Nothing to say before the battle has had a chance to speak: a side that
+  // has not moved during the opening Resource Allocation is not neglected yet.
+  if (game.round < 2) return []
+  const ai = new Set(setup.aiSides ?? [])
+  const alive = new Set(game.ships.filter((s) => !s.destroyed).map((s) => s.side))
+  // "Has this side ever given an order?" — not "recently". A pause between
+  // two orders is a captain thinking; nothing at all, a whole round in, is
+  // nobody at the console.
+  const spoke = new Set<string>()
+  for (const action of journal) {
+    if (action.type === 'advance-segment') continue
+    const side = actionSide(game, action)
+    if (side) spoke.add(side)
+  }
+  return [...alive].filter((side) => !ai.has(side) && !spoke.has(side)).sort()
+}
+
+/**
  * A fingerprint of the battle as it stands, for the match client to stamp on
  * the actions it sends. Two clients replaying the same journal must agree on
  * it; when they do not, one of them is wrong and neither can tell which, so
