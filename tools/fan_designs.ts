@@ -1,5 +1,7 @@
 /**
- * Fan designs: ships from other settings, built as StarForce hulls.
+ * Fan designs: ships the printed roster does not carry, built as StarForce
+ * hulls. Two kinds live here — imports from other settings, and original
+ * ships built out of the printed factions' own technology.
  *
  * Run it with `npx vite-node tools/fan_designs.ts`. It prices every design,
  * reports anything the validator objects to, and writes the whole set to
@@ -11,6 +13,9 @@
  * The interesting part of importing a ship from another setting is not the
  * numbers, it is deciding what its technology *is* in this rule set. A ship
  * whose distinctive features are flavour text has not really been imported.
+ * An original design has the opposite discipline: it may only use what its
+ * faction already fields, or it is a different faction's ship wearing the
+ * wrong flag.
  *
  * ---------------------------------------------------------------------------
  * EA HYPERION-class heavy cruiser (Babylon 5)
@@ -80,6 +85,9 @@ const ALL_ROUND: Arc[][] = [
   ['SA', 'AS', 'AP', 'PA'],
   ['FS', 'SF', 'SA', 'AS'],
 ]
+
+/** Every arc: a turret with nothing behind it, as the printed hulls mount one. */
+const ALL_ARCS: Arc[] = ['FS', 'SF', 'SA', 'AS', 'AP', 'PA', 'PF', 'FP']
 
 /** `n` mounts firing dead ahead, the way a torpedo battery is carried. */
 const forward = (n: number): Arc[][] => Array.from({ length: n }, () => ['FS', 'FP'] as Arc[])
@@ -852,6 +860,303 @@ const SHARLIN: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * TRAFALGAR-class Super Dreadnought — Union of Federated Systems, size 10.
+ *
+ * Not an import: a Union ship built out of Union technology, at the top of the
+ * scale the rules allow. B1.3.1 runs the size classes 1 to 10 and the printed
+ * roster stops at 7, so a size 10 is a hull the rulebook makes room for and
+ * nobody ever built. The name is the Union's own convention read forward — a
+ * light frigate is a NELSON, so the fleet flagship is the battle he won.
+ *
+ * **What size 10 actually buys, and what it does not.** Class drives the point
+ * cost (POWER_MULTIPLIER), the excess-damage threshold that breaks a hull
+ * apart (E11.2.3), how hard it is to tractor (J3), probe count, and the rate
+ * it can recover small craft (J8.2.6) — and nothing else. It does *not* make a
+ * ship absorb more punishment: that is the structure track, which is
+ * independent of the class. This was measured when the Omega was built, where
+ * size 7 and size 8 played identically over eighty games and the larger cost
+ * 5.8 points for the privilege. So the tonnage here is spent on the structure
+ * track, the screens and the batteries — the size class is what makes it
+ * nearly untractorable and very hard to blow apart, and the rest is paid for
+ * honestly.
+ *
+ * **Modern Union technology**, which means the UNION III's kit one generation
+ * on, and nothing borrowed from anyone else:
+ *
+ *  - **Screens, not armour.** Every Union hull in the printed game carries
+ *    blue and green boxes and no armour at all, and this one keeps that faith:
+ *    it repairs its defence on the REPR line every round rather than spending
+ *    a fixed pool. That is also why it needs no `costModifier` — the point
+ *    model prices a repairing screen correctly, and it is only armour-only
+ *    hulls like the Hyperion and the Omega that it misreads.
+ *  - **MK-8 A/MAT torpedoes**, ten of them forward, carrying the printed
+ *    battery's slow-arming diamond (E4.2.8) and NoBAT: a full salvo every
+ *    other round, and never topped up from a battery. This is the ship's
+ *    reason to exist and the reason it must be pointed at something.
+ *  - **LNC-1600 phasers** on the printed quadrant-pair mounting plus two
+ *    all-round turrets, so something always bears while the bow comes round.
+ *  - **DGR-20 light phasers** in PD MODE, four of them, because a ship this
+ *    slow cannot dodge a homing weapon and has to shoot it down.
+ *  - **A flag bridge.** CMND 6, the deepest in the game — under H5 a command
+ *    ship lends tactical scan to its squadron, so the hull's real contribution
+ *    is what the ships around it can suddenly see.
+ *  - **Hangar boxes** (HNGR 6) rather than a pretended shuttle complement, the
+ *    same choice the Omega made: when fighter squadrons arrive they fly off
+ *    these, and E8.4.6 already gives them a damageable home on the form.
+ *
+ * **What it gives up.** It is enormous and it manoeuvres like it: top speed 5
+ * where every hull it will meet makes 6, and the widest turn templates in the
+ * game. It cannot disengage from anything that wants to keep shooting at it,
+ * it cannot come about inside a duel, and every one of the ten torpedo tubes
+ * is in the bow. A frigate that stays behind its shoulder is a frigate it
+ * cannot answer.
+ *
+ * **What it is worth, measured.** 386.9 points, and unlike the two hulls above
+ * it carries no `costModifier`, because there is nothing here the model gets
+ * wrong. Checked against the printed roster the spreadsheet is accurate to
+ * about a point — UNION III 158 against a modelled 158.6, UNION II 76 against
+ * 75.4, YORKTOWN V 78 against 76.8 — so the price is the designers' own
+ * arithmetic and not a guess. The size class is a smaller part of it than it
+ * looks: the identical hull prices at 334.8 at size 7 and 386.9 at size 10, so
+ * 52 points is what the class itself costs and the remaining 335 is ship.
+ *
+ * Mirrored fleet actions at admiral, 40 games each, scored on victory points
+ * with kills and losses beside them:
+ *
+ *     vs UNION III             158   38W- 1L   killed 33, lost 0
+ *     vs UNION II + EXETER II  176   18W-22L   killed 55, lost 0
+ *     vs 2x EXETER II          200   14W-26L   killed 13, lost 0
+ *     vs UNION III + YORKTOWN V 236  25W-13L   killed 34, lost 1
+ *     vs UNION III + EXETER II 258   13W-27L   killed 42, lost 20
+ *     vs 3x EXETER II          300    7W-33L   killed 30, lost 15
+ *
+ * Read it as two facts. It annihilates any single printed hull — 38-1 against
+ * the heaviest dreadnought in the game, never once destroyed — and it is not
+ * worth its price against a fleet, which is concentration of force behaving
+ * exactly as it should rather than a mispricing. Note the ladder is not
+ * monotonic: it beats a 236-point pair and loses to a 200-point one, because
+ * the EXETER II is the most efficient hull in the printed roster and two of
+ * them are a harder problem than a dreadnought and a cruiser. This is the same
+ * thing the Omega's note records — printed point values are not a performance
+ * ladder at the top end.
+ *
+ * **One caveat that is the AI's and not the ship's.** With retreat enabled the
+ * computer disengages this hull in round one whenever it is outnumbered, at
+ * full structure, having fired a single volley: against three EXETER IIs that
+ * produced forty games in which neither side killed anything at all. The
+ * numbers above are measured with retreat off for that reason. A lone
+ * capital ship facing a fleet is exactly the situation the retreat heuristic
+ * reads as hopeless, and it is worth fixing on its own terms — it will do the
+ * same to any single powerful ship, printed or otherwise.
+ */
+const TRAFALGAR: ShipForm = {
+  id: 'fan-union-trafalgar-super-dreadnought',
+  name: 'TRAFALGAR-class Super Dreadnought',
+  faction: 'Union of Federated Systems',
+  sizeClass: 10,
+  stressRating: 7,
+  damageControlRating: 6,
+
+  /*
+   * Fifteen power points against the UNION III's twelve — deliberately not
+   * more. Power is the dominant term in the cost of a large hull: the model
+   * charges size × 2 a point, so at size 10 every reactor point is twenty
+   * points of purchase price, and a plant big enough to light the whole form
+   * at once priced this ship past four hundred. Fifteen leaves it unable to
+   * run full torpedoes, full phasers, full screens and a sensor picture in the
+   * same round, which is the interesting problem to hand a flagship captain.
+   */
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+  ],
+  batteries: 3,
+  ftlDriveBoxes: 4,
+
+  functions: [
+    // One point of acceleration a phase is the whole handling character of the
+    // ship; the line is short because there is nothing further to buy.
+    line('accel', 'ACC/DEC', 'accel', [1, 2, 3]),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2, 3], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3, 4, 5]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    // The UNION III's sensor line one generation on: 4 free, 10 at full power,
+    // with five SENS boxes so H2.2.3 caps a single function at five.
+    line('sensor', 'SENSOR', 'sensor', [7, 10], { freeValue: 4 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    line('f-a-mat', 'A/MAT TRP', 'weapon', [6, 9], {
+      freeValue: 3,
+      weaponSystemId: 'mk-8-a-mat-torpedo',
+    }),
+    line('f-phaser', 'PHASER', 'weapon', [6, 9, 12], {
+      freeValue: 3,
+      weaponSystemId: 'lnc-1600-phaser',
+    }),
+    line('f-lt-phaser', 'LT PHASER', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'dgr-20-light-phaser',
+    }),
+  ],
+
+  weapons: [
+    /*
+     * Ten tubes, all forward. The diamond is deliberate and matches every
+     * printed A/MAT battery (E4.2.8): one circle a round, so the full salvo
+     * comes every second round and cannot be hurried out of a battery
+     * (B2.5.6). A ship that could throw this every round would not be a
+     * dreadnought, it would be a problem.
+     */
+    weapon({
+      id: 'mk-8-a-mat-torpedo',
+      name: 'MK-8 A/MAT TORPEDO',
+      weaponClass: 'a-mat-torpedo',
+      mounts: forward(10),
+      armingCircles: 2,
+      hitBoxes: 1,
+      traits: ['NoBAT', 'FTL'],
+      slowArming: true,
+      brackets: [
+        { min: 0, max: 8, band: 'green', dice: ['red'], bonus: 1 },
+        { min: 9, max: 18, band: 'black', dice: ['red'] },
+        { min: 19, max: 25, band: 'red', dice: ['red'] },
+        { min: 26, max: 30, band: 'red', dice: ['yellow'] },
+      ],
+    }),
+    // Four quadrant pairs and two turrets with nothing behind them.
+    weapon({
+      id: 'lnc-1600-phaser',
+      name: 'LNC-1600 PHASER',
+      weaponClass: 'phaser',
+      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 4, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 5, max: 8, band: 'green', dice: ['yellow', 'yellow'] },
+        { min: 9, max: 11, band: 'black', dice: ['yellow', 'yellow'] },
+        { min: 12, max: 15, band: 'black', dice: ['green', 'green'] },
+        { min: 16, max: 18, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    // Point defence. Too slow to dodge a homing weapon, so it shoots them down.
+    weapon({
+      id: 'dgr-20-light-phaser',
+      name: 'DGR-20 LIGHT PHASER',
+      weaponClass: 'phaser',
+      mounts: ALL_ROUND,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['green', 'green'] },
+        { min: 6, max: 8, band: 'black', dice: ['green', 'green'] },
+        { min: 9, max: 11, band: 'black', dice: ['green', 'blue'] },
+        { min: 12, max: 14, band: 'red', dice: ['green'] },
+      ],
+    }),
+  ],
+
+  /*
+   * Every facing at the printed ceiling. G1.1.3 caps a blue shield at 36 fore
+   * and aft and 28 to either beam, and that cap is flat — it does not scale
+   * with the hull — so the largest ship the rules allow carries exactly the
+   * same screens a heavy cruiser could, and this is the first design decision
+   * the size class does not get to win. What tonnage buys instead is the
+   * structure track below it and five generator boxes to put the screens back
+   * up, which is the Union's whole doctrine: nothing is spent permanently.
+   */
+  shields: {
+    generatorBoxes: 5,
+    blue: { F: 36, A: 36, P: 28, S: 28 },
+    green: { F: 5, S: 5, A: 5, P: 5 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 5 },
+    { kind: 'SENS', label: 'Sensors', boxes: 5 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 4 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 4 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 4 },
+    // Fighter capacity with a real home on the form (E8.4.6), waiting on the
+    // fighter rules — not a shuttle complement wearing a fighter's name.
+    { kind: 'HNGR', label: 'Hangar Bay', boxes: 6 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 9 },
+    // The flag bridge, and the reason a fleet brings this rather than two
+    // cruisers: H5 lets it lend tactical scan to everything around it.
+    { kind: 'CMND', label: 'Command Systems', boxes: 6 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 5 },
+  ],
+
+  // Thirty-four boxes and five repair markers: where the tonnage actually
+  // went, since the size class does not carry it.
+  structure: [
+    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 6 },
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  sublight: {
+    maxSpeed: 5,
+    /*
+     * The widest templates in the game, and never a zero — the UNION III's
+     * table has one in its top row, and a ship that may not turn at all at
+     * speed sails off the map rather than fights. It turns badly here; it can
+     * always turn.
+     */
+    turnBySpeed: [30, 25, 25, 20, 20, 15],
+    /*
+     * Two a phase, not one. One was the first draft and it made the ship
+     * unplayable rather than ponderous: every printed hull it will meet makes
+     * speed 6 with two points a phase, so at one point a phase it could not
+     * force an engagement on anybody who declined — against three EXETER IIs
+     * it fought forty games and neither side killed anything at all, because
+     * the cruisers simply stayed away. Top speed 5 is the handicap that
+     * belongs to the tonnage; being unable to change speed is not a handicap,
+     * it is being taken out of the game.
+     */
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 2,
+    driveBoxes: 10,
+    dmgTopSpeed: [5, 5, 4, 4, 3, 3, 2, 1, 1, 0],
+  },
+
+  marineSquads: 26,
+  shuttles: 8,
+
+  pointValue: 0,
+  year: 3680,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -904,6 +1209,10 @@ const DESIGNS: Design[] = [
     costNote: 'armour-only hull: the model cannot see that armour never repairs (G2.2.2)',
   },
   { form: SHARLIN },
+  // No modifier: Union screens repair on the REPR line every round, which is
+  // exactly what the point model assumes a defence box does. It is only the
+  // armour-only hulls above that it misreads.
+  { form: TRAFALGAR },
 ]
 
 /**
