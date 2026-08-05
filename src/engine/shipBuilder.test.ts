@@ -224,10 +224,30 @@ describe('design validation', () => {
     expect(problems.some((p) => /no weapons/.test(p.message))).toBe(true)
   })
 
-  it('catches a shield over its printed maximum', () => {
+  /*
+   * The printed cap is flat — the same ceiling for a frigate and for the size
+   * 10 hull the rules allow — so it is reported, not enforced. Nothing checks
+   * it at play time, which by this validator's own contract makes a ship over
+   * it "something no printed ship does" rather than "unplayable"; making it an
+   * error meant a super dreadnought had to carry a heavy cruiser's screens
+   * because of a number written for cruisers.
+   */
+  it('reports a shield over its printed maximum, and says by how much', () => {
     const form = blankForm('x')
     form.shields.blue.F = 40
-    expect(validateDesign(form).some((p) => p.message.includes('G1.1.3'))).toBe(true)
+    const problem = validateDesign(form).find((p) => p.message.includes('G1.1.3'))
+    expect(problem).toBeDefined()
+    expect(problem!.message).toContain('40')
+    expect(problem!.message).toContain('36')
+  })
+
+  it('does not refuse the design for it — the cap is guidance, not a wall', () => {
+    const form = blankForm('x')
+    form.shields.blue.F = 48
+    form.shields.blue.P = 42
+    const problems = validateDesign(form)
+    expect(problems.filter((p) => p.message.includes('G1.1.3'))).toHaveLength(2)
+    expect(problems.filter((p) => p.severity === 'error')).toEqual([])
   })
 
   it('catches a drive whose damage table does not match its boxes', () => {

@@ -598,11 +598,25 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
   if (form.damageControlRating < 1) warn('A Damage Control Rating of zero means no repairs (B3.1).')
   if (form.stressRating < 1) error('Stress Rating must be at least 1 (C3.1).')
 
-  // G1.1.3 prints a maximum on each shield facing.
+  /*
+   * G1.1.3 prints a maximum on each shield facing, and it is flat — the same
+   * ceiling for a frigate and for the largest hull the rules allow.
+   *
+   * A warning rather than an error, by this function's own contract: nothing
+   * anywhere enforces the cap at play time, so a ship over it is completely
+   * playable, which makes it "something no printed ship does" and not
+   * "unplayable". It used to be an error, and that made the ceiling a hard
+   * wall for designs the printed roster never had to think about — a size 10
+   * super dreadnought carrying a heavy cruiser's screens because a number
+   * written for size 5 hulls said so.
+   */
   const shieldCap: Record<string, number> = { F: 36, S: 28, P: 28, A: 36 }
   for (const side of ['F', 'S', 'A', 'P'] as const) {
     if (form.shields.blue[side] > shieldCap[side]) {
-      error(`${side} shield exceeds its printed maximum of ${shieldCap[side]} (G1.1.3).`)
+      warn(
+        `${side} shield is ${form.shields.blue[side]}, over the printed maximum of ` +
+          `${shieldCap[side]} (G1.1.3). Legal to play; no printed ship does it.`,
+      )
     }
   }
 

@@ -884,12 +884,14 @@ const SHARLIN: ShipForm = {
  * **Modern Union technology**, which means the UNION III's kit one generation
  * on, and nothing borrowed from anyone else:
  *
- *  - **Screens, not armour.** Every Union hull in the printed game carries
- *    blue and green boxes and no armour at all, and this one keeps that faith:
- *    it repairs its defence on the REPR line every round rather than spending
- *    a fixed pool. That is also why it needs no `costModifier` — the point
- *    model prices a repairing screen correctly, and it is only armour-only
- *    hulls like the Hyperion and the Omega that it misreads.
+ *  - **Screens, not armour, and more of them than the rules print.** Every
+ *    Union hull in the printed game carries blue and green boxes and no armour
+ *    at all, and this one keeps that faith: it repairs its defence on the REPR
+ *    line every round rather than spending a fixed pool. It also carries more
+ *    than G1.1.3 allows, which is a deliberate house rule — see the shields
+ *    below. That is why it still needs no `costModifier`: the point model
+ *    prices a repairing screen correctly however many boxes it is given, and
+ *    it is only armour-only hulls like the Hyperion and the Omega it misreads.
  *  - **MK-8 A/MAT torpedoes**, ten of them forward, carrying the printed
  *    battery's slow-arming diamond (E4.2.8) and NoBAT: a full salvo every
  *    other round, and never topped up from a battery. This is the ship's
@@ -912,34 +914,46 @@ const SHARLIN: ShipForm = {
  * is in the bow. A frigate that stays behind its shoulder is a frigate it
  * cannot answer.
  *
- * **What it is worth, measured.** 386.9 points, and unlike the two hulls above
+ * **What it is worth, measured.** 429.8 points, and unlike the two hulls above
  * it carries no `costModifier`, because there is nothing here the model gets
  * wrong. Checked against the printed roster the spreadsheet is accurate to
  * about a point — UNION III 158 against a modelled 158.6, UNION II 76 against
  * 75.4, YORKTOWN V 78 against 76.8 — so the price is the designers' own
- * arithmetic and not a guess. The size class is a smaller part of it than it
- * looks: the identical hull prices at 334.8 at size 7 and 386.9 at size 10, so
- * 52 points is what the class itself costs and the remaining 335 is ship.
+ * arithmetic and not a guess, and it charges in full for the screens over the
+ * cap: held to G1.1.3 the same hull prices at 386.9, so the waiver costs 42.9
+ * points and is paid for. The size class is a smaller part of the total than
+ * it looks: the identical hull prices at 377.2 at size 7, so 52 points is what
+ * the class itself costs and the other 377 is ship.
  *
  * Mirrored fleet actions at admiral, 40 games each, scored on victory points
- * with kills and losses beside them:
+ * with kills and losses beside them — retreat off, for the reason below:
  *
- *     vs UNION III             158   38W- 1L   killed 33, lost 0
- *     vs UNION II + EXETER II  176   18W-22L   killed 55, lost 0
- *     vs 2x EXETER II          200   14W-26L   killed 13, lost 0
- *     vs UNION III + YORKTOWN V 236  25W-13L   killed 34, lost 1
- *     vs UNION III + EXETER II 258   13W-27L   killed 42, lost 20
- *     vs 3x EXETER II          300    7W-33L   killed 30, lost 15
+ *     vs UNION III             158   40W- 0L   killed 40, lost 0
+ *     vs UNION II + EXETER II  176   34W- 5L   killed 66, lost 0
+ *     vs 2x EXETER II          200   27W-11L   killed 28, lost 0
+ *     vs UNION III + YORKTOWN V 236  25W-14L   killed 41, lost 0
+ *     vs UNION III + EXETER II 258   27W-13L   killed 55, lost 2
+ *     vs 3x EXETER II          300   18W-22L   killed 43, lost 5
+ *     vs 4x EXETER II          400    0W-40L   killed  2, lost 36
  *
- * Read it as two facts. It annihilates any single printed hull — 38-1 against
- * the heaviest dreadnought in the game, never once destroyed — and it is not
- * worth its price against a fleet, which is concentration of force behaving
- * exactly as it should rather than a mispricing. Note the ladder is not
- * monotonic: it beats a 236-point pair and loses to a 200-point one, because
- * the EXETER II is the most efficient hull in the printed roster and two of
- * them are a harder problem than a dreadnought and a cruiser. This is the same
- * thing the Omega's note records — printed point values are not a performance
- * ladder at the top end.
+ * The shape is a plateau and then a cliff. Up to about three hundred points of
+ * opposition it is barely scratched — forty games against the heaviest printed
+ * dreadnought without being destroyed once, and five deaths in forty against
+ * three EXETER IIs — and at four hundred it dies in thirty-six of forty games
+ * having killed two ships. There is a number of guns that overwhelms the
+ * screens faster than six generator boxes can put them back up, and it sits
+ * between three cruisers and four.
+ *
+ * Held to the printed shield cap this ladder was a different ship: 38W-1L
+ * against the UNION III instead of 40W-0L, and 7W-33L against three EXETER IIs
+ * where it now goes 18W-22L. The cap was doing most of the work of holding a
+ * size 10 hull down to cruiser survivability.
+ *
+ * That it still loses on points to four EXETER IIs is concentration of force
+ * behaving as it should rather than a mispricing — the EXETER II is the most
+ * efficient hull in the printed roster, and the Omega's note above records the
+ * same thing from the other direction: printed point values are not a
+ * performance ladder at the top end.
  *
  * **One caveat that is the AI's and not the ship's.** With retreat enabled the
  * computer disengages this hull in round one whenever it is outnumbered, at
@@ -1075,18 +1089,25 @@ const TRAFALGAR: ShipForm = {
   ],
 
   /*
-   * Every facing at the printed ceiling. G1.1.3 caps a blue shield at 36 fore
-   * and aft and 28 to either beam, and that cap is flat — it does not scale
-   * with the hull — so the largest ship the rules allow carries exactly the
-   * same screens a heavy cruiser could, and this is the first design decision
-   * the size class does not get to win. What tonnage buys instead is the
-   * structure track below it and five generator boxes to put the screens back
-   * up, which is the Union's whole doctrine: nothing is spent permanently.
+   * Over the printed ceiling, deliberately.
+   *
+   * G1.1.3 caps a blue shield at 36 fore and aft and 28 to either beam, and
+   * that cap is flat: the same number for a frigate and for the largest hull
+   * the rules allow. Held to it, this ship carried a heavy cruiser's screens,
+   * which made the size class a label rather than a fact — so the cap is
+   * waived here and the validator reports it as a warning, which is what it
+   * is. Nothing enforces the ceiling at play time; a ship over it is entirely
+   * playable, and the point model charges honestly for every box.
+   *
+   * Scaled 1.6x off the UNION III's 30/26/26/26, which is close to the ratio
+   * of the two structure tracks (34 boxes against 22). Six generator boxes
+   * put them back up, because that is the Union's whole doctrine: nothing is
+   * spent permanently.
    */
   shields: {
-    generatorBoxes: 5,
-    blue: { F: 36, A: 36, P: 28, S: 28 },
-    green: { F: 5, S: 5, A: 5, P: 5 },
+    generatorBoxes: 6,
+    blue: { F: 48, A: 42, P: 42, S: 42 },
+    green: { F: 6, S: 6, A: 6, P: 6 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
 

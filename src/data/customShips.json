@@ -3079,18 +3079,18 @@
       }
     ],
     "shields": {
-      "generatorBoxes": 5,
+      "generatorBoxes": 6,
       "blue": {
-        "F": 36,
-        "A": 36,
-        "P": 28,
-        "S": 28
+        "F": 48,
+        "A": 42,
+        "P": 42,
+        "S": 42
       },
       "green": {
-        "F": 5,
-        "S": 5,
-        "A": 5,
-        "P": 5
+        "F": 6,
+        "S": 6,
+        "A": 6,
+        "P": 6
       }
     },
     "armor": {
@@ -3333,7 +3333,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 386.9,
+    "pointValue": 429.8,
     "year": 3680,
     "availability": "rare"
   }
