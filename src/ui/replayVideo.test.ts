@@ -1,27 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canCaptureTab,
   DEFAULT_RECORD,
   estimateRecording,
   estimateSeconds,
   FORMATS,
   localiseRefs,
-  recordMethod,
   recordingStops,
 } from './replayVideo'
 
 /**
  * The recorder's arithmetic and its feature detection. Everything else needs a
- * browser to mean anything, and was measured in one (Chromium, 141-action
- * battle):
+ * browser to mean anything, and was measured in one (Chromium):
  *
- *  - Filming the tab: the track crops to the map — 774×710 out of a 1400×900
- *    page — and the finished file holds the board and nothing else. Zero
- *    frames drawn by hand.
- *  - Drawing frames by hand, for browsers without Region Capture: 765 frames
- *    over a 29-second recording, where the original pipeline managed 90.
- *  - Either way the view is locked: zoomed five notches in, the recording
- *    snapped back to the whole board and refused to move.
+ *  - Every frame is drawn by hand — the live SVG serialised, made
+ *    self-contained, rasterised onto the recorded canvas: 765 frames over a
+ *    29-second recording, where the original pipeline managed 90. (A filmed-
+ *    tab path existed once; it demanded a permission prompt per export and
+ *    could silently record nothing, so it was removed.)
+ *  - Decoding the finished file frame by frame showed the ships moving:
+ *    the count of lit pixels swings sample to sample as the battle plays.
+ *  - The view is locked: zoomed five notches in, the recording snapped back
+ *    to the whole board and refused to move.
  */
 
 describe('references inside a frame', () => {
@@ -40,13 +39,6 @@ describe('references inside a frame', () => {
 })
 
 describe('choosing how to record', () => {
-  it('falls back to drawing frames where the browser cannot film its own tab', () => {
-    // Node has no getDisplayMedia and no Region Capture, which is exactly the
-    // shape of a browser that has to take the slow road.
-    expect(canCaptureTab()).toBe(false)
-    expect(recordMethod()).toBe('canvas')
-  })
-
   it('prefers MP4/H.264 so the file plays outside the browser that made it', () => {
     // A VP9 WebM records fine and then opens as "no video" in QuickTime and
     // Windows Media Player — the export exists to be played somewhere else.

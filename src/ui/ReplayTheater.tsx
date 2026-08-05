@@ -9,7 +9,7 @@ import {
   canRecordVideo,
   DEFAULT_RECORD,
   estimateRecording,
-  recordMethod,
+  probeRecording,
   recordReplay,
   videoExtension,
 } from './replayVideo'
@@ -262,7 +262,16 @@ export function ReplayTheater({ initial, onClose }: Props) {
       link.download = `starforce-replay.${videoExtension()}`
       link.click()
       URL.revokeObjectURL(url)
-      setNote(controller.signal.aborted ? 'Recording stopped — the part captured was saved.' : 'Video saved.')
+      // Trust nothing until it plays: decode the file and look for a lit
+      // pixel, so an empty recording is reported instead of discovered later.
+      const probe = controller.signal.aborted ? { ok: true } : await probeRecording(blob)
+      setNote(
+        !probe.ok
+          ? `Video saved, but it may be blank — ${probe.reason ?? 'no frames could be read back'}. Please report this.`
+          : controller.signal.aborted
+            ? 'Recording stopped — the part captured was saved.'
+            : 'Video saved.',
+      )
     } catch (error) {
       setNote(error instanceof Error ? error.message : 'The recording failed.')
     } finally {
@@ -315,11 +324,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
                       ...DEFAULT_RECORD,
                       narrated,
                       highlightsOnly,
-                    })} seconds, filmed in real time. The map is held on the whole board while it records.${
-                      recordMethod() === 'tab'
-                        ? ' Your browser will ask permission to film this tab; decline and it will draw the frames itself instead.'
-                        : ' Your browser has to draw every frame by hand, so expect it to run somewhat over that.'
-                    }`
+                    })} seconds, filmed in real time. The map is held on the whole board while it records, and every frame is drawn by hand — no permission prompts — so expect it to run somewhat over that.`
               }
             >
               {recording

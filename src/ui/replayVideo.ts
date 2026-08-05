@@ -46,10 +46,10 @@
  *  - `highlightsOnly` drops the bookkeeping altogether. That changes what is
  *    in the film, not just how long it takes, so it is the caller's choice.
  *
- * The estimate the caller is told is the tab-capture figure. Where the browser
- * has to draw every frame by hand it runs somewhat over — 44s against a 35s
- * estimate on the duel above — because rasterising the map can cost more than
- * the frame budget.
+ * The estimate the caller is told assumes frames arrive on schedule; drawing
+ * them by hand runs somewhat over — 44s against a 35s estimate on the duel
+ * above — because rasterising the map can cost more than the frame budget.
+ * The tooltip says so.
  */
 
 export interface RecordOptions {
@@ -77,8 +77,6 @@ export interface RecordOptions {
    * file takes a third of the time to make with nothing missing from it.
    */
   glideMs?: number
-  /** Set false to redraw every frame by hand rather than ask to film the tab. */
-  preferTabCapture?: boolean
   onProgress?: (done: number, total: number) => void
   signal?: AbortSignal
 }
@@ -510,119 +508,19 @@ async function playThrough(
   await wait(options.holdMs)
 }
 
-// ---------------------------------------------------------------------------
-// The easy way: let the browser film its own tab
-// ---------------------------------------------------------------------------
-
-/**
- * Chrome's Region Capture, which is the whole trick. Tab capture on its own
- * would film the theater, the narration column and the browser's own
- * furniture; cropping the track to the map element means the stream *is* the
- * map, at whatever frame rate the compositor is already running at.
- */
-interface CropTargetApi {
-  fromElement(element: Element): Promise<unknown>
-}
-type CroppableTrack = MediaStreamTrack & { cropTo?: (target: unknown) => Promise<void> }
-
-function cropTargetApi(): CropTargetApi | null {
-  const api = (globalThis as { CropTarget?: CropTargetApi }).CropTarget
-  return api && typeof api.fromElement === 'function' ? api : null
-}
-
-/** Whether this browser can film the map directly instead of redrawing it. */
-export function canCaptureTab(): boolean {
-  return (
-    typeof navigator !== 'undefined' &&
-    typeof navigator.mediaDevices?.getDisplayMedia === 'function' &&
-    cropTargetApi() !== null
-  )
-}
-
-/** Which way a recording will be made here — the UI says so before asking. */
-export function recordMethod(): 'tab' | 'canvas' {
-  return canCaptureTab() ? 'tab' : 'canvas'
-}
-
-/**
- * Ask for the tab, crop the track to the map, and hand back the stream.
- *
- * Null on any refusal — the picker dismissed, a different window chosen, an
- * older browser — and the caller falls back to drawing frames by hand. The
- * crop is not optional: without it the file would contain the whole page, and
- * recording the UI around the map is precisely what nobody wants.
- *
- * Must be called before anything else awaits, or the click that got us here
- * will no longer count as the gesture the permission prompt requires.
- */
-async function captureMapStream(element: Element): Promise<MediaStream | null> {
-  const api = cropTargetApi()
-  if (!api) return null
-  let stream: MediaStream
-  try {
-    stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 30 },
-      audio: false,
-      // Chrome-only hints: offer this tab first, and do not let the capture
-      // wander to another surface half way through the battle.
-      preferCurrentTab: true,
-      selfBrowserSurface: 'include',
-      surfaceSwitching: 'exclude',
-    } as DisplayMediaStreamOptions)
-  } catch {
-    return null
-  }
-  const track = stream.getVideoTracks()[0] as CroppableTrack | undefined
-  try {
-    if (!track?.cropTo) throw new Error('no crop')
-    await track.cropTo(await api.fromElement(element))
-    return stream
-  } catch {
-    // Whatever was picked, it is not this tab's map. Leave it alone.
-    for (const t of stream.getTracks()) t.stop()
-    return null
-  }
-}
-
-/** Film the map itself, at the frame rate the browser is already drawing it. */
-async function recordFromStream(
-  stream: MediaStream,
-  format: string,
-  steps: number,
-  showStep: (index: number) => Promise<void>,
-  options: RecordOptions,
-): Promise<Blob> {
-  const recorder = new MediaRecorder(stream, { mimeType: format, videoBitsPerSecond: 8_000_000 })
-  const chunks: BlobPart[] = []
-  recorder.ondataavailable = (event) => {
-    if (event.data.size > 0) chunks.push(event.data)
-  }
-  const finished = new Promise<Blob>((resolve) => {
-    recorder.onstop = () => resolve(new Blob(chunks, { type: format }))
-  })
-  const releaseGlide = holdGlide(options.glideMs)
-  recorder.start()
-  try {
-    await playThrough(steps, showStep, options)
-  } finally {
-    releaseGlide()
-    recorder.stop()
-    for (const track of stream.getTracks()) track.stop()
-  }
-  return finished
-}
-
 /**
  * Play the replay through, filming it, and return the finished video.
  *
  * `showStep` must set the replay to that step and resolve once the DOM has
  * painted it — the caller owns the React state, so only it can do that.
  *
- * Two ways to do this. Where the browser can film its own tab and crop the
- * stream to the map, it does: the pixels are the ones on screen, at the frame
- * rate the compositor is already running, and there is nothing to redraw. Any
- * other browser — or a declined prompt — falls back to rebuilding every frame
- * by hand, which is slower and dearer but asks nobody's permission.
+ * Every frame is drawn by hand: the live SVG is serialised, made
+ * self-contained, and rasterised onto a canvas the recorder films. There used
+ * to be a preferred path that asked Chrome to film its own tab and crop the
+ * stream to the map — cheaper when it worked, but it put a permission prompt
+ * in front of every export and could record a full-length file with no frames
+ * in it, silently. Drawing the frames asks nobody's permission and cannot
+ * film anything but the map.
  */
 export async function recordReplay(
   getSvg: () => SVGSVGElement | null,
@@ -635,24 +533,6 @@ export async function recordReplay(
 
   const first = getSvg()
   if (!first) throw new Error('The map is not on screen.')
-
-  // Before any other await: the permission prompt needs the click still live.
-  const live = options.preferTabCapture === false ? null : await captureMapStream(first)
-  if (live) {
-    const filmed = await recordFromStream(live, format, steps, showStep, options)
-    /*
-     * Trust nothing until it plays. Tab capture can hand over a stream and
-     * record the full length while delivering no frames at all — the file
-     * saves, opens, and shows no video. When that happens the battle is
-     * still here and the slow road still works, so take it: re-record by
-     * drawing every frame, exactly as if the capture prompt were declined.
-     * An aborted recording is exempt — a cut-short film is what was asked.
-     */
-    if (options.signal?.aborted) return filmed
-    const probe = await probeRecording(filmed)
-    if (probe.ok) return filmed
-    return recordReplay(getSvg, steps, showStep, { ...options, preferTabCapture: false })
-  }
 
   // Frame on the board, at the board's own proportions — so neither zooming
   // nor resizing the window mid-recording changes the shape of the picture.
