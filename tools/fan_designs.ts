@@ -1178,6 +1178,272 @@ const TRAFALGAR: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * YORKTOWN X-class Heavy Cruiser — the refit line run five marks past the V.
+ *
+ * Not invented: extrapolated. The printed roster carries five marks of
+ * YORKTOWN and the progression between them is unusually disciplined, so the
+ * useful question is not "what would a bigger Yorktown be" but "what does this
+ * line actually do to itself between marks, and what does the fifth step past
+ * the V look like".
+ *
+ * What the printed marks change, per generation, averaged over I → V:
+ *
+ *     mark   PV  struct  react  bat  blue F/A/P/S   grn  gen  SENS  mounts
+ *      I     23    13      7     1    15/12/13/13    3    3    3      7
+ *      II    29    13      8     1    16/15/15/15    3    3    3      8
+ *      III   42    14      8     1    20/18/18/18    3    3    3      9
+ *      IV    48    15      9     1    22/20/20/20    4    4    4      9
+ *      V     78    16     10     2    26/24/24/24    4    4    4      9
+ *
+ * — structure +0.75, reactor +0.75, blue screens +2.75 fore and +3 elsewhere,
+ * green and generator and sensors +0.25, mounts +0.5. Five more steps of that
+ * gives 20 structure boxes, 14 reactor points, 3 batteries, 40/38/38/38 of
+ * blue, 5 green, 5 generator boxes, 5 SENS and twelve mounts, which is what is
+ * built below.
+ *
+ * **What the line does *not* change is the more interesting half, and it is
+ * the whole discipline of this design.** Across all five printed marks the
+ * YORKTOWN keeps:
+ *
+ *  - **Size class 5.** It is a heavy cruiser and it stays one. A Mark X that
+ *    grew into a dreadnought would not be a Yorktown, it would be a UNION
+ *    wearing the name.
+ *  - **The same drive, exactly.** Speed 6, the 40-degree template at rest, two
+ *    points of acceleration a phase, six drive boxes — identical figures on
+ *    the I and the V, twenty-seven years apart. This line never gets faster or
+ *    handier; it gets harder to kill and better armed. So the Mark X is not
+ *    faster either, including the zero in the top row of its turn table: at
+ *    full burn a Yorktown may not turn at all, and that has been true of every
+ *    one of them.
+ *  - **Four torpedo tubes.** Not five, not six, on any mark. What improves is
+ *    the torpedo — MK-3, MK-4, MK-5, MK-5, MK-6 — and the growth in mounts is
+ *    all secondary battery. The Mark X keeps four.
+ *  - **Stress Rating 4 and Damage Control 4.** Flat across the whole line.
+ *
+ * So: MK-10 torpedoes in the same four tubes, LNC-2000 phasers where the V
+ * carries LNC-1000, and the DGR light phaser back on the form after the V
+ * dropped it. The torpedo's reach is the one place the trend is read
+ * conservatively — the printed sequence runs 16, 20, 24, 24, 26, so the early
+ * jumps say +2.5 a mark and the last three say the reach is levelling off.
+ * Taking the plateau rather than the early slope puts the MK-10 at 32 instead
+ * of 38; a 38-inch torpedo would cover the whole printed board from the
+ * deployment line, which is a different game rather than a better cruiser.
+ *
+ * It carries the same screens waiver the TRAFALGAR does, and it arrives there
+ * honestly: the printed trend alone walks the beam shields past G1.1.3's 28 by
+ * the Mark VIII. That is the clearest evidence the cap is a figure written for
+ * the hulls that existed rather than a law about shields.
+ *
+ * **214.8 points, and the price is worth a note.** The model reproduces all
+ * five printed marks to within about a point — I 23 against 23, III 42 against
+ * 43.2, V 78 against 76.8 — so it can be trusted on the sixth. But extending
+ * the *printed prices* instead of the printed parts gives a different answer:
+ * 23, 29, 42, 48, 78 compounds at about 1.36 a mark, and five more of that
+ * would be roughly 360. The gap is that the parts grow arithmetically here
+ * (+0.75 of structure, +2.75 of shield) while the printed prices grew
+ * geometrically, because the late marks each added a little of everything at
+ * once. Extrapolating the parts is the defensible half — a price with no parts
+ * behind it is a number, not a ship — so 214.8 is what this is, and anyone who
+ * prefers the price curve should read it as the Mark X being a bargain.
+ *
+ * **How it fights.** Mirrored, 40 games each at admiral, retreat off:
+ *
+ *     vs YORKTOWN V             78   40W- 0L   killed 40, lost 0
+ *     vs EXETER II             100   40W- 0L   killed 40, lost 0
+ *     vs UNION III             158   39W- 1L   killed 40, lost 0
+ *     vs 2x EXETER II          200    1W-39L   killed  9, lost 38
+ *     vs UNION III + EXETER II 258   19W-21L   killed 28, lost 1
+ *     vs TRAFALGAR             430    0W-40L   killed  0, lost 39
+ *     2x YORKTOWN X vs TRAFALGAR      40W- 0L   killed 40, lost 4
+ *
+ * Five marks is an enormous distance: it destroys the YORKTOWN V in all forty
+ * games without being scratched, and beats the 158-point UNION III 39-1. Then
+ * it walks into two EXETER IIs and dies in thirty-eight of forty.
+ *
+ * That the same ship is nearly even against a *more* expensive pair — 19-21
+ * against a UNION III and an EXETER II, dying once — is not noise. It is the
+ * thing this file keeps rediscovering: the EXETER II is the most efficient
+ * hull in the printed roster and the UNION III is the least, so 258 points of
+ * dreadnought-plus-cruiser is a softer problem than 200 points of two
+ * cruisers. A Mark X is not durable enough to be focus-fired by two good guns.
+ *
+ * And the last line is concentration of force pointing the other way for once:
+ * two of these, at 429.6 against the TRAFALGAR's 429.8, take the super
+ * dreadnought apart in all forty games for four losses.
+ */
+const YORKTOWN_X: ShipForm = {
+  id: 'fan-union-yorktown-x-heavy-cruiser',
+  name: 'YORKTOWN X-class Heavy Cruiser',
+  faction: 'Union of Federated Systems',
+  // Every printed mark is a size 5 heavy cruiser, and so is this one.
+  sizeClass: 5,
+  stressRating: 4,
+  damageControlRating: 4,
+
+  // Fourteen points, from the V's ten: +0.75 a mark, five marks on.
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+  ],
+  batteries: 3,
+  ftlDriveBoxes: 3,
+
+  functions: [
+    // The V's line, unchanged — because the V's drive is the I's drive.
+    line('accel', 'ACC/DEC', 'accel', [2, 3, 4], { freeValue: 1 }),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2, 3], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3, 4]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    // The V reads 3 free and 8 at full power; five marks of +0.25 SENS puts
+    // the rating at 5 and the line at 4 and 10.
+    line('sensor', 'SENSOR', 'sensor', [7, 10], { freeValue: 4 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    line('f-a-mat', 'A/MAT TRP', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'mk-10-a-mat-torpedo',
+    }),
+    line('f-phaser', 'PHASER', 'weapon', [6, 9, 12], {
+      freeValue: 3,
+      weaponSystemId: 'lnc-2000-phaser',
+    }),
+    line('f-lt-phaser', 'LT PHASER', 'weapon', [4], { freeValue: 2, weaponSystemId: 'dgr-24-light-phaser' }),
+  ],
+
+  weapons: [
+    // Four tubes. Four on the I, four on the V, four here — only the torpedo
+    // in them has changed, and the diamond (E4.2.8) has never come off.
+    weapon({
+      id: 'mk-10-a-mat-torpedo',
+      name: 'MK-10 A/MAT TORPEDO',
+      weaponClass: 'a-mat-torpedo',
+      mounts: forward(4),
+      armingCircles: 2,
+      hitBoxes: 1,
+      traits: ['NoBAT', 'FTL'],
+      slowArming: true,
+      brackets: [
+        { min: 0, max: 8, band: 'green', dice: ['red'], bonus: 1 },
+        { min: 9, max: 19, band: 'black', dice: ['red'] },
+        { min: 20, max: 27, band: 'red', dice: ['red'] },
+        { min: 28, max: 32, band: 'red', dice: ['yellow'] },
+      ],
+    }),
+    // Where the mount growth went, every mark: the secondary battery. Six, on
+    // the V's own mounting plus a second turret.
+    weapon({
+      id: 'lnc-2000-phaser',
+      name: 'LNC-2000 PHASER',
+      weaponClass: 'phaser',
+      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 4, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 5, max: 7, band: 'green', dice: ['yellow', 'yellow'] },
+        { min: 8, max: 11, band: 'black', dice: ['yellow', 'green'] },
+        { min: 12, max: 15, band: 'black', dice: ['green', 'green'] },
+        { min: 16, max: 18, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    // The DGR line, back on the form. The III and IV carried a light phaser
+    // and the V dropped it for a fifth LNC; at twelve mounts there is room for
+    // both, and point defence is what a cruiser wants against the torpedoes
+    // this era throws.
+    weapon({
+      id: 'dgr-24-light-phaser',
+      name: 'DGR-24 LIGHT PHASER',
+      weaponClass: 'phaser',
+      mounts: [
+        ['FS', 'SF', 'SA', 'AS'],
+        ['AP', 'PA', 'PF', 'FP'],
+      ],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['green', 'green'] },
+        { min: 6, max: 9, band: 'black', dice: ['green', 'green'] },
+        { min: 10, max: 12, band: 'black', dice: ['green', 'blue'] },
+        { min: 13, max: 14, band: 'red', dice: ['green'] },
+      ],
+    }),
+  ],
+
+  /*
+   * 40/38/38/38, straight off the trend line — and the beam facings are ten
+   * over G1.1.3's 28, which the printed progression reaches on its own by
+   * about the Mark VIII. Warned about, not refused; see the TRAFALGAR's
+   * shields for the reasoning.
+   */
+  shields: {
+    generatorBoxes: 5,
+    blue: { F: 40, A: 38, P: 38, S: 38 },
+    green: { F: 5, S: 5, A: 5, P: 5 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 6 },
+    { kind: 'SENS', label: 'Sensors', boxes: 5 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 3 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 3 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 3 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 5 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 3 },
+  ],
+
+  // Twenty boxes, from the V's sixteen.
+  structure: [
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  // The V's drive, to the figure. This line has never bought speed.
+  sublight: {
+    maxSpeed: 6,
+    turnBySpeed: [40, 35, 35, 30, 30, 20, 0],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 2,
+    driveBoxes: 6,
+    dmgTopSpeed: [5, 4, 2, 1, 0, 0],
+  },
+
+  marineSquads: 14,
+  shuttles: 6,
+
+  pointValue: 0,
+  // Marks land at 3645, 3655, 3662, 3667, 3672 — the gaps closing from ten
+  // years to five. Five more at that cadence puts the X in the mid-nineties.
+  year: 3695,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -1234,6 +1500,9 @@ const DESIGNS: Design[] = [
   // exactly what the point model assumes a defence box does. It is only the
   // armour-only hulls above that it misreads.
   { form: TRAFALGAR },
+  // Extrapolated rather than designed, so it gets no thumb on the scale
+  // either: whatever the model makes of five more marks is the answer.
+  { form: YORKTOWN_X },
 ]
 
 /**
