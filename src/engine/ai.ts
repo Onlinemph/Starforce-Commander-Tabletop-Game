@@ -54,6 +54,7 @@ import {
   sensorFunctionCap,
   shieldGeneratorRating,
   structureRemaining,
+  turnTemplateAt,
   type ShipState,
 } from './shipState'
 import { boardingSides } from './boarding'
@@ -1495,56 +1496,61 @@ function bestPlot(
        * reads as a ship losing fights it was in fact winning.
        *
        * So the margin is the ship's own stopping distance, and the penalty
-       * grows as the plot eats into it. That is worth two games a season and
-       * is the right shape, but be warned: it does NOT fix the dreadnought.
+       * grows as the plot eats into it.
        *
-       * Still open, and measured, so the next attempt can skip the dead ends.
-       * A UNION III against an EXETER II kills it 11 times in 40 and sails off
-       * the board in 25 of the rest, at 19 of 22 structure with the EXETER on
-       * 1 of 16. It is not losing; it is leaving. The decision that dooms it
-       * is several rounds earlier — it accelerates to a speed whose turn
-       * template is `0` while closing, flies six phases of heading 270 through
-       * the enemy and out the far side, and by the time any of this code sees
-       * a bad plot every candidate is equally bad. Three fixes were tried:
+       * That alone did not fix the dreadnought, because it asks the wrong
+       * question: where does this plot *end*. A plot can end somewhere
+       * perfectly safe and still be the one that dooms the ship, if it leaves
+       * her at a speed the helm cannot answer at. C2.2.2 prints a `0` in the
+       * turn row for the speeds at which a hull may not turn at all, and the
+       * UNION dreadnoughts have one at their best speed — so the captain
+       * accelerated into it while closing, then flew six phases of heading 270
+       * through the enemy and out the far side at full structure. By the time
+       * any single plot looked bad, every candidate was equally bad.
        *
-       *   - Penalising a can't-turn speed outright fixes it (kills 11 → 20)
-       *     and costs the admiral the duel season, 39W-24L to 22W-40L.
-       *     Sprinting where there is room to sprint is good doctrine.
-       *   - Folding the can't-turn rounds into the margin below: baselines
-       *     down, dreadnought unchanged.
-       *   - A hard veto on any plot leaving the board: baselines flat,
-       *     dreadnought barely moved, for the reason above — when every
-       *     candidate exits, vetoing them all changes nothing.
+       * So the second test looks a round further on: how far must this ship
+       * travel before she can come about at all, and is there board left when
+       * she gets there. That is the commitment a plot is really making, and it
+       * is made several rounds before the edge arrives.
        *
-       * What is left to try is the plan a round ahead: refusing the
-       * acceleration that will leave the ship unable to come about, rather
-       * than the plot that finally takes it over the line.
+       * Three things that did not work, recorded so nobody re-runs them.
+       * Penalising a can't-turn speed outright fixes the dreadnought and costs
+       * the admiral the duel season, 39W-24L to 22W-40L — sprinting where
+       * there is room to sprint is good doctrine, so the cost has to attach to
+       * the room and not to the speed. Folding the blind rounds into the
+       * stopping margin lost baseline and changed nothing. A hard veto on
+       * plots that leave the board did almost nothing, for the reason above.
        */
       const { width, height } = game.scenario.bounds
+      const offBoard = (p: { x: number; y: number }) =>
+        p.x < 0 || p.y < 0 || p.x > width || p.y > height
       if (fleeing) {
-        if (
-          end.position.x < 0 ||
-          end.position.y < 0 ||
-          end.position.x > width ||
-          end.position.y > height
-        ) {
-          score += 30
-        }
+        if (offBoard(end.position)) score += 30
       } else {
-        /*
-         * A hull that cannot turn cannot stay in the battle, and C2.2.2 prints
-         * a `0` in the turn row for the speeds at which some ships cannot. The
-         * UNION dreadnoughts have one at their best speed, and the captain was
-         * plotting it while closing: six phases of heading 270, straight past
-         * the enemy and off the far edge of a thirty-six inch map, at full
-         * structure. Speed is worth something and being able to come about is
-         * worth more, so this is a real cost rather than a veto — a ship with
-         * a reason to sprint in a straight line can still pay it.
-         */
-        // Rounds to shed this speed, then the distance covered doing it —
-        // travelling at an average of half the current speed while it slows.
         const brake = Math.max(1, accelerationBudget(ship))
         const speed = Math.abs(candidate.speed)
+
+        /*
+         * Where this plot commits her to. If the helm answers at this speed
+         * that is the plot's own end; if it does not, she must first shed
+         * speed to one that does, flying straight the whole way — three
+         * phases to a round, at `speed` inches a phase.
+         */
+        let turnable = speed
+        while (turnable > 0 && turnTemplateAt(ship, turnable) === 0) turnable -= 1
+        const blindRounds = Math.ceil(Math.max(0, speed - turnable) / brake)
+        const heading = headingVector(end.heading)
+        const committed = {
+          x: end.position.x + heading.x * blindRounds * speed * 3,
+          y: end.position.y + heading.y * blindRounds * speed * 3,
+        }
+        // Ablated over eight printed-board duels: without this a UNION III
+        // leaves in 7 of 8, with it in 4. Half the problem, and the half that
+        // was costing the ship battles it was winning.
+        if (blindRounds > 0 && offBoard(committed)) score -= 12
+
+        // And the stopping distance proper: rounds to shed this speed, then
+        // the ground covered doing it at an average of half of it.
         const rounds = Math.ceil(speed / brake)
         const margin = Math.max(2, (speed * rounds) / 2)
         const room = Math.min(

@@ -57,7 +57,7 @@ export const BASELINES = [
    *                        36" / 64 games        72" / 192 games
    *     duel adm-vs-capt   41W-23L   (64%)       105W-87L   (55%)
    *     duel adm-vs-ens    54W-10L   (84%)       117W-75L   (61%)
-   *     squadron adm-ens   53W-11L   (83%)       108W-82L   (56%)
+   *     squadron adm-ens   53W-11L   (83%)       110W-81L   (57%)
    *
    * The right-hand column is also read with the corrected health(): per hull
    * against its own structure, and half credit for a ship that left. It moves
@@ -95,7 +95,10 @@ export const BASELINES = [
     // wired into informational scans (H3.6), → 52W-11L when E8.5.4's
     // restriction was tied to the damage rather than a phase count, → 53W-11L
     // with the board-edge margin. All of that history is small-map history.
-    expect: '108W-82L of 192',
+    // Then 108W-82L → 110W-81L on the 72-inch board when the captain started
+    // checking where a plot commits the ship rather than only where it ends:
+    // a squadron has more hulls to fly into a corner than a duel does.
+    expect: '110W-81L of 192',
   },
 ] as const
 
