@@ -232,7 +232,21 @@ export function ReplayTheater({ initial, onClose }: Props) {
         last,
         async (step) => {
           setIndex(step)
-          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+          // Two animation frames is "it has painted" — but a hidden tab stops
+          // painting entirely, and a recording is long enough that somebody
+          // will switch away during it. The timeout keeps the film advancing
+          // (the DOM is current even unpainted; the recorder reads the DOM);
+          // without it the recording froze on whatever frame was up when the
+          // tab lost the foreground.
+          await new Promise((resolve) => {
+            const fallback = setTimeout(resolve, 350)
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                clearTimeout(fallback)
+                resolve(undefined)
+              }),
+            )
+          })
         },
         {
           ...DEFAULT_RECORD,

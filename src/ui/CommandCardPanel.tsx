@@ -42,6 +42,20 @@ export function CommandCardPanel({ game, ship }: Props) {
     dispatch({ type: 'plot-maneuver', shipId: ship.id, maneuver, direction })
 
   const setAccel = (delta: number) => dispatch({ type: 'plot-accel', shipId: ship.id, delta })
+  /**
+   * How far the accel plot can go in either direction: the per-phase limit
+   * (C1.2.5) or the round's unspent points (C1.2.3), whichever binds first —
+   * the same arithmetic `plot-accel` clamps with, so a button past the wall is
+   * disabled rather than silently refused.
+   */
+  const accelLimit = Math.min(
+    ship.form.sublight.maxAccelPerPhase,
+    Math.max(0, budget - ship.accelUsedThisRound),
+  )
+  const accelLimitReason =
+    budget - ship.accelUsedThisRound < ship.form.sublight.maxAccelPerPhase
+      ? `Only ${Math.max(0, budget - ship.accelUsedThisRound)} acceleration point${budget - ship.accelUsedThisRound === 1 ? '' : 's'} left this round (C1.2.3) — power ACC/DEC for more.`
+      : `Max ${ship.form.sublight.maxAccelPerPhase} acceleration per phase (C1.2.5).`
   const evasive = card.evasive ?? ship.evasive
   const setEvasive = (points: number) =>
     dispatch({ type: 'plot-evasive', shipId: ship.id, points })
@@ -110,14 +124,24 @@ export function CommandCardPanel({ game, ship }: Props) {
       <div className="cc-block">
         <h4>Sublight Drive</h4>
         <div className="accel-row">
-          <button type="button" onClick={() => setAccel(-1)}>
+          <button
+            type="button"
+            disabled={card.accel <= -accelLimit}
+            title={card.accel <= -accelLimit ? accelLimitReason : 'Decelerate — braking spends acceleration points too (C1.2.3)'}
+            onClick={() => setAccel(-1)}
+          >
             −
           </button>
           <span className="accel-value">
             ACCEL {card.accel >= 0 ? '+' : ''}
             {card.accel}
           </span>
-          <button type="button" onClick={() => setAccel(1)}>
+          <button
+            type="button"
+            disabled={card.accel >= accelLimit}
+            title={card.accel >= accelLimit ? accelLimitReason : 'Accelerate (C1.2)'}
+            onClick={() => setAccel(1)}
+          >
             +
           </button>
           <span className="speed-value">SPEED {card.speed}</span>
@@ -316,9 +340,13 @@ function ReservePower({ game, ship }: { game: GameState; ship: ShipState }) {
     <div className="cc-block">
       <h4>Reserve power</h4>
       <p className="hint">
-        {charged === 0
-          ? 'Batteries are empty — recharge with BTY RECH at Resource Allocation (B2.4.3).'
-          : `${charged} charged ${charged === 1 ? 'battery' : 'batteries'}. One point fills one empty circle.`}
+        {charged > 0
+          ? `${charged} charged ${charged === 1 ? 'battery' : 'batteries'}. One point fills one empty circle.`
+          : ship.batteryCharged.length === 0
+            ? 'This ship carries no batteries.'
+            : ship.batteryDamaged.every(Boolean)
+              ? 'Every battery is damaged (E8.3) — repair one with damage control first.'
+              : 'Batteries are empty — power beyond the reactors drains them at Resource Allocation (B2.4.1); recharge with BTY RECH (B2.4.3).'}
       </p>
       <div className="reserve-power">
         {lines.map(({ line, refusal }) => (

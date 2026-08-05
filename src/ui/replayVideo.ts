@@ -118,13 +118,22 @@ function holdGlide(ms: number | undefined): () => void {
   return () => style.remove()
 }
 
-/** The recording formats a browser might offer, best first. */
-const FORMATS = [
+/**
+ * The recording formats a browser might offer, best first.
+ *
+ * MP4 with H.264 leads because the file is going to be *played somewhere
+ * else* — that is the whole point of exporting. A VP9 WebM records
+ * beautifully and then opens as "no video" in QuickTime and Windows Media
+ * Player, which reads as a broken export rather than a codec gap. H.264 in
+ * MP4 plays in every default player anything ships with; WebM stays as the
+ * fallback for browsers whose recorder cannot write MP4.
+ */
+export const FORMATS = [
+  'video/mp4;codecs=avc1',
+  'video/mp4',
   'video/webm;codecs=vp9',
   'video/webm;codecs=vp8',
   'video/webm',
-  'video/mp4;codecs=avc1',
-  'video/mp4',
 ]
 
 function pickFormat(): string | null {
@@ -144,6 +153,63 @@ export function canRecordVideo(): boolean {
 
 export function videoExtension(): string {
   return pickFormat()?.includes('mp4') ? 'mp4' : 'webm'
+}
+
+/**
+ * Decode a finished recording and check that it actually shows something.
+ *
+ * Filming the tab can fail *silently*: the browser hands over a stream, the
+ * recorder runs for the full length, and the file plays back empty — nothing
+ * ever went wrong loudly enough to throw. So the recording is not trusted
+ * until it has been played: load it into an off-screen video, sample a few
+ * frames, and call it good only if any of them holds a lit pixel. (A real
+ * frame always does — space is black but the starfield is not.)
+ */
+export async function probeRecording(blob: Blob): Promise<{ ok: boolean; reason?: string }> {
+  const url = URL.createObjectURL(blob)
+  const video = document.createElement('video')
+  video.muted = true
+  video.preload = 'auto'
+  video.src = url
+  try {
+    const loaded = await new Promise<boolean>((resolve) => {
+      video.onloadedmetadata = () => resolve(true)
+      video.onerror = () => resolve(false)
+      setTimeout(() => resolve(false), 8000)
+    })
+    if (!loaded) return { ok: false, reason: 'the file would not decode' }
+    // A MediaRecorder WebM reports Infinity until forced to its end.
+    if (!Number.isFinite(video.duration)) {
+      video.currentTime = Number.MAX_SAFE_INTEGER
+      await new Promise((resolve) => {
+        video.onseeked = () => resolve(null)
+        setTimeout(resolve, 4000)
+      })
+    }
+    if (!video.videoWidth || !Number.isFinite(video.duration) || video.duration === 0) {
+      return { ok: false, reason: 'it holds no picture' }
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.floor(video.videoWidth / 4))
+    canvas.height = Math.max(1, Math.floor(video.videoHeight / 4))
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) return { ok: true } // nothing to check with; assume the best
+    for (const at of [0.1, 0.5, 0.9]) {
+      video.currentTime = video.duration * at
+      await new Promise((resolve) => {
+        video.onseeked = () => resolve(null)
+        setTimeout(resolve, 2000)
+      })
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] + data[i + 1] + data[i + 2] > 45) return { ok: true }
+      }
+    }
+    return { ok: false, reason: 'every sampled frame is black' }
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 /**
@@ -572,7 +638,21 @@ export async function recordReplay(
 
   // Before any other await: the permission prompt needs the click still live.
   const live = options.preferTabCapture === false ? null : await captureMapStream(first)
-  if (live) return recordFromStream(live, format, steps, showStep, options)
+  if (live) {
+    const filmed = await recordFromStream(live, format, steps, showStep, options)
+    /*
+     * Trust nothing until it plays. Tab capture can hand over a stream and
+     * record the full length while delivering no frames at all — the file
+     * saves, opens, and shows no video. When that happens the battle is
+     * still here and the slow road still works, so take it: re-record by
+     * drawing every frame, exactly as if the capture prompt were declined.
+     * An aborted recording is exempt — a cut-short film is what was asked.
+     */
+    if (options.signal?.aborted) return filmed
+    const probe = await probeRecording(filmed)
+    if (probe.ok) return filmed
+    return recordReplay(getSvg, steps, showStep, { ...options, preferTabCapture: false })
+  }
 
   // Frame on the board, at the board's own proportions — so neither zooming
   // nor resizing the window mid-recording changes the shape of the picture.

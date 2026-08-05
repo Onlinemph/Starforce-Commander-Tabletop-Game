@@ -22,7 +22,7 @@ import {
   type RepairAssignment,
 } from './engineering'
 import { chooseLead, joinFormation, leaveFormation } from './formation'
-import { accelerationBudget } from './navigation'
+import { accelerationBudget, clampAccel } from './navigation'
 import {
   advanceFiringStep,
   advanceOperationsStep,
@@ -422,7 +422,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
       if (!ship || !card) return said('No command card for that ship.')
-      card.accel += action.delta
+      // Cut to the per-phase limit and the round's unspent points (C1.2.3,
+      // C1.2.5) as it is plotted — the card must never promise a speed change
+      // the drive has not paid for.
+      card.accel = clampAccel(ship, card.accel + action.delta)
       card.speed = ship.speed + card.accel
       return ok
     }

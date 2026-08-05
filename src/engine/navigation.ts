@@ -33,6 +33,24 @@ export function accelerationBudget(ship: ShipState): number {
   return line ? lineValue(ship, line.id) : 0
 }
 
+/**
+ * The largest speed change the ship may actually make this phase: the plotted
+ * figure cut to the per-phase limit (C1.2.5) and to the acceleration points
+ * still unspent this round (C1.2.3), sign preserved — braking spends points
+ * the same as speeding up.
+ *
+ * Both the plot and the resolution clamp with this. The plot so the card never
+ * promises a change the drive has not paid for — it used to accept any figure,
+ * report the overdraft as a plot error, and then move the ship anyway, which
+ * is how a card came to read "2 of 1 acceleration points used". The resolution
+ * so a journal written before the plot clamped resolves the same way.
+ */
+export function clampAccel(ship: ShipState, accel: number): number {
+  const room = Math.max(0, accelerationBudget(ship) - ship.accelUsedThisRound)
+  const most = Math.min(ship.form.sublight.maxAccelPerPhase, room)
+  return Math.sign(accel) * Math.min(Math.abs(accel), most)
+}
+
 export function emergencyTurnPowered(ship: ShipState): boolean {
   const line = findLine(ship.form, 'emergency-turn')
   if (!line) return false
@@ -157,9 +175,13 @@ export function plannedMovement(
   const errors = validatePlot(ship, card)
   const mustGoStraight = errors.some((e) => e.fallbackToStraight)
 
-  // Apply the plotted speed change, clamped to what the drive can do (C4.2.1).
+  // Apply the plotted speed change, cut to the acceleration actually paid for
+  // (C1.2.3, C1.2.5) and clamped to what the drive can do (C4.2.1). The speed
+  // adjusts by the difference rather than rebuilding from the ship's own —
+  // a formation member flies the lead's card, not its own arithmetic.
+  const accel = clampAccel(ship, card.accel)
   const maxForward = currentMaxSpeed(ship)
-  let speed = card.speed
+  let speed = card.speed - (card.accel - accel)
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
   if (ship.emergencyStopPhases > 0 || card.emergencyStop || driveDestroyed(ship)) speed = 0
@@ -213,7 +235,9 @@ export function executeMovement(
 ): MovementResult {
   const planned = plannedMovement(ship, card, towedSpeed)
   const maxForward = Math.min(currentMaxSpeed(ship), speedCap ?? Infinity)
-  let speed = card.speed
+  // The same acceleration cut the plan made (C1.2.3, C1.2.5) — this derivation
+  // is separate from `plannedMovement`'s because of the scenario speed cap.
+  let speed = card.speed - (card.accel - clampAccel(ship, card.accel))
   if (speed > maxForward) speed = maxForward
   if (speed < 0 && Math.abs(speed) > maxReverseSpeed(ship)) speed = -maxReverseSpeed(ship)
   if (ship.emergencyStopPhases > 0) speed = 0
@@ -229,8 +253,9 @@ export function executeMovement(
   }
   ship.speed = speed
   // "An emergency stop does not count against the ship's acceleration limits"
-  // (C3.8.1) — the stress it applies is the price instead.
-  if (!card.emergencyStop) ship.accelUsedThisRound += Math.abs(card.accel)
+  // (C3.8.1) — the stress it applies is the price instead. Only the change the
+  // clamp let through is booked: points the ship never had cannot be spent.
+  if (!card.emergencyStop) ship.accelUsedThisRound += Math.abs(clampAccel(ship, card.accel))
 
   /**
    * The evasive plot takes effect as the card is revealed (C3.6.4). Only an

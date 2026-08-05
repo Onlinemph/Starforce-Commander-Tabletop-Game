@@ -11,6 +11,7 @@ import {
   lineValue,
   mountIsDamaged,
   mountIsDegraded,
+  powerSpent,
   reactorPower,
   sensorBoxesRemaining,
   shieldGeneratorRating,
@@ -109,8 +110,12 @@ export function ShipFormPanel({ game, ship }: Props) {
           <div className="reactor-group">
             <span className="reactor-label">BATTERY</span>
             {ship.batteryDamaged.map((damaged, i) => (
-              <span key={i} className="power-point">
-                <span className={`dot${ship.batteryCharged[i] ? ' is-charged' : ''}`} />
+              <span
+                key={i}
+                className={`power-point${damaged ? ' is-dead' : ''}`}
+                title={`Battery ${i + 1} — ${damaged ? 'damaged (E8.3)' : ship.batteryCharged[i] ? 'charged' : 'empty — recharge with BTY RECH (B2.4.3)'}`}
+              >
+                <span className={`dot bty${ship.batteryCharged[i] ? ' is-charged' : ''}`} />
                 <span className={`box${damaged ? ' is-damaged' : ''}`} />
               </span>
             ))}
@@ -191,6 +196,18 @@ export function ShipFormPanel({ game, ship }: Props) {
             })}
           </tbody>
         </table>
+        {/*
+          Power beyond the reactors' output comes out of the batteries when the
+          segment ends (B2.4.1) — quietly, which read as a bug when the drained
+          battery later refused to spend. Say so while the plan can still change.
+        */}
+        {allocating && powerSpent(ship) > reactorPower(ship) && (
+          <p className="hint">
+            This plan draws {powerSpent(ship) - reactorPower(ship)} point
+            {powerSpent(ship) - reactorPower(ship) === 1 ? '' : 's'} from the batteries — they will be
+            drained when the segment ends (B2.4.1).
+          </p>
+        )}
       </section>
 
       <section className="form-section">

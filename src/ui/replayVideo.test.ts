@@ -4,6 +4,7 @@ import {
   DEFAULT_RECORD,
   estimateRecording,
   estimateSeconds,
+  FORMATS,
   localiseRefs,
   recordMethod,
   recordingStops,
@@ -44,6 +45,15 @@ describe('choosing how to record', () => {
     // shape of a browser that has to take the slow road.
     expect(canCaptureTab()).toBe(false)
     expect(recordMethod()).toBe('canvas')
+  })
+
+  it('prefers MP4/H.264 so the file plays outside the browser that made it', () => {
+    // A VP9 WebM records fine and then opens as "no video" in QuickTime and
+    // Windows Media Player — the export exists to be played somewhere else.
+    expect(FORMATS[0]).toContain('mp4')
+    expect(FORMATS[0]).toContain('avc1')
+    // WebM stays available for browsers whose recorder cannot write MP4.
+    expect(FORMATS.some((f) => f.includes('webm'))).toBe(true)
   })
 })
 

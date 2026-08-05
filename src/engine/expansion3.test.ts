@@ -147,7 +147,10 @@ describe('safe speed (K4.2.2, K5.2.1)', () => {
     const before = damageFootprint(blue)
 
     runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'command')
-    game.orders['blue-1'].accel = 4
+    // Already tearing along: unpaid acceleration is clamped at resolution now
+    // (C1.2.3), so the overspeed has to be real speed, not a fudged plot.
+    blue.speed = 6
+    game.orders['blue-1'].accel = 0
     game.orders['blue-1'].speed = 6
     advanceSegment(game) // command
     advanceSegment(game) // operations

@@ -1328,14 +1328,16 @@ input:focus-visible {
   background: var(--green);
   display: inline-block;
 }
-.dot:not(.is-charged) {
-  background: var(--green);
-}
-.reactor-group .dot:not(.is-charged) {
-  background: var(--green);
-}
-.power-point .dot.is-charged {
-  background: var(--green);
+/*
+ * A battery dot is a vessel, not a source: green only while it holds a charge
+ * (B2.4). A drained one shows hollow. Every earlier rule here painted both
+ * states the same green, so an empty battery always looked full and the
+ * engine's honest "no charged battery" read as a bug.
+ */
+.dot.bty:not(.is-charged) {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--green);
+  opacity: 0.55;
 }
 .box {
   width: 8px;

@@ -5,6 +5,7 @@ import { Rng } from './dice'
 import { commitAllocation, setAllocation } from './engineering'
 import {
   accelerationStress,
+  clampAccel,
   disengagementOptions,
   executeMovement,
   resolveStressCheck,
@@ -107,6 +108,46 @@ describe('plot validation (C1)', () => {
     ship.emergencyTurnUsed = true
     const errors = validatePlot(ship, card({ maneuver: 'em-180', direction: 'left' }))
     expect(errors.some((e) => /one emergency turn/.test(e.message))).toBe(true)
+  })
+})
+
+/*
+ * The clamp behind both the plot and the resolution. Validation alone was not
+ * enough: the plot accepted any figure, the error sat in a list nothing read
+ * at resolution, and the ship accelerated anyway — a card could end the round
+ * reading "2 of 1 acceleration points used".
+ */
+describe('the acceleration clamp (C1.2.3, C1.2.5)', () => {
+  it('cuts the plot to the points still unspent this round', () => {
+    const ship = makeShip()
+    commitAllocation(ship) // free power only → 1 acceleration point
+    expect(clampAccel(ship, 2)).toBe(1)
+    ship.accelUsedThisRound = 1
+    expect(clampAccel(ship, 1)).toBe(0)
+  })
+
+  it('brakes on the same budget, sign preserved', () => {
+    const ship = makeShip()
+    commitAllocation(ship)
+    expect(clampAccel(ship, -3)).toBe(-1)
+  })
+
+  it('cuts to the per-phase limit even with a full round budget', () => {
+    const ship = makeShip()
+    setAllocation(ship, 'accel', YORKTOWN.functions.find((l) => l.kind === 'accel')!.steps.length)
+    commitAllocation(ship)
+    const most = YORKTOWN.sublight.maxAccelPerPhase
+    expect(clampAccel(ship, most + 2)).toBe(most)
+  })
+
+  it('never lets execution book more points than the round generated', () => {
+    const ship = makeShip()
+    commitAllocation(ship) // 1 point
+    // An over-plotted card, as an old journal or a buggy client might carry.
+    executeMovement(ship, card({ accel: 2, speed: 6 }))
+    expect(ship.accelUsedThisRound).toBe(1)
+    // The unpaid point never lands: speed rises by the single paid point.
+    expect(ship.speed).toBe(5)
   })
 })
 
