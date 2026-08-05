@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { canCaptureTab, DEFAULT_RECORD, estimateSeconds, localiseRefs, recordMethod } from './replayVideo'
+import {
+  canCaptureTab,
+  DEFAULT_RECORD,
+  estimateRecording,
+  estimateSeconds,
+  localiseRefs,
+  recordMethod,
+  recordingStops,
+} from './replayVideo'
 
 /**
  * The recorder's arithmetic and its feature detection. Everything else needs a
@@ -48,10 +56,76 @@ describe('how long a recording will take', () => {
     expect(mixed).toBeLessThan(estimateSeconds(50, 0))
   })
 
-  it('holds a narrated moment long enough to cover the glide', () => {
-    // .map-mover transitions for 900ms; cutting away sooner is what made the
-    // old recordings jerky.
-    expect(DEFAULT_RECORD.holdMs).toBeGreaterThanOrEqual(900)
+  /*
+   * The invariant is not a number, it is a relationship: the camera must not
+   * cut away before the map has finished moving. It used to be written as
+   * "hold >= 900" because the live board glides for 900ms — but recording now
+   * shortens the glide rather than sitting through it, so what has to hold is
+   * that the hold still outlasts whatever the glide has been set to.
+   */
+  it('holds a narrated moment longer than the glide it has to cover', () => {
+    expect(DEFAULT_RECORD.glideMs).toBeDefined()
+    expect(DEFAULT_RECORD.holdMs).toBeGreaterThan(DEFAULT_RECORD.glideMs!)
     expect(DEFAULT_RECORD.quietMs).toBeLessThan(DEFAULT_RECORD.holdMs)
+    // And a quiet stop still has to outlast the glide, since a collapsed run
+    // of bookkeeping is exactly where a ship's movement lands.
+    expect(DEFAULT_RECORD.quietMs).toBeGreaterThanOrEqual(DEFAULT_RECORD.glideMs!)
+  })
+})
+
+/**
+ * Which steps the recorder stops at. This is where the time goes: filming
+ * every action of a battle films the bookkeeping between the moments, and
+ * there is far more of that than there is battle.
+ */
+describe('the stops a recording makes', () => {
+  // A battle shaped like a real one: a narrated moment every so often, with
+  // runs of quiet bookkeeping between them.
+  const narrated = (i: number) => i % 7 === 3
+  const options = { ...DEFAULT_RECORD, narrated }
+
+  it('collapses a run of quiet steps to a single stop', () => {
+    const stops = recordingStops(60, options)
+    // Two stops per seven steps: the narrated one, and the end of the run
+    // leading to the next.
+    expect(stops.length).toBeLessThan(61 / 2)
+    expect(stops.length).toBeGreaterThan(0)
+  })
+
+  it('keeps every narrated moment', () => {
+    const stops = new Set(recordingStops(60, options))
+    for (let i = 0; i <= 60; i++) if (narrated(i)) expect(stops.has(i)).toBe(true)
+  })
+
+  it('always ends on the last step, so the film does not stop early', () => {
+    for (const steps of [0, 1, 7, 60, 61]) {
+      expect(recordingStops(steps, options).at(-1)).toBe(steps)
+    }
+  })
+
+  it('never goes backwards or repeats', () => {
+    const stops = recordingStops(60, options)
+    expect([...new Set(stops)]).toEqual(stops)
+    expect([...stops].sort((a, b) => a - b)).toEqual(stops)
+  })
+
+  it('films everything when every step is narrated', () => {
+    const stops = recordingStops(20, { ...DEFAULT_RECORD, narrated: () => true })
+    expect(stops).toHaveLength(21)
+  })
+
+  it('drops the bookkeeping entirely on highlights only', () => {
+    const all = recordingStops(60, options)
+    const few = recordingStops(60, { ...options, highlightsOnly: true })
+    expect(few.length).toBeLessThan(all.length)
+    for (const i of few) expect(narrated(i) || i === 60).toBe(true)
+  })
+
+  it('is much shorter than filming every action, and highlights shorter still', () => {
+    const every = estimateRecording(60, { ...DEFAULT_RECORD, narrated: () => true })
+    const collapsed = estimateRecording(60, options)
+    const highlights = estimateRecording(60, { ...options, highlightsOnly: true })
+    expect(collapsed).toBeLessThan(every)
+    expect(highlights).toBeLessThan(collapsed)
   })
 })

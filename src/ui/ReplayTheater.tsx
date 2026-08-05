@@ -8,7 +8,7 @@ import { MapView } from './MapView'
 import {
   canRecordVideo,
   DEFAULT_RECORD,
-  estimateSeconds,
+  estimateRecording,
   recordMethod,
   recordReplay,
   videoExtension,
@@ -45,6 +45,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [recording, setRecording] = useState<{ done: number; total: number } | null>(null)
+  const [highlightsOnly, setHighlightsOnly] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -206,7 +207,6 @@ export function ReplayTheater({ initial, onClose }: Props) {
    * *and* spends its length where there is something to watch.
    */
   const narrated = (index: number) => (timeline.frames[index]?.captions.length ?? 0) > 0
-  const narratedCount = timeline.frames.filter((f) => f.captions.length > 0).length
 
   /**
    * Record the battle as a video file. The theater owns the playhead, so it
@@ -236,6 +236,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
         },
         {
           ...DEFAULT_RECORD,
+          highlightsOnly,
           narrated,
           signal: controller.signal,
           onProgress: (done, total) => setRecording({ done, total }),
@@ -275,6 +276,20 @@ export function ReplayTheater({ initial, onClose }: Props) {
             />
           </label>
           {canRecordVideo() && (
+            <label
+              className={highlightsOnly ? 'toggle-chip is-on' : 'toggle-chip'}
+              title="Film only the moments the log speaks for — gunfire, kills, the turn of a round — and skip the bookkeeping between them. Much shorter, and much faster to record."
+            >
+              <input
+                type="checkbox"
+                checked={highlightsOnly}
+                disabled={recording !== null}
+                onChange={(e) => setHighlightsOnly(e.target.checked)}
+              />
+              Highlights only
+            </label>
+          )}
+          {canRecordVideo() && (
             <button
               type="button"
               className={recording ? 'chip is-on' : 'chip'}
@@ -282,13 +297,14 @@ export function ReplayTheater({ initial, onClose }: Props) {
               title={
                 recording
                   ? 'Stop recording and save what has been captured'
-                  : `Record the whole replay as a video file — about ${estimateSeconds(
-                      narratedCount,
-                      last - narratedCount,
-                    )} seconds, filmed in real time. The map is held on the whole board while it records.${
+                  : `Record the replay as a video file — about ${estimateRecording(last, {
+                      ...DEFAULT_RECORD,
+                      narrated,
+                      highlightsOnly,
+                    })} seconds, filmed in real time. The map is held on the whole board while it records.${
                       recordMethod() === 'tab'
                         ? ' Your browser will ask permission to film this tab; decline and it will draw the frames itself instead.'
-                        : ''
+                        : ' Your browser has to draw every frame by hand, so expect it to run somewhat over that.'
                     }`
               }
             >

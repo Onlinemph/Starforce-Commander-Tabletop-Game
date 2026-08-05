@@ -420,6 +420,41 @@ input:focus-visible {
   display: none;
 }
 
+/* Same pill as "Load file", but its box stays visible — it is a setting that
+   holds, not an action that fires. */
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-lcars);
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lc-sand);
+  background: #1b2136;
+  border: 1px solid #33406b;
+  border-radius: 999px;
+  padding: 0.28rem 0.85rem;
+  cursor: pointer;
+}
+.toggle-chip:hover {
+  border-color: var(--lc-orange);
+  color: var(--lc-orange);
+}
+.toggle-chip.is-on {
+  border-color: var(--lc-orange);
+  color: var(--lc-orange);
+  background: #2a2030;
+}
+.toggle-chip input {
+  accent-color: var(--lc-orange);
+  margin: 0;
+}
+.toggle-chip:has(input:disabled) {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(380px, 460px);

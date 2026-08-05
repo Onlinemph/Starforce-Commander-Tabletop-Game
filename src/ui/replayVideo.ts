@@ -28,8 +28,28 @@
  * records is looking around, not directing — it stays out of the file.
  *
  * Recording is real-time by nature: MediaRecorder timestamps frames by the
- * wall clock, so the file takes as long to make as it does to watch. The
- * caller is told the estimate up front.
+ * wall clock, so the file takes as long to make as it does to watch. That is
+ * why what the recorder *stops at* matters more than how fast it draws, and
+ * where all the time went: a battle is mostly bookkeeping — power allocations,
+ * segment advances — and filming every one of them films nothing.
+ *
+ * Three changes, measured on two AI battles (72" board, admiral):
+ *
+ *   246-action duel      117s → 35s   (26s on highlights only)
+ *   854-action squadron  412s → 116s  (95s on highlights only)
+ *
+ *  - Runs of quiet steps collapse to their last one — the state is the same
+ *    when the run ends, so only the end of it is worth a stop.
+ *  - The glide is shortened for the length of the recording, and the hold
+ *    shrinks with it: the same movement at the same frame rate, arriving
+ *    sooner.
+ *  - `highlightsOnly` drops the bookkeeping altogether. That changes what is
+ *    in the film, not just how long it takes, so it is the caller's choice.
+ *
+ * The estimate the caller is told is the tab-capture figure. Where the browser
+ * has to draw every frame by hand it runs somewhat over — 44s against a 35s
+ * estimate on the duel above — because rasterising the map can cost more than
+ * the frame budget.
  */
 
 export interface RecordOptions {
@@ -43,6 +63,20 @@ export interface RecordOptions {
   maxEdge: number
   /** Whether the step at this index is a narrated moment. Default: all are. */
   narrated?: (index: number) => boolean
+  /**
+   * Film only the narrated moments, dropping the bookkeeping between them
+   * entirely. Changes what is in the video, not just how long it takes to
+   * make, so it is never a default.
+   */
+  highlightsOnly?: boolean
+  /**
+   * How fast the map glides while filming. The live board eases ships over
+   * 900ms, which is right to watch and is the whole reason a held step had to
+   * be 1100ms. Recording overrides it: the same movement, read at the same
+   * frame rate, simply arrives sooner — so the hold shrinks with it and the
+   * file takes a third of the time to make with nothing missing from it.
+   */
+  glideMs?: number
   /** Set false to redraw every frame by hand rather than ask to film the tab. */
   preferTabCapture?: boolean
   onProgress?: (done: number, total: number) => void
@@ -50,12 +84,38 @@ export interface RecordOptions {
 }
 
 export const DEFAULT_RECORD: RecordOptions = {
-  // The Navigation reveal glides for 900ms (see .map-mover); anything shorter
-  // cuts away mid-move, which is exactly what made the old files feel jerky.
-  holdMs: 1100,
+  /*
+   * The hold has to outlast the glide or the camera cuts away mid-move, which
+   * is what made the old files feel jerky. It used to be 1100ms because the
+   * live board glides for 900. Recording now shortens the glide to 240, so the
+   * hold comes down with it — the same movement, the same frame rate, over a
+   * third of the wall clock.
+   *
+   * The quiet hold stays above the glide on purpose: a collapsed run of
+   * bookkeeping is exactly where a ship's movement lands, and a stop shorter
+   * than the glide would cut away mid-move.
+   */
+  glideMs: 240,
+  holdMs: 420,
   quietMs: 260,
   fps: 30,
   maxEdge: 1280,
+}
+
+/**
+ * Force the map to glide at the recording's pace, and hand back the undo.
+ *
+ * A style element rather than a class, because the rule it is overriding lives
+ * in the app's stylesheet and this has to win without either file knowing
+ * about the other.
+ */
+function holdGlide(ms: number | undefined): () => void {
+  if (!ms) return () => {}
+  const style = document.createElement('style')
+  style.dataset.recording = 'glide'
+  style.textContent = `.map-mover { transition-duration: ${ms}ms !important; }`
+  document.head.append(style)
+  return () => style.remove()
 }
 
 /** The recording formats a browser might offer, best first. */
@@ -298,6 +358,22 @@ export function estimateSeconds(
   return Math.round(total / 1000)
 }
 
+/**
+ * How long the recorder will actually take, given the steps it will stop at.
+ *
+ * The older estimate above counts every quiet step, which is what the recorder
+ * used to do; this one asks `recordingStops` and so tracks the collapsing and
+ * the highlights option without having to know how either works.
+ */
+export function estimateRecording(steps: number, options: RecordOptions = DEFAULT_RECORD): number {
+  const stops = recordingStops(steps, options)
+  const narrated = (i: number) => options.narrated?.(i) ?? true
+  const total =
+    stops.reduce((ms, i) => ms + (narrated(i) ? options.holdMs : options.quietMs), 0) +
+    options.holdMs
+  return Math.round(total / 1000)
+}
+
 /** The board-sized viewBox, falling back to whatever the map is showing now. */
 function fullViewBox(svg: SVGSVGElement): string {
   return svg.getAttribute('data-full-viewbox') ?? svg.getAttribute('viewBox') ?? '0 0 1000 1000'
@@ -311,6 +387,34 @@ function fullViewBox(svg: SVGSVGElement): string {
  * on a tick — one has to photograph the map, the other has nothing to do
  * because the browser is already filming it.
  */
+/**
+ * The steps the recording will actually stop at.
+ *
+ * Filming every action films the bookkeeping. A twelve-round squadron battle
+ * is 778 actions of which 569 are quiet — power allocations, plots, segment
+ * advances — and holding each of those for a quarter second spent nearly two
+ * and a half minutes of video on a map that was not changing. So a run of
+ * consecutive quiet steps is collapsed to its last one: the game state it
+ * lands on is identical either way, because the intervening steps are simply
+ * applied without being photographed, and anything that did move glides into
+ * place from where it was.
+ *
+ * `highlightsOnly` goes further and keeps just the moments — volleys, kills,
+ * the starts of rounds. That one changes what is in the film rather than only
+ * how long it takes to make, so it is the caller's choice, never a default.
+ */
+export function recordingStops(steps: number, options: RecordOptions): number[] {
+  const narrated = (i: number) => options.narrated?.(i) ?? true
+  const stops: number[] = []
+  for (let index = 0; index <= steps; index++) {
+    if (options.highlightsOnly && !narrated(index) && index !== steps) continue
+    // Keep a quiet step only when it is the last of its run.
+    if (!narrated(index) && index !== steps && !narrated(index + 1)) continue
+    stops.push(index)
+  }
+  return stops
+}
+
 async function playThrough(
   steps: number,
   showStep: (index: number) => Promise<void>,
@@ -318,7 +422,9 @@ async function playThrough(
   tick?: () => Promise<void>,
 ): Promise<void> {
   const frameMs = 1000 / options.fps
-  for (let index = 0; index <= steps; index++) {
+  const stops = recordingStops(steps, options)
+
+  for (const [position, index] of stops.entries()) {
     if (options.signal?.aborted) break
     await showStep(index)
     const hold = (options.narrated?.(index) ?? true) ? options.holdMs : options.quietMs
@@ -332,7 +438,7 @@ async function playThrough(
       const spare = frameMs - (performance.now() - started)
       if (spare > 1) await wait(spare)
     }
-    options.onProgress?.(index, steps)
+    options.onProgress?.(position + 1, stops.length)
   }
   // A held final frame keeps players from missing the last volley.
   await wait(options.holdMs)
@@ -428,10 +534,12 @@ async function recordFromStream(
   const finished = new Promise<Blob>((resolve) => {
     recorder.onstop = () => resolve(new Blob(chunks, { type: format }))
   })
+  const releaseGlide = holdGlide(options.glideMs)
   recorder.start()
   try {
     await playThrough(steps, showStep, options)
   } finally {
+    releaseGlide()
     recorder.stop()
     for (const track of stream.getTracks()) track.stop()
   }
@@ -527,12 +635,14 @@ export async function recordReplay(
     context.drawImage(image, 0, 0, width, height)
   }
 
+  const releaseGlide = holdGlide(options.glideMs)
   recorder.start()
   try {
     // Photographing the map for as long as each step is held is what turns a
     // glide, a beam and a fireball into motion instead of one frozen instant.
     await playThrough(steps, showStep, options, drawFrame)
   } finally {
+    releaseGlide()
     recorder.stop()
     for (const track of stream.getTracks()) track.stop()
   }
