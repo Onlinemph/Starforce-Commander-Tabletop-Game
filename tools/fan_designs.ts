@@ -1444,6 +1444,260 @@ const YORKTOWN_X: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * UNION X-class Dreadnought — the capital line run seven marks past the III.
+ *
+ * Same method as the YORKTOWN X above and a much thinner basis for it, which
+ * is worth saying plainly: the printed roster carries three UNION marks, so
+ * there are two deltas to read a trend from, and this extrapolates seven steps
+ * off them. The Yorktown had four deltas and went five steps. Treat the
+ * numbers here as a defensible reading rather than a measurement.
+ *
+ *     mark   PV  struct  react  bat  blue F/A/P/S   SENS  CMND  mounts
+ *      I     50    19      9     2    24/20/20/20    3     4      11
+ *      II    76    20     10     2    24/22/22/22    3     5      13
+ *      III  158    22     12     2    30/26/26/26    4     5      13
+ *
+ * The rule used throughout: **what is flat across the printed marks stays
+ * flat, what grows is extrapolated.** That is not a shortcut, it is the line's
+ * signature — and on this line almost everything is flat. Only five figures
+ * move at all:
+ *
+ *   - structure  +1.5 a mark  →  32 boxes
+ *   - reactor    +1.5 a mark  →  22 power points
+ *   - blue shields +3 a mark  →  51 fore, 47 elsewhere
+ *   - SENS       +0.5 a mark  →  7
+ *   - CMND       +0.5 a mark  →  8
+ *
+ * Everything else is held because the Union held it: size class 7, Stress 6,
+ * Damage Control 5, exactly two batteries, three FTL boxes, four green boxes,
+ * four shield generator boxes, and SCNC 4 / TRAC 3 / TRAN 3 / SHTL 3 / QTRS 6
+ * / CRGO 4 with eighteen marine squads and six shuttles — every one of those
+ * identical on the I, the II and the III.
+ *
+ * The drive is identical too, exactly as the Yorktown's is: speed 6, the
+ * 35-degree template at rest, two acceleration a phase, eight drive boxes, and
+ * a zero in the top row. Nineteen printed years and the Union dreadnought
+ * never got a knot faster or a degree handier.
+ *
+ * And the battery is settled: six torpedo tubes, five phasers, two light
+ * phasers. The I had eleven mounts, the II added the two light phasers to make
+ * thirteen, and the III changed nothing. So the Mark X changes nothing either
+ * — MK-13 torpedoes in the same six tubes, LNC-3000 where the III has
+ * LNC-1200, DGR-28 where it has DGR-14.
+ *
+ * The torpedo's reach is read conservatively at 36 rather than 40: the printed
+ * sequence runs 20, 24, 26 — deltas of 4 then 2 — so the early slope says +3 a
+ * mark and the trend says it is flattening. Taking the flattening still throws
+ * across the whole printed board.
+ *
+ * **541.8 points, and it does not earn them.** Mirrored, 40 games each at
+ * admiral, retreat off:
+ *
+ *     vs UNION III      158   40W- 0L   killed 39, lost 0
+ *     vs 2x EXETER II   200   27W-13L   killed 49, lost 0
+ *     vs 2x YORKTOWN X  430   15W-25L   killed 10, lost 5
+ *     vs TRAFALGAR      430    3W-37L   killed  0, lost 8
+ *     vs 5x EXETER II   500    0W-40L   killed  0, lost 40
+ *
+ * It walks over the printed dreadnought and it beats the two EXETER IIs that
+ * kill a YORKTOWN X thirty-eight times in forty — thirty-two structure boxes
+ * and a fifty-one-box screen are hard to chew through. Then it loses to a
+ * TRAFALGAR costing a hundred points less, and it never once destroys one.
+ *
+ * **That "killed 0" is the finding, and it is not what it looks like.** The
+ * obvious suspect is the shield generator: four boxes against fifty-one of
+ * blue, held flat because the printed line held it flat, so a beaten-down
+ * facing stays down. Measured, that is wrong — the same hull at six and eight
+ * generator boxes goes 7W-33L and 6W-34L against the TRAFALGAR instead of
+ * 3W-37L, still killing nothing, for twenty-seven and fifty-four more points.
+ * Recovery is not the bottleneck.
+ *
+ * The battery is. The Union line settled on thirteen mounts at the Mark II and
+ * never changed them — six tubes, five phasers, two light — so a disciplined
+ * extrapolation gives a Mark X thirteen mounts against the TRAFALGAR's twenty,
+ * and the model prices its 104 of offence beside 435 of defence. Seven marks
+ * of this line buy a ship that is very hard to kill and cannot finish anything
+ * its own size. That is a real property of the printed progression rather than
+ * a flaw in the reading: the Union dreadnought grew its screens every mark and
+ * its gun count never once.
+ */
+const UNION_X: ShipForm = {
+  id: 'fan-union-union-x-dreadnought',
+  name: 'UNION X-class Dreadnought',
+  faction: 'Union of Federated Systems',
+  // Size 7 on the I, the II and the III. It stays a dreadnought.
+  sizeClass: 7,
+  stressRating: 6,
+  damageControlRating: 5,
+
+  // Twenty-two points, from the III's twelve, in the III's own arrangement:
+  // three equal main groups, a sublight plant and an auxiliary.
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+  ],
+  // Two. Every printed mark carries two, so this one does.
+  batteries: 2,
+  ftlDriveBoxes: 3,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [1, 2, 3, 4]),
+    line('sif', 'SIF/IDF', 'sif', [1, 2]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3, 4, 5]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    // Seven SENS boxes, so H2.2.3 lets seven points reach one function.
+    line('sensor', 'SENSOR', 'sensor', [8, 12], { freeValue: 5 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    // Where twenty-two reactor points go: the batteries are deep enough to
+    // take them, which is the only way a plant this size is not wasted.
+    line('f-a-mat', 'A/MAT TRP', 'weapon', [6, 9], {
+      freeValue: 3,
+      weaponSystemId: 'mk-13-a-mat-torpedo',
+    }),
+    line('f-phaser', 'PHASER', 'weapon', [6, 9, 12, 15], {
+      freeValue: 3,
+      weaponSystemId: 'lnc-3000-phaser',
+    }),
+    line('f-lt-phaser', 'LT PHASER', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'dgr-28-light-phaser',
+    }),
+  ],
+
+  weapons: [
+    // Six tubes on the I, six on the III, six here.
+    weapon({
+      id: 'mk-13-a-mat-torpedo',
+      name: 'MK-13 A/MAT TORPEDO',
+      weaponClass: 'a-mat-torpedo',
+      mounts: forward(6),
+      armingCircles: 2,
+      hitBoxes: 1,
+      traits: ['NoBAT', 'FTL'],
+      slowArming: true,
+      brackets: [
+        { min: 0, max: 9, band: 'green', dice: ['red'], bonus: 1 },
+        { min: 10, max: 21, band: 'black', dice: ['red'] },
+        { min: 22, max: 30, band: 'red', dice: ['red'] },
+        { min: 31, max: 36, band: 'red', dice: ['yellow'] },
+      ],
+    }),
+    // Five, on the III's own mounting: four quadrant pairs and one turret.
+    weapon({
+      id: 'lnc-3000-phaser',
+      name: 'LNC-3000 PHASER',
+      weaponClass: 'phaser',
+      mounts: [...ALL_ROUND, ALL_ARCS],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 6, max: 9, band: 'green', dice: ['yellow', 'yellow'] },
+        { min: 10, max: 13, band: 'black', dice: ['yellow', 'green'] },
+        { min: 14, max: 17, band: 'black', dice: ['green', 'green'] },
+        { min: 18, max: 20, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    // Two, exactly as the II and III carry.
+    weapon({
+      id: 'dgr-28-light-phaser',
+      name: 'DGR-28 LIGHT PHASER',
+      weaponClass: 'phaser',
+      mounts: [ALL_ARCS, ['SA', 'AS', 'AP', 'PA']],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 6, band: 'green', dice: ['green', 'green'] },
+        { min: 7, max: 10, band: 'black', dice: ['green', 'green'] },
+        { min: 11, max: 14, band: 'black', dice: ['green', 'blue'] },
+        { min: 15, max: 16, band: 'red', dice: ['green'] },
+      ],
+    }),
+  ],
+
+  /*
+   * 51/47/47/47, and only four generator boxes to put any of it back — both
+   * straight off the trend, because the shields grew every mark and the
+   * generator never did. It is the deepest screen in the game and the slowest
+   * to recover, and it is tempting to call that the hull's weakness. Measured,
+   * it is not: six and eight generator boxes barely move the result (see the
+   * note above). This ship's problem is that it cannot shoot, not that it
+   * cannot heal.
+   */
+  shields: {
+    generatorBoxes: 4,
+    blue: { F: 51, A: 47, P: 47, S: 47 },
+    green: { F: 4, S: 4, A: 4, P: 4 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  // Only SENS and CMND moved on this line. Everything else is the III's.
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 4 },
+    { kind: 'SENS', label: 'Sensors', boxes: 7 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 3 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 3 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 3 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 6 },
+    { kind: 'CMND', label: 'Command Systems', boxes: 8 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 4 },
+  ],
+
+  // Thirty-two boxes, from the III's twenty-two.
+  structure: [
+    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+  ],
+
+  // The III's drive, to the figure — including the zero at full burn.
+  sublight: {
+    maxSpeed: 6,
+    turnBySpeed: [35, 30, 30, 30, 30, 20, 0],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 2,
+    driveBoxes: 8,
+    dmgTopSpeed: [6, 5, 4, 3, 2, 1, 0, 0],
+  },
+
+  marineSquads: 18,
+  shuttles: 6,
+
+  pointValue: 0,
+  // Marks land at 3656, 3668, 3675 — gaps of twelve then seven, closing.
+  // Seven more at a closing cadence puts the X just past the turn of the
+  // century, and after the YORKTOWN X, whose MK-10 it succeeds.
+  year: 3705,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -1503,6 +1757,8 @@ const DESIGNS: Design[] = [
   // Extrapolated rather than designed, so it gets no thumb on the scale
   // either: whatever the model makes of five more marks is the answer.
   { form: YORKTOWN_X },
+  // Same discipline, thinner evidence — three printed marks rather than five.
+  { form: UNION_X },
 ]
 
 /**
