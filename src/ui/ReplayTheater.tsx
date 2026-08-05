@@ -103,6 +103,64 @@ export function ReplayTheater({ initial, onClose }: Props) {
   const prevRound = () => jump([...timeline.roundStarts].reverse().find((r) => r < index) ?? 0)
   const nextRound = () => jump(timeline.roundStarts.find((r) => r > index) ?? last)
 
+  /**
+   * The keys every other video player has. This is a tape deck, and reaching
+   * for the mouse to step one action at a time is the wrong shape for reading
+   * a battle back.
+   *
+   * Space is taken unconditionally and its default suppressed, because the
+   * alternative is that it re-presses whichever transport button was clicked
+   * last. The arrows are handed to a focused control first — the scrubber's
+   * own arrow keys step it by one, which is the same thing, and a select
+   * needs them to open.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (recording) return
+      const el = document.activeElement
+      const inControl =
+        el instanceof HTMLElement && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)
+
+      switch (event.key) {
+        case ' ':
+        case 'k':
+          event.preventDefault()
+          if (index >= last) setIndex(0)
+          setPlaying((p) => !p)
+          return
+        case 'Escape':
+          onClose()
+          return
+      }
+      if (inControl) return
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          setPlaying(false)
+          event.shiftKey ? prevRound() : jump(index - 1)
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          setPlaying(false)
+          event.shiftKey ? nextRound() : jump(index + 1)
+          break
+        case 'Home':
+          event.preventDefault()
+          setPlaying(false)
+          jump(0)
+          break
+        case 'End':
+          event.preventDefault()
+          setPlaying(false)
+          jump(last)
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   /** The narration feed: everything said so far, newest at the bottom. */
   const feed = useMemo(
     () =>
@@ -327,6 +385,14 @@ export function ReplayTheater({ initial, onClose }: Props) {
                 ))}
               </select>
             </div>
+
+            {/* A shortcut nobody is told about is not a shortcut. */}
+            <p className="theater-keys">
+              <kbd>space</kbd> play · <kbd>←</kbd>
+              <kbd>→</kbd> step · <kbd>shift</kbd>+<kbd>←</kbd>
+              <kbd>→</kbd> round · <kbd>home</kbd>
+              <kbd>end</kbd> ends · <kbd>esc</kbd> close
+            </p>
           </div>
 
           <aside className="theater-narration">

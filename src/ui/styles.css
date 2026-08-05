@@ -4182,3 +4182,23 @@ button.chip:hover:not(:disabled) {
 .tutorial-track li.is-now {
   background: var(--lc-sand);
 }
+
+/* The theater's keyboard legend: present, quiet, and out of the way. */
+.theater-keys {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+.theater-keys kbd {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+}
