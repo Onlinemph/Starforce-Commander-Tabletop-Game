@@ -33,6 +33,7 @@ import { useCustomScenarios } from './customScenarios'
 import { FleetPicker } from './FleetPicker'
 import { TutorialPanel } from './TutorialPanel'
 import { markTutorialSeen, tutorialSeen } from './tutorial'
+import { sequenceOutline } from './sequence'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
@@ -495,12 +496,27 @@ function StatusRail({ game }: { game: GameState }) {
           </span>
         </div>
       ))}
-      <div className="rail-fill" aria-hidden="true">
-        <span>A3·1</span>
-        <span>E7·2</span>
-        <span>J3·2</span>
-        <span>G1·1</span>
-      </div>
+      {/*
+        The round, where the decorative filler used to be. A3 runs five phases
+        in a fixed order and nearly every rule is anchored to one of them, so
+        knowing what is behind you and what is still to come is worth more than
+        four invented LCARS part numbers.
+      */}
+      <ol className="rail-sequence" aria-label="Sequence of play">
+        {sequenceOutline(game.phase, game.segment).map((row) => (
+          <li
+            key={row.key}
+            className={`seq-${row.kind} is-${row.state}`}
+            /* The segment is the step you are on; the phase containing it is
+               current in a looser sense, so it says so in a looser way. */
+            aria-current={
+              row.state !== 'now' ? undefined : row.kind === 'segment' ? 'step' : 'true'
+            }
+          >
+            {row.label}
+          </li>
+        ))}
+      </ol>
       <div className="rail-cap" aria-hidden="true" />
     </aside>
   )

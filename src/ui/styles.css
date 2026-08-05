@@ -238,27 +238,78 @@ input:focus-visible {
   background: var(--lc-lilac);
 }
 
-.rail-fill {
-  flex: 1;
-  min-height: 40px;
+/*
+  The sequence of play in the rail (A3). It takes the space the decorative
+  filler had: flex:1 so it fills whatever the blocks above leave, and its own
+  scrollbar for the short window where five phases plus six open segments do
+  not fit.
+
+  Phases read as LCARS blocks like the counters above them; segments are
+  indented ticks under the open one. Three states, and the difference has to
+  survive being read at a glance out of the corner of your eye: behind you is
+  dimmed, ahead is outlined, and where you are is the only thing lit.
+*/
+.rail-sequence {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: flex-end;
-  gap: 5px;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: thin;
 }
-.rail-fill span {
-  display: block;
-  width: 100%;
-  padding: 0.2rem 0.5rem;
+.rail-sequence li {
+  padding: 0.17rem 0.5rem 0.17rem 0.4rem;
   border-radius: 4px 0 0 4px;
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seq-phase {
+  font-size: 0.6rem;
+  letter-spacing: 0.07em;
   background: var(--lc-plum);
   color: #0d0616;
-  font-family: var(--font-lcars);
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  text-align: right;
+  margin-top: 3px;
 }
+.seq-phase:first-child {
+  margin-top: 0;
+}
+.seq-phase.is-done {
+  opacity: 0.4;
+}
+.seq-phase.is-ahead {
+  background: transparent;
+  color: var(--ink-dim);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.seq-phase.is-now {
+  background: var(--lc-sand);
+  color: #100a00;
+}
+/* Segments: quieter than their phase, and stepped in from the rail edge. */
+.seq-segment {
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.03);
+}
+.seq-segment.is-done {
+  opacity: 0.42;
+}
+.seq-segment.is-now {
+  background: var(--lc-orange);
+  color: #100a00;
+  font-weight: 600;
+}
+
 .rail-cap {
   height: 46px;
   background: var(--lc-orange);
