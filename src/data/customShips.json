@@ -5173,5 +5173,1143 @@
     "pointValue": 541.8,
     "year": 3705,
     "availability": "rare"
+  },
+  {
+    "id": "fan-aurelian-imperator-super-dreadnought",
+    "name": "IMPERATOR-class Super Dreadnought",
+    "faction": "Aurelian Empire",
+    "sizeClass": 9,
+    "stressRating": 7,
+    "damageControlRating": 4,
+    "reactors": [
+      {
+        "id": "l-main",
+        "label": "L MAIN",
+        "hitKind": "left-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "r-main",
+        "label": "R MAIN",
+        "hitKind": "right-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "c-main",
+        "label": "C MAIN",
+        "hitKind": "center-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "sl-reac",
+        "label": "SL REAC",
+        "hitKind": "sublight-reactor",
+        "points": [
+          {
+            "boxes": 2
+          }
+        ]
+      },
+      {
+        "id": "aux-pwr",
+        "label": "AUX PWR",
+        "hitKind": "aux",
+        "points": [
+          {
+            "boxes": 2
+          }
+        ]
+      }
+    ],
+    "batteries": 2,
+    "ftlDriveBoxes": 3,
+    "functions": [
+      {
+        "id": "accel",
+        "label": "ACC/DEC",
+        "kind": "accel",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "sif",
+        "label": "SIF/IDF",
+        "kind": "sif",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "emer",
+        "label": "EMER",
+        "kind": "emergency-turn",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "bat-rech",
+        "label": "BTY RECH",
+        "kind": "battery-recharge",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "ftl",
+        "label": "FTL DRV",
+        "kind": "ftl-drive",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "rnfc-F",
+        "label": "SHLD RNFC F",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "rnfc-P",
+        "label": "SHLD RNFC P",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "rnfc-S",
+        "label": "SHLD RNFC S",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "rnfc-A",
+        "label": "SHLD RNFC A",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "repr-F",
+        "label": "SHLD REPR F",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "repr-P",
+        "label": "SHLD REPR P",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "repr-S",
+        "label": "SHLD REPR S",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "repr-A",
+        "label": "SHLD REPR A",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "sensor",
+        "label": "SENSOR",
+        "kind": "sensor",
+        "freeValue": 3,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 5
+          },
+          {
+            "powerCost": 1,
+            "value": 8
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "gen-sys",
+        "label": "GEN SYS",
+        "kind": "gen-sys",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "cloak",
+        "label": "CLOAK",
+        "kind": "special",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "f-hvy-plas",
+        "label": "HVY PLAS",
+        "kind": "weapon",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "rp-omega-hvy-plasma"
+      },
+      {
+        "id": "f-med-plas",
+        "label": "MED PLAS",
+        "kind": "weapon",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "rp-e-med-plasma"
+      },
+      {
+        "id": "f-adm",
+        "label": "ADM-20",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 6
+          },
+          {
+            "powerCost": 1,
+            "value": 10
+          },
+          {
+            "powerCost": 1,
+            "value": 14
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "adm-20-heavy-disruptor"
+      },
+      {
+        "id": "f-adl",
+        "label": "ADL-4",
+        "kind": "weapon",
+        "freeValue": 2,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "adl-4-light-disruptor"
+      }
+    ],
+    "weapons": [
+      {
+        "id": "rp-omega-hvy-plasma",
+        "name": "RP-OMEGA HVY PLASMA TORP",
+        "weaponClass": "plasma-torpedo",
+        "mounts": [
+          {
+            "id": "rp-omega-hvy-plasma-m1",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-omega-hvy-plasma-m2",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-omega-hvy-plasma-m3",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-omega-hvy-plasma-m4",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 3,
+            "band": "green",
+            "dice": [
+              "red",
+              "red",
+              "red"
+            ],
+            "bonus": 10,
+            "endurancePhase": 1
+          },
+          {
+            "min": 0,
+            "max": 6,
+            "band": "green",
+            "dice": [
+              "red",
+              "red",
+              "red"
+            ],
+            "bonus": 8,
+            "endurancePhase": 2
+          },
+          {
+            "min": 0,
+            "max": 9,
+            "band": "green",
+            "dice": [
+              "red",
+              "red",
+              "red"
+            ],
+            "bonus": 2,
+            "endurancePhase": 3
+          },
+          {
+            "min": 0,
+            "max": 9,
+            "band": "black",
+            "dice": [
+              "red",
+              "red",
+              "red"
+            ],
+            "bonus": 2,
+            "endurancePhase": 4
+          }
+        ],
+        "traits": [
+          "HOMING 3",
+          "PARTCL",
+          "NoBAT",
+          "FTL"
+        ],
+        "special": {
+          "damage": 6,
+          "leak": 2,
+          "structure": 2
+        }
+      },
+      {
+        "id": "rp-e-med-plasma",
+        "name": "RP-E MED PLASMA TORP",
+        "weaponClass": "plasma-torpedo",
+        "mounts": [
+          {
+            "id": "rp-e-med-plasma-m1",
+            "arcs": [
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-e-med-plasma-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-e-med-plasma-m3",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "id": "rp-e-med-plasma-m4",
+            "arcs": [
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 6,
+            "hitBoxes": 1,
+            "roundGates": [
+              false,
+              true,
+              false,
+              true,
+              false
+            ]
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 3,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ],
+            "bonus": 8,
+            "endurancePhase": 1
+          },
+          {
+            "min": 0,
+            "max": 6,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ],
+            "bonus": 6,
+            "endurancePhase": 2
+          },
+          {
+            "min": 0,
+            "max": 9,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ],
+            "bonus": 1,
+            "endurancePhase": 3
+          },
+          {
+            "min": 0,
+            "max": 9,
+            "band": "black",
+            "dice": [
+              "red",
+              "red"
+            ],
+            "bonus": 1,
+            "endurancePhase": 4
+          }
+        ],
+        "traits": [
+          "HOMING 3",
+          "PARTCL",
+          "NoBAT",
+          "FTL"
+        ],
+        "special": {
+          "damage": 4,
+          "leak": 1,
+          "structure": 1
+        }
+      },
+      {
+        "id": "adm-20-heavy-disruptor",
+        "name": "ADM-20 HEAVY DISRUPTOR",
+        "weaponClass": "disruptor",
+        "mounts": [
+          {
+            "id": "adm-20-heavy-disruptor-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "adm-20-heavy-disruptor-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "adm-20-heavy-disruptor-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "adm-20-heavy-disruptor-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "adm-20-heavy-disruptor-m5",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "adm-20-heavy-disruptor-m6",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 3,
+            "band": "green",
+            "dice": [
+              "yellow",
+              "green"
+            ]
+          },
+          {
+            "min": 4,
+            "max": 7,
+            "band": "green",
+            "dice": [
+              "green",
+              "green"
+            ]
+          },
+          {
+            "min": 8,
+            "max": 11,
+            "band": "black",
+            "dice": [
+              "green",
+              "blue"
+            ]
+          },
+          {
+            "min": 12,
+            "max": 13,
+            "band": "black",
+            "dice": [
+              "green"
+            ]
+          },
+          {
+            "min": 14,
+            "max": 15,
+            "band": "red",
+            "dice": [
+              "green"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 1",
+          "PD MODE",
+          "ATMO"
+        ]
+      },
+      {
+        "id": "adl-4-light-disruptor",
+        "name": "ADL-4 LIGHT DISRUPTOR",
+        "weaponClass": "disruptor",
+        "mounts": [
+          {
+            "id": "adl-4-light-disruptor-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "adl-4-light-disruptor-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "adl-4-light-disruptor-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          },
+          {
+            "id": "adl-4-light-disruptor-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 1,
+            "hitBoxes": 1
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 4,
+            "band": "green",
+            "dice": [
+              "green"
+            ]
+          },
+          {
+            "min": 5,
+            "max": 8,
+            "band": "black",
+            "dice": [
+              "green"
+            ]
+          },
+          {
+            "min": 9,
+            "max": 11,
+            "band": "red",
+            "dice": [
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 1",
+          "PD MODE",
+          "ATMO"
+        ]
+      }
+    ],
+    "shields": {
+      "generatorBoxes": 5,
+      "blue": {
+        "F": 34,
+        "A": 28,
+        "P": 30,
+        "S": 30
+      },
+      "green": {
+        "F": 4,
+        "S": 4,
+        "A": 4,
+        "P": 4
+      }
+    },
+    "armor": {
+      "F": 0,
+      "S": 0,
+      "A": 0,
+      "P": 0
+    },
+    "systems": [
+      {
+        "kind": "SCNC",
+        "label": "Sciences",
+        "boxes": 4
+      },
+      {
+        "kind": "SENS",
+        "label": "Sensors",
+        "boxes": 5
+      },
+      {
+        "kind": "TRAC",
+        "label": "Tractor Beams",
+        "boxes": 4
+      },
+      {
+        "kind": "TRAN",
+        "label": "Transporters",
+        "boxes": 3
+      },
+      {
+        "kind": "SHTL",
+        "label": "Shuttle Bay",
+        "boxes": 6
+      },
+      {
+        "kind": "QTRS",
+        "label": "Quarters",
+        "boxes": 6
+      },
+      {
+        "kind": "CMND",
+        "label": "Command Systems",
+        "boxes": 6
+      },
+      {
+        "kind": "CRGO",
+        "label": "Cargo",
+        "boxes": 4
+      },
+      {
+        "kind": "CLOAK",
+        "label": "Cloaking System",
+        "boxes": 3
+      }
+    ],
+    "structure": [
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 4
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 4
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 3
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 2
+      }
+    ],
+    "sublight": {
+      "maxSpeed": 6,
+      "turnBySpeed": [
+        40,
+        35,
+        35,
+        30,
+        30,
+        25,
+        20
+      ],
+      "maxAccelPerPhase": 2,
+      "safeAccelPerRound": 2,
+      "stressAccelPerRound": 3,
+      "driveBoxes": 9,
+      "dmgTopSpeed": [
+        6,
+        5,
+        5,
+        4,
+        3,
+        2,
+        1,
+        1,
+        0
+      ]
+    },
+    "marineSquads": 0,
+    "shuttles": 30,
+    "pointValue": 543.3,
+    "year": 3690,
+    "availability": "rare"
   }
 ]

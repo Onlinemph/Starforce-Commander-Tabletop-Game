@@ -20,7 +20,14 @@ import {
   type GameState,
 } from './game'
 import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from './coordinatedFire'
-import { cloakFullyPowered, cloakOperational, isCloaked, mayDecloak } from './cloaking'
+import {
+  cloakFullyPowered,
+  cloakOperational,
+  isCloaked,
+  maneuverAllowedWhileCloaked,
+  mayDecloak,
+  positionIsHidden,
+} from './cloaking'
 import {
   armingPointsAvailable,
   batterySpendError,
@@ -1324,15 +1331,32 @@ function bestPlot(
         }
   const predictedHeading = enemyPlan?.heading ?? enemy.placement.heading
 
-  const maneuvers: Array<[Maneuver, TurnDirection | null, number]> = [
-    ['straight', null, 0],
-    ['easy', 'left', 0],
-    ['easy', 'right', 0],
-    ['standard', 'left', 0],
-    ['standard', 'right', 0],
-    ['hard', 'left', 1],
-    ['hard', 'right', 1],
-  ]
+  /*
+   * H6.8.5(3): a cloaked ship that is still hidden may only fly straight,
+   * slide, easy or standard — anything sharper is refused.
+   *
+   * The filter has to be here and not only in the rules, because the captain
+   * cannot see a refusal. `plot-maneuver` returns its objection to the caller
+   * and the driver throws the message away, so an AI that wants a hard turn
+   * while cloaked re-plots the same illegal turn forever and the batch never
+   * empties — a hung game, not a bad move. Found on an Aurelian hull, whose
+   * plasma torpedoes die at nine inches and so want a hard turn badly, but it
+   * was never that ship's fault: the printed INVICTUS I is cloaked and armed
+   * the same way and will do it too.
+   */
+  const darkCloak = cloakOf(game, ship)
+  const dark = !!darkCloak && positionIsHidden(darkCloak)
+  const maneuvers: Array<[Maneuver, TurnDirection | null, number]> = (
+    [
+      ['straight', null, 0],
+      ['easy', 'left', 0],
+      ['easy', 'right', 0],
+      ['standard', 'left', 0],
+      ['standard', 'right', 0],
+      ['hard', 'left', 1],
+      ['hard', 'right', 1],
+    ] as Array<[Maneuver, TurnDirection | null, number]>
+  ).filter(([maneuver]) => !dark || maneuverAllowedWhileCloaked(maneuver))
   const accelBudget = accelerationBudget(ship) - ship.accelUsedThisRound
   const accels = [-2, -1, 0, 1, 2].filter((a) => {
     if (Math.abs(a) > ship.form.sublight.maxAccelPerPhase) return false

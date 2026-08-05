@@ -141,7 +141,20 @@ function weapon(args: {
    * halving the rate of fire of every gun on both designs.
    */
   slowArming?: boolean
+  /**
+   * The exact diamond pattern, where `slowArming`'s single gate is too blunt.
+   * Every printed plasma torpedo runs six circles gated `false, true, false,
+   * true, false` — two diamonds part way along rather than one at the start.
+   */
+  roundGates?: boolean[]
+  /**
+   * A warhead that does its own fixed damage rather than rolling for it
+   * (E5.3): the plasma torpedoes all carry `{ damage: 4, leak: 1, structure:
+   * 1 }`. Absent for direct-fire weapons.
+   */
+  special?: WeaponSystemDef['special']
 }): WeaponSystemDef {
+  const gates = args.roundGates ?? (args.slowArming ? [true] : undefined)
   return {
     id: args.id,
     name: args.name,
@@ -151,10 +164,11 @@ function weapon(args: {
       arcs,
       armingCircles: args.armingCircles,
       hitBoxes: args.hitBoxes,
-      ...(args.slowArming ? { roundGates: [true] } : {}),
+      ...(gates ? { roundGates: gates } : {}),
     })),
     brackets: args.brackets,
     traits: args.traits ?? [],
+    ...(args.special ? { special: args.special } : {}),
   }
 }
 
@@ -1698,6 +1712,277 @@ const UNION_X: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * IMPERATOR-class Super Dreadnought — Aurelian Empire.
+ *
+ * A different exercise from the two Union extrapolations above. The Aurelians
+ * field exactly one dreadnought, the INVICTUS I, so there is no mark
+ * progression to run forward; what there is instead is a whole roster of
+ * fourteen hulls that agree with each other about how war works. The question
+ * is not "what comes next" but "what does an Aurelian capital ship look like
+ * when nothing is holding it back", and the answer has to be read off the
+ * doctrine rather than off a trend line.
+ *
+ * **What every Aurelian hull agrees on:**
+ *
+ *  - **Plasma torpedoes, and they are knife-fighting weapons.** Every RP in
+ *    the inventory — A, B, C, D, F, G — reaches nine inches and no further,
+ *    and inside that it is savage: the INVICTUS's RP-A throws three red dice
+ *    with +8 inside three inches, +7 to six, and +1 to nine. There is no Union
+ *    weapon remotely like it. It is HOMING 3, PARTCL, NoBAT, and carries the
+ *    slow-arming diamond over six arming circles, so it takes most of a battle
+ *    to charge and empties in one exchange.
+ *  - **Short disruptors.** The ADM line runs 11 to 13 inches where a Union
+ *    phaser of the same era makes 15, and every one of them is PD MODE and
+ *    ATMO.
+ *  - **No armour, anywhere.** Fourteen hulls, not one plate between them.
+ *  - **No marines on the capital ship.** The INVICTUS carries zero squads and
+ *    twenty shuttles — more small craft than any other hull in the game.
+ *  - **A cloak.** The INVICTUS is the only dreadnought in the printed roster
+ *    with one, and on a fleet whose guns die at nine inches that is not a
+ *    luxury, it is the delivery system.
+ *
+ * So the doctrine writes the ship: **it cannot fight at range and does not
+ * try.** It goes dark, crosses the board unengaged, and arrives inside three
+ * inches with everything charged. What it does when it gets there should be
+ * the most violent thing on the table; what happens if it is caught crossing
+ * should be its death. That is a genuinely different animal from the UNION X
+ * above, which cannot be killed and cannot kill.
+ *
+ * **Size 9, not 10, on purpose.** The Aurelians build light — their
+ * dreadnought is 75 points where the contemporary UNION II is 76 and the later
+ * UNION III is 158, and their size 7 INVICTUS carries thinner screens than
+ * their size 5 DEFENSOR ALATUS. A hull that hits at size 10 while displacing
+ * size 9 is the Empire's whole aesthetic.
+ *
+ * The one place this departs from the printed hulls deliberately: the INVICTUS
+ * has a zero in the top row of its turn table, and this ship does not. A
+ * design that must arrive at three inches and stay there cannot have a speed
+ * at which it may not turn — it would cross the board, miss, and never come
+ * back. Every other Aurelian handling figure is kept.
+ *
+ * **543.3 points, and it is the strongest thing in this file by a distance.**
+ * Mirrored, 40 games each at admiral, retreat off:
+ *
+ *     vs INVICTUS I      75   40W- 0L   killed  0, lost 0
+ *     vs UNION III      158   40W- 0L   killed 40, lost 0
+ *     vs 2x EXETER II   200   40W- 0L   killed 77, lost 0
+ *     vs TRAFALGAR      430   40W- 0L   killed 32, lost 0
+ *     vs UNION X        542   40W- 0L   killed 40, lost 0
+ *     vs 5x EXETER II   500   23W-17L   killed 51, lost 6
+ *
+ * Beating a UNION X of the same price forty times out of forty without losing
+ * a hull is not a balanced result, and the reason is worth writing down: the
+ * cloak is doing it, not the plasma. Read the first line — against the printed
+ * INVICTUS, another cloaked ship, *neither side kills anything in forty
+ * games*. Two hulls that cannot be found cannot fight. Against everything
+ * else, this one crosses the board unseen, arrives at three inches with six
+ * charged tubes and a warhead that does its damage without rolling, and the
+ * defender never gets the exchange it needed at range.
+ *
+ * So the honest reading is that H6 cloaking is extremely strong in this engine
+ * against an AI that does not hunt for it, and a ship built to exploit it
+ * inherits all of that. Only the five-EXETER fleet, which has enough
+ * point-defence and enough hulls to soak an alpha strike and still shoot back,
+ * makes a fight of it. Anyone using this hull should know they are testing the
+ * cloak rules as much as the ship.
+ */
+const IMPERATOR: ShipForm = {
+  id: 'fan-aurelian-imperator-super-dreadnought',
+  name: 'IMPERATOR-class Super Dreadnought',
+  faction: 'Aurelian Empire',
+  sizeClass: 9,
+  // Seven, matching the INVICTUS — the highest Stress Rating in the game, and
+  // the reason an Aurelian captain can throw a hull this size around.
+  stressRating: 7,
+  damageControlRating: 4,
+
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 5 }, () => ({ boxes: 3 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 5 }, () => ({ boxes: 3 })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: Array.from({ length: 4 }, () => ({ boxes: 3 })) },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
+  ],
+  batteries: 2,
+  ftlDriveBoxes: 3,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [1, 2, 3]),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    line('sensor', 'SENSOR', 'sensor', [5, 8], { freeValue: 3 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    // The delivery system, and the deepest cloak line in the game.
+    line('cloak', 'CLOAK', 'special', [1, 2, 3, 4]),
+    line('f-hvy-plas', 'HVY PLAS', 'weapon', [2, 4], { weaponSystemId: 'rp-omega-hvy-plasma' }),
+    line('f-med-plas', 'MED PLAS', 'weapon', [2, 4], { freeValue: 1, weaponSystemId: 'rp-e-med-plasma' }),
+    line('f-adm', 'ADM-20', 'weapon', [6, 10, 14], { freeValue: 2, weaponSystemId: 'adm-20-heavy-disruptor' }),
+    line('f-adl', 'ADL-4', 'weapon', [4], { freeValue: 2, weaponSystemId: 'adl-4-light-disruptor' }),
+  ],
+
+  weapons: [
+    /*
+     * Four heavy tubes where the INVICTUS carries one. The bracket table keeps
+     * the printed plasma shape exactly — overlapping ranges resolved in order,
+     * so the bonus falls away in steps as the range opens: enormous at three
+     * inches, still huge at six, nearly nothing at nine, and beyond nine it
+     * does not fire at all.
+     */
+    weapon({
+      id: 'rp-omega-hvy-plasma',
+      name: 'RP-OMEGA HVY PLASMA TORP',
+      weaponClass: 'plasma-torpedo',
+      mounts: forward(4),
+      armingCircles: 6,
+      hitBoxes: 1,
+      traits: ['HOMING 3', 'PARTCL', 'NoBAT', 'FTL'],
+      // The printed plasma gating: two diamonds part way along six circles.
+      roundGates: [false, true, false, true, false],
+      // A heavier warhead than the RP-A's 4/1/1 — this is the Empire's
+      // largest, and the fixed damage is what makes a plasma hit terrifying
+      // rather than the dice (E5.3).
+      special: { damage: 6, leak: 2, structure: 2 },
+      brackets: [
+        { min: 0, max: 3, band: 'green', dice: ['red', 'red', 'red'], bonus: 10, endurancePhase: 1 },
+        { min: 0, max: 6, band: 'green', dice: ['red', 'red', 'red'], bonus: 8, endurancePhase: 2 },
+        { min: 0, max: 9, band: 'green', dice: ['red', 'red', 'red'], bonus: 2, endurancePhase: 3 },
+        { min: 0, max: 9, band: 'black', dice: ['red', 'red', 'red'], bonus: 2, endurancePhase: 4 },
+      ],
+    }),
+    // Medium tubes on the beams, the INVICTUS's own arrangement widened.
+    weapon({
+      id: 'rp-e-med-plasma',
+      name: 'RP-E MED PLASMA TORP',
+      weaponClass: 'plasma-torpedo',
+      mounts: [
+        ['PA', 'PF', 'FP'],
+        ['FS', 'SF', 'SA'],
+        ['AP', 'PA', 'PF'],
+        ['SF', 'SA', 'AS'],
+      ],
+      armingCircles: 6,
+      hitBoxes: 1,
+      traits: ['HOMING 3', 'PARTCL', 'NoBAT', 'FTL'],
+      roundGates: [false, true, false, true, false],
+      special: { damage: 4, leak: 1, structure: 1 },
+      brackets: [
+        { min: 0, max: 3, band: 'green', dice: ['red', 'red'], bonus: 8, endurancePhase: 1 },
+        { min: 0, max: 6, band: 'green', dice: ['red', 'red'], bonus: 6, endurancePhase: 2 },
+        { min: 0, max: 9, band: 'green', dice: ['red', 'red'], bonus: 1, endurancePhase: 3 },
+        { min: 0, max: 9, band: 'black', dice: ['red', 'red'], bonus: 1, endurancePhase: 4 },
+      ],
+    }),
+    // The ADM line one step on from the ADM-15: still short, still ATMO.
+    weapon({
+      id: 'adm-20-heavy-disruptor',
+      name: 'ADM-20 HEAVY DISRUPTOR',
+      weaponClass: 'disruptor',
+      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE', 'ATMO'],
+      brackets: [
+        { min: 0, max: 3, band: 'green', dice: ['yellow', 'green'] },
+        { min: 4, max: 7, band: 'green', dice: ['green', 'green'] },
+        { min: 8, max: 11, band: 'black', dice: ['green', 'blue'] },
+        { min: 12, max: 13, band: 'black', dice: ['green'] },
+        { min: 14, max: 15, band: 'red', dice: ['green'] },
+      ],
+    }),
+    // Point defence, and the only thing that will be firing on the run in.
+    weapon({
+      id: 'adl-4-light-disruptor',
+      name: 'ADL-4 LIGHT DISRUPTOR',
+      weaponClass: 'disruptor',
+      mounts: ALL_ROUND,
+      armingCircles: 1,
+      hitBoxes: 1,
+      traits: ['PREC 1', 'PD MODE', 'ATMO'],
+      brackets: [
+        { min: 0, max: 4, band: 'green', dice: ['green'] },
+        { min: 5, max: 8, band: 'black', dice: ['green'] },
+        { min: 9, max: 11, band: 'red', dice: ['blue'] },
+      ],
+    }),
+  ],
+
+  /*
+   * Deliberately not a Union screen. The INVICTUS carries 20/16/18/18 at size
+   * 7 — thinner than the Empire's own size 5 heavy cruiser — because Aurelian
+   * survival is meant to come from not being shot at rather than from soaking
+   * it. Scaled up but kept in that spirit: nowhere near the UNION X's 51.
+   */
+  shields: {
+    generatorBoxes: 5,
+    blue: { F: 34, A: 28, P: 30, S: 30 },
+    green: { F: 4, S: 4, A: 4, P: 4 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 4 },
+    { kind: 'SENS', label: 'Sensors', boxes: 5 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 4 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 3 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 6 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 6 },
+    { kind: 'CMND', label: 'Command Systems', boxes: 6 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 4 },
+    // Three boxes where the INVICTUS has one. Shoot them out and the ship
+    // loses the only way it has of reaching its own firing range.
+    { kind: 'CLOAK', label: 'Cloaking System', boxes: 3 },
+  ],
+
+  structure: [
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  sublight: {
+    maxSpeed: 6,
+    // Aurelian handling, and no zero in the top row: a ship that has to arrive
+    // at three inches cannot have a speed at which it may not turn.
+    turnBySpeed: [40, 35, 35, 30, 30, 25, 20],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 3,
+    driveBoxes: 9,
+    dmgTopSpeed: [6, 5, 5, 4, 3, 2, 1, 1, 0],
+  },
+
+  // No marine squads at all, exactly as the INVICTUS, and a small-craft
+  // complement to match the Empire's habit of carrying them by the dozen.
+  marineSquads: 0,
+  shuttles: 30,
+
+  pointValue: 0,
+  year: 3690,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -1759,6 +2044,9 @@ const DESIGNS: Design[] = [
   { form: YORKTOWN_X },
   // Same discipline, thinner evidence — three printed marks rather than five.
   { form: UNION_X },
+  // Doctrine rather than trend: one dreadnought in the roster, fourteen hulls
+  // that agree about how the Empire fights.
+  { form: IMPERATOR },
 ]
 
 /**
