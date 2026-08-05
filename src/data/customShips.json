@@ -6311,5 +6311,1001 @@
     "pointValue": 544,
     "year": 3690,
     "availability": "rare"
+  },
+  {
+    "id": "fan-union-yorktown-xxx-heavy-cruiser",
+    "name": "YORKTOWN XXX-class Heavy Cruiser",
+    "faction": "Union of Federated Systems",
+    "sizeClass": 5,
+    "stressRating": 8,
+    "damageControlRating": 8,
+    "reactors": [
+      {
+        "id": "l-main",
+        "label": "L MAIN",
+        "hitKind": "left-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "r-main",
+        "label": "R MAIN",
+        "hitKind": "right-main",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "sl-reac",
+        "label": "SL REAC",
+        "hitKind": "sublight-reactor",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      },
+      {
+        "id": "aux-pwr",
+        "label": "AUX PWR",
+        "hitKind": "aux",
+        "points": [
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          },
+          {
+            "boxes": 3
+          }
+        ]
+      }
+    ],
+    "batteries": 5,
+    "ftlDriveBoxes": 4,
+    "functions": [
+      {
+        "id": "accel",
+        "label": "ACC/DEC",
+        "kind": "accel",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 5
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "sif",
+        "label": "SIF/IDF",
+        "kind": "sif",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 6
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "emer",
+        "label": "EMER",
+        "kind": "emergency-turn",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "bat-rech",
+        "label": "BTY RECH",
+        "kind": "battery-recharge",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          },
+          {
+            "powerCost": 1,
+            "value": 5
+          }
+        ],
+        "sequential": false
+      },
+      {
+        "id": "ftl",
+        "label": "FTL DRV",
+        "kind": "ftl-drive",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          },
+          {
+            "powerCost": 1,
+            "value": 2
+          },
+          {
+            "powerCost": 1,
+            "value": 3
+          },
+          {
+            "powerCost": 1,
+            "value": 4
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "rnfc-F",
+        "label": "SHLD RNFC F",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "rnfc-P",
+        "label": "SHLD RNFC P",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "rnfc-S",
+        "label": "SHLD RNFC S",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "rnfc-A",
+        "label": "SHLD RNFC A",
+        "kind": "shield-reinforce",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "repr-F",
+        "label": "SHLD REPR F",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "F"
+      },
+      {
+        "id": "repr-P",
+        "label": "SHLD REPR P",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "P"
+      },
+      {
+        "id": "repr-S",
+        "label": "SHLD REPR S",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "S"
+      },
+      {
+        "id": "repr-A",
+        "label": "SHLD REPR A",
+        "kind": "shield-repair",
+        "freeValue": 0,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 1
+          }
+        ],
+        "sequential": false,
+        "shieldSide": "A"
+      },
+      {
+        "id": "sensor",
+        "label": "SENSOR",
+        "kind": "sensor",
+        "freeValue": 8,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 12
+          },
+          {
+            "powerCost": 1,
+            "value": 16
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "gen-sys",
+        "label": "GEN SYS",
+        "kind": "gen-sys",
+        "freeValue": 1,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 2
+          }
+        ],
+        "sequential": true
+      },
+      {
+        "id": "f-a-mat",
+        "label": "A/MAT TRP",
+        "kind": "weapon",
+        "freeValue": 3,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 6
+          },
+          {
+            "powerCost": 1,
+            "value": 9
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "mk-30-a-mat-torpedo"
+      },
+      {
+        "id": "f-phaser",
+        "label": "PHASER",
+        "kind": "weapon",
+        "freeValue": 4,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 8
+          },
+          {
+            "powerCost": 1,
+            "value": 12
+          },
+          {
+            "powerCost": 1,
+            "value": 16
+          },
+          {
+            "powerCost": 1,
+            "value": 20
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "lnc-9000-phaser"
+      },
+      {
+        "id": "f-lt-phaser",
+        "label": "LT PHASER",
+        "kind": "weapon",
+        "freeValue": 3,
+        "steps": [
+          {
+            "powerCost": 1,
+            "value": 6
+          },
+          {
+            "powerCost": 1,
+            "value": 9
+          }
+        ],
+        "sequential": true,
+        "weaponSystemId": "dgr-40-light-phaser"
+      }
+    ],
+    "weapons": [
+      {
+        "id": "mk-30-a-mat-torpedo",
+        "name": "MK-30 A/MAT TORPEDO",
+        "weaponClass": "a-mat-torpedo",
+        "mounts": [
+          {
+            "id": "mk-30-a-mat-torpedo-m1",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          },
+          {
+            "id": "mk-30-a-mat-torpedo-m2",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          },
+          {
+            "id": "mk-30-a-mat-torpedo-m3",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          },
+          {
+            "id": "mk-30-a-mat-torpedo-m4",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 1,
+            "roundGates": [
+              true
+            ]
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 12,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ],
+            "bonus": 2
+          },
+          {
+            "min": 13,
+            "max": 26,
+            "band": "black",
+            "dice": [
+              "red",
+              "red"
+            ]
+          },
+          {
+            "min": 27,
+            "max": 36,
+            "band": "red",
+            "dice": [
+              "red"
+            ]
+          },
+          {
+            "min": 37,
+            "max": 40,
+            "band": "red",
+            "dice": [
+              "yellow"
+            ]
+          }
+        ],
+        "traits": [
+          "NoBAT",
+          "FTL"
+        ]
+      },
+      {
+        "id": "lnc-9000-phaser",
+        "name": "LNC-9000 PHASER",
+        "weaponClass": "phaser",
+        "mounts": [
+          {
+            "id": "lnc-9000-phaser-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m5",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m6",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m7",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "lnc-9000-phaser-m8",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS",
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 6,
+            "band": "green",
+            "dice": [
+              "red",
+              "yellow"
+            ],
+            "bonus": 2
+          },
+          {
+            "min": 7,
+            "max": 12,
+            "band": "green",
+            "dice": [
+              "yellow",
+              "yellow"
+            ]
+          },
+          {
+            "min": 13,
+            "max": 18,
+            "band": "black",
+            "dice": [
+              "yellow",
+              "green"
+            ]
+          },
+          {
+            "min": 19,
+            "max": 23,
+            "band": "black",
+            "dice": [
+              "green",
+              "green"
+            ]
+          },
+          {
+            "min": 24,
+            "max": 26,
+            "band": "red",
+            "dice": [
+              "green",
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 2",
+          "PD MODE"
+        ]
+      },
+      {
+        "id": "dgr-40-light-phaser",
+        "name": "DGR-40 LIGHT PHASER",
+        "weaponClass": "phaser",
+        "mounts": [
+          {
+            "id": "dgr-40-light-phaser-m1",
+            "arcs": [
+              "AP",
+              "PA",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "dgr-40-light-phaser-m2",
+            "arcs": [
+              "FS",
+              "SF",
+              "PF",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "dgr-40-light-phaser-m3",
+            "arcs": [
+              "SA",
+              "AS",
+              "AP",
+              "PA"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          },
+          {
+            "id": "dgr-40-light-phaser-m4",
+            "arcs": [
+              "FS",
+              "SF",
+              "SA",
+              "AS"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
+          }
+        ],
+        "brackets": [
+          {
+            "min": 0,
+            "max": 8,
+            "band": "green",
+            "dice": [
+              "yellow",
+              "green"
+            ]
+          },
+          {
+            "min": 9,
+            "max": 13,
+            "band": "black",
+            "dice": [
+              "green",
+              "green"
+            ]
+          },
+          {
+            "min": 14,
+            "max": 18,
+            "band": "red",
+            "dice": [
+              "green",
+              "blue"
+            ]
+          }
+        ],
+        "traits": [
+          "PREC 2",
+          "PD MODE"
+        ]
+      }
+    ],
+    "shields": {
+      "generatorBoxes": 8,
+      "blue": {
+        "F": 60,
+        "A": 54,
+        "P": 54,
+        "S": 54
+      },
+      "green": {
+        "F": 8,
+        "S": 8,
+        "A": 8,
+        "P": 8
+      }
+    },
+    "armor": {
+      "F": 0,
+      "S": 0,
+      "A": 0,
+      "P": 0
+    },
+    "systems": [
+      {
+        "kind": "SCNC",
+        "label": "Sciences",
+        "boxes": 8
+      },
+      {
+        "kind": "SENS",
+        "label": "Sensors",
+        "boxes": 9
+      },
+      {
+        "kind": "TRAC",
+        "label": "Tractor Beams",
+        "boxes": 5
+      },
+      {
+        "kind": "TRAN",
+        "label": "Transporters",
+        "boxes": 5
+      },
+      {
+        "kind": "SHTL",
+        "label": "Shuttle Bay",
+        "boxes": 4
+      },
+      {
+        "kind": "QTRS",
+        "label": "Quarters",
+        "boxes": 6
+      },
+      {
+        "kind": "CMND",
+        "label": "Command Systems",
+        "boxes": 7
+      },
+      {
+        "kind": "CRGO",
+        "label": "Cargo",
+        "boxes": 4
+      }
+    ],
+    "structure": [
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 8
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "box",
+        "color": "black"
+      },
+      {
+        "kind": "dc",
+        "rating": 7
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 6
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "box",
+        "color": "red"
+      },
+      {
+        "kind": "dc",
+        "rating": 5
+      }
+    ],
+    "sublight": {
+      "maxSpeed": 8,
+      "turnBySpeed": [
+        50,
+        45,
+        45,
+        40,
+        40,
+        35,
+        30,
+        25,
+        20
+      ],
+      "maxAccelPerPhase": 3,
+      "safeAccelPerRound": 4,
+      "stressAccelPerRound": 4,
+      "driveBoxes": 8,
+      "dmgTopSpeed": [
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ]
+    },
+    "marineSquads": 16,
+    "shuttles": 6,
+    "pointValue": 3247.2,
+    "year": 4210,
+    "availability": "rare"
   }
 ]

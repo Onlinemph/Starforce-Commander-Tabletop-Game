@@ -2001,6 +2001,236 @@ const IMPERATOR: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * YORKTOWN XXX-class Heavy Cruiser — the name five and a half centuries on.
+ *
+ * The YORKTOWN X above is an extrapolation: five marks of a known trend, with
+ * everything the line held constant held constant. This is the opposite
+ * exercise and it needs saying plainly, because it is not a prediction of
+ * anything. Run the clock out far enough and a trend line stops being
+ * evidence; what is left is the question of which parts of a ship are its
+ * technology and which are its identity.
+ *
+ * **So every invariant breaks except one.** The printed line froze its drive
+ * for twenty-seven years — speed 6, the 40-degree template, two acceleration a
+ * phase, and a zero at the top of the turn table on every mark from the I to
+ * the V. The Mark X kept all of it because five marks is not long enough for
+ * any of it to move. Five hundred years is:
+ *
+ *   - **Speed 8, which is the ceiling the rules themselves impose.** C1.2.7
+ *     says no ship may exceed it. This is the first hull in the roster,
+ *     printed or fan, to sit on that number, and there is nowhere further to
+ *     go — the design is deliberately built against the wall rather than
+ *     towards it.
+ *   - **No zero in the turn table, and 50 degrees at rest.** Every printed
+ *     YORKTOWN is helpless at full burn. This one comes about at any speed it
+ *     can make.
+ *   - **Three acceleration a phase**, where nothing printed exceeds two.
+ *   - **Stress 8 and Damage Control 8**, doubling figures that sat at 4 on all
+ *     five printed marks.
+ *
+ * **What does not break is the hull class and the tube count.** It is size 5,
+ * because a YORKTOWN is a heavy cruiser and a heavy cruiser is what the name
+ * means — grow it into a dreadnought and the only thing left of the lineage is
+ * the paint. And it carries **four torpedo tubes**, as the Mark I did in 3645,
+ * because the Union has built its cruisers around four tubes for five hundred
+ * and sixty-five years and some things are older than any technology on board.
+ * Everything the marks ever added went to the secondary battery, and that is
+ * still true here: eight phasers and four light phasers around the same four
+ * tubes.
+ *
+ * **3,247 points — and it is not worth a third of that.** Mirrored, 20 games
+ * each at admiral, retreat off:
+ *
+ *     vs YORKTOWN X      215   20W- 0L   killed 20, lost  0
+ *     vs 8x EXETER II    800    2W-18L   killed 26, lost  2
+ *     vs 3x TRAFALGAR   1289    5W-15L   killed 11, lost  1
+ *     vs 8x YORKTOWN X  1718    0W-20L   killed  0, lost 16
+ *     vs 6x TRAFALGAR   2579    0W-20L   killed  0, lost 20
+ *
+ * It annihilates the Mark X it descends from and never dies doing it. It
+ * survives eight EXETER IIs, killing twenty-six of them across twenty games
+ * and dying twice — and still loses on points, because a hull worth 3,247
+ * bleeds victory points faster than it can earn them. Above about a thousand
+ * points of opposition it stops winning, and by two and a half thousand it
+ * dies every game without killing anything.
+ *
+ * **This is the clearest look yet at the thing the point model cannot see:
+ * action economy.** The model multiplies offence by defence, so doubling both
+ * roughly quadruples the price — 285 of offence and 668 of defence against the
+ * UNION X's 104 and 435 is six times the cost. But a ship with twice the guns
+ * and twice the screens does not fight four times as well, because it still
+ * gets one activation, presents one facing, and stands in one place. Guns that
+ * cannot all bear are guns that are not there.
+ *
+ * That single blind spot explains every lopsided result in this file. The
+ * TRAFALGAR at 430 loses to two YORKTOWN Xs at 430. The UNION X at 542 loses
+ * to the TRAFALGAR at 430. This hull at 3,247 loses to 800 points of printed
+ * cruisers. In each case the cheaper side had more hulls. The model prices
+ * parts; the game rewards ships.
+ *
+ * So take the number as what it is: an honest total of what is bolted to this
+ * hull, and a bad estimate of what it is worth in a fight. It is a scenario
+ * centrepiece — the thing a whole fleet is sent to deal with — and not a
+ * purchase anybody should make with points.
+ */
+const YORKTOWN_XXX: ShipForm = {
+  id: 'fan-union-yorktown-xxx-heavy-cruiser',
+  name: 'YORKTOWN XXX-class Heavy Cruiser',
+  faction: 'Union of Federated Systems',
+  sizeClass: 5,
+  stressRating: 8,
+  damageControlRating: 8,
+
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 8 }, () => ({ boxes: 3 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 8 }, () => ({ boxes: 3 })) },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }, { boxes: 3 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+  ],
+  batteries: 5,
+  ftlDriveBoxes: 4,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [2, 3, 4, 5], { freeValue: 1 }),
+    line('sif', 'SIF/IDF', 'sif', [2, 4, 6]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2, 3, 4, 5], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3, 4]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    line('sensor', 'SENSOR', 'sensor', [12, 16], { freeValue: 8 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    line('f-a-mat', 'A/MAT TRP', 'weapon', [6, 9], {
+      freeValue: 3,
+      weaponSystemId: 'mk-30-a-mat-torpedo',
+    }),
+    line('f-phaser', 'PHASER', 'weapon', [8, 12, 16, 20], {
+      freeValue: 4,
+      weaponSystemId: 'lnc-9000-phaser',
+    }),
+    line('f-lt-phaser', 'LT PHASER', 'weapon', [6, 9], {
+      freeValue: 3,
+      weaponSystemId: 'dgr-40-light-phaser',
+    }),
+  ],
+
+  weapons: [
+    /*
+     * Four. Still four. The diamond is still on them too (E4.2.8) — five
+     * centuries and antimatter still will not be hurried, which is the sort of
+     * detail that makes a lineage feel real.
+     */
+    weapon({
+      id: 'mk-30-a-mat-torpedo',
+      name: 'MK-30 A/MAT TORPEDO',
+      weaponClass: 'a-mat-torpedo',
+      mounts: forward(4),
+      armingCircles: 2,
+      hitBoxes: 1,
+      traits: ['NoBAT', 'FTL'],
+      slowArming: true,
+      brackets: [
+        { min: 0, max: 12, band: 'green', dice: ['red', 'red'], bonus: 2 },
+        { min: 13, max: 26, band: 'black', dice: ['red', 'red'] },
+        { min: 27, max: 36, band: 'red', dice: ['red'] },
+        { min: 37, max: 40, band: 'red', dice: ['yellow'] },
+      ],
+    }),
+    // Eight, where the V had five and the X six. Every mark's growth went
+    // here and it kept going.
+    weapon({
+      id: 'lnc-9000-phaser',
+      name: 'LNC-9000 PHASER',
+      weaponClass: 'phaser',
+      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS, ALL_ARCS, ALL_ARCS],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 2', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 6, band: 'green', dice: ['red', 'yellow'], bonus: 2 },
+        { min: 7, max: 12, band: 'green', dice: ['yellow', 'yellow'] },
+        { min: 13, max: 18, band: 'black', dice: ['yellow', 'green'] },
+        { min: 19, max: 23, band: 'black', dice: ['green', 'green'] },
+        { min: 24, max: 26, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    weapon({
+      id: 'dgr-40-light-phaser',
+      name: 'DGR-40 LIGHT PHASER',
+      weaponClass: 'phaser',
+      mounts: ALL_ROUND,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 2', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 8, band: 'green', dice: ['yellow', 'green'] },
+        { min: 9, max: 13, band: 'black', dice: ['green', 'green'] },
+        { min: 14, max: 18, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+  ],
+
+  shields: {
+    generatorBoxes: 8,
+    blue: { F: 60, A: 54, P: 54, S: 54 },
+    green: { F: 8, S: 8, A: 8, P: 8 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 8 },
+    { kind: 'SENS', label: 'Sensors', boxes: 9 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 5 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 5 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 4 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 6 },
+    { kind: 'CMND', label: 'Command Systems', boxes: 7 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 4 },
+  ],
+
+  structure: [
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 8 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 7 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 6 },
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 5 },
+  ],
+
+  sublight: {
+    // Eight is the ceiling C1.2.7 sets, and this is the only hull on it.
+    maxSpeed: 8,
+    turnBySpeed: [50, 45, 45, 40, 40, 35, 30, 25, 20],
+    maxAccelPerPhase: 3,
+    safeAccelPerRound: 4,
+    stressAccelPerRound: 4,
+    driveBoxes: 8,
+    dmgTopSpeed: [8, 7, 6, 5, 4, 3, 2, 1],
+  },
+
+  marineSquads: 16,
+  shuttles: 6,
+
+  pointValue: 0,
+  year: 4210,
+  availability: 'rare',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -2065,6 +2295,9 @@ const DESIGNS: Design[] = [
   // Doctrine rather than trend: one dreadnought in the roster, fourteen hulls
   // that agree about how the Empire fights.
   { form: IMPERATOR },
+  // Not an extrapolation and not pretending to be: five centuries out, the
+  // question is which parts of a ship are technology and which are identity.
+  { form: YORKTOWN_XXX },
 ]
 
 /**
