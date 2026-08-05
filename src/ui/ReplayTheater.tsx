@@ -100,8 +100,18 @@ export function ReplayTheater({ initial, onClose }: Props) {
   }, [playing, index, last, speed, timeline])
 
   const jump = (to: number) => setIndex(Math.max(0, Math.min(last, to)))
-  const prevRound = () => jump([...timeline.roundStarts].reverse().find((r) => r < index) ?? 0)
-  const nextRound = () => jump(timeline.roundStarts.find((r) => r > index) ?? last)
+
+  /*
+   * Skipping goes by moment rather than by round, because "the next thing that
+   * happened" is what somebody reading a battle back actually wants. Round
+   * starts are moments too, so this still walks the chapters — it just stops
+   * at the volleys and the kills between them as well. In a squadron game
+   * that is 56 stops out of 778 actions; by round it would be 7, and by
+   * action it would be 778.
+   */
+  const marks = timeline.moments
+  const prevMoment = () => jump([...marks].reverse().find((m) => m.index < index)?.index ?? 0)
+  const nextMoment = () => jump(marks.find((m) => m.index > index)?.index ?? last)
 
   /**
    * The keys every other video player has. This is a tape deck, and reaching
@@ -138,12 +148,12 @@ export function ReplayTheater({ initial, onClose }: Props) {
         case 'ArrowLeft':
           event.preventDefault()
           setPlaying(false)
-          event.shiftKey ? prevRound() : jump(index - 1)
+          event.shiftKey ? prevMoment() : jump(index - 1)
           break
         case 'ArrowRight':
           event.preventDefault()
           setPlaying(false)
-          event.shiftKey ? nextRound() : jump(index + 1)
+          event.shiftKey ? nextMoment() : jump(index + 1)
           break
         case 'Home':
           event.preventDefault()
@@ -326,7 +336,12 @@ export function ReplayTheater({ initial, onClose }: Props) {
               <button type="button" onClick={() => jump(0)} title="Back to deployment" aria-label="Start">
                 ⏮
               </button>
-              <button type="button" onClick={prevRound} title="Previous round" aria-label="Previous round">
+              <button
+                type="button"
+                onClick={prevMoment}
+                title="Back to the previous moment — a volley, a kill, or the start of a round"
+                aria-label="Previous moment"
+              >
                 ◀◀
               </button>
               <button type="button" onClick={() => jump(index - 1)} title="Step back one action" aria-label="Step back">
@@ -346,7 +361,12 @@ export function ReplayTheater({ initial, onClose }: Props) {
               <button type="button" onClick={() => jump(index + 1)} title="Step one action" aria-label="Step forward">
                 ▶
               </button>
-              <button type="button" onClick={nextRound} title="Next round" aria-label="Next round">
+              <button
+                type="button"
+                onClick={nextMoment}
+                title="On to the next moment — a volley, a kill, or the start of a round"
+                aria-label="Next moment"
+              >
                 ▶▶
               </button>
               <button type="button" onClick={() => jump(last)} title="Jump to the end" aria-label="End">
@@ -365,9 +385,18 @@ export function ReplayTheater({ initial, onClose }: Props) {
                   }}
                   aria-label="Timeline"
                 />
+                {/* Every moment gets a mark, and the mark says which kind it
+                    was — so the shape of the battle is legible before you
+                    press anything: where the shooting started, where a ship
+                    died, where the rounds fell. */}
                 <div className="theater-ticks" aria-hidden="true">
-                  {timeline.roundStarts.map((r) => (
-                    <i key={r} style={{ left: `${(r / Math.max(1, last)) * 100}%` }} />
+                  {marks.map((m) => (
+                    <i
+                      key={m.index}
+                      className={`tick-${m.kind}`}
+                      title={m.text}
+                      style={{ left: `${(m.index / Math.max(1, last)) * 100}%` }}
+                    />
                   ))}
                 </div>
               </div>
@@ -390,7 +419,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
             <p className="theater-keys">
               <kbd>space</kbd> play · <kbd>←</kbd>
               <kbd>→</kbd> step · <kbd>shift</kbd>+<kbd>←</kbd>
-              <kbd>→</kbd> round · <kbd>home</kbd>
+              <kbd>→</kbd> moment · <kbd>home</kbd>
               <kbd>end</kbd> ends · <kbd>esc</kbd> close
             </p>
           </div>

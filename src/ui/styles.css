@@ -3415,15 +3415,39 @@ button.chip:hover:not(:disabled) {
   pointer-events: none;
 }
 
+/*
+  One mark per moment, and the mark says which kind. The shape of the battle
+  should be readable off the bar before anything is pressed: a quiet opening,
+  where the shooting starts, and the three places a ship came apart.
+*/
 .theater-ticks i {
   position: absolute;
   top: 50%;
   width: 2px;
-  height: 12px;
+  height: 9px;
   transform: translate(-1px, -50%);
-  background: var(--accent);
-  opacity: 0.55;
   border-radius: 1px;
+  background: var(--accent);
+  opacity: 0.5;
+}
+/* Rounds are the chapters: tallest, and the colour the rail uses for a phase. */
+.tick-round {
+  height: 15px !important;
+  background: var(--lc-sand) !important;
+  opacity: 0.85 !important;
+}
+/* Volleys are the texture of the fight — many, quiet, cool. */
+.tick-volley {
+  background: var(--lc-sky) !important;
+  opacity: 0.45 !important;
+}
+/* A ship dying is the thing you scrub to find. */
+.tick-kill {
+  width: 3px !important;
+  height: 17px !important;
+  background: var(--danger) !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 5px rgba(255, 92, 92, 0.9);
 }
 
 .theater-narration {

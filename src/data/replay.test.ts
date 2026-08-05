@@ -85,6 +85,63 @@ describe('replay timeline', () => {
     expect(frames[0].captions).toEqual(opening.log.map((e) => e.message))
   })
 
+  /*
+   * The moments are what make a replay watchable: a squadron battle is 778
+   * actions and about 56 of them are worth stopping at. They are read off the
+   * engine's own log lines, which is a coupling worth a test — reword "is
+   * destroyed" in the engine and the kill marks quietly vanish from the bar.
+   */
+  describe('the moments worth stopping at', () => {
+    it('finds far fewer moments than there are actions', () => {
+      const timeline = buildTimeline(saved)
+      expect(timeline.moments.length).toBeGreaterThan(0)
+      expect(timeline.moments.length).toBeLessThan(saved.actions.length / 3)
+    })
+
+    it('marks every round start as a moment', () => {
+      const timeline = buildTimeline(saved)
+      for (const start of timeline.roundStarts) {
+        expect(timeline.moments.some((m) => m.index === start)).toBe(true)
+      }
+    })
+
+    it('finds the volleys, and they are real fire', () => {
+      const timeline = buildTimeline(saved)
+      const volleys = timeline.moments.filter((m) => m.kind === 'volley')
+      expect(volleys.length).toBeGreaterThan(0)
+      for (const v of volleys) expect(v.text).toMatch(/ fires on /)
+    })
+
+    it('keeps the moments in order and inside the journal', () => {
+      const timeline = buildTimeline(saved)
+      let previous = -1
+      for (const m of timeline.moments) {
+        expect(m.index).toBeGreaterThan(previous)
+        expect(m.index).toBeLessThanOrEqual(saved.actions.length)
+        previous = m.index
+      }
+    })
+
+    it('records one moment per frame, keeping the loudest', () => {
+      const timeline = buildTimeline(saved)
+      const seen = new Set<number>()
+      for (const m of timeline.moments) {
+        expect(seen.has(m.index)).toBe(false)
+        seen.add(m.index)
+      }
+      // And a frame the timeline calls a kill is a kill in its captions.
+      for (const m of timeline.moments.filter((x) => x.kind === 'kill')) {
+        expect(timeline.frames[m.index].captions.join(' ')).toMatch(/destroyed|comes apart/)
+      }
+    })
+
+    it('agrees with the frames about which are moments', () => {
+      const timeline = buildTimeline(saved)
+      const flagged = timeline.frames.filter((f) => f.moment !== undefined).map((f) => f.index)
+      expect(flagged).toEqual(timeline.moments.map((m) => m.index))
+    })
+  })
+
   it('quiet actions still get a readable label', () => {
     expect(actionLabel({ type: 'advance-segment' })).toBe('Advance segment')
   })
