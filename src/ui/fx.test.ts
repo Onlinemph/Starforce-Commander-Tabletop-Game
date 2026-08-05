@@ -3,7 +3,7 @@ import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from '../engine/actions'
 import { aiNextActions, createAiMemo } from '../engine/ai'
 import { activeShips, type GameState } from '../engine/game'
-import { fxAfter, fxBefore, weaponFx, type BattleFx } from './fx'
+import { fxAcross, fxAfter, fxBefore, weaponFx, type BattleFx } from './fx'
 
 /**
  * Battle visuals are a pure function of the action stream, so an AI-fought
@@ -72,6 +72,104 @@ describe('battle effects', () => {
     // plus a hull burst, derived from resolve-homing-impacts.
     expect(fx.some((f) => f.kind === 'shot' && f.weapon === 'torpedo')).toBe(true)
     expect(fx.some((f) => f.kind === 'impact' && f.impact === 'hull')).toBe(true)
+  })
+
+  /*
+   * The regression behind "the exported video is missing the shooting": the
+   * theater derived effects only on single steps, and the recorder jumps from
+   * stop to stop — so a volley's own action was always the far side of a jump
+   * and its fire never existed to be photographed.
+   */
+  it('derives the same fire across a jump as it does step by step', () => {
+    // Fight the duel once, journalling, so the same actions replay two ways.
+    const journal: GameAction[] = []
+    const game: GameState = startScenario('s3.1-the-duel', { seed: 42 })
+    const memo = createAiMemo()
+    const sides = ['Blue Force', 'Red Force']
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(game, sides, memo, closing)
+        if (batch.length === 0) return
+        for (const action of batch) {
+          applyAction(game, action)
+          journal.push(action)
+        }
+        closing = false
+      }
+    }
+    drive(false)
+    for (let steps = 0; steps < 200; steps++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > 6) break
+      drive(true)
+      applyAction(game, { type: 'advance-segment' })
+      journal.push({ type: 'advance-segment' })
+      drive(false)
+    }
+
+    // Step-by-step: the fire every single-step advance derives.
+    const stepped = startScenario('s3.1-the-duel', { seed: 42 })
+    const oneByOne: BattleFx[] = []
+    for (let i = 0; i < journal.length; i++) oneByOne.push(...fxAcross(stepped, journal, i, i + 1))
+
+    // Stop-to-stop: the recorder's stride — land exactly on each shooting
+    // action, jumping the bookkeeping between them, as recordingStops does.
+    const volleyAt = new Set<number>()
+    const probe = startScenario('s3.1-the-duel', { seed: 42 })
+    journal.forEach((action, i) => {
+      if (action.type === 'fire-volley' || action.type === 'fire-small-target') volleyAt.add(i + 1)
+      applyAction(probe, action)
+    })
+    const jumped = startScenario('s3.1-the-duel', { seed: 42 })
+    const inJumps: BattleFx[] = []
+    let at = 0
+    for (const stop of [...volleyAt].sort((a, b) => a - b)) {
+      inJumps.push(...fxAcross(jumped, journal, at, stop))
+      at = stop
+    }
+    inJumps.push(...fxAcross(jumped, journal, at, journal.length))
+
+    const shape = (fx: BattleFx[]) =>
+      fx
+        .filter((f) => f.kind === 'shot')
+        .map((f) => `${f.weapon}:${f.from.x.toFixed(1)},${f.from.y.toFixed(1)}`)
+        .sort()
+    const shots = shape(oneByOne)
+    expect(shots.length).toBeGreaterThan(0)
+    expect(shape(inJumps)).toEqual(shots)
+  })
+
+  it('a long scrub only fires the shots near where it lands', () => {
+    const journal: GameAction[] = []
+    const fought = startScenario('s3.1-the-duel', { seed: 42 })
+    const memo = createAiMemo()
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(fought, ['Blue Force', 'Red Force'], memo, closing)
+        if (batch.length === 0) return
+        for (const action of batch) {
+          applyAction(fought, action)
+          journal.push(action)
+        }
+        closing = false
+      }
+    }
+    drive(false)
+    for (let steps = 0; steps < 200; steps++) {
+      if (new Set(activeShips(fought).map((s) => s.side)).size <= 1 || fought.round > 6) break
+      drive(true)
+      applyAction(fought, { type: 'advance-segment' })
+      journal.push({ type: 'advance-segment' })
+      drive(false)
+    }
+
+    // One jump across the whole battle: only the tail may speak, not every
+    // volley of six rounds at once.
+    const scrubbed = startScenario('s3.1-the-duel', { seed: 42 })
+    const fx = fxAcross(scrubbed, journal, 0, journal.length)
+    const everything = startScenario('s3.1-the-duel', { seed: 42 })
+    const all: BattleFx[] = []
+    for (let i = 0; i < journal.length; i++) all.push(...fxAcross(everything, journal, i, i + 1))
+    expect(fx.length).toBeLessThan(all.length)
   })
 
   it('a refused volley leaves no trace', () => {

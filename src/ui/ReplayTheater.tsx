@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { actionLabel, buildTimeline, replayPrefix } from '../data/replay'
 import { parseSavedGame, type SavedGame } from '../data/savedGame'
-import { applyAction } from '../engine/actions'
 import { PHASE_LABELS, SEGMENT_LABELS, victoryPoints, type GameState } from '../engine/game'
-import { fxAfter, fxBefore, type BattleFx } from './fx'
+import { fxAcross, type BattleFx } from './fx'
 import { MapView } from './MapView'
 import {
   canRecordVideo,
@@ -65,14 +64,16 @@ export function ReplayTheater({ initial, onClose }: Props) {
     const c = cache.current
     if (c && c.saved === saved) {
       if (c.index === index) return c.game
-      if (index === c.index + 1) {
-        const action = saved.actions[c.index]
-        const pre = fxBefore(c.game, action)
-        const outcome = applyAction(c.game, action)
+      if (index > c.index) {
+        // Forward is a replay of the actions in between, and the fire drawn
+        // along the way is derived with them — auto-play's single step and
+        // the recorder's stop-to-stop stride take the same road, so exported
+        // videos show the same shooting the live table did.
         const born = Date.now()
+        const fresh = fxAcross(c.game, saved.actions, c.index, index)
         fxRef.current = [
           ...fxRef.current.filter((f) => born - f.born < 4500),
-          ...[...pre, ...fxAfter(c.game, action, outcome)].map((f) => ({ ...f, born })),
+          ...fresh.map((f) => ({ ...f, born })),
         ]
         cache.current = { saved, index, game: c.game }
         return c.game

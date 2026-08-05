@@ -1,4 +1,4 @@
-import type { ActionOutcome, GameAction } from '../engine/actions'
+import { applyAction, type ActionOutcome, type GameAction } from '../engine/actions'
 import type { GameState } from '../engine/game'
 import type { Point } from '../engine/types'
 
@@ -171,5 +171,37 @@ export function fxAfter(game: GameState, action: GameAction, outcome: ActionOutc
     fx.push({ id: nextId++, kind: 'impact', impact, at: target.placement.position, delay: TRAVEL })
   }
 
+  return fx
+}
+
+/**
+ * Advance a replay's cached game forward, deriving the fire drawn on the way.
+ *
+ * Any forward jump — auto-play's single step, the recorder's stop-to-stop
+ * stride, a short scrub — is a replay of the actions in between, so their
+ * effects are derived exactly as the live table derived them. The theater
+ * used to do this only for single steps; every bigger jump rebuilt from
+ * scratch and dropped the effects, which is why exported videos had no
+ * weapon fire in them: the volley's own action was always the far side of a
+ * stop-to-stop jump.
+ *
+ * Only the last `fxTail` actions of the jump speak. Scrubbing three hundred
+ * actions ahead should not land every volley in between at once — but every
+ * shot near where the playhead comes to rest still fires.
+ */
+export function fxAcross(
+  game: GameState,
+  actions: GameAction[],
+  from: number,
+  to: number,
+  fxTail = 6,
+): BattleFx[] {
+  const fx: BattleFx[] = []
+  for (let i = from; i < to; i++) {
+    const action = actions[i]
+    const pre = fxBefore(game, action)
+    const outcome = applyAction(game, action)
+    if (to - i <= fxTail) fx.push(...pre, ...fxAfter(game, action, outcome))
+  }
   return fx
 }
