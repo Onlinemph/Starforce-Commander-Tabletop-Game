@@ -4063,3 +4063,71 @@ button.chip:hover:not(:disabled) {
   flex-wrap: wrap;
   gap: 0.3rem;
 }
+
+/* ── The guided battle (tutorial) ───────────────────────────────────────── */
+
+/*
+  Sits at the top of the control column, above the panel for whatever segment
+  the player is in — so the instruction and the controls it names are on screen
+  together, which is the whole point of it.
+*/
+.tutorial {
+  background: var(--panel);
+  border: none;
+  border-left: 6px solid var(--lc-sky);
+  border-radius: 0 6px 6px 0;
+  padding: 0.7rem 0.9rem 0.85rem;
+}
+.tutorial header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+.tutorial-count {
+  font-family: var(--font-lcars);
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--lc-sky);
+}
+.tutorial h3 {
+  color: var(--lc-sky);
+  margin-bottom: 0.3rem;
+}
+.tutorial p {
+  margin: 0 0 0.45rem;
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+.tutorial-where {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+}
+.tutorial-where strong {
+  color: var(--lc-sand);
+  font-weight: 600;
+}
+
+/* One tick per step: filled behind you, lit where you are. */
+.tutorial-track {
+  display: flex;
+  gap: 3px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tutorial-track li {
+  flex: 1 1 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.tutorial-track li.is-done {
+  background: var(--lc-sky);
+  opacity: 0.55;
+}
+.tutorial-track li.is-now {
+  background: var(--lc-sand);
+}

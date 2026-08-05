@@ -31,6 +31,8 @@ import { ScenarioDesigner } from './ScenarioDesigner'
 import { ShipBuilder } from './ShipBuilder'
 import { useCustomScenarios } from './customScenarios'
 import { FleetPicker } from './FleetPicker'
+import { TutorialPanel } from './TutorialPanel'
+import { markTutorialSeen, tutorialSeen } from './tutorial'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
@@ -83,6 +85,9 @@ export function App() {
   const [linking, setLinking] = useState(false)
   const [lobby, setLobby] = useState(false)
   const [replaying, setReplaying] = useState(false)
+  // The guided battle. Offered unprompted the first time, because someone who
+  // has never seen a command card will not go looking for a tutorial button.
+  const [teaching, setTeaching] = useState(() => !tutorialSeen())
   const net = useNet()
   const online = useOnline()
   // Subscribing keeps the scenario dropdown live as designs are saved.
@@ -210,6 +215,17 @@ export function App() {
           onClick={() => setPicking(true)}
         >
           Choose forces
+        </button>
+        <button
+          type="button"
+          className={teaching ? 'primary' : undefined}
+          onClick={() => {
+            markTutorialSeen()
+            setTeaching((on) => !on)
+          }}
+          title="Walk through a battle a step at a time"
+        >
+          {teaching ? 'Hide tutorial' : 'Tutorial'}
         </button>
         <button
           type="button"
@@ -422,6 +438,9 @@ export function App() {
           </section>
 
           <section className="control-column">
+            {teaching && (
+              <TutorialPanel game={game} viewSide={viewSide} onClose={() => setTeaching(false)} />
+            )}
             {selected && enemySelected && viewSide && (
               <IntelPanel game={game} ship={selected} viewSide={viewSide} />
             )}
