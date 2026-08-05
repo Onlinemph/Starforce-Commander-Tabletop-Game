@@ -36,7 +36,9 @@ import {
   type AiPersonality,
 } from '../src/engine/ai'
 import { activeShips, victoryPoints, type GameState } from '../src/engine/game'
-import { structureRemaining } from '../src/engine/shipState'
+
+export { health } from '../src/engine/battleScore'
+import { health } from '../src/engine/battleScore'
 
 /**
  * The standing baselines. A change that moves these has to justify itself, and
@@ -53,9 +55,16 @@ export const BASELINES = [
    * board it was measured on.
    *
    *                        36" / 64 games        72" / 192 games
-   *     duel adm-vs-capt   41W-23L   (64%)       104W-85L   (54%)
+   *     duel adm-vs-capt   41W-23L   (64%)       105W-87L   (55%)
    *     duel adm-vs-ens    54W-10L   (84%)       117W-75L   (61%)
-   *     squadron adm-ens   53W-11L   (83%)       112W-78L   (58%)
+   *     squadron adm-ens   53W-11L   (83%)       108W-82L   (56%)
+   *
+   * The right-hand column is also read with the corrected health(): per hull
+   * against its own structure, and half credit for a ship that left. It moves
+   * these seasons by a game or two, because ships rarely reach the edge of a
+   * 72-inch board — and it moves a UNION III against an EXETER II on the
+   * printed map from 11W-26L to 28W-12L, which is the whole reason it was
+   * rewritten.
    *
    * A useful side-effect: the board-edge margin that had to be widened to keep
    * heavy hulls on the printed map is worth almost nothing here — the same
@@ -68,7 +77,7 @@ export const BASELINES = [
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'captain',
-    expect: '104W-85L of 192',
+    expect: '105W-87L of 192',
   },
   {
     label: 'duel adm-vs-ens',
@@ -86,7 +95,7 @@ export const BASELINES = [
     // wired into informational scans (H3.6), → 52W-11L when E8.5.4's
     // restriction was tied to the damage rather than a phase count, → 53W-11L
     // with the board-edge margin. All of that history is small-map history.
-    expect: '112W-78L of 192',
+    expect: '108W-82L of 192',
   },
 ] as const
 
@@ -166,18 +175,6 @@ export function playOne(options: GameOptions): GameState {
     both(false)
   }
   return game
-}
-
-/**
- * How well a side came out of it: structure still floating, nothing for a hull
- * that left, and a penalty for one that died. Coarser than victory points and
- * much harder to game — a fleet that wins on points while losing every hull
- * has not won anything.
- */
-export function health(game: GameState, side: string): number {
-  return game.ships
-    .filter((s) => s.side === side)
-    .reduce((sum, s) => sum + (s.destroyed ? -1 : s.disengaged ? 0 : structureRemaining(s)), 0)
 }
 
 export interface SeasonResult {
