@@ -14,12 +14,20 @@ import {
   tacticalScanOf,
   isCombatPhase,
   reconProgress,
+  commandStateFor,
+  shipUnderCloakRestrictions,
   terrainObstacles,
   tractorBeamsFree,
   victoryPoints,
   type GameState,
 } from './game'
 import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from './coordinatedFire'
+import {
+  assignedPoints,
+  COMMAND_RANGE,
+  commandPointsAvailable,
+  commandSystemBoxes,
+} from './command'
 import {
   cloakFullyPowered,
   cloakOperational,
@@ -59,6 +67,7 @@ import {
   maxReverseSpeed,
   mountIsReady,
   batteryPower,
+  genSysSetting,
   sensorFunctionCap,
   shieldGeneratorRating,
   structureRemaining,
@@ -525,6 +534,30 @@ function planAllocation(
       if (scoutLine) fill(scoutLine.id, scoutLine.steps.length)
     }
     for (const line of byKind('sensor')) fill(line.id, Math.min(2, line.steps.length))
+
+    /*
+     * The flag bridge (H5.1.3), bought before the small change rather than
+     * after it. CMND boxes produce nothing at all unless the ship's GEN SYS
+     * line is at MAX, so a squadron flagship has to spend a power point on it
+     * deliberately or carry the boxes as decoration — and left at the end of
+     * the queue it never got one, because the guns and the eyes had already
+     * taken everything. Measured that way the whole system stayed dark: the
+     * squadron season did not move by a single game out of 192.
+     *
+     * Only where there is somebody in range to lend to, and only above ensign.
+     */
+    if (difficulty !== 'ensign' && commandSystemBoxes(ship) > 0 && genSysSetting(ship) !== 'max') {
+      const consorts = fleet.filter(
+        (s) =>
+          s.id !== ship.id &&
+          s.side === ship.side &&
+          !s.destroyed &&
+          !s.disengaged &&
+          actualRange(ship.placement.position, s.placement.position) <= COMMAND_RANGE,
+      )
+      if (consorts.length > 0) for (const line of byKind('gen-sys')) fill(line.id, line.steps.length)
+    }
+
     for (const line of byKind('accel')) fill(line.id, 1)
     // Turning hard is doctrine now, and SIF is what makes it survivable — a
     // practiced captain powers it before the stress arrives, not after.
@@ -572,6 +605,76 @@ function planAllocation(
     if (doctrine) {
       const empty = ship.batteryCharged.filter((c, i) => !c && !ship.batteryDamaged[i]).length
       if (empty > 0) for (const line of byKind('battery-recharge')) fill(line.id, empty)
+    }
+  }
+
+  /*
+   * Command systems (H5), plotted here because the assignment is made during
+   * Resource Allocation (H5.2.1) and the command ship is re-designated every
+   * round (H5.1.6).
+   *
+   * This is the one system the captain used to pay for and never switch on.
+   * A command ship lends tactical scan to its squadron, and H5.2.2 lets a
+   * lent point push a ship *past* the cap its own sensor rating imposes —
+   * which is the only way in the game to buy initiative a hull cannot buy for
+   * itself. Firing order decides who shoots first, and under the
+   * one-opportunity rule that often decides who shoots at all.
+   */
+  if (difficulty !== 'ensign' && actions.length === 0) {
+    for (const side of new Set(fleet.map((s) => s.side))) {
+      const ours = fleet.filter((s) => s.side === side && !s.destroyed && !s.disengaged)
+      const state = commandStateFor(game, side)
+
+      // The best flag available: most points on offer, flagship staff
+      // included, and never a cloaked one — H6.4.10 puts its command systems
+      // out with the cloak.
+      const candidates = ours.filter(
+        (s) => !shipUnderCloakRestrictions(game, s) && (commandSystemBoxes(s) > 0 || s.flagship),
+      )
+      if (candidates.length === 0) continue
+      const flag = candidates.reduce((best, s) =>
+        commandSystemBoxes(s) + (s.flagship ? 2 : 0) > commandSystemBoxes(best) + (best.flagship ? 2 : 0)
+          ? s
+          : best,
+      )
+      if (state.commandShipId !== flag.id) {
+        actions.push({ type: 'set-command-ship', side, shipId: flag.id })
+        continue // the designation clears the assignments; lend next pass
+      }
+
+      const budget = commandPointsAvailable(flag)
+      if (budget <= 0) continue
+
+      /*
+       * Who gets them. A point is worth most to a ship that is about to
+       * shoot and cannot bid higher on its own — so the queue is by how
+       * badly the hull is capped: sensor rating first, then the guns it
+       * would fire. The flag keeps at most one for itself (H5.2.3).
+       */
+      const receivers = ours
+        .filter(
+          (s) =>
+            !shipUnderCloakRestrictions(game, s) &&
+            actualRange(flag.placement.position, s.placement.position) <= COMMAND_RANGE,
+        )
+        .sort((a, b) => {
+          const cap = (x: ShipState) => sensorFunctionCap(x)
+          const guns = (x: ShipState) => x.form.weapons.reduce((n, w) => n + w.mounts.length, 0)
+          return cap(a) - cap(b) || guns(b) - guns(a)
+        })
+
+      let left = budget
+      for (const s of receivers) {
+        if (left <= 0) break
+        const most = s.id === flag.id ? 1 : left
+        const points = Math.min(most, left)
+        if (assignedPoints(state, s.id) === points) {
+          left -= points
+          continue
+        }
+        actions.push({ type: 'assign-command', side, targetId: s.id, points })
+        left -= points
+      }
     }
   }
 
