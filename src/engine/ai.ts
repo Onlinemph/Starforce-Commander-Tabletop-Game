@@ -1008,6 +1008,8 @@ interface Candidate {
   maneuver: Maneuver
   direction: TurnDirection | null
   accel: number
+  /** C3.9.1 — turn at less than the table allows. Undefined means full rate. */
+  turnRate?: number
 }
 
 /**
@@ -1067,6 +1069,12 @@ function planOrders(
     }
     if (card.accel !== plan.accel) {
       actions.push({ type: 'plot-accel', shipId: ship.id, delta: plan.accel - card.accel })
+    }
+    // C3.9.1: a turn may be taken at any rate up to the one the table allows,
+    // and the captain now shops among them rather than always swinging the
+    // full template. `null` puts the card back on the full rate.
+    if ((card.turnRate ?? null) !== (plan.turnRate ?? null)) {
+      actions.push({ type: 'plot-turn-rate', shipId: ship.id, rate: plan.turnRate ?? null })
     }
 
     /**
@@ -1592,14 +1600,44 @@ function bestPlot(
   let second: Candidate = best
   let secondScore = -Infinity
 
+  /*
+   * Turn rates (C3.9.1). A turn may be taken at *any* rate up to the one the
+   * table allows, and the captain used to take the full template every time —
+   * so its only choices were "swing as hard as the ship can" or "fly
+   * straight", with nothing in between. The printed counters offer 20 through
+   * 60 degrees; the ones below this ship's allowance are real plots and the
+   * scorer can now shop among them, which is what lets a battery be walked
+   * onto a target instead of swept past it.
+   *
+   * Admiral only. It roughly triples the candidate space, and rank is meant
+   * to be search depth.
+   */
+  const RATES = [20, 25, 30, 35, 40, 45, 60]
+  const rateChoices = (maneuver: Maneuver, speed: number): Array<number | undefined> => {
+    if (difficulty !== 'admiral' || maneuver === 'straight' || maneuver === 'slide') return [undefined]
+    const allowed = turnTemplateAt(ship, speed)
+    if (allowed <= 0) return [undefined]
+    /*
+     * Every printed template below the allowance, and the whole set is worth
+     * the search. Trimming it to two — the gentlest and the next one down —
+     * was tried to buy back the runtime, and it was worse than having no
+     * rates at all: the squadron season fell to 102W-88L against 120W-72L
+     * without the feature and 122W-68L with the full set. A partial menu is
+     * not a cheaper version of the choice, it is a different and worse one.
+     */
+    return [undefined, ...RATES.filter((r) => r < allowed)]
+  }
+
   for (const [maneuver, direction, stressCost] of maneuvers) {
     // Stress the ship cannot cancel is a real cost; near the rating, avoid it.
     if (stressCost > 0 && ship.stressMarkers + stressCost >= ship.form.stressRating) continue
     for (const accel of accels) {
+     for (const turnRate of rateChoices(maneuver, ship.speed + accel)) {
       const candidate: CommandCard = {
         maneuver,
         direction,
         accel,
+        turnRate,
         speed: ship.speed + accel,
         sensors: card.sensors,
         shieldsDown: [],
@@ -1904,11 +1942,12 @@ function bestPlot(
         second = best
         secondScore = bestScore
         bestScore = score
-        best = { maneuver, direction, accel }
+        best = { maneuver, direction, accel, turnRate }
       } else if (score > secondScore) {
         secondScore = score
-        second = { maneuver, direction, accel }
+        second = { maneuver, direction, accel, turnRate }
       }
+     }
     }
   }
   // The fallible officer: sometimes the second-best plot looked right.

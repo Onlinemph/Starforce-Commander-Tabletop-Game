@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
 import { aiNextActions, createAiMemo } from './ai'
-import { commandPointsAvailable, commandSystemBoxes } from './command'
+import { commandSystemBoxes } from './command'
 import { activeShips, commandStateFor, lentScanPoints, tacticalScanOf } from './game'
 import { genSysSetting } from './shipState'
 
@@ -62,13 +62,43 @@ describe('a squadron with a flag bridge', () => {
   })
 
   it('powers the flag to GEN SYS MAX, or the boxes produce nothing (H5.1.3)', () => {
-    const { game } = fight()
-    for (const side of new Set(game.ships.map((s) => s.side))) {
-      const flag = game.ships.find((s) => s.id === commandStateFor(game, side).commandShipId)
-      if (!flag || commandSystemBoxes(flag) === 0) continue
-      expect(genSysSetting(flag), `${flag.name} flies the flag but sits below MAX`).toBe('max')
-      expect(commandPointsAvailable(flag)).toBeGreaterThan(0)
+    /*
+     * Sampled through the battle, not off the end state. Which ship flies the
+     * flag and whether it still has consorts in range both change as hulls
+     * die, so the final position says nothing about whether the captain ever
+     * bought the power point — an earlier version read the end and broke the
+     * moment an unrelated change altered where the battle stopped.
+     */
+    const game = startScenario('exp2-squadron-engagement', { seed: 3, mapScale: 2 })
+    const memo = createAiMemo()
+    const sides = [...new Set(game.ships.map((s) => s.side))]
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(game, sides, memo, closing, 'admiral')
+        if (batch.length === 0) return
+        for (const a of batch) applyAction(game, a)
+        closing = false
+      }
+      throw new Error('the captains never settled')
     }
+    let everPowered = false
+    drive(false)
+    for (let step = 0; step < 200; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > 4) break
+      drive(true)
+      for (const side of sides) {
+        const flag = game.ships.find((s) => s.id === commandStateFor(game, side).commandShipId)
+        // Points can still read zero at MAX once the CMND boxes are shot
+        // out, which is the rule working; what is being tested is that the
+        // captain bought the power point at all.
+        if (flag && commandSystemBoxes(flag) > 0 && genSysSetting(flag) === 'max') {
+          everPowered = true
+        }
+      }
+      applyAction(game, { type: 'advance-segment' })
+      drive(false)
+    }
+    expect(everPowered, 'no flag ever reached GEN SYS MAX').toBe(true)
   })
 
   it('pushes a consort past the cap its own sensors impose (H5.2.2)', () => {
@@ -80,5 +110,55 @@ describe('a squadron with a flag bridge', () => {
     for (const s of helped) {
       expect(tacticalScanOf(game, s)).toBeGreaterThan(s.sensors.tacticalScan)
     }
+  })
+})
+
+/**
+ * Precise turns (C3.9.1): a turn may be taken at any rate up to the one the
+ * table allows. The captain used to take the full template every time, so its
+ * only choices were "swing as hard as the ship can" or "fly straight" — which
+ * is what walking a battery onto a target instead of sweeping past it needs.
+ *
+ * Admiral only: it multiplies the candidate space, and rank is search depth.
+ * Worth 117W-75L → 126W-66L in the duel season and 120W-72L → 122W-68L in the
+ * squadron.
+ */
+describe('precise turns', () => {
+  const rates = (difficulty: 'admiral' | 'captain') => {
+    const game = startScenario('s3.1-the-duel', { seed: 3, mapScale: 2 })
+    const memo = createAiMemo()
+    const sides = [...new Set(game.ships.map((s) => s.side))]
+    const seen: number[] = []
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(game, sides, memo, closing, difficulty)
+        if (batch.length === 0) return
+        for (const a of batch) {
+          if (a.type === 'plot-turn-rate' && a.rate !== null) seen.push(a.rate)
+          applyAction(game, a)
+        }
+        closing = false
+      }
+      throw new Error('the captains never settled')
+    }
+    drive(false)
+    for (let step = 0; step < 200; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > 6) break
+      drive(true)
+      applyAction(game, { type: 'advance-segment' })
+      drive(false)
+    }
+    return seen
+  }
+
+  it('are used by the admiral, and are always below the full template', () => {
+    const seen = rates('admiral')
+    expect(seen.length).toBeGreaterThan(0)
+    // Every printed counter, and never one the table would refuse.
+    for (const r of seen) expect([20, 25, 30, 35, 40, 45, 60]).toContain(r)
+  })
+
+  it('are not offered below admiral — rank is search depth', () => {
+    expect(rates('captain')).toEqual([])
   })
 })

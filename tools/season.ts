@@ -84,7 +84,7 @@ export const BASELINES = [
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'ensign',
-    expect: '117W-75L of 192',
+    expect: '126W-66L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -98,14 +98,15 @@ export const BASELINES = [
     // Then 108W-82L → 110W-81L on the 72-inch board when the captain started
     // checking where a plot commits the ship rather than only where it ends:
     // a squadron has more hulls to fly into a corner than a duel does.
-    // → 120W-72L when the command ship was finally switched on (H5): the
+    // → 122W-68L with precise turn rates (C3.9.1), and → 120W-72L before
+    // them when the command ship was finally switched on (H5): the
     // admiral designates a flag, powers its GEN SYS to MAX so the CMND boxes
     // produce at all (H5.1.3), and lends tactical scan to the hulls whose own
     // sensor rating caps them lower (H5.2.2). The duels do not move, and
     // should not — a lone ship has nobody to lend to. Buying that GEN SYS
     // point *early* is the whole trick: queued after the guns and the eyes it
     // never got power, and the season did not move by a single game.
-    expect: '120W-72L of 192',
+    expect: '122W-68L of 192',
   },
 ] as const
 
