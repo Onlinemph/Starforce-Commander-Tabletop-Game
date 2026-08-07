@@ -1667,6 +1667,7 @@ function advanceCloakPhases(game: GameState): void {
     // A searcher may climb one level per segment, so the marker clears with the
     // phase (H6.15.1).
     cloak.raisedThisSegment = []
+    cloak.evadedThisSegment = false
   }
 }
 

@@ -746,6 +746,12 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const cloak = ship ? cloakOf(game, ship) : null
       if (!ship || !cloak) return said('No cloaking system.')
+      // H6.13.2: the attempt happens once, at Step E of the Operations
+      // Segment. Asking twice is not a second chance.
+      if (cloak.evadedThisSegment) {
+        return said(`${ship.name} has already tried to shake its hunters this segment (H6.13.2).`)
+      }
+      cloak.evadedThisSegment = true
       const results = reduceDetection(cloak, game.rng)
       for (const r of results) {
         pushLog(

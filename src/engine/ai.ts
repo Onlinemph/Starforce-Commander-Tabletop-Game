@@ -1970,6 +1970,23 @@ function planOperations(
       }
     }
 
+    /*
+     * Shake the hunters (H6.13). One blue die per enemy holding a Contact,
+     * Track or Target Lock, and an 'M' drops that enemy a level — free upside
+     * with no cost but the asking, so a hidden ship that has been found always
+     * asks. H6.13.2 allows it once per Operations Segment, which the engine
+     * now enforces; before that it was an unlimited reroll, and a captain
+     * taught to try until it worked would have hung the game.
+     *
+     * It matters most at Track, which is the level where the ship can be
+     * fired on at all (H6.14.3) — dropping back to Contact puts it out of
+     * reach of the guns again.
+     */
+    if (cloak && cloaked && !cloak.evadedThisSegment) {
+      const found = Object.values(cloak.detection).some((level) => level > 0)
+      if (found) actions.push({ type: 'reduce-detection', shipId: ship.id })
+    }
+
     // Hunt the ghosts: one search attempt per ship per phase (H6.9.2), and
     // the whole fleet hunts the same one — detection is per searcher and the
     // ship's exposure is the best of them, so concentration finds it sooner.

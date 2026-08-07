@@ -70,6 +70,15 @@ export interface CloakState {
   /** Searchers that have already climbed a level this segment (H6.15.1). */
   raisedThisSegment: string[]
   /**
+   * Whether this ship has already tried to shake its hunters this segment.
+   *
+   * H6.13.2 puts the attempt at Step E of the Operations Segment — once, not
+   * whenever asked. Nothing enforced that, which made `reduce-detection` a
+   * free reroll for anyone willing to ask twice, and would have hung any
+   * captain taught to try until it worked.
+   */
+  evadedThisSegment: boolean
+  /**
    * Power was cut at Resource Allocation, so the cloak comes off in Phase 1
    * whatever the captain wants (H6.3.2).
    */
@@ -93,6 +102,7 @@ export function newCloakState(placement: Placement): CloakState {
     phasesCloaked: 0,
     phasesUncloaked: Infinity,
     raisedThisSegment: [],
+    evadedThisSegment: false,
     powerCut: false,
     restrictedRound: null,
   }

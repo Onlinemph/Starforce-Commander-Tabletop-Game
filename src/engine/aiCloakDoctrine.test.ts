@@ -77,17 +77,77 @@ describe('a cloaked captain', () => {
 
 describe('a captain hunting a ghost', () => {
   it('bids its targeting above the ghost it is hunting', () => {
-    const { game } = fight('exp5-aurelian-raid', 1, ['Blue Force', 'Aurelian Empire'])
-    const ghosts = game.ships.filter((s) => {
-      const c = cloakOf(game, s)
-      return c && isCloaked(c)
-    })
-    if (ghosts.length === 0) return // nobody hid this battle; nothing to prove
-    const hunters = activeShips(game).filter((s) => s.side !== ghosts[0].side)
-    const bestJamming = Math.max(...ghosts.map((g) => cloakStrength(g)))
-    // At least one hunter can actually roll: targeting at or above the bid.
-    expect(Math.max(0, ...hunters.map((h) => h.sensors.targeting))).toBeGreaterThanOrEqual(
-      Math.min(bestJamming, 1),
-    )
+    /*
+     * Sampled through the battle rather than at the end. Sensors are replotted
+     * every Command Segment, so the final card says nothing about what the
+     * hunters did while there was actually something to hunt — the first
+     * version of this test read the end state and failed the moment an
+     * unrelated change altered which phase the battle stopped on.
+     */
+    const game: GameState = startScenario('exp5-aurelian-raid', { seed: 1 })
+    const memo = createAiMemo()
+    const sides = ['Blue Force', 'Aurelian Empire']
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(game, sides, memo, closing, 'admiral')
+        if (batch.length === 0) return
+        for (const a of batch) applyAction(game, a)
+        closing = false
+      }
+      throw new Error('the captains never settled')
+    }
+    let sawGhost = false
+    let outbid = false
+    drive(false)
+    for (let step = 0; step < 400; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > 10) break
+      drive(true)
+      const ghosts = game.ships.filter((s) => {
+        const c = cloakOf(game, s)
+        return c && isCloaked(c)
+      })
+      if (ghosts.length > 0) {
+        sawGhost = true
+        const bid = Math.max(...ghosts.map((g) => cloakStrength(g)))
+        const hunters = activeShips(game).filter((s) => s.side !== ghosts[0].side)
+        // H6.10.2: below the ghost's jamming a hunter may not search at all,
+        // so meeting the bid is the whole job.
+        if (hunters.some((h) => h.sensors.targeting >= bid)) outbid = true
+      }
+      applyAction(game, { type: 'advance-segment' })
+      drive(false)
+    }
+    expect(sawGhost, 'nobody cloaked this battle').toBe(true)
+    expect(outbid, 'no hunter ever met the ghost’s jamming').toBe(true)
+  })
+})
+
+/**
+ * H6.13 — shaking a search that has found you.
+ *
+ * One blue die per enemy holding a Contact, Track or Target Lock, and an 'M'
+ * drops that enemy a level. It matters most at Track, which is the level where
+ * the ship can be fired on at all (H6.14.3), so dropping back to Contact puts
+ * it out of reach of the guns again.
+ *
+ * H6.13.2 allows the attempt once, at Step E of the Operations Segment. The
+ * engine did not enforce that — it was an unlimited reroll for anyone willing
+ * to ask twice, and would have hung any captain taught to try until it worked.
+ */
+describe('a cloaked ship that has been found', () => {
+  it('may only try to shake its hunters once a segment (H6.13.2)', () => {
+    const game = startScenario('exp5-aurelian-raid', { seed: 2 })
+    const ship = game.ships.find((s) => cloakOf(game, s))!
+    const cloak = cloakOf(game, ship)!
+    cloak.engaged = true
+    cloak.detection = { 'blue-1': 2 }
+    cloak.evadedThisSegment = false
+
+    const first = applyAction(game, { type: 'reduce-detection', shipId: ship.id })
+    expect(first.message).toBeNull()
+    expect(cloak.evadedThisSegment).toBe(true)
+
+    const second = applyAction(game, { type: 'reduce-detection', shipId: ship.id })
+    expect(second.message).toContain('H6.13.2')
   })
 })
