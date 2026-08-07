@@ -24,6 +24,7 @@ import {
   performTransport,
   recoverShuttle,
   releaseTractor,
+  resetTractorPhase,
   scoutSupport,
   setMaxSystem,
   shuttleJamming,
@@ -203,6 +204,9 @@ describe('tractor beams (J3)', () => {
     place(defender, 10, 11)
   })
 
+  /** Roll the phase over, which is what gives the beams their attempt back. */
+  const nextSegment = () => resetTractorPhase(game)
+
   it('counts one beam per undamaged TRAC box (J3.1.2)', () => {
     expect(tractorBeams(attacker)).toBe(3)
     attacker.systemDamage.TRAC = 2
@@ -256,8 +260,17 @@ describe('tractor beams (J3)', () => {
     // A blue die is worth at most 3, so one beam can never reach size class 5.
     expect(defender.form.sizeClass).toBeGreaterThan(3)
     for (let i = 0; i < 50; i += 1) {
+      nextSegment()
       expect(attemptTractorLock(game, attacker, defender.id, 1).locked).toBe(false)
     }
+  })
+
+  it('gives each beam one lock-on attempt a segment (J3.3.1)', () => {
+    expect(attemptTractorLock(game, attacker, defender.id, 3).refusal).toBeNull()
+    // Whether that roll landed or missed, the beams have had their try.
+    expect(attemptTractorLock(game, attacker, defender.id, 1).refusal).toMatch(/J3\.[23]\.1/)
+    nextSegment()
+    expect(attemptTractorLock(game, attacker, defender.id, 1).refusal).toBeNull()
   })
 
   it('holds a lock across phases and ties up its beams', () => {
@@ -265,6 +278,7 @@ describe('tractor beams (J3)', () => {
     // about the bookkeeping rather than the dice.
     let locked = false
     for (let i = 0; i < 200 && !locked; i += 1) {
+      nextSegment()
       locked = attemptTractorLock(game, attacker, defender.id, 3).locked ?? false
     }
     expect(locked).toBe(true)
@@ -273,6 +287,34 @@ describe('tractor beams (J3)', () => {
     releaseTractor(game, attacker.id, defender.id)
     expect(game.ops.links).toHaveLength(0)
     expect(tractorBeamsFree(game, attacker)).toBe(3)
+  })
+
+  it('frees the beams a held lock no longer needs (J3.3.3)', () => {
+    let locked = false
+    for (let i = 0; i < 200 && !locked; i += 1) {
+      nextSegment()
+      locked = attemptTractorLock(game, attacker, defender.id, 3).locked ?? false
+    }
+    expect(locked).toBe(true)
+    expect(tractorBeamsFree(game, attacker)).toBe(0)
+    nextSegment()
+    // Only one beam is needed to maintain the link; the other two are for
+    // catching missiles, recovering shuttles, or grabbing something else.
+    expect(game.ops.links[0].beams).toBe(1)
+    expect(tractorBeamsFree(game, attacker)).toBe(2)
+  })
+
+  it('will not have a broken lock reestablished the same phase (J3.6)', () => {
+    let locked = false
+    for (let i = 0; i < 200 && !locked; i += 1) {
+      nextSegment()
+      locked = attemptTractorLock(game, attacker, defender.id, 3).locked ?? false
+    }
+    expect(locked).toBe(true)
+    releaseTractor(game, attacker.id, defender.id)
+    // Even with beams to spare, letting go is for the rest of the phase.
+    game.ops.lockAttemptsThisPhase = {}
+    expect(attemptTractorLock(game, attacker, defender.id, 3).refusal).toMatch(/J3\.6/)
   })
 })
 

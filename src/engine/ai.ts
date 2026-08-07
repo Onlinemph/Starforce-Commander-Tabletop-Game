@@ -18,9 +18,21 @@ import {
   shipUnderCloakRestrictions,
   terrainObstacles,
   tractorBeamsFree,
+  tractorBeamsReady,
+  maxSystemOf,
   victoryPoints,
   type GameState,
 } from './game'
+import {
+  displaceRefusal,
+  displacedPosition,
+  linkBetween,
+  relativeSize,
+  tractorBeams,
+  tractorPower,
+  tractorReach,
+  TRACTOR_RANGE,
+} from './tractor'
 import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from './coordinatedFire'
 import {
   assignedPoints,
@@ -69,14 +81,20 @@ import {
   batteryPower,
   genSysSetting,
   sensorFunctionCap,
+  crewIsArmed,
   shieldGeneratorRating,
   structureRemaining,
   turnTemplateAt,
   type ShipState,
 } from './shipState'
-import { boardingSides } from './boarding'
+import {
+  boardersAboard,
+  boardingSides,
+  isCaptured,
+  MAX_ATTACKERS_PER_SQUAD,
+} from './boarding'
 import { endurance, isHoming, speedInPhase } from './homing'
-import { transportCapacity, transporterRange } from './operations'
+import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
 
@@ -283,6 +301,10 @@ export function aiNextActions(
       return planOperations(game, fleet, memo, difficulty)
     case 'combat':
       return planFiring(game, fleet, memo, closing, difficulty)
+    case 'delayed-action':
+      // The tractor shove waits until everyone has moved (J3.5.2), which in
+      // this engine is the far side of the Navigation Segment.
+      return difficulty === 'admiral' ? planDisplacement(game, fleet, memo) : []
     case 'boarding-combat':
       return planBoarding(game, sides, memo)
     case 'disengagement':
@@ -557,6 +579,29 @@ function planAllocation(
       )
       if (consorts.length > 0) for (const line of byKind('gen-sys')) fill(line.id, line.steps.length)
     }
+
+    /*
+     * The same point would buy a tractor beam that can actually be used — MAX
+     * doubles its reach from one inch to two and doubles the lock-on roll
+     * (J3.1.3, J3.3.1) — and it is deliberately *not* bought here.
+     *
+     * Measured: buying it whenever an enemy was within eight inches declared
+     * TRAC as the phase's maximum system 235 times across 48 games and landed
+     * exactly one lock, at a cost of eight games a season on the duel. Eight
+     * inches is a round's travel, but a round's travel is also how a pass
+     * works — the ships that are eight inches apart at allocation are usually
+     * six inches apart at their closest. The power point belongs to the guns.
+     *
+     * Tightening the horizon does not rescue it. At three inches — genuine
+     * knife range, where a grab during the round is close to certain — the
+     * three seasons read 96W-96L, 120W-72L and 116W-76L against baselines of
+     * 105, 126 and 122. The power point is worth more in the guns than the
+     * beam can ever return, at any horizon.
+     *
+     * A flagship that bought GEN SYS MAX for its command bridge (H5.1.3) still
+     * gets the beam at MAX, because that point is already spent: `planTractors`
+     * names TRAC as the maximum system when there is something in reach.
+     */
 
     for (const line of byKind('accel')) fill(line.id, 1)
     // Turning hard is doctrine now, and SIF is what makes it survivable — a
@@ -2051,24 +2096,29 @@ function planOperations(
       })
     }
 
+    // Breaking out of a beam is seamanship, not a trick: every rank resists.
+    // Only the admiral goes looking for something to grab.
+    actions.push(...planTractors(game, ship, difficulty))
+
     if (difficulty !== 'admiral') continue
 
-    // The admiral's tricks. A crippled enemy alongside is a prize: drag it
-    // with the beams (J3), or drop shields and put the marines aboard (J5).
+    // The admiral's other trick with a cripple alongside: drop shields and put
+    // the marines aboard (J5).
     const cripple = enemiesOf(game, ship).find(
       (e) => !positionHidden(game, e) && damageLevel(e) === 'crippled',
     )
     if (cripple) {
       const captureRange = actualRange(ship.placement.position, cripple.placement.position)
-      const beams = tractorBeamsFree(game, ship)
-      if (beams > 0 && captureRange <= 1) {
-        actions.push({ type: 'tractor-lock', shipId: ship.id, targetId: cripple.id, beams })
-      }
       if (
         !cloaked &&
         transportCapacity(ship) > 0 &&
         ship.marineSquads >= 2 &&
-        captureRange <= transporterRange(ship, null)
+        captureRange <= transporterRange(ship, null) &&
+        // J5.1.3 wants the shields down at *both* ends, and an enemy does not
+        // oblige. Checking the far end first matters: without it this ship
+        // stripped its own four shields to attempt a beam the rule was always
+        // going to refuse, and stood there naked for a phase to do it.
+        shieldsAllDown(cripple)
       ) {
         // Beaming needs every own shield down (J5.1.3) — a risk worth a hull.
         for (const side of SHIELD_SIDES) {
@@ -2093,6 +2143,234 @@ function planOperations(
           actions.push({ type: 'set-shield-down', shipId: ship.id, side, down: false })
         }
       }
+    }
+  }
+  return actions
+}
+
+// ---------------------------------------------------------------------------
+// J3 — the tractor beam as a weapon
+// ---------------------------------------------------------------------------
+
+/**
+ * Tractor doctrine (J3), which is not "grab whatever is in reach".
+ *
+ * A lock does no damage. What it does is take speed away, and J3.3.4 takes it
+ * away from *both* ships — so the beam is only a weapon when the fight it
+ * freezes is one this ship is winning. The chart's asymmetry is the whole
+ * tactic: a hull tied to something two classes larger crawls (speed 6 drops to
+ * 2) while the larger one barely notices (6 drops to 4). Grab down the size
+ * chart, never up it.
+ *
+ * The second use is the door: a ship held in a beam may not go to FTL
+ * (J3.4.4). A cripple that has decided to go home does not get to, and a
+ * cripple that stays is a cripple the guns finish — which is worth more than
+ * the speed the beam costs to hold it.
+ *
+ * The reverse duty is here too. A ship caught in someone else's beam makes it
+ * prove itself every phase (J3.6.1) — a free roll that costs the defender
+ * nothing but the asking, so it is always asked.
+ *
+ * What this is worth, honestly: nothing measurable. The duel read 210W-174L
+ * over 384 games against a 210W-174L baseline rate — the same number to the
+ * game. The reason is geometry rather than doctrine. At NRM a beam reaches one
+ * inch, which is less than a ship travels in a phase, so of 31 locks landed
+ * across 48 battles, 25 lapsed by range (J3.6.2) in the same Navigation
+ * Segment that made them. They are worth one phase of halved speed each and
+ * then they are gone. The one thing that would fix it — GEN SYS at MAX, for
+ * two inches and a doubled roll — costs a power point measured at eight games
+ * a season, which is far more than the beam returns (see `planAllocation`).
+ *
+ * It stays because it is right rather than because it wins: three actions the
+ * engine understood and no player ever sent are now sent, so a human who tows
+ * one of these ships meets a captain that fights the beam instead of accepting
+ * the tow.
+ */
+function planTractors(game: GameState, ship: ShipState, difficulty: AiDifficulty): GameAction[] {
+  const actions: GameAction[] = []
+  const beams = tractorBeams(ship)
+
+  /*
+   * Break out first. The attacker has to make its lock-on roll again, and a
+   * failed roll ends the tow there and then — nothing is risked by asking, and
+   * the engine allows the one attempt a phase (J3.6.1) that stops this from
+   * being an unlimited reroll.
+   */
+  const captor = game.ops.links.find(
+    (l) =>
+      l.targetId === ship.id &&
+      l.targetKind === 'ship' &&
+      game.ships.find((s) => s.id === l.sourceId)?.side !== ship.side,
+  )
+  if (captor && !game.ops.contestedThisPhase.has(ship.id)) {
+    actions.push({ type: 'contest-tractor', shipId: ship.id })
+  }
+
+  if (beams === 0 || difficulty !== 'admiral') return actions
+
+  /*
+   * Name the beam as this phase's one maximum system (J1.1.2) when there is
+   * something close enough to be worth grabbing. It is worth naming: MAX
+   * doubles the reach from one inch to two and doubles the lock-on roll
+   * (J3.1.3, J3.3.1), and at NRM a beam that only reaches an inch almost never
+   * gets to be used at all. It costs nothing the ship was otherwise spending —
+   * the GEN SYS point is bought in allocation or it is not, and if it is not,
+   * naming the system does nothing.
+   */
+  if (
+    genSysSetting(ship) === 'max' &&
+    maxSystemOf(game, ship) !== 'TRAC' &&
+    enemiesOf(game, ship).some(
+      (e) =>
+        !positionHidden(game, e) &&
+        actualRange(ship.placement.position, e.placement.position) <= TRACTOR_RANGE.max,
+    )
+  ) {
+    actions.push({ type: 'set-max-system', shipId: ship.id, kind: 'TRAC' })
+    // Plan the grab itself on the next pass, once the beam is at the power the
+    // reach and the roll will actually be measured at.
+    return actions
+  }
+
+  const power = tractorPower(ship, maxSystemOf(game, ship))
+  const reach = tractorReach(power)
+
+  /*
+   * Let go when the tow stops paying. Two ways it can: the ship has decided to
+   * leave, and a tow is the one thing a departing hull cannot afford to be in;
+   * or the fight has turned, and the enemy this ship pinned to trade broadsides
+   * with is now the one winning the trade. A cripple is never let go — that
+   * lock is holding the door shut on its escape, not buying a firing position.
+   */
+  for (const link of game.ops.links) {
+    if (link.sourceId !== ship.id || link.targetKind !== 'ship') continue
+    const held = game.ships.find((s) => s.id === link.targetId)
+    if (!held || held.side === ship.side) continue
+    if (damageLevel(held) === 'crippled') continue
+    const leaving = wantsToLeave(game, ship, difficulty)
+    const losing = tradeAt(ship, held) < 0
+    if (leaving || losing) {
+      actions.push({ type: 'release-tractor', shipId: ship.id, targetId: link.targetId })
+    }
+  }
+
+  // Beams that have not had their attempt this segment (J3.3.1). A lock this
+  // ship cannot possibly roll is a wasted segment, so the reach test is the
+  // honest one: three per blue die, doubled at MAX.
+  const ready = tractorBeamsReady(game, ship)
+  if (ready === 0) return actions
+  const ceiling = ready * 3 * (power === 'max' ? 2 : 1)
+
+  let prize: ShipState | null = null
+  let best = -Infinity
+  // H6.4.7 bars the beam in both directions while this ship is dark.
+  if (shipUnderCloakRestrictions(game, ship)) return actions
+
+  for (const enemy of enemiesOf(game, ship)) {
+    if (positionHidden(game, enemy)) continue
+    if (linkBetween(game.ops.links, ship.id, enemy.id)) continue
+    if (game.ops.brokenThisPhase.has(`${ship.id}->${enemy.id}`)) continue
+    if (actualRange(ship.placement.position, enemy.placement.position) > reach) continue
+    if (enemy.form.sizeClass > ceiling) continue
+
+    const crippled = damageLevel(enemy) === 'crippled'
+    const relative = relativeSize(ship.form.sizeClass, enemy.form.sizeClass)
+    // Tying this hull to something two classes larger hands the enemy the
+    // better half of J3.3.4. The one thing worth that is a prize that would
+    // otherwise jump out (J3.4.4).
+    if (relative === 'larger' && !crippled) continue
+
+    const trade = tradeAt(ship, enemy)
+    // A hull that hurt is a hull leaving; the beam is what stops it.
+    const running = crippled || damageLevel(enemy) === 'heavy'
+    /*
+     * The size chart decides this, not the gunnery. Two classes down, the
+     * beam costs this ship a little and the other one most of its speed, and
+     * that is worth taking whatever the guns are doing. At similar size the
+     * cost is shared, so there has to be a reason: a hull trying to leave, or
+     * a firing position this ship is currently winning.
+     *
+     * The gunnery read alone was the first version of this and it grabbed
+     * nothing in 48 games — at the moment Operations runs, both sides' mounts
+     * are usually still arming, so the trade reads a dead 0-0 and a gate of
+     * "only when winning" rejects every candidate.
+     */
+    if (!(crippled || running || relative === 'smaller' || trade > 0)) continue
+
+    const score = (crippled ? 100 : 0) + (running ? 20 : 0) + (relative === 'smaller' ? 10 : 0) + trade
+    if (score > best) {
+      best = score
+      prize = enemy
+    }
+  }
+  if (!prize) return actions
+
+  /*
+   * Commit everything that still has an attempt. J3.3.3 hands the excess back
+   * at the end of the phase — only one beam is needed to hold a lock once it is
+   * made — so there is nothing to save them for except an incoming missile,
+   * and one beam is kept back for that when the sky has one in it and the roll
+   * can still be made without it.
+   */
+  const spare = game.homing.length > 0 && (ready - 1) * 3 * (power === 'max' ? 2 : 1) >= prize.form.sizeClass
+  actions.push({
+    type: 'tractor-lock',
+    shipId: ship.id,
+    targetId: prize.id,
+    beams: spare ? ready - 1 : ready,
+  })
+  return actions
+}
+
+/**
+ * How the gunnery trade stands where these two are standing: this ship's
+ * bearing, ready firepower on that one, less what it can answer with. Positive
+ * means freezing the range with a beam freezes a fight this ship is winning.
+ */
+function tradeAt(ship: ShipState, enemy: ShipState): number {
+  const mine = firepowerAt(ship, ship.placement, enemy.placement.position, enemy.speed <= 1)
+  const theirs = firepowerAt(enemy, enemy.placement, ship.placement.position, ship.speed <= 1)
+  return mine - theirs
+}
+
+/**
+ * The shove (J3.5), taken after everyone has moved. One inch is not much, but
+ * it is an inch chosen by the wrong side: put the towed ship where its own guns
+ * bear worst and this fleet's bear best. Needs MAX on the beam and at least a
+ * similar size class (J3.5.1), so it is rare — and it will not be used to push
+ * a ship out of the beam that is holding it.
+ */
+function planDisplacement(game: GameState, fleet: ShipState[], memo: AiMemo): GameAction[] {
+  const actions: GameAction[] = []
+  for (const ship of fleet) {
+    for (const link of game.ops.links) {
+      if (link.sourceId !== ship.id || link.targetKind !== 'ship') continue
+      const held = game.ships.find((s) => s.id === link.targetId)
+      if (!held || held.side === ship.side) continue
+      if (displaceRefusal(ship, held, game.ops.links, tractorPower(ship, maxSystemOf(game, ship)))) continue
+      const key = `displace:${game.round}:${game.phase}:${link.id}`
+      if (memo.done.has(key)) continue
+
+      let bestDirection: 'F' | 'A' | 'P' | 'S' | null = null
+      let best = 0
+      for (const direction of ['F', 'A', 'P', 'S'] as const) {
+        const to = displacedPosition(held, direction)
+        // An inch that breaks this ship's own lock is an inch given away.
+        if (actualRange(ship.placement.position, to) > tractorReach(link.power)) continue
+        const theirs = firepowerAt(held, { position: to, heading: held.placement.heading }, ship.placement.position, false)
+        const ours = fleet.reduce(
+          (n, friend) => n + firepowerAt(friend, friend.placement, to, held.speed <= 1),
+          0,
+        )
+        const score = ours - theirs
+        if (bestDirection === null || score > best) {
+          best = score
+          bestDirection = direction
+        }
+      }
+      if (!bestDirection) continue
+      memo.done.add(key)
+      actions.push({ type: 'displace-tractored', shipId: ship.id, targetId: held.id, direction: bestDirection })
     }
   }
   return actions
@@ -2717,11 +2995,51 @@ function bestVolley(
 function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameAction[] {
   const actions: GameAction[] = []
   for (const target of shipsUnderBoarding(game)) {
+    /*
+     * The defender's last card (J6.3): arm the general crew, which raises two
+     * improvised squads per size class — enough to turn almost any boarding
+     * around, since a dreadnought conjures ten squads out of its galleys.
+     *
+     * It is not free and it is not reversible. For twenty rounds after the
+     * fighting ends the ship may not repair anything, loses two points of
+     * power, and fires last however good its Tactical Scan (J6.3.4). So it is
+     * played at the point where the alternative is losing the ship: when the
+     * boarders already match the marines left to stop them.
+     */
+    if (
+      sides.includes(target.side) &&
+      !isCaptured(target) &&
+      !crewIsArmed(target) &&
+      boardersAboard(target) >= target.marineSquads
+    ) {
+      actions.push({ type: 'arm-crew', shipId: target.id })
+    }
+
     for (const side of boardingSides(target)) {
       if (!sides.includes(side)) continue
       const key = `board:${game.round}:${target.id}:${side}`
       if (memo.done.has(key)) continue
       memo.done.add(key)
+
+      /*
+       * Sabotage (J6.2.4): a squad may attack the ship instead of its marines,
+       * one point of damage per Light hit, and structure hits are simply lost.
+       *
+       * Who goes is decided by J6.2.3 rather than by taste. Tight quarters cap
+       * a side's dice at twice the enemy's squads, so every squad past that cap
+       * is standing in a corridor doing nothing — send those to the engine
+       * rooms, where their die still counts for something. And when the
+       * boarding is already lost — outnumbered two to one, with no capture
+       * coming — the whole party goes for the ship, because damage is worth
+       * something and a losing melee is not.
+       */
+      const boarders = target.boarders[side] ?? 0
+      const defenders = target.marineSquads
+      const hopeless = defenders >= boarders * MAX_ATTACKERS_PER_SQUAD
+      const saboteurs = hopeless ? boarders : Math.max(0, boarders - defenders * MAX_ATTACKERS_PER_SQUAD)
+      if (saboteurs > 0) {
+        actions.push({ type: 'set-sabotage', targetId: target.id, side, squads: saboteurs })
+      }
       actions.push({ type: 'fight-boarders', targetId: target.id, side })
     }
   }

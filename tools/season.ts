@@ -77,14 +77,21 @@ export const BASELINES = [
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'captain',
-    expect: '105W-87L of 192',
+    /*
+     * 105W-87L → 110W-82L with tractor doctrine (J3), and that five games is
+     * noise rather than a gain: the same matchup over 384 games reads
+     * 210W-174L, which is 54.7% — the rate the 105W-87L baseline already was,
+     * to one decimal. Recorded because it is what a re-run now prints, not
+     * because the captain got better at anything.
+     */
+    expect: '110W-82L of 192',
   },
   {
     label: 'duel adm-vs-ens',
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'ensign',
-    expect: '126W-66L of 192',
+    expect: '125W-67L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -106,7 +113,10 @@ export const BASELINES = [
     // should not — a lone ship has nobody to lend to. Buying that GEN SYS
     // point *early* is the whole trick: queued after the guns and the eyes it
     // never got power, and the season did not move by a single game.
-    expect: '122W-68L of 192',
+    // → 120W-69L with tractor doctrine (J3) and marine doctrine (J6), which is
+    // inside the noise both ways; neither is claimed as a gain. See the
+    // comments on `planTractors` and `planBoarding` for what they are for.
+    expect: '120W-69L of 192',
   },
 ] as const
 

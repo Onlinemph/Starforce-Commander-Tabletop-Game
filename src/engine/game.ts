@@ -402,6 +402,27 @@ export interface OperationsState {
   probesThisRound: Record<string, number>
   /** `shipId:side` → squads attacking the ship instead of its marines (J6.2.4). */
   sabotage: Record<string, number>
+  /**
+   * Beams each ship has already committed to a lock-on attempt this segment
+   * (J3.3.1). A beam gets one try, hit or miss, and releasing a target spends
+   * that beam's try too (J3.2.3, J3.3.2) — without this a captain could roll
+   * the same beam until the dice agreed.
+   */
+  lockAttemptsThisPhase: Record<string, number>
+  /**
+   * `sourceId->targetId` for links broken this phase. J3.6 will not have them
+   * reestablished until the following one.
+   */
+  brokenThisPhase: Set<string>
+  /** Ships that have already made the beam prove itself this phase (J3.6.1). */
+  contestedThisPhase: Set<string>
+  /**
+   * `shipId:side` boarding actions already fought this Boarding Combat Segment
+   * (J6.2.1). One round of combat a round: without this, a captain who pressed
+   * the attack deliberately had it resolved a second time when the segment
+   * closed, and took two rounds of casualties for one.
+   */
+  boardingFought: Set<string>
 }
 
 export function newOperationsState(): OperationsState {
@@ -417,6 +438,10 @@ export function newOperationsState(): OperationsState {
     dockedThisPhase: {},
     probesThisRound: {},
     sabotage: {},
+    lockAttemptsThisPhase: {},
+    brokenThisPhase: new Set(),
+    contestedThisPhase: new Set(),
+    boardingFought: new Set(),
   }
 }
 
@@ -1589,6 +1614,7 @@ function runSegmentExit(game: GameState): void {
       game.ops.recoveredThisPhase = {}
       game.ops.dockedThisPhase = {}
       game.ops.maxSystem = {}
+      resetTractorPhase(game)
       advanceCloakPhases(game)
       break
 
@@ -1913,6 +1939,10 @@ export function tractorIncomingHoming(
   const power = tractorPower(defender, maxSystemOf(game, defender))
   const refusal = lockRefusal(defender, hw.position, game.ops.links, power, beams)
   if (refusal) return { refusal }
+  if (beams > tractorBeamsReady(game, defender)) {
+    return { refusal: `${defender.name}'s beams have already been used this phase (J3.2.1).` }
+  }
+  spendLockAttempts(game, defender, beams)
 
   const result = lockOnSmall(game.rng, beams)
   if (!result.locked) {
@@ -2041,9 +2071,18 @@ export function attemptTractorLock(
       return { refusal: `No tractor beam may lock onto a cloaked ship (H6.4.7).` }
     }
   }
+  if (game.ops.brokenThisPhase.has(`${source.id}->${targetId}`)) {
+    return { refusal: `That lock was broken this phase; it may not be reestablished until the next (J3.6).` }
+  }
   const power = tractorPower(source, maxSystemOf(game, source))
   const refusal = lockRefusal(source, target.position, game.ops.links, power, beams)
   if (refusal) return { refusal }
+  if (beams > tractorBeamsReady(game, source)) {
+    return {
+      refusal: `${source.name}'s beams have already made their lock-on attempt this segment (J3.3.1).`,
+    }
+  }
+  spendLockAttempts(game, source, beams)
 
   const result =
     target.kind === 'ship'
@@ -2121,7 +2160,12 @@ export function releaseTractor(game: GameState, sourceId: string, targetId: stri
   const link = linkBetween(game.ops.links, sourceId, targetId)
   if (!link) return
   game.ops.links.splice(game.ops.links.indexOf(link), 1)
-  pushLog(game, `${shipById(game, sourceId)?.name ?? sourceId}: tractor beam released.`)
+  // J3.2.3 / J3.3.2: the beam that let go may not try again until the next
+  // Operations Segment, so letting go costs it its attempt.
+  const source = shipById(game, sourceId)
+  if (source) spendLockAttempts(game, source, link.beams)
+  game.ops.brokenThisPhase.add(`${sourceId}->${targetId}`)
+  pushLog(game, `${source?.name ?? sourceId}: tractor beam released.`)
   releaseHeldMissiles(game, [link])
 }
 
@@ -2133,9 +2177,16 @@ export function contestTractor(game: GameState, targetId: string): TractorAttemp
   const target = shipById(game, targetId)
   const link = game.ops.links.find((l) => l.targetId === targetId && l.targetKind === 'ship')
   if (!target || !link) return { refusal: 'Nothing is holding that ship.' }
+  // J3.6: one attempt a phase. Left unbounded, a defender could simply ask
+  // again until the dice let go, and no lock would ever hold.
+  if (game.ops.contestedThisPhase.has(targetId)) {
+    return { refusal: `${target.name} has already tried the beam this phase (J3.6.1).` }
+  }
+  game.ops.contestedThisPhase.add(targetId)
   const result = contestLink(game.rng, link, target)
   if (!result.locked) {
     game.ops.links.splice(game.ops.links.indexOf(link), 1)
+    game.ops.brokenThisPhase.add(`${link.sourceId}->${link.targetId}`)
     pushLog(game, `${target.name} breaks free of the tractor beam (${result.total} v ${result.required}).`)
   } else {
     pushLog(game, `${target.name} fails to break the tractor beam (${result.total} v ${result.required}).`)
@@ -2150,6 +2201,37 @@ export function effectiveSpeed(game: GameState, ship: ShipState): number {
 
 export function tractorBeamsFree(game: GameState, ship: ShipState): number {
   return beamsAvailable(ship, game.ops.links)
+}
+
+/**
+ * Beams the ship may still throw at a lock-on this segment: the free ones,
+ * less those that have already had their one attempt (J3.3.1). Releasing a
+ * target spends the attempt as well (J3.2.3, J3.3.2), so a captain cannot let
+ * go and immediately grab again.
+ */
+export function tractorBeamsReady(game: GameState, ship: ShipState): number {
+  return Math.max(0, tractorBeamsFree(game, ship) - (game.ops.lockAttemptsThisPhase[ship.id] ?? 0))
+}
+
+/**
+ * The tractor clock, wound back at the end of every combat phase: beams get
+ * their lock-on attempt again (J3.3.1), a defender may try the beam again
+ * (J3.6.1), a lock broken last phase may be reestablished (J3.6) — and a link
+ * gives back the beams it no longer needs.
+ */
+export function resetTractorPhase(game: GameState): void {
+  game.ops.lockAttemptsThisPhase = {}
+  game.ops.brokenThisPhase.clear()
+  game.ops.contestedThisPhase.clear()
+  // J3.3.3: once a lock is made only one beam is needed to hold it, and "any
+  // excess tractor beams may be used for different tasks during subsequent
+  // phases". Without this a four-beam ship that grabbed a dreadnought with all
+  // four had no beams left for anything, ever.
+  for (const link of game.ops.links) link.beams = 1
+}
+
+function spendLockAttempts(game: GameState, ship: ShipState, beams: number): void {
+  game.ops.lockAttemptsThisPhase[ship.id] = (game.ops.lockAttemptsThisPhase[ship.id] ?? 0) + beams
 }
 
 // ── J4 Informational scans ────────────────────────────────────────────────
@@ -2836,6 +2918,7 @@ export function sabotageSquads(game: GameState, ship: ShipState, side: string): 
  * that chose to wreck the ship instead of fighting its marines (J6.2.4).
  */
 export function fightBoarders(game: GameState, ship: ShipState, side: string): BoardingOutcome {
+  game.ops.boardingFought.add(`${ship.id}:${side}`)
   const outcome = resolveBoarding(ship, side, game.rng, sabotageSquads(game, ship, side))
 
   pushLog(
@@ -2875,10 +2958,14 @@ function resolveAllBoarding(game: GameState): void {
   for (const ship of shipsUnderBoarding(game)) {
     for (const side of boardingSides(ship)) {
       if (ship.destroyed || ship.capturedBy === side) continue
+      // A captain who pressed the attack during the segment has already had
+      // this round's combat; closing the segment does not give them another.
+      if (game.ops.boardingFought.has(`${ship.id}:${side}`)) continue
       fightBoarders(game, ship, side)
     }
   }
   game.ops.sabotage = {}
+  game.ops.boardingFought.clear()
 }
 
 // ---------------------------------------------------------------------------
