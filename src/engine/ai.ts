@@ -23,6 +23,7 @@ import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from 
 import {
   cloakFullyPowered,
   cloakOperational,
+  cloakStrength,
   isCloaked,
   maneuverAllowedWhileCloaked,
   mayDecloak,
@@ -335,10 +336,76 @@ function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty
 /** Cloak doctrine (H6): vanish to cross the gulf or to nurse wounds. */
 function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
   if (difficulty === 'ensign' || !cloakOperational(ship)) return false
+  // Never go dark on a phase we could be shooting: H6.4.2 locks the weapons of
+  // a cloaked ship completely, so a cloak engaged over a live firing solution
+  // is a volley thrown away.
+  if (firingSolution(game, ship)) return false
   const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
   const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
   const far = !enemy || actualRange(ship.placement.position, enemy.placement.position) > preferredRange(ship) + 8
   return hurt || far
+}
+
+/**
+ * Is there something worth decloaking for — a charged gun and a target it can
+ * actually reach?
+ *
+ * The old test was "is the nearest *visible* enemy inside preferred range",
+ * which failed twice over. It never asked whether the guns were charged, so a
+ * ship could come out of the dark with nothing loaded; and it read the nearest
+ * enemy that was *not* itself hidden, so two cloaked ships each saw an empty
+ * table, each stayed dark, and neither ever fired. Measured, that is exactly
+ * what happened: an INVICTUS against an IMPERATOR went forty games without
+ * either side scoring a single kill.
+ */
+function firingSolution(game: GameState, ship: ShipState): boolean {
+  const loaded = ship.form.weapons.some((w) =>
+    (ship.mounts[w.id] ?? []).some((m) => m.armed > 0),
+  )
+  if (!loaded) return false
+  // A ghost we have detected counts as a target; one still hidden does not,
+  // because there is nothing on the table to shoot at (H6.2.2).
+  const targets = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
+  if (targets.length === 0) return false
+  const closest = nearest(ship, targets)!
+  const range = actualRange(ship.placement.position, closest.placement.position)
+  /*
+   * The envelope of a loaded gun, not its favourite range — and the margin is
+   * what breaks a deadlock the first draft walked straight into.
+   *
+   * A cloaked ship's targeting is zeroed by the rules (H6.4.4), and the
+   * captain reads its own targeting when it asks whether a plot leaves it a
+   * shot. So a cloaked ship scores every position on the board as worthless
+   * and stops closing — while a gate that only opens at short range waits for
+   * a closure that will never come. It will not decloak until it is close and
+   * it cannot get close until it decloaks; measured, an Aurelian raider held
+   * that stalemate for twelve rounds at fourteen inches with full tubes.
+   *
+   * Coming out at the edge of the envelope is also the better doctrine: the
+   * cloak covers the long crossing, and the ship fights the last stretch with
+   * its eyes open and its guns live.
+   */
+  const reach = Math.max(
+    0,
+    ...ship.form.weapons
+      .filter((w) => (ship.mounts[w.id] ?? []).some((m) => m.armed > 0))
+      .map((w) => Math.max(...w.brackets.map((b) => b.max))),
+  )
+  return range <= reach + 6
+}
+
+/**
+ * The ghost this fleet should all be hunting.
+ *
+ * Detection is recorded per searcher (H6.9.3) and the ship's exposure is the
+ * best any one of them holds, so spreading searches across several ghosts
+ * gains nothing that concentrating on one does not gain faster. Nearest
+ * first — search range is finite (H6.11) and the near one is the one about to
+ * be a problem.
+ */
+function huntedGhost(game: GameState, ship: ShipState): ShipState | null {
+  const ghosts = enemiesOf(game, ship).filter((e) => positionHidden(game, e))
+  return ghosts.length > 0 ? nearest(ship, ghosts) : null
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,6 +1084,58 @@ function planOrders(
       targeting = Math.min(cap, available - jamming)
       tacticalScan = Math.min(cap, available - jamming - targeting)
     }
+    /*
+     * Cloak sensor doctrine (H6.4.4, H6.16.2), which the rules make blunt.
+     *
+     * A cloaked ship's jamming *is* its cloak strength: `cloakStrength` reads
+     * the jamming figure straight off the card, and a searcher whose targeting
+     * is below it may not attempt a search at all (H6.10.2). Meanwhile H6.4.4
+     * says targeting points do nothing while cloaked, and H6.4.2 says the ship
+     * cannot fire — so Tactical Scan, which buys nothing but firing order, is
+     * equally dead weight. Every available point therefore belongs in jamming,
+     * and any point anywhere else is thrown away twice.
+     */
+    const myCloak = cloakOf(game, ship)
+    if (myCloak && isCloaked(myCloak)) {
+      /*
+       * Jamming takes first call, up to the per-function cap, and the rest
+       * falls through to targeting.
+       *
+       * Not zero targeting, which was the first draft and was wrong twice.
+       * The card is plotted in the Command Segment, the cloak comes off during
+       * Operations, and the volley is fired in Combat — so targeting bought
+       * while dark is targeting the ship shoots with a segment later. And the
+       * captain reads its own targeting when it asks "would this plot give me
+       * a shot": zero it and every position on the board scores as worthless,
+       * which is exactly what happened. An Aurelian raider sat cloaked at
+       * fourteen inches with both plasma tubes charged 6 of 6 and never closed,
+       * because with no targeting there was nothing to close for.
+       */
+      jamming = Math.min(cap, available)
+      targeting = Math.min(cap, Math.max(0, available - jamming))
+      tacticalScan = Math.min(cap, Math.max(0, available - jamming - targeting))
+    } else {
+      /*
+       * The hunter's side of the same rule. Targeting below the ghost's
+       * jamming forbids a search outright, equal targeting rolls a single
+       * die, and only targeting *above* it rolls in numbers
+       * (targeting - jamming). So against a ghost the first call on the
+       * sensor line is to outbid its jamming — initiative and brackets are
+       * worth nothing against a ship that cannot be shot at in the first
+       * place (H6.2.2).
+       */
+      const ghost = huntedGhost(game, ship)
+      if (ghost && difficulty !== 'ensign') {
+        const theirJamming = cloakStrength(ghost)
+        const bid = Math.min(cap, available, theirJamming + 2)
+        if (bid > targeting) {
+          targeting = bid
+          tacticalScan = Math.min(cap, Math.max(0, available - targeting))
+          jamming = Math.min(cap, Math.max(0, available - targeting - tacticalScan))
+        }
+      }
+    }
+
     const want = { targeting, tacticalScan, jamming } as const
     for (const k of ['targeting', 'tacticalScan', 'jamming'] as const) {
       if (card.sensors[k] !== want[k]) {
@@ -1664,6 +1783,20 @@ function bestPlot(
         if (bestNext > -Infinity) score += bestNext * 0.5
       }
 
+      /*
+       * No speed discipline under cloak, deliberately, and it was tried.
+       *
+       * H6.4.6 gives a hidden ship's hunters a free search die for every point
+       * of speed over CLOAK_SAFE_SPEED, so creeping looks like obvious cover.
+       * Scored against the plot, it is a trap: penalising speed made *stopping*
+       * the highest-scoring plot on the board, and an Aurelian raider spent
+       * twelve rounds parked at speed 0, fully cloaked, with both plasma tubes
+       * charged 6 of 6, fourteen inches from a target it never closed on.
+       * Scoping the penalty to the final approach only moved the distance at
+       * which it parked. A ship that never arrives never fires, and the search
+       * dice it saved bought nothing. The cloak is for crossing; cross.
+       */
+
       if (score > bestScore) {
         second = best
         secondScore = bestScore
@@ -1715,23 +1848,30 @@ function planOperations(
   for (const ship of fleet) {
     const cloak = cloakOf(game, ship)
     const cloaked = Boolean(cloak && isCloaked(cloak))
-    const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
-    const range = enemy ? actualRange(ship.placement.position, enemy.placement.position) : Infinity
-
     // Cloak doctrine (H6.6, H6.7): vanish while crossing or wounded; come out
     // shooting once the guns are in their bracket.
     if (cloak && !cloaked && cloakFullyPowered(ship) && wantsCloak(game, ship, difficulty)) {
       actions.push({ type: 'engage-cloak', shipId: ship.id })
     } else if (cloak && cloaked && mayDecloak(cloak)) {
+      /*
+       * Come off the cloak for the shot, not for the range band. A cloaked
+       * ship cannot fire at all (H6.4.2), so every phase spent dark with the
+       * guns charged and a target in reach is a volley given away — and the
+       * old rule, which only looked at distance, let a ship sit hidden beside
+       * a target it could have killed. A wounded ship still hides, because a
+       * wounded ship is trying to live.
+       */
       const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
-      if (!hurt && range <= preferredRange(ship) + 2) {
+      if (!hurt && firingSolution(game, ship)) {
         actions.push({ type: 'decloak', shipId: ship.id })
       }
     }
 
-    // Hunt the ghosts: one search attempt per ship per phase (H6.9.2).
+    // Hunt the ghosts: one search attempt per ship per phase (H6.9.2), and
+    // the whole fleet hunts the same one — detection is per searcher and the
+    // ship's exposure is the best of them, so concentration finds it sooner.
     if (!cloaked) {
-      const ghost = enemiesOf(game, ship).find((e) => positionHidden(game, e))
+      const ghost = huntedGhost(game, ship)
       if (ghost) actions.push({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id })
     }
 
