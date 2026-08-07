@@ -443,6 +443,71 @@ function huntedGhost(game: GameState, ship: ShipState): ShipState | null {
 // Resource Allocation (B2): weapons first, then eyes, then legs
 // ---------------------------------------------------------------------------
 
+/**
+ * The order a captain spends its reactor in.
+ *
+ * This is the most-executed decision the AI makes — a few thousand `allocate`
+ * actions in a handful of battles — and it is a strict priority list rather
+ * than an optimisation: each step takes what it wants and the next step sees
+ * what is left. So the *order* is the doctrine, and moving one entry is a real
+ * change. The flag bridge (H5.1.3) was worth ten games a season purely by
+ * being bought before the small change instead of after it.
+ *
+ * Kept as data so the sweep harness can permute it (`setAllocationOrder`)
+ * without the order being retyped in prose each time it moves.
+ */
+export type AllocationStep =
+  | 'cloak'
+  | 'ftl-escape'
+  | 'slow-arming'
+  | 'closing-accel'
+  | 'weapons'
+  | 'scout'
+  | 'sensors-2'
+  | 'flag-gen-sys'
+  | 'accel-1'
+  | 'sif'
+  | 'shield-repair'
+  | 'shield-reinforce'
+  | 'sensors-full'
+  | 'accel-2'
+  | 'battery-recharge'
+
+export const DEFAULT_ALLOCATION_ORDER: AllocationStep[] = [
+  'cloak',
+  'ftl-escape',
+  'slow-arming',
+  'closing-accel',
+  'weapons',
+  'scout',
+  'sensors-2',
+  'flag-gen-sys',
+  'accel-1',
+  'sif',
+  'shield-repair',
+  'shield-reinforce',
+  'sensors-full',
+  'accel-2',
+  'battery-recharge',
+]
+
+let allocationOrder: AllocationStep[] = DEFAULT_ALLOCATION_ORDER
+
+/** Sweep hook: install an order to measure, or `null` for the standing one. */
+export function setAllocationOrder(order: AllocationStep[] | null): void {
+  allocationOrder = order ?? DEFAULT_ALLOCATION_ORDER
+}
+
+/**
+ * Sweep hook: while set, records `<step>:spent` and `<step>:starved` so a run
+ * can show which steps actually compete for the reactor. A step that is never
+ * starved cannot be improved by moving it earlier, which is most of them.
+ */
+let allocationTelemetry: Record<string, number> | null = null
+export function setAllocationTelemetry(sink: Record<string, number> | null): void {
+  allocationTelemetry = sink
+}
+
 function planAllocation(
   game: GameState,
   fleet: ShipState[],
@@ -468,6 +533,7 @@ function planAllocation(
      * request is attempted once — a refusal the doctrine did not foresee
      * (B2 has many) must not become an argument held every render.
      */
+    let step: AllocationStep = 'cloak'
     const fill = (lineId: string, circles: number) => {
       const line = ship.form.functions.find((l) => l.id === lineId)
       if (!line) return
@@ -478,9 +544,17 @@ function planAllocation(
       if (memo.done.has(attemptKey)) return
       const cost = line.steps
         .slice(current, target)
-        .reduce((sum, step) => sum + step.powerCost, 0)
-      if (cost > budget) return
+        .reduce((sum, sub) => sum + sub.powerCost, 0)
+      if (cost > budget) {
+        if (allocationTelemetry) {
+          allocationTelemetry[`${step}:starved`] = (allocationTelemetry[`${step}:starved`] ?? 0) + 1
+        }
+        return
+      }
       budget -= cost
+      if (allocationTelemetry) {
+        allocationTelemetry[`${step}:spent`] = (allocationTelemetry[`${step}:spent`] ?? 0) + cost
+      }
       memo.done.add(attemptKey)
       actions.push({ type: 'allocate', shipId: ship.id, lineId: line.id, circles: target })
     }
@@ -495,20 +569,6 @@ function planAllocation(
         const state = ship.mounts[weapon.id][i]
         return state.damage < weapon.mounts[i].hitBoxes
       })
-    }
-
-    // A cloak is all or nothing (H6.3.1), and it comes before the guns it
-    // will lock anyway (H6.4.2).
-    if (wantsCloak(game, ship, difficulty)) {
-      const cloakLine = ship.form.functions.find((l) => l.label === 'CLOAK')
-      if (cloakLine) fill(cloakLine.id, cloakLine.steps.length)
-    }
-    // A ship that intends to leave powers the drive that leaves (J9.1.3) —
-    // before the guns, because a departing hull's volley is worth less than
-    // the points its escape denies.
-    if (difficulty !== 'ensign' && wantsToLeave(game, ship, difficulty)) {
-      const ftlLine = ship.form.functions.find((l) => l.kind === 'ftl-drive')
-      if (ftlLine) fill(ftlLine.id, ftlLine.steps.length)
     }
 
     /**
@@ -533,53 +593,6 @@ function planAllocation(
       nearestEnemy !== null &&
       actualRange(ship.placement.position, nearestEnemy.placement.position) > reach + 6
 
-    if (closingRound) {
-      for (const line of byKind('weapon')) {
-        if (weaponAlive(line) && slowArming(line)) fill(line.id, line.steps.length)
-      }
-      // The admiral also floors the throttle: two drive points now, before
-      // the sensors take theirs, buys the merge a round early. Measured as
-      // an admiral-only edge — when every rank races, the closings get so
-      // fast that dice swamp doctrine and the rank gap flattens; held back
-      // for the admiral it keeps the season won at every level.
-      if (difficulty === 'admiral') {
-        for (const line of byKind('accel')) fill(line.id, 2)
-      }
-    }
-    // Weapons full — the auto-arm rule then spends the points (E4.2.2).
-    for (const line of byKind('weapon')) if (weaponAlive(line)) fill(line.id, line.steps.length)
-    // Scout sensors earn their power: they illuminate for the whole fleet (H3.4).
-    if (difficulty !== 'ensign' && ship.form.scoutSensor) {
-      const scoutLine = ship.form.functions.find(
-        (l) => l.kind === 'special' && /SCOUT/i.test(l.label),
-      )
-      if (scoutLine) fill(scoutLine.id, scoutLine.steps.length)
-    }
-    for (const line of byKind('sensor')) fill(line.id, Math.min(2, line.steps.length))
-
-    /*
-     * The flag bridge (H5.1.3), bought before the small change rather than
-     * after it. CMND boxes produce nothing at all unless the ship's GEN SYS
-     * line is at MAX, so a squadron flagship has to spend a power point on it
-     * deliberately or carry the boxes as decoration — and left at the end of
-     * the queue it never got one, because the guns and the eyes had already
-     * taken everything. Measured that way the whole system stayed dark: the
-     * squadron season did not move by a single game out of 192.
-     *
-     * Only where there is somebody in range to lend to, and only above ensign.
-     */
-    if (difficulty !== 'ensign' && commandSystemBoxes(ship) > 0 && genSysSetting(ship) !== 'max') {
-      const consorts = fleet.filter(
-        (s) =>
-          s.id !== ship.id &&
-          s.side === ship.side &&
-          !s.destroyed &&
-          !s.disengaged &&
-          actualRange(ship.placement.position, s.placement.position) <= COMMAND_RANGE,
-      )
-      if (consorts.length > 0) for (const line of byKind('gen-sys')) fill(line.id, line.steps.length)
-    }
-
     /*
      * The same point would buy a tractor beam that can actually be used — MAX
      * doubles its reach from one inch to two and doubles the lock-on roll
@@ -603,12 +616,6 @@ function planAllocation(
      * names TRAC as the maximum system when there is something in reach.
      */
 
-    for (const line of byKind('accel')) fill(line.id, 1)
-    // Turning hard is doctrine now, and SIF is what makes it survivable — a
-    // practiced captain powers it before the stress arrives, not after.
-    if (difficulty !== 'ensign' || ship.stressMarkers > 0) {
-      for (const line of byKind('sif')) fill(line.id, 1)
-    }
     /**
      * The shield the fire will come from matters most. The threat axis —
      * enemies weighted by proximity and how bow-on they sit, all public
@@ -621,35 +628,130 @@ function planAllocation(
     const threatened = threat
       ? shieldsFacing(threat, ship.placement.position, ship.placement.heading)
       : []
-    const repairs = byKind('shield-repair').filter(
-      (line) => line.shieldSide && ship.blueShieldDamage[line.shieldSide] > 0,
-    )
-    repairs.sort((a, b) => {
-      const at = threatened.includes(a.shieldSide!) ? 0 : 1
-      const bt = threatened.includes(b.shieldSide!) ? 0 : 1
-      return at - bt
-    })
-    for (const line of repairs) fill(line.id, 1)
-    for (const line of byKind('shield-reinforce')) {
-      if (line.shieldSide && threatened.includes(line.shieldSide)) fill(line.id, 1)
+
+    const steps: Record<AllocationStep, () => void> = {
+      // A cloak is all or nothing (H6.3.1), and it comes before the guns it
+      // will lock anyway (H6.4.2).
+      cloak: () => {
+        if (!wantsCloak(game, ship, difficulty)) return
+        const line = ship.form.functions.find((l) => l.label === 'CLOAK')
+        if (line) fill(line.id, line.steps.length)
+      },
+      // A ship that intends to leave powers the drive that leaves (J9.1.3) —
+      // before the guns, because a departing hull's volley is worth less than
+      // the points its escape denies.
+      'ftl-escape': () => {
+        if (difficulty === 'ensign' || !wantsToLeave(game, ship, difficulty)) return
+        const line = ship.form.functions.find((l) => l.kind === 'ftl-drive')
+        if (line) fill(line.id, line.steps.length)
+      },
+      'slow-arming': () => {
+        if (!closingRound) return
+        for (const line of byKind('weapon')) {
+          if (weaponAlive(line) && slowArming(line)) fill(line.id, line.steps.length)
+        }
+      },
+      // The admiral also floors the throttle: two drive points now, before
+      // the sensors take theirs, buys the merge a round early. Measured as
+      // an admiral-only edge — when every rank races, the closings get so
+      // fast that dice swamp doctrine and the rank gap flattens; held back
+      // for the admiral it keeps the season won at every level.
+      'closing-accel': () => {
+        if (!closingRound || difficulty !== 'admiral') return
+        for (const line of byKind('accel')) fill(line.id, 2)
+      },
+      // Weapons full — the auto-arm rule then spends the points (E4.2.2).
+      weapons: () => {
+        for (const line of byKind('weapon')) if (weaponAlive(line)) fill(line.id, line.steps.length)
+      },
+      // Scout sensors earn their power: they illuminate for the whole fleet (H3.4).
+      scout: () => {
+        if (difficulty === 'ensign' || !ship.form.scoutSensor) return
+        const line = ship.form.functions.find(
+          (l) => l.kind === 'special' && /SCOUT/i.test(l.label),
+        )
+        if (line) fill(line.id, line.steps.length)
+      },
+      'sensors-2': () => {
+        for (const line of byKind('sensor')) fill(line.id, Math.min(2, line.steps.length))
+      },
+      /*
+       * The flag bridge (H5.1.3), bought before the small change rather than
+       * after it. CMND boxes produce nothing at all unless the ship's GEN SYS
+       * line is at MAX, so a squadron flagship has to spend a power point on it
+       * deliberately or carry the boxes as decoration — and left at the end of
+       * the queue it never got one, because the guns and the eyes had already
+       * taken everything. Measured that way the whole system stayed dark: the
+       * squadron season did not move by a single game out of 192.
+       *
+       * Only where there is somebody in range to lend to, and only above ensign.
+       */
+      'flag-gen-sys': () => {
+        if (difficulty === 'ensign' || commandSystemBoxes(ship) === 0) return
+        if (genSysSetting(ship) === 'max') return
+        const consorts = fleet.filter(
+          (s) =>
+            s.id !== ship.id &&
+            s.side === ship.side &&
+            !s.destroyed &&
+            !s.disengaged &&
+            actualRange(ship.placement.position, s.placement.position) <= COMMAND_RANGE,
+        )
+        if (consorts.length > 0) for (const line of byKind('gen-sys')) fill(line.id, line.steps.length)
+      },
+      'accel-1': () => {
+        for (const line of byKind('accel')) fill(line.id, 1)
+      },
+      // Turning hard is doctrine now, and SIF is what makes it survivable — a
+      // practiced captain powers it before the stress arrives, not after.
+      sif: () => {
+        if (difficulty === 'ensign' && ship.stressMarkers === 0) return
+        for (const line of byKind('sif')) fill(line.id, 1)
+      },
+      'shield-repair': () => {
+        const repairs = byKind('shield-repair').filter(
+          (line) => line.shieldSide && ship.blueShieldDamage[line.shieldSide] > 0,
+        )
+        repairs.sort((a, b) => {
+          const at = threatened.includes(a.shieldSide!) ? 0 : 1
+          const bt = threatened.includes(b.shieldSide!) ? 0 : 1
+          return at - bt
+        })
+        for (const line of repairs) fill(line.id, 1)
+      },
+      'shield-reinforce': () => {
+        for (const line of byKind('shield-reinforce')) {
+          if (line.shieldSide && threatened.includes(line.shieldSide)) fill(line.id, 1)
+        }
+      },
+      // Spare change: deeper sensors, then a second acceleration point.
+      'sensors-full': () => {
+        for (const line of byKind('sensor')) fill(line.id, line.steps.length)
+      },
+      'accel-2': () => {
+        for (const line of byKind('accel')) fill(line.id, 2)
+      },
+      /**
+       * Last, put an empty battery back on charge (B2.4.3): it buys nothing
+       * this round by design — the point arrives next round, as a reserve — so
+       * it takes only power the round had no other use for.
+       *
+       * Measured against the opposite ordering, ahead of the spare change, and
+       * the two are indistinguishable: on the hulls in the season the reactors
+       * are fully committed by the guns and the eyes, so neither placement ever
+       * finds a spare point. The conservative one is kept for the hull that
+       * does — a ship with its weapons shot away has power going begging.
+       */
+      'battery-recharge': () => {
+        if (!doctrine) return
+        const empty = ship.batteryCharged.filter((c, i) => !c && !ship.batteryDamaged[i]).length
+        if (empty > 0) for (const line of byKind('battery-recharge')) fill(line.id, empty)
+      },
     }
-    // Spare change: deeper sensors, then a second acceleration point.
-    for (const line of byKind('sensor')) fill(line.id, line.steps.length)
-    for (const line of byKind('accel')) fill(line.id, 2)
-    /**
-     * Last, put an empty battery back on charge (B2.4.3): it buys nothing
-     * this round by design — the point arrives next round, as a reserve — so
-     * it takes only power the round had no other use for.
-     *
-     * Measured against the opposite ordering, ahead of the spare change, and
-     * the two are indistinguishable: on the hulls in the season the reactors
-     * are fully committed by the guns and the eyes, so neither placement ever
-     * finds a spare point. The conservative one is kept for the hull that
-     * does — a ship with its weapons shot away has power going begging.
-     */
-    if (doctrine) {
-      const empty = ship.batteryCharged.filter((c, i) => !c && !ship.batteryDamaged[i]).length
-      if (empty > 0) for (const line of byKind('battery-recharge')) fill(line.id, empty)
+
+    for (const name of allocationOrder) {
+      step = name
+      steps[name]()
     }
   }
 
