@@ -473,6 +473,32 @@ export type AllocationStep =
   | 'accel-2'
   | 'battery-recharge'
 
+/*
+ * Searched, not chosen. The starvation telemetry said the reactor runs dry
+ * long before the list ends — shield repair drew four points of power across
+ * thirty battles and was refused five thousand times — so the sweep asked what
+ * happens if the unfunded defensive steps come up past the marginal offensive
+ * ones. Holding the opponent fixed and moving only the admiral (`npm run
+ * sweep`, three seasons, 576 games a candidate):
+ *
+ *     baseline                    355/576
+ *     sif-last                    374
+ *     repair-before-sensors2      386
+ *     shields-before-sensors2     397
+ *     shields-before-accel1       403
+ *     repair-early+reinforce-last 412   ← this order
+ *     shields-before-weapons      329
+ *     accel1-before-sensors2      328
+ *
+ * Two things fall out of it. Repairing a shot-away shield box (G1.3.3) is
+ * worth more than the second sensor point or the first drive point, by a
+ * margin nothing else measured here comes close to. And it is specifically the
+ * *repairs*: moving reinforcement (G1.3.2) up with them scored 403, moving it
+ * to the very back scored 412, so the temporary point was diluting the
+ * permanent one. Guns still come first — putting shields ahead of the weapons
+ * lost 26 games, which is the sanity check that this is a priority list and
+ * not a preference for defence.
+ */
 export const DEFAULT_ALLOCATION_ORDER: AllocationStep[] = [
   'cloak',
   'ftl-escape',
@@ -482,18 +508,26 @@ export const DEFAULT_ALLOCATION_ORDER: AllocationStep[] = [
   'scout',
   'sensors-2',
   'flag-gen-sys',
+  'shield-repair',
   'accel-1',
   'sif',
-  'shield-repair',
-  'shield-reinforce',
   'sensors-full',
   'accel-2',
   'battery-recharge',
+  'shield-reinforce',
 ]
 
 let allocationOrder: AllocationStep[] = DEFAULT_ALLOCATION_ORDER
 
-/** Sweep hook: install an order to measure, or `null` for the standing one. */
+/**
+ * Sweep hook: install an order to measure, or `null` for the standing one.
+ *
+ * It binds to the admiral alone, and that is the measurement rather than a
+ * doctrine choice. A season is the admiral against a fixed lower rank; change
+ * both sides and a real improvement shows up as no change at all, because both
+ * captains got it. Every other trick in this file is admiral-gated for the
+ * same reason.
+ */
 export function setAllocationOrder(order: AllocationStep[] | null): void {
   allocationOrder = order ?? DEFAULT_ALLOCATION_ORDER
 }
@@ -749,7 +783,8 @@ function planAllocation(
       },
     }
 
-    for (const name of allocationOrder) {
+    const order = difficulty === 'admiral' ? allocationOrder : DEFAULT_ALLOCATION_ORDER
+    for (const name of order) {
       step = name
       steps[name]()
     }
@@ -2562,6 +2597,20 @@ function planFiring(
  * advanced only when this AI owns every hull on the table — in a mixed game
  * that button belongs to the human.
  */
+/**
+ * Whether the captain declares coordinated groups (H4.5).
+ *
+ * Off by default because it measures worse than firing individually — see the
+ * note on `plans` in `planCoordinatedFiring`. The machinery is kept and kept
+ * tested rather than deleted: the rule is optional, the doctrine is the part
+ * that is wrong, and a future pass that works out when a group is worth the
+ * wait wants the code it is fixing to still be here and still be correct.
+ */
+let coordinatedGroupsEnabled = false
+export function setCoordinatedGroups(enabled: boolean): void {
+  coordinatedGroupsEnabled = enabled
+}
+
 function planCoordinatedFiring(
   game: GameState,
   fleet: ShipState[],
@@ -2570,10 +2619,20 @@ function planCoordinatedFiring(
   difficulty: AiDifficulty,
 ): GameAction[] {
   const unfired = fleet.filter((s) => !game.firedThisSegment.has(s.id))
-  if (closing) {
-    return unfired.map((s) => ({ type: 'pass-fire', shipId: s.id }) as GameAction)
-  }
   if (unfired.length === 0) return []
+  /*
+   * `closing` used to make every ship that had not fired pass on the spot.
+   * Everywhere else in the AI it means the opposite — the segment is about to
+   * end, so take the shot now rather than waiting for your slot in the firing
+   * order — and under H4 it was a mass forfeit: in a squadron the whole fleet
+   * gave up its volley on the first call of every combat segment. Six games
+   * fired three shots between them, against 367 with the rule switched off.
+   *
+   * There is nothing left for it to do now that the step clock runs on its
+   * own: the clock reaches the last step inside the same drive loop, so every
+   * ship that has a step reaches it. So the flag is simply not consulted here.
+   */
+  void closing
 
   const step = currentFiringStep(game)
   const actions: GameAction[] = []
@@ -2600,8 +2659,22 @@ function planCoordinatedFiring(
 
   // Each side's intended group, recomputed off the open board every call so
   // a fallen partner or a dead target reshapes the plan instead of wedging it.
+  /*
+   * Coordinated groups are planned by nobody, for now.
+   *
+   * The machinery below works and is left in place, but declaring groups
+   * measures worse than firing individually: the squadron admiral under H4
+   * reads 20W-76L against an ensign with groups and 37W-59L without them.
+   * Waiting for a later step to fire together costs more than the
+   * concentration gains — H4.2.4 lets a lone ship fire on any step it
+   * qualifies for, so the waiting buys only the shared target, and H4.3.1
+   * already caps a faction at one attack per target per phase.
+   *
+   * Note the admiral still loses under H4 either way. The rule is playable
+   * now, which it was not, but the AI is not good at it.
+   */
   const plans = new Map<string, { shipIds: string[]; targetId: string; stepIndex: number }>()
-  if (difficulty !== 'ensign') {
+  if (coordinatedGroupsEnabled && difficulty !== 'ensign') {
     for (const side of [...new Set(unfired.map((s) => s.side))].sort()) {
       const plan = plannedCoordinatedGroup(
         game,
@@ -2624,12 +2697,16 @@ function planCoordinatedFiring(
     if (memo.done.has(attemptKey)) return false
     if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo, difficulty))
     const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty))
-    if (volley) {
-      memo.done.add(attemptKey)
-      actions.push(volley)
-      return true
-    }
-    return false
+    memo.done.add(attemptKey)
+    /*
+     * A ship whose step has come and has nothing to shoot passes, exactly as
+     * it would without the step machine. It has to: `firedThisSegment` is what
+     * says a ship is finished, and a ship that neither fires nor passes stays
+     * on the board forever holding its step open — which is half of why no
+     * shot was ever fired with H4 switched on.
+     */
+    actions.push(volley ?? { type: 'pass-fire', shipId: ship.id })
+    return true
   }
 
   if (step.kind === 'individual') {
@@ -2661,9 +2738,49 @@ function planCoordinatedFiring(
   }
   if (actions.length > 0) return actions
 
+  /*
+   * Wind the step clock on when this step is spent.
+   *
+   * It used to be wound only by a captain who commanded every ship on the
+   * table — which is true in one self-play test and false everywhere else: in
+   * a season each side is driven separately, against a human it is never true,
+   * and in remote play it is never true. So the clock stopped at step one and
+   * the battle stood there. Measured, the duel with H4 on fired zero shots in
+   * six games and ran to the round limit with 432 passes.
+   *
+   * The condition that replaces it is a fact about the whole table rather than
+   * about who is asking: nobody still on the board can act on this step. A
+   * ship counts as able if it has not fired and either its Tactical Scan calls
+   * this step or a declared group of its is firing on it — all public, all on
+   * the face-up cards. So a side cannot wind the clock past an opponent who
+   * still has a shot coming, which is the thing the old guard was protecting
+   * and the reason it cannot simply be dropped.
+   *
+   * A human who is entitled to fire on this step and would rather hold still
+   * stops the clock; that is what the "Next firing step" button is for.
+   */
   const active = game.ships.filter((s) => !s.destroyed && !s.disengaged)
-  const ownsTable = active.every((s) => fleet.some((f) => f.id === s.id))
-  if (ownsTable && game.firingStepIndex < FIRING_STEPS.length - 1) {
+  /*
+   * A ship of scan 2 answers to the Individual step for scan 2 *and* to the
+   * Coordinated step for scan 2, five steps later (H4.2.3). One held back for
+   * its group is therefore still a match for the earlier step it is choosing
+   * to skip — and reading it as "somebody can still act here" wedged the clock
+   * on that step, so the group's step never arrived and the ship never fired.
+   * Only our own plans are known; an opponent holding a ship for a later step
+   * reads as able to act, which at worst leaves the clock for them to wind.
+   */
+  const heldForLater = new Set(
+    [...plans.values()].flatMap((p) => (p.stepIndex > step.index ? p.shipIds : [])),
+  )
+  const stillToAct = active.some((s) => {
+    if (game.firedThisSegment.has(s.id)) return false
+    if (group && group.shipIds.includes(s.id) && group.step === step.index) return true
+    if (heldForLater.has(s.id)) return false
+    return step.kind === 'individual'
+      ? stepMatchesScan(step, scanOf(s))
+      : mayFireAlone(step, scanOf(s))
+  })
+  if (!stillToAct && game.firingStepIndex < FIRING_STEPS.length - 1) {
     return [{ type: 'advance-firing-step' }]
   }
   return []

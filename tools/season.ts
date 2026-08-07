@@ -84,14 +84,20 @@ export const BASELINES = [
      * to one decimal. Recorded because it is what a re-run now prints, not
      * because the captain got better at anything.
      */
-    expect: '110W-82L of 192',
+    // → 105W-87L when the allocation order was searched. The admiral did not
+    // get worse: every rank now repairs its shields before it buys the first
+    // drive point, so the gap between two captains who both learned the same
+    // lesson closes again. Held against a fixed opponent the new order is
+    // worth 412/576 against 355 — see DEFAULT_ALLOCATION_ORDER.
+    expect: '105W-87L of 192',
   },
   {
     label: 'duel adm-vs-ens',
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'ensign',
-    expect: '125W-67L of 192',
+    // → 137W-55L with the searched allocation order.
+    expect: '137W-55L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -116,7 +122,9 @@ export const BASELINES = [
     // → 120W-69L with tractor doctrine (J3) and marine doctrine (J6), which is
     // inside the noise both ways; neither is claimed as a gain. See the
     // comments on `planTractors` and `planBoarding` for what they are for.
-    expect: '120W-69L of 192',
+    // → 135W-57L with the searched allocation order: shield repair (G1.3.3)
+    // ahead of the first drive point, reinforcement (G1.3.2) to the very back.
+    expect: '135W-57L of 192',
   },
 ] as const
 
@@ -183,9 +191,24 @@ export function playOne(options: GameOptions): GameState {
   const sides = [...new Set(game.ships.map((s) => s.side))]
   const blue: Side = { game, memo: createAiMemo(), sides: [sides[0]], difficulty: options.blue }
   const red: Side = { game, memo: createAiMemo(), sides: [sides[1]], difficulty: options.red }
+  /**
+   * Both sides, until neither has anything left to say.
+   *
+   * Running each side to exhaustion once is not the same thing: an action by
+   * one side can be what unblocks the other, and with a single pass that reply
+   * has to wait for the next segment. Ordinarily the difference is invisible —
+   * the baselines are identical either way — but under H4 the firing-step
+   * clock is shared table state that the two sides wind forward alternately,
+   * one step each, and a single pass gave a six-step clock two chances to
+   * advance. The fleets spent the battle waiting for a step that never came.
+   */
   const both = (closing: boolean) => {
-    drive(blue, closing, options.retreat, options.personality)
-    drive(red, closing, options.retreat, options.personality)
+    for (let pass = 0; pass < 50; pass++) {
+      const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
+      drive(blue, closing && pass === 0, options.retreat, options.personality)
+      drive(red, closing && pass === 0, options.retreat, options.personality)
+      if (game.log.length + game.firingStepIndex + game.firedThisSegment.size === before) return
+    }
   }
   both(false)
   for (let guard = 0; guard < 500; guard++) {
@@ -261,49 +284,3 @@ export function pointMargin(game: GameState, side: string): number {
   const enemy = Object.keys(points).find((s) => s !== side)
   return points[side] - (enemy ? points[enemy] : 0)
 }
-
-// ---------------------------------------------------------------------------
-// Command line
-// ---------------------------------------------------------------------------
-
-function flag(name: string, fallback?: string): string | undefined {
-  const index = process.argv.indexOf(`--${name}`)
-  return index === -1 ? fallback : process.argv[index + 1]
-}
-
-function report(result: SeasonResult, expected?: string): void {
-  const rate = result.games > 0 ? Math.round((result.wins / result.games) * 100) : 0
-  const line =
-    `${result.label.padEnd(24)} ${String(result.wins).padStart(3)}W ` +
-    `${String(result.losses).padStart(3)}L of ${result.games}  (${rate}%, margin ${result.averageMargin})`
-  console.log(expected ? `${line}   baseline ${expected}` : line)
-}
-
-function main(): void {
-  if (process.argv.includes('--list')) {
-    console.log('Standing baselines — a change that moves these owes an explanation:\n')
-    for (const b of BASELINES) console.log(`  ${b.label.padEnd(24)} ${b.expect}`)
-    console.log('\nMirrored: every seed is played from both hulls, on a 72" board. 192 is the floor.')
-    return
-  }
-
-  const games = Number(flag('games', '192'))
-  const scenario = flag('scenario')
-  const started = Date.now()
-
-  if (scenario) {
-    const hi = (flag('hi', 'admiral') ?? 'admiral') as AiDifficulty
-    const lo = (flag('lo', 'captain') ?? 'captain') as AiDifficulty
-    report(season(`${scenario} ${hi}-vs-${lo}`, scenario, games, hi, lo))
-  } else {
-    for (const baseline of BASELINES) {
-      report(
-        season(baseline.label, baseline.scenario, games, baseline.hi, baseline.lo),
-        baseline.expect,
-      )
-    }
-  }
-  console.log(`\n${((Date.now() - started) / 1000).toFixed(0)}s`)
-}
-
-main()

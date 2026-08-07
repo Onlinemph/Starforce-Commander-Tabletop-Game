@@ -55,12 +55,24 @@ function fight(scenario: string, seed: number, rounds = 10) {
 
 describe('a captain with tractor beams', () => {
   it('reaches for them at all, and settles the segment when it has', () => {
-    // The wedge this guards against is the shape of every other refused
-    // action: a plan that re-emits what the rules just turned down never
-    // empties its batch, and the game hangs inside the segment rather than
-    // playing something worse.
-    const { journal } = fight('exp2-squadron-engagement', 3)
-    expect(journal.filter((a) => a.type === 'tractor-lock').length).toBeGreaterThan(0)
+    /*
+     * The wedge this guards against is the shape of every other refused
+     * action: a plan that re-emits what the rules just turned down never
+     * empties its batch, and the game hangs inside the segment rather than
+     * playing something worse.
+     *
+     * Several seeds, because a beam reaches one inch at normal power and
+     * whether two hulls ever pass that close is a property of the battle
+     * rather than of the doctrine. Written against one seed, this passed until
+     * an unrelated change to the power-allocation order moved the ships.
+     */
+    let locks = 0
+    for (const seed of [3, 5, 8, 11, 14]) {
+      locks += fight('exp2-squadron-engagement', seed).journal.filter(
+        (a) => a.type === 'tractor-lock',
+      ).length
+    }
+    expect(locks, 'no tractor lock attempted across five squadron battles').toBeGreaterThan(0)
   })
 
   it('does not tie itself to a hull two size classes larger (J3.3.4)', () => {

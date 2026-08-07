@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
-import { aiNextActions, createAiMemo, postureOf } from './ai'
+import { aiNextActions, createAiMemo, setCoordinatedGroups, postureOf } from './ai'
 import { activeShips, victoryPoints, type GameState } from './game'
 import { impactShield, isHoming } from './homing'
 import { type AiMemo } from './ai'
@@ -109,6 +109,8 @@ describe('homing strikes feed the public shield record', () => {
 })
 
 describe('the H4 step machine is played, not passed', () => {
+  afterEach(() => setCoordinatedGroups(false))
+
   function h4Squadron(seed = 3): { game: GameState; blues: ShipState[]; reds: ShipState[] } {
     const game = startScenario('exp2-squadron-engagement', { seed, coordinatedFire: true })
     const blues = game.ships.filter((s) => s.side === 'Blue Force')
@@ -117,6 +119,14 @@ describe('the H4 step machine is played, not passed', () => {
   }
 
   it('a scan-2 pair holds its individual step and coordinates on the focus target', () => {
+    /*
+     * Group declaration is off in play — it measures worse than firing
+     * individually (see `setCoordinatedGroups`) — so this test opts in. The
+     * machinery is kept correct and covered against a later pass that works
+     * out when a group is worth waiting for; it is the doctrine that is wrong,
+     * not the code below it.
+     */
+    setCoordinatedGroups(true)
     const { game, blues, reds } = h4Squadron()
     const [a, b] = blues
     for (const other of blues.slice(2)) other.destroyed = true

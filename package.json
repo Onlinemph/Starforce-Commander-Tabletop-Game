@@ -15,9 +15,10 @@
     "serve": "vite preview --host --port 4173",
     "test": "vitest run",
     "test:watch": "vitest",
-    "season": "vite-node tools/season.ts",
+    "season": "vite-node tools/season-cli.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "sweep": "vite-node tools/sweep.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
