@@ -2613,13 +2613,32 @@ function plannedCoordinatedGroup(
  * threshold accumulates across hits (F13.2), a particle warhead is worn
  * down point by point (F1.16.2).
  *
- * Every PD weapon in the book is a main gun with a point-defense mode, and
- * an interception discharges the mount like any shot — so only IDLE guns
- * intercept: mounts with no firing solution on any visible enemy hull this
- * phase. Measured the other way first: eagerly trading main-battery volleys
- * for warhead wear turned a +26 Union margin into −16 across the raid
- * season. Free shots only — which is most of them, since the launch window
- * is exactly when the raiders sit cloaked or out of reach.
+ * Every PD weapon in the book is a main gun with a point-defense mode, and an
+ * interception discharges the mount like any shot, so the question is how much
+ * of the volley to give up. This has now been wrong in both directions:
+ *
+ *   - Eagerly, trading main-battery volleys for warhead wear, which turned a
+ *     +26 Union margin into −16 across the raid season.
+ *   - Then only with IDLE guns — mounts with no firing solution on any visible
+ *     enemy hull. That reads as prudence and is in fact a null: a torpedo comes
+ *     in from the bearing of the ship that launched it, so the mounts with no
+ *     enemy in their arcs are precisely the mounts pointing away from the
+ *     torpedo. `fire-small-target` was not emitted once in roughly three
+ *     hundred measured battles, and in every sampled phase where a counter was
+ *     about to land on a ship with ready idle point defense, the number of
+ *     those mounts that could bear on it was zero.
+ *
+ * Now: idle mounts first because they are free, then up to half a ship's ready
+ * point defense may be taken out of its volley. Measured on the raid season it
+ * is a wash — 95W-97L with the interception and 95W-97L without — and that is
+ * the honest ceiling rather than a disappointment. Every homing weapon in the
+ * shipped roster is a plasma torpedo with the PARTCL trait, and a particle
+ * warhead is never destroyed outright (F1.16.1); it is only worn, three
+ * absorbed points to one point of damage (F1.16.2). An interception absorbs
+ * 3.7 points on average, so it buys about one point off a warhead in exchange
+ * for one mount's dice. The kill path in `applyDefensiveFire` — where stopping
+ * a counter dead is worth far more than a mount — waits on a MISL homing
+ * weapon, and there is not one in the book yet.
  */
 function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): GameAction[] {
   const actions: GameAction[] = []
@@ -2658,10 +2677,25 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
       })
     if (incoming.length === 0) continue
 
+    /*
+     * Every armed point-defense mount, with a note of whether it also has a
+     * ship to shoot at — a preference, not a qualification.
+     *
+     * It used to be a qualification, and that was why none of this ever fired.
+     * A mount was offered to the interception only if *no* enemy sat in its
+     * brackets and arcs; but a torpedo comes in from where the enemy is, so
+     * the only mounts the filter left were the ones pointing the other way.
+     * Measured over roughly three hundred battles, `fire-small-target` was
+     * never once emitted. In a sample where a counter was about to land and
+     * the defender had ready, idle point-defense aboard, the number of those
+     * mounts that could actually bear on the counter was zero, every time.
+     */
+    const isPointDefense = (weapon: WeaponSystemDef) =>
+      weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
     const mounts = own.flatMap((ship) => {
       const enemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
-      const idle = (mount: WeaponSystemDef['mounts'][number], weapon: WeaponSystemDef) =>
-        !enemies.some((enemy) => {
+      const busyWith = (mount: WeaponSystemDef['mounts'][number], weapon: WeaponSystemDef) =>
+        enemies.some((enemy) => {
           const range = actualRange(ship.placement.position, enemy.placement.position)
           if (!weapon.brackets.some((b) => range >= b.min && range <= b.max)) return false
           return canBearOn(
@@ -2670,25 +2704,48 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
           )
         })
       return ship.form.weapons.flatMap((weapon) =>
-        weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+        isPointDefense(weapon)
           ? weapon.mounts.flatMap((mount, mountIndex) =>
-              mountIsReady(weapon, mountIndex, ship.mounts[weapon.id][mountIndex]) &&
-              idle(mount, weapon)
-                ? [{ ship, weapon, mount, mountIndex }]
+              mountIsReady(weapon, mountIndex, ship.mounts[weapon.id][mountIndex])
+                ? [{ ship, weapon, mount, mountIndex, busy: busyWith(mount, weapon) }]
                 : [],
             )
           : [],
       )
     })
+    // Spend the free mounts first; they cost the volley nothing. Ties are
+    // broken by name so both sides compute the same assignment.
+    mounts.sort(
+      (a, b) =>
+        Number(a.busy) - Number(b.busy) ||
+        (`${a.ship.id}|${a.weapon.id}|${a.mountIndex}` < `${b.ship.id}|${b.weapon.id}|${b.mountIndex}`
+          ? -1
+          : 1),
+    )
+
+    /*
+     * How many mounts a ship may take out of its own volley to swat torpedoes.
+     * Half its point defense, at least one — a torpedo warhead is worth more
+     * than a mount's dice against a shielded hull, but a ship that turned its
+     * whole battery on the incoming wave would win the interception and lose
+     * the gunnery duel.
+     */
+    const budget = new Map<string, number>()
+    for (const { ship } of mounts) {
+      if (budget.has(ship.id)) continue
+      const ready = mounts.filter((m) => m.ship.id === ship.id).length
+      budget.set(ship.id, Math.max(1, Math.floor(ready / 2)))
+    }
 
     const spent = new Set<string>()
     for (const hw of incoming) {
-      const shot = mounts.find(({ ship, weapon, mount, mountIndex }) => {
+      const shot = mounts.find(({ ship, weapon, mount, mountIndex, busy }) => {
         const key = `${ship.id}|${weapon.id}|${mountIndex}`
         if (spent.has(key)) return false
         // One attempt per mount per counter per phase: a refusal the doctrine
         // did not foresee must not be re-argued every drive iteration.
         if (memo.done.has(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)) return false
+        if (busy && (budget.get(ship.id) ?? 0) <= 0) return false
         const range = actualRange(ship.placement.position, hw.position)
         if (!weapon.brackets.some((b) => range >= b.min && range <= b.max)) return false
         return canBearOn(
@@ -2698,6 +2755,7 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
       })
       if (!shot) continue
       const key = `${shot.ship.id}|${shot.weapon.id}|${shot.mountIndex}`
+      if (shot.busy) budget.set(shot.ship.id, (budget.get(shot.ship.id) ?? 0) - 1)
       spent.add(key)
       memo.done.add(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)
       actions.push({
