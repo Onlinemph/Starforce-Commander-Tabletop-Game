@@ -3111,7 +3111,7 @@ function bestVolley(
     visibleForKite.every(
       (e) => estimatedVolleyDamage(e, ship.placement.position, ship.sensors.jamming) === 0,
     )
-  let best: {
+  type Candidate = {
     targetId: string
     mounts: Array<{ weaponId: string; mountIndex: number }>
     score: number
@@ -3119,7 +3119,19 @@ function bestVolley(
     range: number
     level: ReturnType<typeof damageLevel>
     effective: number
-  } | null = null
+  }
+  let best: Candidate | null = null
+  /**
+   * The best target this ship would shoot at even under fire discipline — one
+   * where something bears in a bracket that is not red.
+   *
+   * Kept because `score` counts dice and nothing else, so a long shot at a
+   * distant hull can outscore a good shot at a near one, and the discipline
+   * gate below then held the *whole* volley rather than falling back to the
+   * target it was perfectly willing to fire on. Measured across 32 battles it
+   * threw away 56 live firing solutions.
+   */
+  let bestLive: Candidate | null = null
 
   for (const enemy of enemiesOf(game, ship)) {
     if (positionHidden(game, enemy)) continue
@@ -3183,8 +3195,18 @@ function bestVolley(
         ? // The ensign shoots whatever is closest and calls it gunnery.
           !best || actual < best.range || (actual === best.range && enemy.id < best.targetId)
         : !best || score > best.score || (score === best.score && enemy.id < best.targetId)
-    if (better) {
-      best = { targetId: enemy.id, mounts, score, allRed, range: actual, level, effective }
+    const candidate: Candidate = {
+      targetId: enemy.id,
+      mounts,
+      score,
+      allRed,
+      range: actual,
+      level,
+      effective,
+    }
+    if (better) best = candidate
+    if (!allRed && (!bestLive || score > bestLive.score || (score === bestLive.score && enemy.id < bestLive.targetId))) {
+      bestLive = candidate
     }
   }
 
@@ -3207,7 +3229,11 @@ function bestVolley(
     best.level !== 'crippled' &&
     postureOf(game, ship, difficulty) !== 'press'
   ) {
-    return null
+    // Hold the long shot — but only the long shot. If some other hull is
+    // standing in a bracket worth firing into, shoot that one instead of
+    // standing down altogether.
+    if (!bestLive) return null
+    best = bestLive
   }
 
   const target = game.ships.find((s) => s.id === best!.targetId)!

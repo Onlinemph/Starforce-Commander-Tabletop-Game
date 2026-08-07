@@ -124,7 +124,11 @@ export const BASELINES = [
     // comments on `planTractors` and `planBoarding` for what they are for.
     // → 135W-57L with the searched allocation order: shield repair (G1.3.3)
     // ahead of the first drive point, reinforcement (G1.3.2) to the very back.
-    expect: '135W-57L of 192',
+    // → 142W-50L when fire discipline stopped holding the ship along with the
+    // long shot: the all-red gate ran after target selection, so a captain
+    // that rejected its best-scoring target stood down entirely instead of
+    // firing at a hull sitting in a green bracket somewhere else.
+    expect: '142W-50L of 192',
   },
 ] as const
 
