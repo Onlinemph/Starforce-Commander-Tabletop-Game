@@ -1244,7 +1244,8 @@ function planOrders(
      * instead of drifting into three private duels. The ensign chases the
      * nearest counter.
      */
-    const focusId = difficulty === 'ensign' ? null : focusTargetFor(game, ship, difficulty)
+    const focusId =
+      difficulty === 'ensign' || ablated('focus') ? null : focusTargetFor(game, ship, difficulty)
     const enemy = enemies.find((e) => e.id === focusId) ?? nearest(ship, enemies)
 
     const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty, memo) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
@@ -1879,6 +1880,29 @@ export function setPlotWeights(weights: PlotWeights | null): void {
   tunedWeights = weights ?? TUNED_PLOT_WEIGHTS
 }
 
+/**
+ * Ablation switches for the admiral's plot doctrine, measurement only.
+ *
+ * The orbital-ambush investigation (see season.ts) established that something
+ * the admiral does and the captain does not is punished on terrain maps, and
+ * ruled out the plot weights and the scorer's terrain-blindness. What remains
+ * is the admiral's *machinery* — the features below, each of which the
+ * captain lacks. These switches turn them off one at a time so a season can
+ * say which is the culprit, instead of another guess.
+ *
+ * Like every measurement hook in this file they bind to the admiral alone,
+ * and none of them is reachable from the app.
+ */
+export type AiAblation = 'lookahead' | 'predict' | 'turn-rates' | 'focus' | 'kite'
+
+let ablations: ReadonlySet<AiAblation> = new Set()
+
+export function setAiAblations(keys: readonly AiAblation[] | null): void {
+  ablations = new Set(keys ?? [])
+}
+
+const ablated = (key: AiAblation): boolean => ablations.has(key)
+
 function bestPlot(
   game: GameState,
   ship: ShipState,
@@ -1899,7 +1923,8 @@ function bestPlot(
   const visibleEnemies = enemiesOf(game, ship).filter((e) => !positionHidden(game, e))
   // Against a longer-reached swarm the ideal range is not the green band's
   // middle — it is the band the swarm cannot answer from.
-  const kite = difficulty === 'admiral' ? kiteBand(game, ship, visibleEnemies) : null
+  const kite =
+    difficulty === 'admiral' && !ablated('kite') ? kiteBand(game, ship, visibleEnemies) : null
   const ideal = kite ?? preferredRange(ship)
   /**
    * A ship that has resolved to leave stops flying like a ship that means
@@ -1949,7 +1974,8 @@ function bestPlot(
    * plot does not depend on which of our candidates we weigh), and a second
    * prediction from the first for the lookahead's far phase.
    */
-  const enemyPlan = difficulty === 'admiral' ? predictEnemyPlot(game, enemy, ship) : null
+  const enemyPlan =
+    difficulty === 'admiral' && !ablated('predict') ? predictEnemyPlot(game, enemy, ship) : null
   const enemyPlan2 = enemyPlan
     ? predictEnemyPlot(game, enemy, ship, enemyPlan, enemyPlan.speed)
     : null
@@ -2096,7 +2122,8 @@ function bestPlot(
    */
   const RATES = [20, 25, 30, 35, 40, 45, 60]
   const rateChoices = (maneuver: Maneuver, speed: number): Array<number | undefined> => {
-    if (difficulty !== 'admiral' || maneuver === 'straight' || maneuver === 'slide') return [undefined]
+    if (difficulty !== 'admiral' || ablated('turn-rates') || maneuver === 'straight' || maneuver === 'slide')
+      return [undefined]
     const allowed = turnTemplateAt(ship, speed)
     if (allowed <= 0) return [undefined]
     /*
@@ -2390,7 +2417,7 @@ function bestPlot(
        * The terms were not the ceiling — their *balance* was.
        */
       let bestNext = -Infinity
-      if (difficulty === 'admiral' && !fleeing) {
+      if (difficulty === 'admiral' && !fleeing && !ablated('lookahead')) {
         /*
          * The far phase aims at the same hedged lead as the near one, and not
          * at `enemyPlan2` — which is modelled, sitting right there, and worse.
