@@ -45,8 +45,9 @@ npm run evolve -- --validate '<json>'      # score a weight set on the holdout
 ```
 
 Both shipped. The allocation order was worth 57 games a season; the evolved plot weights were
-worth 40 on battles the search had never seen. The baselines then moved again — to 146/180/178 —
-when rollout plotting shipped (see below), which is the current standing record. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
+worth 40 on battles the search had never seen. The baselines then moved to 146/180/178 when
+rollout plotting shipped (see below), and to **167/191/188 — plus a new planet baseline at
+159W-33L** — when the rollout's own knobs were swept: nominate by plan shape, two-round horizon. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
 at the end — a validation set consulted every generation is just a slower training set. Two of
 the three evolution restarts failed to generalise, which is what the discipline is for.
 
@@ -80,8 +81,14 @@ captain-level doctrine play both sides one full round forward, all four clones f
 dice. No prediction, no fitted model — the game itself is the evaluator. Admiral-only, on by
 default (`setRolloutPlots` in `src/engine/ai.ts` is the off switch every measurement tool uses).
 
-    duel adm-vs-capt   129W-62L → 146W-45L      squadron adm-vs-ens  171W-21L → 178W-14L
-    duel adm-vs-ens    172W-19L → 180W-12L      orbital ambush       40W-55L  → 101W-90L
+    duel adm-vs-capt   129W-62L → 167W-24L      squadron adm-vs-ens  171W-21L → 188W-4L
+    duel adm-vs-ens    172W-19L → 191W-1L       orbital ambush       40W-55L  → 159W-33L
+
+Those figures include the knob sweep that followed (`RolloutConfig` in `ai.ts` holds the full
+table): widening the shortlist was flat, but nominating the best candidate of each *plan shape*
+and playing the clones two rounds instead of one each bought games everywhere they were tried —
+the ensign seasons are now formalities, and `{ loRollouts: false }` fields yesterday's
+scorer-only admiral as the reference opponent with resolution to spare (85W-11L in the mirror).
 
 One rule learned the hard way: the rollout must cast the enemy at its *actual* rank
 (`setRolloutEnemyRank`). Imagined as a captain while really facing an ensign, the admiral hedges

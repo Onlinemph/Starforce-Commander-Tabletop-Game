@@ -98,7 +98,9 @@ export const BASELINES = [
     // and each is resolved by cloning the battle and playing it a round
     // ahead. The largest single gain in this file's history, on the matchup
     // that had been called saturated. See `setRolloutPlots` in ai.ts.
-    expect: '146W-45L of 192',
+    // → 167W-24L when the rollout's own joints were swept (RolloutConfig):
+    // nominate by plan shape, play the clones two rounds instead of one.
+    expect: '167W-24L of 192',
   },
   {
     label: 'duel adm-vs-ens',
@@ -109,7 +111,9 @@ export const BASELINES = [
     // evolved plot weights, → 180W-12L with rollout plotting — measured only
     // after the rollout learned to cast its enemy as the ensign it actually
     // faces; imagined as a captain, the same doctrine LOST games here.
-    expect: '180W-12L of 192',
+    // → 191W-1L with the swept rollout config. This season is a formality
+    // now; the mirror below is where resolution lives.
+    expect: '191W-1L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -142,7 +146,22 @@ export const BASELINES = [
     // firing at a hull sitting in a green bracket somewhere else.
     // → 171W-21L with the evolved plot weights.
     // → 178W-14L with rollout plotting, enemy cast at true rank.
-    expect: '178W-14L of 192',
+    // → 188W-4L with the swept rollout config.
+    expect: '188W-4L of 192',
+  },
+  {
+    label: 'planet adm-vs-capt',
+    scenario: 's3.3-orbital-ambush',
+    hi: 'admiral',
+    lo: 'captain',
+    // The newest baseline, added the day terrain doctrine finally had a
+    // number worth guarding. History: 40W-55L — losing — when first measured
+    // (see the ORBITAL AMBUSH note below), → 101W-90L with rollout plotting,
+    // → 159W-33L with the swept config, whose two-round horizon is exactly
+    // what a battle bent around a planet needs to see. This entry exists so
+    // no future change can quietly trade the terrain game away for the open
+    // maps above: every baseline before it is fought on a bare board.
+    expect: '159W-33L of 192',
   },
 ] as const
 

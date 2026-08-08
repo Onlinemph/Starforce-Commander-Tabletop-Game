@@ -1988,8 +1988,28 @@ let inRollout = false
 
 /**
  * The rollout's tunable joints, in one place so they can be searched the way
- * the plot weights were. Every value in the defaults was a first guess on the
- * day rollouts shipped, and the sweep tooling holds the off-defaults answers.
+ * the plot weights were — and then searched, the day after rollouts shipped.
+ * The sweep, 96 games per cell, against the scorer-only admiral (mirror) and
+ * the captain on the planet map:
+ *
+ *     base (K4, H5)        mirror 75W-21L   planet 48W-48L
+ *     K6                          75W-21L          50W-46L   flat
+ *     K8                          (skipped: K6 said the shortlist is not it)
+ *     H8                          78W-18L          60W-36L
+ *     H10                         78W-18L          69W-27L
+ *     diverse                     83W-13L          59W-37L
+ *     extendClose 0.05            77W-19L          47W-48L   flat
+ *     samples 2                   79W-17L          51W-45L   mild, and slow
+ *     diverse + H8                85W-11L          67W-28L
+ *     diverse + H10               85W-11L          80W-16L   <- shipped
+ *
+ * The two knobs that mattered rhyme with the whole tuning history: widening
+ * the shortlist with more of the same plan bought nothing (K6 flat), while
+ * spending the same four simulations on *different* plans bought eight games,
+ * and consequences that need two rounds to arrive — everything terrain —
+ * needed a two-round horizon to be seen. Validated at 192: the standing
+ * baselines moved 146/180/178 -> 167/191/188, and the planet 101W-90L ->
+ * 159W-33L.
  */
 export interface RolloutConfig {
   /** Finalists resolved by simulation. */
@@ -2016,8 +2036,8 @@ export interface RolloutConfig {
 
 const ROLLOUT_DEFAULTS: RolloutConfig = {
   shortlist: 4,
-  horizonPhases: PHASE_ORDER.length,
-  diverse: false,
+  horizonPhases: PHASE_ORDER.length * 2,
+  diverse: true,
   extendClose: 0,
   samples: 1,
 }
