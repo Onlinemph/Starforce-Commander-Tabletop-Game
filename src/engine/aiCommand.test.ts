@@ -102,14 +102,45 @@ describe('a squadron with a flag bridge', () => {
   })
 
   it('pushes a consort past the cap its own sensors impose (H5.2.2)', () => {
-    const { game } = fight()
-    const lent = lentScanPoints(game)
-    const helped = activeShips(game).filter((s) => (lent[s.id] ?? 0) > 0)
-    expect(helped.length).toBeGreaterThan(0)
-    // The whole point of a loan: effective scan above what the ship plotted.
-    for (const s of helped) {
-      expect(tacticalScanOf(game, s)).toBeGreaterThan(s.sensors.tacticalScan)
+    /*
+     * Sampled through the battle, like the GEN SYS test above and for the
+     * same reason. This used to read the loan off the END state, and passed
+     * for months on the accident that seed 3 happened to finish with a loan
+     * still active — until rollout plotting moved where the battle stops and
+     * the final position had a dead flag. Mid-battle the doctrine was running
+     * the whole time: 255 lent samples across the same four rounds.
+     */
+    const game = startScenario('exp2-squadron-engagement', { seed: 3, mapScale: 2 })
+    const memo = createAiMemo()
+    const sides = [...new Set(game.ships.map((s) => s.side))]
+    const drive = (closing: boolean) => {
+      for (let guard = 0; guard < 300; guard++) {
+        const batch = aiNextActions(game, sides, memo, closing, 'admiral')
+        if (batch.length === 0) return
+        for (const a of batch) applyAction(game, a)
+        closing = false
+      }
+      throw new Error('the captains never settled')
     }
+    let loans = 0
+    let aboveOwnCap = 0
+    drive(false)
+    for (let step = 0; step < 200; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > 4) break
+      drive(true)
+      const lent = lentScanPoints(game)
+      for (const s of activeShips(game)) {
+        if ((lent[s.id] ?? 0) > 0) {
+          loans += 1
+          // The whole point of a loan: scan above what the hull plotted.
+          if (tacticalScanOf(game, s) > s.sensors.tacticalScan) aboveOwnCap += 1
+        }
+      }
+      applyAction(game, { type: 'advance-segment' })
+      drive(false)
+    }
+    expect(loans, 'no consort ever held a lent scan point').toBeGreaterThan(0)
+    expect(aboveOwnCap).toBe(loans)
   })
 })
 

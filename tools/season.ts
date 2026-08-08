@@ -93,7 +93,11 @@ export const BASELINES = [
     // → 129W-62L with the admiral's evolved plot weights (see
     // TUNED_PLOT_WEIGHTS). Held-out validation is the claim, not this: on
     // three scenarios the search never scored against, 59.4% → 71.2%.
-    expect: '129W-62L of 192',
+    // → 146W-45L with rollout plotting: the scorer nominates four finalists
+    // and each is resolved by cloning the battle and playing it a round
+    // ahead. The largest single gain in this file's history, on the matchup
+    // that had been called saturated. See `setRolloutPlots` in ai.ts.
+    expect: '146W-45L of 192',
   },
   {
     label: 'duel adm-vs-ens',
@@ -101,8 +105,10 @@ export const BASELINES = [
     hi: 'admiral',
     lo: 'ensign',
     // → 137W-55L with the searched allocation order, → 172W-19L with the
-    // evolved plot weights.
-    expect: '172W-19L of 192',
+    // evolved plot weights, → 180W-12L with rollout plotting — measured only
+    // after the rollout learned to cast its enemy as the ensign it actually
+    // faces; imagined as a captain, the same doctrine LOST games here.
+    expect: '180W-12L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -134,7 +140,8 @@ export const BASELINES = [
     // that rejected its best-scoring target stood down entirely instead of
     // firing at a hull sitting in a green bracket somewhere else.
     // → 171W-21L with the evolved plot weights.
-    expect: '171W-21L of 192',
+    // → 178W-14L with rollout plotting, enemy cast at true rank.
+    expect: '178W-14L of 192',
   },
 ] as const
 
@@ -171,12 +178,15 @@ export const BASELINES = [
  * four seasons; the note on `firepowerAt` explains why a blindness that even
  * applies to every candidate cannot change which candidate wins.
  *
- * So the cause is still open. What is established: it is admiral-only
- * doctrine, it shows on every map with terrain and worst where sight is
- * blocked, it is about closing rather than hiding, and it is not the plot
- * weights (the hand-set values read 42W-54L, inside noise of the evolved
- * ones). That leaves the lookahead, the enemy-plot prediction, the turn rates
- * and the focus-fire herding as the candidates nobody has ablated yet.
+ * The ablations came back flat — lookahead, enemy-plot prediction, turn
+ * rates and focus herding each innocent alone at 96 games — which said the
+ * scorer's *objective* was the problem, not any one piece of machinery. What
+ * finally fixed it was not repairing the objective but replacing it at the
+ * finish line: rollout plotting (see `setRolloutPlots` in ai.ts) resolves the
+ * scorer's top candidates by playing the actual game a round ahead, and the
+ * brawl the scorer could not price is priced by the wreckage it causes. This
+ * map went 40W-55L → 101W-90L over 192 games, and the bare-map baselines
+ * above rose with it, which is why it is doctrine and not a terrain patch.
  */
 
 interface Side {

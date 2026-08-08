@@ -45,8 +45,8 @@ npm run evolve -- --validate '<json>'      # score a weight set on the holdout
 ```
 
 Both shipped. The allocation order was worth 57 games a season; the evolved plot weights were
-worth 40 on battles the search had never seen, and moved the three standing baselines to
-129/172/171. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
+worth 40 on battles the search had never seen. The baselines then moved again — to 146/180/178 —
+when rollout plotting shipped (see below), which is the current standing record. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
 at the end — a validation set consulted every generation is just a slower training set. Two of
 the three evolution restarts failed to generalise, which is what the discipline is for.
 
@@ -72,6 +72,21 @@ so the question can be re-asked cheaply and so nobody has to have the idea twice
 `--explore` matters if you re-run it. Without it the training set contains only positions this
 captain approves of, which is the wrong set to rank rejected candidates from. It improved the fit
 and not the play.
+
+### Rollout plotting — the thing that did work
+
+The scorer nominates its top four plots; each is resolved by cloning the battle and letting
+captain-level doctrine play both sides one full round forward, all four clones facing the same
+dice. No prediction, no fitted model — the game itself is the evaluator. Admiral-only, on by
+default (`setRolloutPlots` in `src/engine/ai.ts` is the off switch every measurement tool uses).
+
+    duel adm-vs-capt   129W-62L → 146W-45L      squadron adm-vs-ens  171W-21L → 178W-14L
+    duel adm-vs-ens    172W-19L → 180W-12L      orbital ambush       40W-55L  → 101W-90L
+
+One rule learned the hard way: the rollout must cast the enemy at its *actual* rank
+(`setRolloutEnemyRank`). Imagined as a captain while really facing an ensign, the admiral hedges
+against phantom competence and loses games to its own caution — the squadron season regressed
+seven games before the cast was fixed and gained three after.
 
 # Ship Book importer
 
