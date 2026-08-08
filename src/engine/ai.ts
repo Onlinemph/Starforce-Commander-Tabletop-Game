@@ -137,6 +137,9 @@ export interface AiMemo {
    *  segment re-plans until it settles, and a decision made by simulation is
    *  far too expensive to remake on every pass of that loop. */
   plots: Map<string, Candidate>
+  /** Rollout-resolved volley choices, keyed the same way; null means the
+   *  simulation preferred holding fire. */
+  volleys: Map<string, GameAction | null>
   /** Highest Tactical Scan each enemy side has shown — the auction remembered. */
   scanSeen: Map<string, number>
   /** Log entries digested so far by the observation pass. */
@@ -146,7 +149,7 @@ export interface AiMemo {
 }
 
 export function createAiMemo(): AiMemo {
-  return { done: new Set(), plots: new Map(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
+  return { done: new Set(), plots: new Map(), volleys: new Map(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
 }
 
 /**
@@ -2032,6 +2035,8 @@ export interface RolloutConfig {
   extendClose: number
   /** Rollouts averaged per candidate; extra samples decorrelate their dice. */
   samples: number
+  /** Resolve firing choices by simulation too, not just plots. */
+  volleys: boolean
 }
 
 const ROLLOUT_DEFAULTS: RolloutConfig = {
@@ -2040,6 +2045,8 @@ const ROLLOUT_DEFAULTS: RolloutConfig = {
   diverse: true,
   extendClose: 0,
   samples: 1,
+  // MEASUREMENT IN FLIGHT: flips to true only if the marginal seasons say so.
+  volleys: false,
 }
 
 let rolloutConfig: RolloutConfig = { ...ROLLOUT_DEFAULTS }
@@ -2111,14 +2118,32 @@ function rolloutMarginInner(
     applyAction(sim, { type: 'plot-accel', shipId: ship.id, delta: cand.accel - card.accel })
   }
   applyAction(sim, { type: 'plot-turn-rate', shipId: ship.id, rate: cand.turnRate ?? null })
+  return playOut(sim, ship.side, ship.id, horizonPhases)
+}
 
+/**
+ * Drive a clone to the horizon and read the health margin off the wreckage —
+ * the shared back half of every rollout, whatever decision seeded the clone.
+ *
+ * `frozenId` names a ship whose plot must survive until the first segment
+ * boundary: a plot is a *plan*, and the captain driving its side would
+ * otherwise re-plan it and collapse every candidate into its own choice. A
+ * decision that is *applied* to the clone before this runs — a volley fired,
+ * a pass declared — needs no freeze, because the game itself remembers it.
+ */
+function playOut(
+  sim: GameState,
+  mySide: string,
+  frozenId: string | null,
+  horizonPhases: number,
+): number {
   const sides = [...new Set(sim.ships.map((s) => s.side))]
   const memos = new Map(sides.map((side) => [side, createAiMemo()]))
-  let frozen = true
+  let frozen = frozenId !== null
   const isFrozenPlot = (a: GameAction): boolean =>
     frozen &&
     'shipId' in a &&
-    a.shipId === ship.id &&
+    a.shipId === frozenId &&
     (a.type === 'plot-maneuver' || a.type === 'plot-accel' || a.type === 'plot-turn-rate')
 
   const drive = (closing: boolean) => {
@@ -2131,7 +2156,7 @@ function rolloutMarginInner(
             [side],
             memos.get(side)!,
             closing && pass === 0 && guard === 0,
-            side === ship.side ? 'captain' : rolloutEnemyRank,
+            side === mySide ? 'captain' : rolloutEnemyRank,
             'steady',
             true,
           )
@@ -2146,7 +2171,8 @@ function rolloutMarginInner(
 
   const startRound = sim.round
   const startPhase = PHASE_ORDER.indexOf(sim.phase)
-  const elapsed = () => (sim.round - startRound) * PHASE_ORDER.length + (PHASE_ORDER.indexOf(sim.phase) - startPhase)
+  const elapsed = () =>
+    (sim.round - startRound) * PHASE_ORDER.length + (PHASE_ORDER.indexOf(sim.phase) - startPhase)
   for (let seg = 0; seg < ROLLOUT_MAX_SEGMENTS; seg++) {
     if (new Set(activeShips(sim).map((s) => s.side)).size <= 1) break
     if (elapsed() >= horizonPhases) break
@@ -2156,8 +2182,29 @@ function rolloutMarginInner(
     drive(false)
   }
 
-  const enemySide = sides.find((side) => side !== ship.side)
-  return health(sim, ship.side) - (enemySide ? health(sim, enemySide) : 0)
+  const enemySide = sides.find((side) => side !== mySide)
+  return health(sim, mySide) - (enemySide ? health(sim, enemySide) : 0)
+}
+
+/**
+ * The margin a firing choice leads to — fire this volley, or hold it.
+ *
+ * Simpler than the plot rollout in exactly one instructive way: a volley is
+ * applied to the clone, not planned in it, so nothing needs freezing and the
+ * dice resolve inside the simulation. Passing `null` simulates holding fire,
+ * which turns the whole fire-discipline question — is a red volley now worth
+ * more than a better bracket later? — from a rule into a measurement, made
+ * per decision, with this battle's actual geometry.
+ */
+function rolloutVolley(game: GameState, ship: ShipState, volley: GameAction | null): number {
+  inRollout = true
+  try {
+    const sim = cloneGame(game)
+    applyAction(sim, volley ?? { type: 'pass-fire', shipId: ship.id })
+    return playOut(sim, ship.side, null, rolloutConfig.horizonPhases)
+  } finally {
+    inRollout = false
+  }
 }
 
 function bestPlot(
@@ -3344,7 +3391,9 @@ function planFiring(
     // Armed homing weapons go out first (E5.2): they fly on their own and the
     // direct-fire batteries still get their volley.
     if (difficulty !== 'ensign') actions.push(...homingLaunches(game, ship, memo, difficulty))
-    const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty))
+    const volley = bestVolley(game, ship, difficulty, focusTargetFor(game, ship, difficulty), {
+      memo,
+    })
     if (volley) {
       memo.done.add(attemptKey)
       actions.push(volley)
@@ -3863,7 +3912,7 @@ function bestVolley(
   ship: ShipState,
   difficulty: AiDifficulty,
   focusId: string | null = null,
-  opts: { onlyTargetId?: string; noPrecision?: boolean } = {},
+  opts: { onlyTargetId?: string; noPrecision?: boolean; memo?: AiMemo } = {},
 ): GameAction | null {
   const obstacles = terrainObstacles(game.scenario.terrain)
   /**
@@ -3890,6 +3939,7 @@ function bestVolley(
     effective: number
   }
   let best: Candidate | null = null
+  const everyTarget: Candidate[] = []
   /**
    * The best target this ship would shoot at even under fire discipline — one
    * where something bears in a bracket that is not red.
@@ -3974,12 +4024,99 @@ function bestVolley(
       effective,
     }
     if (better) best = candidate
+    everyTarget.push(candidate)
     if (!allRed && (!bestLive || score > bestLive.score || (score === bestLive.score && enemy.id < bestLive.targetId))) {
       bestLive = candidate
     }
   }
 
   if (!best) return null
+
+  /** Turn a scored candidate into the volley the rules will be handed —
+   *  shield nomination (E6.2), precision fire (E9), proximity fusing (E3.3).
+   *  One place, because the rollout path and the direct path must fire
+   *  exactly the same shot for a given candidate. */
+  const materialize = (chosen: Candidate): GameAction => {
+    const target = game.ships.find((s) => s.id === chosen.targetId)!
+    let chosenShield: ShieldSide | undefined
+    if (difficulty !== 'ensign') {
+      const options = shieldsFacing(
+        ship.placement.position,
+        target.placement.position,
+        target.placement.heading,
+      )
+      if (options.length > 1) {
+        chosenShield = [...options].sort(
+          (a, b) =>
+            estimatedShieldRemaining(game, target, a) - estimatedShieldRemaining(game, target, b),
+        )[0]
+      }
+    }
+    const precision =
+      !opts.noPrecision &&
+      difficulty === 'admiral' &&
+      (chosen.level === 'heavy' || chosen.level === 'crippled') &&
+      chosen.effective <= 8 &&
+      chosen.mounts.length > 0 &&
+      chosen.mounts.every((m) => {
+        const weapon = ship.form.weapons.find((w) => w.id === m.weaponId)!
+        return traitValue(weapon, 'PREC') !== null
+      })
+    return {
+      type: 'fire-volley',
+      attackerId: ship.id,
+      targetId: chosen.targetId,
+      mounts: chosen.mounts,
+      mode: precision ? 'precision' : difficulty === 'admiral' && chosen.allRed ? 'proximity' : 'standard',
+      precisionSection: precision ? 'weapons' : undefined,
+      degraded: false,
+      chosenShield,
+    }
+  }
+
+  /*
+   * The admiral resolves its firing choice the way it resolves its plots:
+   * by playing it out. The scorer's per-target candidates are ranked and the
+   * top few are each applied to a clone — plus one clone that HOLDS the
+   * volley — and the health margin at the horizon decides. This replaces the
+   * fire-discipline gate below for the admiral wholesale: whether an all-red
+   * volley now beats a better bracket later stops being a rule about bands
+   * and becomes a measurement of this battle. Ties fall to the scorer's
+   * order, and holding must beat every shot STRICTLY to win — dice in the
+   * air are worth something no margin can see.
+   *
+   * `untouchable` skips the simulation: free damage needs no deliberation.
+   */
+  if (
+    rolloutPlots &&
+    rolloutConfig.volleys &&
+    !inRollout &&
+    difficulty === 'admiral' &&
+    !opts.onlyTargetId &&
+    !untouchable &&
+    opts.memo
+  ) {
+    const key = `${game.round}:${game.phase}:${ship.id}`
+    const cached = opts.memo.volleys.get(key)
+    if (cached !== undefined) return cached
+    const ranked = [...everyTarget].sort(
+      (a, b) => b.score - a.score || (a.targetId < b.targetId ? -1 : 1),
+    )
+    let winner: GameAction | null = null
+    let winnerMargin = -Infinity
+    for (const candidate of ranked.slice(0, 3)) {
+      const action = materialize(candidate)
+      const margin = rolloutVolley(game, ship, action)
+      if (margin > winnerMargin) {
+        winnerMargin = margin
+        winner = action
+      }
+    }
+    const held = rolloutVolley(game, ship, null)
+    if (held > winnerMargin) winner = null
+    opts.memo.volleys.set(key, winner)
+    return winner
+  }
 
   /**
    * Fire discipline is rank. An all-red volley hands the defender rerolls
@@ -4005,59 +4142,7 @@ function bestVolley(
     best = bestLive
   }
 
-  const target = game.ships.find((s) => s.id === best!.targetId)!
-
-  /**
-   * Land the damage on the weak shield. When the geometry sits on an arc
-   * boundary the attacker nominates which facing shield is struck (E6.2
-   * Step 4). Weak means what the table knows: printed strength minus the
-   * absorption everyone has watched that side soak — so a facing this ship
-   * has been hammering stays the target of choice even when its printed
-   * strength matches its neighbour's. The ensign takes what it is given.
-   */
-  let chosenShield: ShieldSide | undefined
-  if (difficulty !== 'ensign') {
-    const options = shieldsFacing(
-      ship.placement.position,
-      target.placement.position,
-      target.placement.heading,
-    )
-    if (options.length > 1) {
-      chosenShield = [...options].sort(
-        (a, b) =>
-          estimatedShieldRemaining(game, target, a) - estimatedShieldRemaining(game, target, b),
-      )[0]
-    }
-  }
-
-  /**
-   * The admiral's scalpel: a broken ship at knife range, engaged by an
-   * all-PREC battery, takes precision fire on its weapons section (E9) —
-   * the kill matters less than the silence.
-   */
-  const precision =
-    !opts.noPrecision && // no member of a coordinated group may use it (H4.6.2)
-    difficulty === 'admiral' &&
-    (best.level === 'heavy' || best.level === 'crippled') &&
-    best.effective <= 8 &&
-    best.mounts.length > 0 &&
-    best.mounts.every((m) => {
-      const weapon = ship.form.weapons.find((w) => w.id === m.weaponId)!
-      return traitValue(weapon, 'PREC') !== null
-    })
-
-  return {
-    type: 'fire-volley',
-    attackerId: ship.id,
-    targetId: best.targetId,
-    mounts: best.mounts,
-    // At extreme range the admiral fires proximity-fused: rerolled blanks and
-    // half damage beat full damage that never lands (E3.3).
-    mode: precision ? 'precision' : difficulty === 'admiral' && best.allRed ? 'proximity' : 'standard',
-    precisionSection: precision ? 'weapons' : undefined,
-    degraded: false,
-    chosenShield,
-  }
+  return materialize(best)
 }
 
 // ---------------------------------------------------------------------------
