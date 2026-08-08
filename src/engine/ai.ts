@@ -97,6 +97,8 @@ import { endurance, isHoming, speedInPhase } from './homing'
 import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
+import { health } from './battleScore'
+import { activePlotModel, plotExploration, plotModelValue, plotRecorder } from './plotModel'
 
 /**
  * A computer opponent, as a captain of sound doctrine rather than deep search.
@@ -1916,6 +1918,79 @@ function bestPlot(
   let secondScore = -Infinity
 
   /*
+   * The learned evaluator (see `plotModel.ts`), and the half of its feature
+   * vector that is a property of the decision rather than of a candidate.
+   *
+   * Scoped to the admiral, like `setPlotWeights` and `setAllocationOrder` and
+   * for the same reason — a season measures one side against a fixed other,
+   * and a change applied to both hulls measures as zero however good it is.
+   * Scoped away from `fleeing` and `survey` too, which do not score positions
+   * at all: they replace the objective with distance from the guns or from a
+   * planet, and a model trained on fighting has nothing to say about either.
+   */
+  const model = difficulty === 'admiral' ? activePlotModel() : null
+  const watcher = difficulty === 'admiral' ? plotRecorder() : null
+  const learning = (model !== null || watcher !== null) && !fleeing && !survey
+  let bestFeatures: number[] | null = null
+  /*
+   * Exploration, for data generation only (`plotExploration` returns 0 unless
+   * a recorder is listening). One plot in five is drawn uniformly from the
+   * legal candidates and flown anyway, so the training set contains positions
+   * this captain would never have chosen — which is the only way a model can
+   * learn that they are worse. Reservoir sampling, because the candidate count
+   * is not known until the loops finish, and the deterministic hash so a
+   * recorded battle is still exactly reproducible.
+   */
+  const exploring =
+    learning && watcher !== null && jitter('explore', game.round, game.phase, ship.id) < plotExploration()
+  let seenCandidates = 0
+  let exploreChoice: Candidate | null = null
+  let exploreFeatures: number[] | null = null
+  const DAMAGE_SCALE: Record<string, number> = {
+    none: 0,
+    minor: 0.2,
+    light: 0.4,
+    moderate: 0.6,
+    heavy: 0.8,
+    crippled: 1,
+    destroyed: 1,
+  }
+  const SHIELD_SIDES: ShieldSide[] = ['F', 'S', 'A', 'P']
+  const context: number[] = []
+  let hullWorst = 0
+  let enemyIdeal = 6
+  let currentRange = 0
+  if (learning) {
+    const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
+    const boxes = ship.form.structure.filter((e) => e.kind === 'box').length || 1
+    let mounts = 0
+    let ready = 0
+    for (const weapon of ship.form.weapons) {
+      if (isHoming(weapon)) continue
+      weapon.mounts.forEach((_, index) => {
+        mounts += 1
+        if (mountIsReady(weapon, index, ship.mounts[weapon.id][index])) ready += 1
+      })
+    }
+    hullWorst = Math.min(
+      ...SHIELD_SIDES.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
+    )
+    enemyIdeal = preferredRange(enemy)
+    currentRange = actualRange(ship.placement.position, predicted)
+    context.push(
+      structureRemaining(ship) / boxes,
+      health(game, ship.side),
+      health(game, enemy.side),
+      (own.length - visibleEnemies.length) / Math.max(1, own.length + visibleEnemies.length),
+      Math.min(1, game.round / 12),
+      post === 'protect' ? -1 : post === 'press' ? 1 : 0,
+      Math.min(1, ship.stressMarkers / Math.max(1, ship.form.stressRating)),
+      mounts === 0 ? 0 : ready / mounts,
+      DAMAGE_SCALE[damageLevel(ship)] ?? 0,
+    )
+  }
+
+  /*
    * Turn rates (C3.9.1). A turn may be taken at *any* rate up to the one the
    * table allows, and the captain used to take the full template every time —
    * so its only choices were "swing as hard as the ship can" or "fly
@@ -1998,9 +2073,20 @@ function bestPlot(
        * with sailing on forever. The continuous reward is the gradient that
        * makes coming about win on its own merits at every rank.
        */
+      /*
+       * Several of the quantities below are hoisted out of the blocks that
+       * compute them. That is for the learned evaluator at the bottom of this
+       * loop (`plotModel.ts`), which is fed exactly the measurements the hand
+       * terms are made of rather than recomputing them: the model gets a
+       * superset of the scorer's inputs for the cost of an array literal, and
+       * a feature that disagrees with the term beside it is impossible by
+       * construction. They stay zero when the block that fills them is
+       * skipped, which is the same thing the score does.
+       */
+      let offBow = 180
       if (!fleeing) {
         const bearing = relativeBearing(end.position, end.heading, predicted)
-        const offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
+        offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
         score += ((180 - offBow) / 180) * W.bearing
         if (offBow < 45) score += W.bowBonus
       }
@@ -2011,8 +2097,14 @@ function bestPlot(
       // from, and present their healthiest shield to the fire coming back:
       // when one side is stripped, showing it to the enemy is hull damage
       // volunteered.
+      let fp = 0
+      let weakness = 0
+      let weakest = 0
+      let incoming = 0
+      let coverTaken = 0
+      let hiddenHere = false
       if (difficulty !== 'ensign' && !fleeing) {
-        const fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
+        fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
         /**
          * Deep maneuver: the same guns are worth up to double pointed at a
          * battered facing. Which enemy shield this position attacks into is
@@ -2020,14 +2112,14 @@ function bestPlot(
          * so a ship works its way around onto the flank it has been
          * hammering, instead of trading into a fresh screen.
          */
-        const weakness = facingWeakness(game, enemy, end.position, predicted, predictedHeading)
+        weakness = facingWeakness(game, enemy, end.position, predicted, predictedHeading)
         score += fp * W.firepower * (1 + weakness)
         // On an arc boundary the attacker picks the shield (E6.2 Step 4),
         // so the weakest facing side is the one that will be hit. With a
         // shot on the board the guns come first; on a quiet approach the
         // hull angles its strongest shield into the incoming fire instead.
         const facing = shieldsFacing(threat ?? predicted, end.position, end.heading)
-        const weakest = Math.min(
+        weakest = Math.min(
           ...facing.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
         )
         score += weakest * (fp > 0 ? W.shieldWithGuns : W.shieldQuiet)
@@ -2039,7 +2131,7 @@ function bestPlot(
          * is what makes range control emerge: kite the heavy batteries,
          * crowd the light ones.
          */
-        const incoming = visibleEnemies.reduce(
+        incoming = visibleEnemies.reduce(
           (sum, e) =>
             sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming) * dangerScale(memo, e.id),
           0,
@@ -2058,14 +2150,15 @@ function bestPlot(
         const defensiveNeed = post === 'protect' ? W.coverProtect : fp === 0 ? W.coverQuiet : W.coverArmed
         for (const field of asteroidFieldsAt(game.scenario.terrain, end.position)) {
           if (Math.abs(candidate.speed) <= (field.safeSpeed ?? 0)) {
+            coverTaken += field.cover ?? 0
             score += (field.cover ?? 0) * defensiveNeed
           }
         }
         if (losObstacles.length > 0 && defensiveNeed > 0.5 && visibleEnemies.length > 0) {
-          const hidden = visibleEnemies.every(
+          hiddenHere = visibleEnemies.every(
             (e) => !hasLineOfSight(e.placement.position, end.position, losObstacles),
           )
-          if (hidden) score += W.hidden * defensiveNeed
+          if (hiddenHere) score += W.hidden * defensiveNeed
         }
       }
 
@@ -2123,6 +2216,8 @@ function bestPlot(
       const { width, height } = game.scenario.bounds
       const offBoard = (p: { x: number; y: number }) =>
         p.x < 0 || p.y < 0 || p.x > width || p.y > height
+      let edgeShort = 0
+      let blindOff = false
       if (fleeing) {
         if (offBoard(end.position)) score += 30
       } else {
@@ -2146,7 +2241,8 @@ function bestPlot(
         // Ablated over eight printed-board duels: without this a UNION III
         // leaves in 7 of 8, with it in 4. Half the problem, and the half that
         // was costing the ship battles it was winning.
-        if (blindRounds > 0 && offBoard(committed)) score -= 12
+        blindOff = blindRounds > 0 && offBoard(committed)
+        if (blindOff) score -= 12
 
         // And the stopping distance proper: rounds to shed this speed, then
         // the ground covered doing it at an average of half of it.
@@ -2162,19 +2258,22 @@ function bestPlot(
           // Linear from nothing at the edge of the margin to a hard refusal
           // at the boundary itself, so a fast heavy turns early and a nimble
           // ship can still use the whole board.
-          score -= 8 * (1 - Math.max(0, room) / margin)
+          edgeShort = 1 - Math.max(0, room) / margin
+          score -= 8 * edgeShort
         }
       }
 
       // Rocks tear hulls above the safe speed (K2.1.6).
+      let rockRisk = 0
       for (const p of planned.path) {
         const over = Math.abs(candidate.speed)
         const fields = asteroidFieldsAt(game.scenario.terrain, p)
         for (const f of fields) {
-          if (over > (f.safeSpeed ?? 99)) score -= 3 * (over - (f.safeSpeed ?? 0))
+          if (over > (f.safeSpeed ?? 99)) rockRisk += over - (f.safeSpeed ?? 0)
         }
         if (fields.length > 0) break
       }
+      score -= 3 * rockRisk
 
       /**
        * Rank is search depth. The admiral looks one phase further: from this
@@ -2190,7 +2289,15 @@ function bestPlot(
        * optimum for the terms it scores with, and a richer search fed by the
        * same approximations mostly buys sharper commitment to their errors.
        * Anything that beats it will need better *terms*, not more branches.
+       *
+       * That last sentence has since been tested and is at best half right.
+       * Better terms were tried the two ways there are: searching the
+       * coefficients of the existing ones (`npm run evolve`) bought 40 games
+       * a season on held-out battles, and learning new ones from self-play
+       * (`plotModel.ts`) bought nothing at any strength in either direction.
+       * The terms were not the ceiling — their *balance* was.
        */
+      let bestNext = -Infinity
       if (difficulty === 'admiral' && !fleeing) {
         /*
          * The far phase aims at the same hedged lead as the near one, and not
@@ -2220,7 +2327,6 @@ function bestPlot(
          * now — so it imagines free speed it will not have, and prefers the
          * plots that depend on it.
          */
-        let bestNext = -Infinity
         for (const [m2, d2, s2] of maneuvers) {
           if (s2 > 0 && future.stressMarkers + s2 >= ship.form.stressRating) continue
           const followUp: CommandCard = {
@@ -2282,11 +2388,72 @@ function bestPlot(
        * dice it saved bought nothing. The cloak is for crossing; cross.
        */
 
+      /*
+       * And the learned evaluator's own opinion, built from the measurements
+       * the hand terms above were made of. `blend` is how much of the plot's
+       * score it is worth; at 0 the model is inert and this is pure telemetry.
+       */
+      let features: number[] | null = null
+      if (learning) {
+        const near = Number.isFinite(nearestRange) ? nearestRange : 40
+        const allowedRate = turnTemplateAt(ship, candidate.speed)
+        const theirBearing = relativeBearing(predicted, predictedHeading, end.position)
+        const theirOffBow = Math.min(theirBearing, 360 - theirBearing)
+        const fpLive = firepowerAt(ship, end, predicted, enemy.speed === 0, false)
+        const losBlocked =
+          losObstacles.length === 0 || visibleEnemies.length === 0
+            ? 0
+            : visibleEnemies.filter(
+                (e) => !hasLineOfSight(e.placement.position, end.position, losObstacles),
+              ).length / visibleEnemies.length
+        features = [
+          -Math.abs(range - ideal) / 10,
+          Math.max(0, ideal - near) / 10,
+          Math.max(0, near - ideal) / 10,
+          (180 - offBow) / 180,
+          offBow < 45 ? 1 : 0,
+          fp / 10,
+          (fp * weakness) / 10,
+          fpLive / 10,
+          weakest / 5,
+          weakest <= hullWorst ? 1 : 0,
+          incoming / 10,
+          fp / (fp + incoming + 1),
+          coverTaken,
+          hiddenHere ? 1 : 0,
+          losBlocked,
+          planned.stress - uncovered,
+          uncovered,
+          edgeShort,
+          blindOff ? 1 : 0,
+          Number.isFinite(bestNext) ? bestNext / 10 : 0,
+          candidate.speed / 6,
+          accel / 2,
+          (currentRange - range) / 6,
+          Math.min(near, 40) / 40,
+          maneuver === 'straight' ? 0 : allowedRate > 0 ? (turnRate ?? allowedRate) / allowedRate : 0,
+          (180 - theirOffBow) / 180,
+          Math.abs(Math.sin(((end.heading - predictedHeading) * Math.PI) / 180)),
+          -Math.abs(range - enemyIdeal) / 10,
+          rockRisk / 5,
+          ...context,
+        ]
+        if (model) score += model.blend * plotModelValue(model, features)
+        if (exploring) {
+          seenCandidates += 1
+          if (jitter('pick', game.round, game.phase, ship.id, seenCandidates) < 1 / seenCandidates) {
+            exploreChoice = { maneuver, direction, accel, turnRate }
+            exploreFeatures = features
+          }
+        }
+      }
+
       if (score > bestScore) {
         second = best
         secondScore = bestScore
         bestScore = score
         best = { maneuver, direction, accel, turnRate }
+        bestFeatures = features
       } else if (score > secondScore) {
         secondScore = score
         second = { maneuver, direction, accel, turnRate }
@@ -2294,6 +2461,14 @@ function bestPlot(
      }
     }
   }
+  // The plot the captain actually committed to, for the training set. Only
+  // the chosen one: this is a value function over positions the AI reaches,
+  // not a preference model over positions it rejected.
+  if (exploring && exploreChoice && exploreFeatures) {
+    watcher?.(exploreFeatures, ship.side, ship.id)
+    return exploreChoice
+  }
+  if (watcher && bestFeatures) watcher(bestFeatures, ship.side, ship.id)
   // The fallible officer: sometimes the second-best plot looked right.
   if (difficulty === 'ensign' && secondScore > -Infinity) {
     if (jitter('plot', game.round, game.phase, ship.id) < 0.4) return second

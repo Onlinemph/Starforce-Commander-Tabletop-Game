@@ -7,3 +7,7 @@ tsconfig.tsbuildinfo
 .wrangler/
 # Measurement probes: throwaway season/tournament harnesses, never committed
 src/*-probe.test.ts
+# Self-play training sets and fitted models: regenerable, tens of megabytes,
+# and no model ships (see src/engine/plotModel.ts)
+data/
+models/

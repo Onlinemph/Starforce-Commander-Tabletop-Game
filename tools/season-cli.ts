@@ -9,8 +9,10 @@
  * entirely, so a module has no way to tell whether it is the one that was run.
  */
 
+import { readFileSync } from 'node:fs'
 import { BASELINES, season, type SeasonResult } from './season'
 import type { AiDifficulty } from '../src/engine/ai'
+import { setPlotModel, type PlotModel } from '../src/engine/plotModel'
 
 function flag(name: string, fallback?: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`)
@@ -35,6 +37,23 @@ function main(): void {
 
   const games = Number(flag('games', '192'))
   const scenario = flag('scenario')
+
+  /*
+   * Fly the admiral with a learned evaluator installed (`npm run train`). The
+   * blend can be overridden here rather than re-trained, because it is the one
+   * number in the model that is not fitted — how much of the plot's score the
+   * network is worth has to be measured against the hand terms it is being
+   * added to, and this is the instrument that measures it.
+   */
+  const modelPath = flag('model')
+  if (modelPath) {
+    const model = JSON.parse(readFileSync(modelPath, 'utf8')) as PlotModel
+    const override = flag('blend')
+    if (override !== undefined) model.blend = Number(override)
+    setPlotModel(model)
+    console.log(`model ${modelPath}  blend ${model.blend}  ${model.note ?? ''}\n`)
+  }
+
   const started = Date.now()
 
   if (scenario) {

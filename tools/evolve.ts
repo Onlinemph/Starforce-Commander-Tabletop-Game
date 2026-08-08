@@ -30,7 +30,14 @@
  *   npm run evolve -- --validate '<json>'   # score a weight set on holdout
  */
 
-import { DEFAULT_PLOT_WEIGHTS, setPlotWeights, type PlotWeights } from '../src/engine/ai'
+import { readFileSync } from 'node:fs'
+import {
+  DEFAULT_PLOT_WEIGHTS,
+  TUNED_PLOT_WEIGHTS,
+  setPlotWeights,
+  type PlotWeights,
+} from '../src/engine/ai'
+import { setPlotModel, type PlotModel } from '../src/engine/plotModel'
 import { season } from './season'
 
 const KEYS = Object.keys(DEFAULT_PLOT_WEIGHTS) as Array<keyof PlotWeights>
@@ -115,6 +122,34 @@ function show(weights: PlotWeights): string {
 }
 
 function main(): void {
+  /*
+   * Blend sweep for a learned evaluator (`npm run train`). It lives here
+   * rather than in its own tool so that TRAIN and HOLDOUT keep exactly one
+   * definition: the value function has to be held to the same split the
+   * weights were, or the two results cannot be compared and the holdout stops
+   * being a holdout.
+   *
+   *   npm run evolve -- --model models/plot.json --blends 0.5,1,2,4
+   *   npm run evolve -- --model models/plot.json --blends 2 --holdout
+   */
+  const modelPath = flag('model')
+  if (modelPath) {
+    const model = JSON.parse(readFileSync(modelPath, 'utf8')) as PlotModel
+    const suite = process.argv.includes('--holdout') ? HOLDOUT : TRAIN
+    console.log(`${modelPath}  ${model.note ?? ''}`)
+    console.log(`suite: ${process.argv.includes('--holdout') ? 'HOLDOUT' : 'train'}`)
+    for (const blend of (flag('blends') ?? '1').split(',').map(Number)) {
+      setPlotModel(blend === 0 ? null : { ...model, blend })
+      // Against the shipped weights, not the hand-set ones: the evolved
+      // captain is the thing the model has to beat, and blend 0 is that
+      // captain measured in the same run as its control.
+      const result = fitness(TUNED_PLOT_WEIGHTS, suite)
+      setPlotModel(null)
+      console.log(`blend ${String(blend).padStart(5)}   ${(result.rate * 100).toFixed(1)}%   ${result.detail}`)
+    }
+    return
+  }
+
   const validate = flag('validate')
   if (validate) {
     const weights = { ...DEFAULT_PLOT_WEIGHTS, ...(JSON.parse(validate) as Partial<PlotWeights>) }

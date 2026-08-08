@@ -19,7 +19,9 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
     "sweep": "vite-node tools/sweep.ts",
-    "evolve": "vite-node tools/evolve.ts"
+    "evolve": "vite-node tools/evolve.ts",
+    "selfplay": "vite-node tools/selfplay.ts",
+    "train": "vite-node tools/train.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

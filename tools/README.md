@@ -1,7 +1,7 @@
 # Tools
 
-Two of them: the importer that turns the printed ship books into `ships.json`, and the season
-harness the balance claims are made with.
+The importer that turns the printed ship books into `ships.json`, the season harness the balance
+claims are made with, and three search tools that tune the AI against it.
 
 ## Season harness
 
@@ -29,6 +29,49 @@ won anything.
 
 It is deliberately outside `npm test`. A full season takes minutes, and a test suite nobody runs
 is worse than one that measures nothing.
+
+## Tuning the AI against it
+
+Three of the things in `src/engine/ai.ts` were chosen by judgment rather than measured. These
+tools measure them, and each one reports to the season above.
+
+```bash
+npm run sweep                     # the power allocation order (G1.3, B2.5)
+npm run sweep -- --list
+
+npm run evolve                    # the plot scorer's 19 coefficients
+npm run evolve -- --generations 34 --lambda 1 --seed 22 --no-holdout
+npm run evolve -- --validate '<json>'      # score a weight set on the holdout
+```
+
+Both shipped. The allocation order was worth 57 games a season; the evolved plot weights were
+worth 40 on battles the search had never seen, and moved the three standing baselines to
+129/172/171. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
+at the end — a validation set consulted every generation is just a slower training set. Two of
+the three evolution restarts failed to generalise, which is what the discipline is for.
+
+### The learned value function, and why there isn't one
+
+```bash
+npm run selfplay -- --games 150 --seed-base 0 --out data/plots-0.jsonl
+npm run train -- --data 'data/plots-*.jsonl' --label dealt --hidden 16 --out models/plot.json
+npm run train -- --data 'data/plots-*.jsonl' --label dealt --hidden 16 --only context   # ablation
+npm run evolve -- --model models/plot.json --blends 0,1,3
+```
+
+Self-play a few hundred battles, record the 38-feature vector behind every plot the captain
+commits to, fit a small network on what followed, and score candidate plots with it. This is the
+"can it learn like a chess bot" question, and the answer is on the tin of `src/engine/plotModel.ts`.
+
+The short version: the models **predict** well — AUC 0.88 on unseen battles, and the positional
+features roughly double the fit over the scoreboard-only ablation — and **rank** badly. Every
+model at every blend played worse than no model, *including with its sign reversed*, which is how
+we know it is noise rather than a signal pointed the wrong way. Nothing ships; the machinery does,
+so the question can be re-asked cheaply and so nobody has to have the idea twice.
+
+`--explore` matters if you re-run it. Without it the training set contains only positions this
+captain approves of, which is the wrong set to rank rejected candidates from. It improved the fit
+and not the play.
 
 # Ship Book importer
 
