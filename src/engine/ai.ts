@@ -1655,6 +1655,84 @@ function firepowerAt(
   return value
 }
 
+/**
+ * The plot scorer's coefficients, in one place so they can be searched.
+ *
+ * Every one of these was set by judgment and none has ever been tuned. That is
+ * the interesting part: the allocation *order* — the other thing in this file
+ * that was chosen rather than measured — turned out to be worth 57 games a
+ * season once somebody searched it. The same question is open here, and it is
+ * the one that decides whether the AI's ceiling is its weights or its
+ * features. See `npm run evolve`.
+ *
+ * The lookahead reuses these rather than carrying a second set: it is the same
+ * evaluation, one phase later, and giving it independent weights would double
+ * the search space to express a difference nobody has argued for.
+ */
+export interface PlotWeights {
+  /** Distance from the guns' preferred band. */
+  range: number
+  /** Slipping inside a kite band, and drifting outside it (C1.5, E1.2). */
+  kiteInside: number
+  kiteOutside: number
+  /** Getting the bow round, per degree and as a bonus for arriving. */
+  bearing: number
+  bowBonus: number
+  /** Dice this position brings to bear, scaled by the target's weak facing. */
+  firepower: number
+  /** Presenting a healthy shield — worth less when there is shooting to do. */
+  shieldWithGuns: number
+  shieldQuiet: number
+  /** The enemy's expected volley here, priced by posture (S2.8.4). */
+  incomingProtect: number
+  incomingSteady: number
+  incomingPress: number
+  /** Appetite for asteroid cover and line-of-sight blocks (K2.1.8). */
+  coverProtect: number
+  coverQuiet: number
+  coverArmed: number
+  hidden: number
+  /** Stress the SIF absorbs, and stress that draws a damage card (C3.1.4). */
+  stressCovered: number
+  stressUncovered: number
+  /** How much the next phase's best follow-up counts, and its stress. */
+  lookahead: number
+  lookaheadStress: number
+}
+
+export const DEFAULT_PLOT_WEIGHTS: PlotWeights = {
+  range: 0.5,
+  kiteInside: 1.5,
+  kiteOutside: 0.5,
+  bearing: 3,
+  bowBonus: 1.5,
+  firepower: 0.4,
+  shieldWithGuns: 0.15,
+  shieldQuiet: 0.4,
+  incomingProtect: 0.25,
+  incomingSteady: 0.15,
+  incomingPress: 0.08,
+  coverProtect: 1,
+  coverQuiet: 0.6,
+  coverArmed: 0.15,
+  hidden: 5,
+  stressCovered: 0.5,
+  stressUncovered: 4,
+  lookahead: 0.5,
+  lookaheadStress: 1.5,
+}
+
+let tunedWeights: PlotWeights = DEFAULT_PLOT_WEIGHTS
+
+/**
+ * Install a weight set to measure. Binds to the admiral alone, like
+ * `setAllocationOrder` and for the same reason: a season is the admiral
+ * against a fixed lower rank, and changing both sides hides the effect.
+ */
+export function setPlotWeights(weights: PlotWeights | null): void {
+  tunedWeights = weights ?? DEFAULT_PLOT_WEIGHTS
+}
+
 function bestPlot(
   game: GameState,
   ship: ShipState,
@@ -1664,6 +1742,7 @@ function bestPlot(
   memo: AiMemo | null = null,
 ): Candidate {
   const post = postureOf(game, ship, difficulty)
+  const W = difficulty === 'admiral' ? tunedWeights : DEFAULT_PLOT_WEIGHTS
   /**
    * The guns aim at the chosen enemy, but the hull answers to every enemy on
    * the table: the shield you angle away from one attacker you may be
@@ -1851,9 +1930,9 @@ function bestPlot(
         // and the picket is only in the way (J4.2.1 wants eight inches).
         score = -Math.abs(actualRange(end.position, survey) - 5)
       } else if (kite !== null && visibleEnemies.length > 0) {
-        score = -(kite - nearestRange > 0 ? (kite - nearestRange) * 1.5 : (nearestRange - kite) * 0.5)
+        score = -(kite - nearestRange > 0 ? (kite - nearestRange) * W.kiteInside : (nearestRange - kite) * W.kiteOutside)
       } else {
-        score = -Math.abs(range - ideal) * 0.5
+        score = -Math.abs(range - ideal) * W.range
       }
 
       /**
@@ -1868,8 +1947,8 @@ function bestPlot(
       if (!fleeing) {
         const bearing = relativeBearing(end.position, end.heading, predicted)
         const offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
-        score += ((180 - offBow) / 180) * 3
-        if (offBow < 45) score += 1.5
+        score += ((180 - offBow) / 180) * W.bearing
+        if (offBow < 45) score += W.bowBonus
       }
 
       // Rank is what the officer optimises. The ensign flies by feel —
@@ -1888,7 +1967,7 @@ function bestPlot(
          * hammering, instead of trading into a fresh screen.
          */
         const weakness = facingWeakness(game, enemy, end.position, predicted, predictedHeading)
-        score += fp * 0.4 * (1 + weakness)
+        score += fp * W.firepower * (1 + weakness)
         // On an arc boundary the attacker picks the shield (E6.2 Step 4),
         // so the weakest facing side is the one that will be hit. With a
         // shot on the board the guns come first; on a quiet approach the
@@ -1897,7 +1976,7 @@ function bestPlot(
         const weakest = Math.min(
           ...facing.map((s) => blueShieldRemaining(ship, s) + greenShieldRemaining(ship, s)),
         )
-        score += weakest * (fp > 0 ? 0.15 : 0.4)
+        score += weakest * (fp > 0 ? W.shieldWithGuns : W.shieldQuiet)
 
         /**
          * And the fire coming the other way: each enemy's expected volley at
@@ -1913,7 +1992,7 @@ function bestPlot(
         )
         // The scoreboard sets the appetite for risk: a lead worth keeping
         // kites harder; a deficit closes and accepts the fire.
-        score -= incoming * (post === 'protect' ? 0.25 : post === 'press' ? 0.08 : 0.15)
+        score -= incoming * (post === 'protect' ? W.incomingProtect : post === 'press' ? W.incomingPress : W.incomingSteady)
 
         /**
          * Terrain is a tool, not just a hazard. A field entered at legal
@@ -1922,7 +2001,7 @@ function bestPlot(
          * both sought in proportion to how much this ship currently wants
          * to not be hit.
          */
-        const defensiveNeed = post === 'protect' ? 1 : fp === 0 ? 0.6 : 0.15
+        const defensiveNeed = post === 'protect' ? W.coverProtect : fp === 0 ? W.coverQuiet : W.coverArmed
         for (const field of asteroidFieldsAt(game.scenario.terrain, end.position)) {
           if (Math.abs(candidate.speed) <= (field.safeSpeed ?? 0)) {
             score += (field.cover ?? 0) * defensiveNeed
@@ -1932,7 +2011,7 @@ function bestPlot(
           const hidden = visibleEnemies.every(
             (e) => !hasLineOfSight(e.placement.position, end.position, losObstacles),
           )
-          if (hidden) score += 5 * defensiveNeed
+          if (hidden) score += W.hidden * defensiveNeed
         }
       }
 
@@ -1944,7 +2023,7 @@ function bestPlot(
        */
       const covered = Math.max(0, sifCover - ship.stressMarkers)
       const uncovered = Math.max(0, planned.stress - covered)
-      score -= (planned.stress - uncovered) * 0.5 + uncovered * 4
+      score -= (planned.stress - uncovered) * W.stressCovered + uncovered * W.stressUncovered
 
       /*
        * The board edge is disengagement (S2.2.1) — a wall to a ship that means
@@ -2103,12 +2182,15 @@ function bestPlot(
           const r2 = actualRange(then.end.position, afterEnemy)
           const b2 = relativeBearing(then.end.position, then.end.heading, afterEnemy)
           const off2 = Math.min(b2, 360 - b2)
-          let s = -Math.abs(r2 - ideal) * 0.5 + ((180 - off2) / 180) * 3 - then.stress * 1.5
-          if (off2 < 45) s += 1.5
+          let s =
+            -Math.abs(r2 - ideal) * W.range +
+            ((180 - off2) / 180) * W.bearing -
+            then.stress * W.lookaheadStress
+          if (off2 < 45) s += W.bowBonus
           const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
           s +=
             fp2 *
-            0.4 *
+            W.firepower *
             (1 +
               facingWeakness(
                 game,
@@ -2121,15 +2203,15 @@ function bestPlot(
           const weakest2 = Math.min(
             ...facing2.map((sd) => blueShieldRemaining(ship, sd) + greenShieldRemaining(ship, sd)),
           )
-          s += weakest2 * (fp2 > 0 ? 0.15 : 0.4)
+          s += weakest2 * (fp2 > 0 ? W.shieldWithGuns : W.shieldQuiet)
           s -=
             visibleEnemies.reduce(
               (sum, e) => sum + estimatedVolleyDamage(e, then.end.position, ship.sensors.jamming),
               0,
-            ) * 0.15
+            ) * W.incomingSteady
           if (s > bestNext) bestNext = s
         }
-        if (bestNext > -Infinity) score += bestNext * 0.5
+        if (bestNext > -Infinity) score += bestNext * W.lookahead
       }
 
       /*

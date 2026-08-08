@@ -18,7 +18,8 @@
     "season": "vite-node tools/season-cli.ts",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
-    "sweep": "vite-node tools/sweep.ts"
+    "sweep": "vite-node tools/sweep.ts",
+    "evolve": "vite-node tools/evolve.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
