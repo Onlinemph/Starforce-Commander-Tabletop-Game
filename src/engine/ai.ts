@@ -2037,6 +2037,17 @@ export interface RolloutConfig {
   samples: number
   /** Resolve firing choices by simulation too, not just plots. */
   volleys: boolean
+  /**
+   * Who flies OUR side inside the clone. 'captain' was the founding guess —
+   * "the future does not need to be played brilliantly to rank the present"
+   * — but it is a self-model mismatch: the real future is an admiral with
+   * tuned weights, kite bands and precise turn rates, and a rollout that
+   * models us as a captain undervalues exactly the positions only an admiral
+   * can exploit. 'admiral' plays the clone with full scorer doctrine (the
+   * inRollout guard keeps it scorer-only, so no recursion) at roughly triple
+   * the simulation cost.
+   */
+  selfRank: 'captain' | 'admiral'
 }
 
 const ROLLOUT_DEFAULTS: RolloutConfig = {
@@ -2062,6 +2073,7 @@ const ROLLOUT_DEFAULTS: RolloutConfig = {
    * version of this idea that could work, and is not this switch.
    */
   volleys: false,
+  selfRank: 'captain',
 }
 
 let rolloutConfig: RolloutConfig = { ...ROLLOUT_DEFAULTS }
@@ -2171,7 +2183,7 @@ function playOut(
             [side],
             memos.get(side)!,
             closing && pass === 0 && guard === 0,
-            side === mySide ? 'captain' : rolloutEnemyRank,
+            side === mySide ? rolloutConfig.selfRank : rolloutEnemyRank,
             'steady',
             true,
           )
