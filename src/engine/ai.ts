@@ -2045,7 +2045,22 @@ const ROLLOUT_DEFAULTS: RolloutConfig = {
   diverse: true,
   extendClose: 0,
   samples: 1,
-  // MEASUREMENT IN FLIGHT: flips to true only if the marginal seasons say so.
+  /*
+   * Measured and left off. Marginal seasons with plot rollouts held constant:
+   * duel mirror 176W-16L -> 178W-14L over 192 (noise), squadron mirror
+   * 67W-29L -> 57W-39L over 96 — TEN games lost in the fleet battle.
+   *
+   * The mechanism is the finding. A volley rollout judges each ship's target
+   * alone, one clone at a time, and each deviation from the squadron's focus
+   * target looks good in its own simulation — finish that cripple, hold this
+   * red volley — while collectively they dissolve the concentration that
+   * kills ships. The scorer's blunt +4 focus bonus is not a preference, it
+   * is a COORDINATION DEVICE, and per-agent simulation optimises it away.
+   * Simulation beats scoring for one agent's decision; it cannot see a joint
+   * plan it was never shown. A fleet-level rollout — simulate the squadron's
+   * whole firing assignment as one candidate against alternatives — is the
+   * version of this idea that could work, and is not this switch.
+   */
   volleys: false,
 }
 

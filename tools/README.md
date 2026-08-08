@@ -90,6 +90,13 @@ and playing the clones two rounds instead of one each bought games everywhere th
 the ensign seasons are now formalities, and `{ loRollouts: false }` fields yesterday's
 scorer-only admiral as the reference opponent with resolution to spare (85W-11L in the mirror).
 
+Volley rollouts — the same treatment for the guns — were built, measured, and left off
+(`RolloutConfig.volleys`): flat in duels, and ten games *worse* in the squadron mirror. Each
+ship's simulated firing choice looks good alone and collectively dissolves focus fire; the
+scorer's blunt focus bonus turns out to be a coordination device, and per-agent simulation
+optimises it away. The comment on the switch holds the numbers and the fleet-level idea that
+could revive it.
+
 One rule learned the hard way: the rollout must cast the enemy at its *actual* rank
 (`setRolloutEnemyRank`). Imagined as a captain while really facing an ensign, the admiral hedges
 against phantom competence and loses games to its own caution — the squadron season regressed
