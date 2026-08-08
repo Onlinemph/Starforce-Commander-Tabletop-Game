@@ -89,15 +89,19 @@ export const BASELINES = [
     // drive point, so the gap between two captains who both learned the same
     // lesson closes again. Held against a fixed opponent the new order is
     // worth 412/576 against 355 — see DEFAULT_ALLOCATION_ORDER.
-    expect: '105W-87L of 192',
+    // → 129W-62L with the admiral's evolved plot weights (see
+    // TUNED_PLOT_WEIGHTS). Held-out validation is the claim, not this: on
+    // three scenarios the search never scored against, 59.4% → 71.2%.
+    expect: '129W-62L of 192',
   },
   {
     label: 'duel adm-vs-ens',
     scenario: 's3.1-the-duel',
     hi: 'admiral',
     lo: 'ensign',
-    // → 137W-55L with the searched allocation order.
-    expect: '137W-55L of 192',
+    // → 137W-55L with the searched allocation order, → 172W-19L with the
+    // evolved plot weights.
+    expect: '172W-19L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -128,7 +132,8 @@ export const BASELINES = [
     // long shot: the all-red gate ran after target selection, so a captain
     // that rejected its best-scoring target stood down entirely instead of
     // firing at a hull sitting in a green bracket somewhere else.
-    expect: '142W-50L of 192',
+    // → 171W-21L with the evolved plot weights.
+    expect: '171W-21L of 192',
   },
 ] as const
 

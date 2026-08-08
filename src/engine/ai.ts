@@ -1722,7 +1722,61 @@ export const DEFAULT_PLOT_WEIGHTS: PlotWeights = {
   lookaheadStress: 1.5,
 }
 
-let tunedWeights: PlotWeights = DEFAULT_PLOT_WEIGHTS
+/**
+ * The admiral's weights, found by evolution strategy rather than by judgment
+ * (`npm run evolve`, seed 22, 34 generations of a (1+1)-ES in log space).
+ *
+ * Validated, which is the part that matters. Three restarts from different
+ * seeds reached 79.7%, 72.4% and 66.1% on the training suite; on three
+ * scenarios none of them had ever been scored against, they read 71.2%, 58.3%
+ * and 59.9% against a hand-set baseline of 59.4%. Two of the three had fitted
+ * the training battles and generalised nothing — which is why the run was three
+ * restarts and one holdout, looked at once. This is the one that survived, and
+ * it improved every held-out suite rather than trading one for another:
+ * flagship 113W-79L to 121W-71L, Aurelian raid 92W-100L to 117W-74L, duel
+ * against an ensign 137W-55L to 172W-19L.
+ *
+ * What it actually learned, which reads as coherent doctrine rather than noise:
+ *
+ *   - Range discipline is worth twice what it was given (x2.12). Standing in
+ *     the right band is the single most undervalued thing the captain does.
+ *   - Hide harder when hiding: line-of-sight blocks x1.64, asteroid cover
+ *     while protecting x1.55 — but cover while the guns are working drops to
+ *     x0.67. Take the terrain when running, ignore it when shooting.
+ *   - Angling a healthy shield into the fire is worth about a third less than
+ *     it was given (x0.65 with guns bearing, x0.84 quiet). The hand-set values
+ *     bought armour with firing position, and the trade was bad.
+ *   - Stress is cheaper than feared, at both ends (x0.67 and x0.77) — the helm
+ *     should turn harder than a cautious reading of C3.1.4 suggests — while
+ *     stress *in the lookahead* is priced far higher (x1.82), which is the same
+ *     thought stated properly: spend stress now, do not plan to keep spending.
+ *
+ * Lower ranks keep the hand-set values below. These were tuned for the admiral
+ * against a frozen opponent, and rank is technique everywhere else in this file.
+ */
+export const TUNED_PLOT_WEIGHTS: PlotWeights = {
+  range: 1.0581,
+  kiteInside: 1.5936,
+  kiteOutside: 0.4003,
+  bearing: 3.332,
+  bowBonus: 1.2939,
+  firepower: 0.4087,
+  shieldWithGuns: 0.0981,
+  shieldQuiet: 0.3354,
+  incomingProtect: 0.1967,
+  incomingSteady: 0.153,
+  incomingPress: 0.1112,
+  coverProtect: 1.5465,
+  coverQuiet: 0.4555,
+  coverArmed: 0.1007,
+  hidden: 8.2,
+  stressCovered: 0.3333,
+  stressUncovered: 3.0768,
+  lookahead: 0.605,
+  lookaheadStress: 2.7352,
+}
+
+let tunedWeights: PlotWeights = TUNED_PLOT_WEIGHTS
 
 /**
  * Install a weight set to measure. Binds to the admiral alone, like
@@ -1730,7 +1784,7 @@ let tunedWeights: PlotWeights = DEFAULT_PLOT_WEIGHTS
  * against a fixed lower rank, and changing both sides hides the effect.
  */
 export function setPlotWeights(weights: PlotWeights | null): void {
-  tunedWeights = weights ?? DEFAULT_PLOT_WEIGHTS
+  tunedWeights = weights ?? TUNED_PLOT_WEIGHTS
 }
 
 function bestPlot(
