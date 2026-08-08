@@ -11,7 +11,7 @@
 
 import { readFileSync } from 'node:fs'
 import { BASELINES, season, type SeasonResult } from './season'
-import type { AiDifficulty } from '../src/engine/ai'
+import { DEFAULT_PLOT_WEIGHTS, setPlotWeights, type AiDifficulty } from '../src/engine/ai'
 import { setPlotModel, type PlotModel } from '../src/engine/plotModel'
 
 function flag(name: string, fallback?: string): string | undefined {
@@ -45,6 +45,17 @@ function main(): void {
    * network is worth has to be measured against the hand terms it is being
    * added to, and this is the instrument that measures it.
    */
+  /*
+   * Fly the admiral on the hand-set weights instead of the evolved ones. The
+   * evolution was fought on terrain-free maps, so on any battle with terrain
+   * this is the control that says whether the tuning helped there, hurt there,
+   * or never reached.
+   */
+  if (process.argv.includes('--hand')) {
+    setPlotWeights(DEFAULT_PLOT_WEIGHTS)
+    console.log('admiral flying DEFAULT_PLOT_WEIGHTS (hand-set)\n')
+  }
+
   const modelPath = flag('model')
   if (modelPath) {
     const model = JSON.parse(readFileSync(modelPath, 'utf8')) as PlotModel
