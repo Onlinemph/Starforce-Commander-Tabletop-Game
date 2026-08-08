@@ -2049,8 +2049,25 @@ function bestPlot(
        * greedy plotter turns toward the enemy; the admiral plans the turn
        * *sequence* that brings the batteries to bear, and knows a plot that
        * looks level now can be the one that wins the next phase.
+       *
+       * Deliberately shallow, and it has been tested at the two places it
+       * would obviously be deepened. Both are worse — see the notes on the
+       * follow-up's speed and on `afterEnemy` below. The pattern across this
+       * file by now is consistent enough to state: the search is at a local
+       * optimum for the terms it scores with, and a richer search fed by the
+       * same approximations mostly buys sharper commitment to their errors.
+       * Anything that beats it will need better *terms*, not more branches.
        */
       if (difficulty === 'admiral' && !fleeing) {
+        /*
+         * The far phase aims at the same hedged lead as the near one, and not
+         * at `enemyPlan2` — which is modelled, sitting right there, and worse.
+         * Swapping the lead for the model's point guess costs six games a
+         * season (378/576 against 384), the same lesson the near phase already
+         * learned: two phases out, a confident wrong answer aims worse than a
+         * humble average. The model still earns its keep for the enemy's
+         * *heading*, where there is no heuristic to beat.
+         */
         const afterEnemy = {
           x: predicted.x + ev.x * enemy.speed,
           y: predicted.y + ev.y * enemy.speed,
@@ -2061,6 +2078,15 @@ function bestPlot(
           speed: planned.speed,
           stressMarkers: ship.stressMarkers + planned.stress,
         }
+        /*
+         * The follow-up holds its speed, deliberately. Letting it accelerate
+         * was the obvious enrichment and it is the worst change measured in
+         * this file: 359/576 against 384. The follow-up score does not pay
+         * acceleration's real bills — the round's acceleration budget, the
+         * stress, what the speed does to the turn template two phases from
+         * now — so it imagines free speed it will not have, and prefers the
+         * plots that depend on it.
+         */
         let bestNext = -Infinity
         for (const [m2, d2, s2] of maneuvers) {
           if (s2 > 0 && future.stressMarkers + s2 >= ship.form.stressRating) continue
