@@ -1986,11 +1986,49 @@ export function setRolloutEnemyRank(rank: AiDifficulty): void {
  */
 let inRollout = false
 
-/** Scorer's best few, worth the price of a simulation each. */
-const ROLLOUT_SHORTLIST = 4
-/** How far the clone is played: one full round, whatever segment we start in. */
-const ROLLOUT_PHASES = PHASE_ORDER.length
-const ROLLOUT_MAX_SEGMENTS = 24
+/**
+ * The rollout's tunable joints, in one place so they can be searched the way
+ * the plot weights were. Every value in the defaults was a first guess on the
+ * day rollouts shipped, and the sweep tooling holds the off-defaults answers.
+ */
+export interface RolloutConfig {
+  /** Finalists resolved by simulation. */
+  shortlist: number
+  /** How far each clone is played, in phases; a round is PHASE_ORDER.length. */
+  horizonPhases: number
+  /**
+   * Nominate by plan shape instead of raw rank. The scorer's top four are
+   * often one plan in four accelerations; bucketing by (maneuver, direction)
+   * and taking each bucket's best spends the same simulations on genuinely
+   * different futures.
+   */
+  diverse: boolean
+  /**
+   * When the two best finalists finish within this margin of each other,
+   * re-play just those two at double horizon and let the deeper look decide.
+   * Zero disables. This is adaptive thinking time: the expensive look is
+   * bought only where the cheap look could not separate the candidates.
+   */
+  extendClose: number
+  /** Rollouts averaged per candidate; extra samples decorrelate their dice. */
+  samples: number
+}
+
+const ROLLOUT_DEFAULTS: RolloutConfig = {
+  shortlist: 4,
+  horizonPhases: PHASE_ORDER.length,
+  diverse: false,
+  extendClose: 0,
+  samples: 1,
+}
+
+let rolloutConfig: RolloutConfig = { ...ROLLOUT_DEFAULTS }
+
+export function setRolloutConfig(partial: Partial<RolloutConfig> | null): void {
+  rolloutConfig = { ...ROLLOUT_DEFAULTS, ...(partial ?? {}) }
+}
+
+const ROLLOUT_MAX_SEGMENTS = 48
 
 /**
  * Play one candidate out and return the health margin it ends at.
@@ -2000,17 +2038,48 @@ const ROLLOUT_MAX_SEGMENTS = 24
  * would collapse into the captain's own choice. After that boundary the ship
  * is flown normally: the candidate is this phase's decision, not a vow.
  */
-function rolloutMargin(game: GameState, ship: ShipState, cand: Candidate): number {
+function rolloutMargin(
+  game: GameState,
+  ship: ShipState,
+  cand: Candidate,
+  horizonPhases: number,
+  decorrelate = 0,
+): number {
   inRollout = true
   try {
-    return rolloutMarginInner(game, ship, cand)
+    return rolloutMarginInner(game, ship, cand, horizonPhases, decorrelate)
   } finally {
     inRollout = false
   }
 }
 
-function rolloutMarginInner(game: GameState, ship: ShipState, cand: Candidate): number {
+/** Averaged margin over the configured samples — the value a finalist gets. */
+function rolloutValue(
+  game: GameState,
+  ship: ShipState,
+  cand: Candidate,
+  horizonPhases: number,
+): number {
+  const { samples } = rolloutConfig
+  let total = 0
+  // Sample 0 is pristine, so every candidate's first look shares the same
+  // dice; later samples burn s draws to walk the clone onto a different
+  // sequence — still paired across candidates, sample for sample.
+  for (let s = 0; s < Math.max(1, samples); s++) {
+    total += rolloutMargin(game, ship, cand, horizonPhases, s)
+  }
+  return total / Math.max(1, samples)
+}
+
+function rolloutMarginInner(
+  game: GameState,
+  ship: ShipState,
+  cand: Candidate,
+  horizonPhases: number,
+  decorrelate: number,
+): number {
   const sim = cloneGame(game)
+  for (let i = 0; i < decorrelate; i++) sim.rng.next()
   applyAction(sim, {
     type: 'plot-maneuver',
     shipId: ship.id,
@@ -2060,7 +2129,7 @@ function rolloutMarginInner(game: GameState, ship: ShipState, cand: Candidate): 
   const elapsed = () => (sim.round - startRound) * PHASE_ORDER.length + (PHASE_ORDER.indexOf(sim.phase) - startPhase)
   for (let seg = 0; seg < ROLLOUT_MAX_SEGMENTS; seg++) {
     if (new Set(activeShips(sim).map((s) => s.side)).size <= 1) break
-    if (elapsed() >= ROLLOUT_PHASES) break
+    if (elapsed() >= horizonPhases) break
     drive(true)
     applyAction(sim, { type: 'advance-segment' })
     frozen = false
@@ -2211,6 +2280,8 @@ function bestPlot(
   const shortlisting =
     rolloutPlots && !inRollout && difficulty === 'admiral' && !fleeing && !survey && memo !== null
   const shortlist: Array<{ score: number; cand: Candidate }> = []
+  /** Diverse nomination: the best candidate of each plan shape. */
+  const buckets = new Map<string, { score: number; cand: Candidate }>()
 
   /*
    * The learned evaluator (see `plotModel.ts`), and the half of its feature
@@ -2745,13 +2816,19 @@ function bestPlot(
       }
 
       if (shortlisting) {
-        const at = shortlist.findIndex((e) => score > e.score)
         const entry = { score, cand: { maneuver, direction, accel, turnRate } }
-        if (at === -1) {
-          if (shortlist.length < ROLLOUT_SHORTLIST) shortlist.push(entry)
+        if (rolloutConfig.diverse) {
+          const bucket = `${maneuver}:${direction ?? ''}`
+          const held = buckets.get(bucket)
+          if (!held || score > held.score) buckets.set(bucket, entry)
         } else {
-          shortlist.splice(at, 0, entry)
-          if (shortlist.length > ROLLOUT_SHORTLIST) shortlist.pop()
+          const at = shortlist.findIndex((e) => score > e.score)
+          if (at === -1) {
+            if (shortlist.length < rolloutConfig.shortlist) shortlist.push(entry)
+          } else {
+            shortlist.splice(at, 0, entry)
+            if (shortlist.length > rolloutConfig.shortlist) shortlist.pop()
+          }
         }
       }
       if (score > bestScore) {
@@ -2781,19 +2858,25 @@ function bestPlot(
    * depends on does not change inside that loop — recomputing a 15ms decision
    * on every pass would triple its price for the same answer.
    */
-  if (shortlisting && shortlist.length > 1) {
+  const finalists = rolloutConfig.diverse
+    ? [...buckets.values()].sort((a, b) => b.score - a.score).slice(0, rolloutConfig.shortlist)
+    : shortlist
+  if (shortlisting && finalists.length > 1) {
     const key = `${game.round}:${game.phase}:${ship.id}`
     const cached = memo!.plots.get(key)
     if (cached) return cached
-    let winner = shortlist[0].cand
-    let winnerMargin = -Infinity
-    for (const { cand } of shortlist) {
-      const margin = rolloutMargin(game, ship, cand)
-      // Strict: on a tie the scorer's ordering stands.
-      if (margin > winnerMargin) {
-        winnerMargin = margin
-        winner = cand
-      }
+    const cfg = rolloutConfig
+    const judged = finalists
+      .map((f) => ({ cand: f.cand, margin: rolloutValue(game, ship, f.cand, cfg.horizonPhases) }))
+      // Stable: on equal margins the scorer's ordering stands.
+      .sort((a, b) => b.margin - a.margin)
+    let winner = judged[0].cand
+    if (cfg.extendClose > 0 && judged.length > 1 && judged[0].margin - judged[1].margin <= cfg.extendClose) {
+      // Too close to call at one round — play the two survivors out twice as
+      // far and let the deeper look decide. Ties fall to the shallow ranking.
+      const deeperA = rolloutValue(game, ship, judged[0].cand, cfg.horizonPhases * 2)
+      const deeperB = rolloutValue(game, ship, judged[1].cand, cfg.horizonPhases * 2)
+      if (deeperB > deeperA) winner = judged[1].cand
     }
     memo!.plots.set(key, winner)
     return winner

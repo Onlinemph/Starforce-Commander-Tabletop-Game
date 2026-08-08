@@ -32,6 +32,7 @@ import {
   aiNextActions,
   createAiMemo,
   setRolloutEnemyRank,
+  setRolloutPlots,
   type AiDifficulty,
   type AiMemo,
   type AiPersonality,
@@ -146,7 +147,9 @@ export const BASELINES = [
 ] as const
 
 /**
- * ORBITAL AMBUSH — an open weakness, measured and unexplained.
+ * ORBITAL AMBUSH — a weakness found, hunted, and finally resolved. Kept
+ * because the hunt is the method: this is what finding a doctrine hole with
+ * the season harness looks like end to end.
  *
  * Every baseline above is fought on a bare map. There is no terrain in either
  * duel scenario and none in the squadron engagement, which is how four terrain
@@ -196,13 +199,23 @@ interface Side {
   difficulty: AiDifficulty
   /** Who this side is fighting — the rank its rollouts cast the enemy at. */
   enemyDifficulty: AiDifficulty
+  /**
+   * Whether this side's admiral gets rollout plotting. Defaults on, because
+   * that is the shipped doctrine — the off state exists to field YESTERDAY'S
+   * admiral, the scorer-only one, as a fixed reference opponent. The ensign
+   * seasons saturated at 93% and the captain duel is climbing the same
+   * curve, so the sharpest instrument left is the AI as it stood before the
+   * change being measured.
+   */
+  rollouts: boolean
 }
 
 /** Run one side's captains until they have nothing left to say. */
 function drive(side: Side, closing: boolean, retreat: boolean, personality: AiPersonality): void {
   // The rollout imagines the opponent it is actually fighting (see
-  // setRolloutEnemyRank) — a global, so it is re-declared per drive.
+  // setRolloutEnemyRank) — globals, so both are re-declared per drive.
   setRolloutEnemyRank(side.enemyDifficulty)
+  setRolloutPlots(side.rollouts)
   for (let guard = 0; guard < 400; guard++) {
     const batch = aiNextActions(
       side.game,
@@ -225,6 +238,9 @@ export interface GameOptions {
   seed: number
   blue: AiDifficulty
   red: AiDifficulty
+  /** Per-side rollout plotting; default true. See Side.rollouts. */
+  blueRollouts?: boolean
+  redRollouts?: boolean
   rounds: number
   retreat: boolean
   personality: AiPersonality
@@ -261,6 +277,7 @@ export function playOne(options: GameOptions): GameState {
     sides: [sides[0]],
     difficulty: options.blue,
     enemyDifficulty: options.red,
+    rollouts: options.blueRollouts ?? true,
   }
   const red: Side = {
     game,
@@ -268,6 +285,7 @@ export function playOne(options: GameOptions): GameState {
     sides: [sides[1]],
     difficulty: options.red,
     enemyDifficulty: options.blue,
+    rollouts: options.redRollouts ?? true,
   }
   /**
    * Both sides, until neither has anything left to say.
@@ -320,8 +338,9 @@ export function season(
   games: number,
   hi: AiDifficulty,
   lo: AiDifficulty,
-  extra: Partial<GameOptions> = {},
+  extra: Partial<GameOptions> & { hiRollouts?: boolean; loRollouts?: boolean } = {},
 ): SeasonResult {
+  const { hiRollouts = true, loRollouts = true, ...rest } = extra
   let wins = 0
   let losses = 0
   let margin = 0
@@ -333,10 +352,12 @@ export function season(
         seed,
         blue: flipped ? lo : hi,
         red: flipped ? hi : lo,
+        blueRollouts: flipped ? loRollouts : hiRollouts,
+        redRollouts: flipped ? hiRollouts : loRollouts,
         rounds: 12,
         retreat: true,
         personality: 'steady',
-        ...extra,
+        ...rest,
       })
       const sides = [...new Set(game.ships.map((s) => s.side))]
       const delta = (health(game, sides[0]) - health(game, sides[1])) * (flipped ? -1 : 1)
