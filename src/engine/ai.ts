@@ -1950,6 +1950,34 @@ export function setRolloutPlots(on: boolean): void {
   rolloutPlots = on
 }
 
+/**
+ * Who the rollout imagines it is fighting.
+ *
+ * The simulation is only as good as its cast, and this was measured the hard
+ * way: with every rollout modelling the enemy as a captain, seasons against a
+ * real captain gained (+9 duel, +8 planet) and seasons against a real ensign
+ * *lost* (squadron 87W-9L to 80W-16L) — the admiral hedged against threats an
+ * ensign never executes. Casting the enemy at its actual rank is game-setup
+ * knowledge, the same table fact as the scenario itself; the driver sets it
+ * from the opposing AI's difficulty, and 'captain' stays the default for a
+ * human on the other side of the screen.
+ */
+let rolloutEnemyRank: AiDifficulty = 'captain'
+
+export function setRolloutEnemyRank(rank: AiDifficulty): void {
+  rolloutEnemyRank = rank
+}
+
+/**
+ * A rollout must never start another rollout. An admiral cast as the enemy
+ * (setRolloutEnemyRank('admiral')) would otherwise shortlist and simulate
+ * from inside the simulation, four candidates deep each time, without end.
+ * Inside a rollout every admiral plans by scorer alone — which is also the
+ * honest model: the clone's future should be played the same cheap way for
+ * every candidate, not searched.
+ */
+let inRollout = false
+
 /** Scorer's best few, worth the price of a simulation each. */
 const ROLLOUT_SHORTLIST = 4
 /** How far the clone is played: one full round, whatever segment we start in. */
@@ -1965,6 +1993,15 @@ const ROLLOUT_MAX_SEGMENTS = 24
  * is flown normally: the candidate is this phase's decision, not a vow.
  */
 function rolloutMargin(game: GameState, ship: ShipState, cand: Candidate): number {
+  inRollout = true
+  try {
+    return rolloutMarginInner(game, ship, cand)
+  } finally {
+    inRollout = false
+  }
+}
+
+function rolloutMarginInner(game: GameState, ship: ShipState, cand: Candidate): number {
   const sim = cloneGame(game)
   applyAction(sim, {
     type: 'plot-maneuver',
@@ -1997,7 +2034,7 @@ function rolloutMargin(game: GameState, ship: ShipState, cand: Candidate): numbe
             [side],
             memos.get(side)!,
             closing && pass === 0 && guard === 0,
-            'captain',
+            side === ship.side ? 'captain' : rolloutEnemyRank,
             'steady',
             true,
           )
@@ -2164,7 +2201,7 @@ function bestPlot(
    * shortlist is kept sorted, small, and only when someone will read it.
    */
   const shortlisting =
-    rolloutPlots && difficulty === 'admiral' && !fleeing && !survey && memo !== null
+    rolloutPlots && !inRollout && difficulty === 'admiral' && !fleeing && !survey && memo !== null
   const shortlist: Array<{ score: number; cand: Candidate }> = []
 
   /*
