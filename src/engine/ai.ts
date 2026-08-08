@@ -1,4 +1,4 @@
-import type { GameAction } from './actions'
+import { applyAction, type GameAction } from './actions'
 import { firingOrder, selectBracket, traitValue } from './combat'
 import { expectedValue } from './dice'
 import {
@@ -21,6 +21,9 @@ import {
   tractorBeamsReady,
   maxSystemOf,
   victoryPoints,
+  cloneGame,
+  activeShips,
+  PHASE_ORDER,
   type GameState,
 } from './game'
 import {
@@ -130,6 +133,10 @@ import { activePlotModel, plotExploration, plotModelValue, plotRecorder } from '
 
 export interface AiMemo {
   done: Set<string>
+  /** Rollout-resolved plot choices, one per (round, phase, ship). The orders
+   *  segment re-plans until it settles, and a decision made by simulation is
+   *  far too expensive to remake on every pass of that loop. */
+  plots: Map<string, Candidate>
   /** Highest Tactical Scan each enemy side has shown — the auction remembered. */
   scanSeen: Map<string, number>
   /** Log entries digested so far by the observation pass. */
@@ -139,7 +146,7 @@ export interface AiMemo {
 }
 
 export function createAiMemo(): AiMemo {
-  return { done: new Set(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
+  return { done: new Set(), plots: new Map(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
 }
 
 /**
@@ -1903,6 +1910,122 @@ export function setAiAblations(keys: readonly AiAblation[] | null): void {
 
 const ablated = (key: AiAblation): boolean => ablations.has(key)
 
+// ---------------------------------------------------------------------------
+// Rollout plotting: shortlist by score, resolve by playing the game
+// ---------------------------------------------------------------------------
+
+/**
+ * The two ways this file has tried to out-think its own plot scorer both
+ * failed the same way, and this is the third way, built on why.
+ *
+ * The deeper lookahead failed because it re-applies the scorer's
+ * approximations one phase later — "a richer search fed by the same
+ * approximations mostly buys sharper commitment to their errors." The learned
+ * evaluator failed because regression on outcomes learns what positions
+ * *correlate* with winning, not what a choice *causes* (`plotModel.ts`).
+ * Both were attempts to predict the future more cleverly.
+ *
+ * A rollout does not predict the future. It runs it: clone the battle, freeze
+ * the candidate plot in, let captain-level doctrine fly both sides forward a
+ * full round, and read the health margin off the wreckage. Whatever the
+ * scorer cannot see — a brawl neither side survives, a planet the guns
+ * cannot cross, a torpedo wave arriving next phase — the clone experiences.
+ *
+ * The costs that make it affordable, measured: cloning a mid-battle duel is
+ * 0.7ms and a full round of captain-vs-captain play on the clone is a few
+ * milliseconds more. Only the scorer's top few candidates are resolved this
+ * way — the shortlist is what the 280-candidate scoring loop is *for* — so a
+ * decision spends ~15ms in a duel, imperceptible at the table.
+ *
+ * Two design choices carry the variance. Every candidate's rollout starts
+ * from a clone of the same state with the same RNG, so all of them face the
+ * same dice — the mirrored-season trick applied per decision. And the rollout
+ * policy is the captain, not the admiral: it is 3x cheaper, it cannot recurse,
+ * and the future does not need to be played brilliantly to rank the present —
+ * it needs to be played the same way for every candidate.
+ */
+let rolloutPlots = false
+
+export function setRolloutPlots(on: boolean): void {
+  rolloutPlots = on
+}
+
+/** Scorer's best few, worth the price of a simulation each. */
+const ROLLOUT_SHORTLIST = 4
+/** How far the clone is played: one full round, whatever segment we start in. */
+const ROLLOUT_PHASES = PHASE_ORDER.length
+const ROLLOUT_MAX_SEGMENTS = 24
+
+/**
+ * Play one candidate out and return the health margin it ends at.
+ *
+ * The subject ship's plot is frozen until the first segment boundary — the
+ * captain driving its side would otherwise re-plot it and every candidate
+ * would collapse into the captain's own choice. After that boundary the ship
+ * is flown normally: the candidate is this phase's decision, not a vow.
+ */
+function rolloutMargin(game: GameState, ship: ShipState, cand: Candidate): number {
+  const sim = cloneGame(game)
+  applyAction(sim, {
+    type: 'plot-maneuver',
+    shipId: ship.id,
+    maneuver: cand.maneuver,
+    direction: cand.direction,
+  })
+  const card = sim.orders[ship.id]
+  if (card && card.accel !== cand.accel) {
+    applyAction(sim, { type: 'plot-accel', shipId: ship.id, delta: cand.accel - card.accel })
+  }
+  applyAction(sim, { type: 'plot-turn-rate', shipId: ship.id, rate: cand.turnRate ?? null })
+
+  const sides = [...new Set(sim.ships.map((s) => s.side))]
+  const memos = new Map(sides.map((side) => [side, createAiMemo()]))
+  let frozen = true
+  const isFrozenPlot = (a: GameAction): boolean =>
+    frozen &&
+    'shipId' in a &&
+    a.shipId === ship.id &&
+    (a.type === 'plot-maneuver' || a.type === 'plot-accel' || a.type === 'plot-turn-rate')
+
+  const drive = (closing: boolean) => {
+    for (let pass = 0; pass < 50; pass++) {
+      const before = sim.log.length + sim.firingStepIndex + sim.firedThisSegment.size
+      for (const side of sides) {
+        for (let guard = 0; guard < 300; guard++) {
+          const batch = aiNextActions(
+            sim,
+            [side],
+            memos.get(side)!,
+            closing && pass === 0 && guard === 0,
+            'captain',
+            'steady',
+            true,
+          )
+          const usable = batch.filter((a) => !isFrozenPlot(a as GameAction))
+          if (usable.length === 0) break
+          for (const a of usable) applyAction(sim, a as GameAction)
+        }
+      }
+      if (sim.log.length + sim.firingStepIndex + sim.firedThisSegment.size === before) return
+    }
+  }
+
+  const startRound = sim.round
+  const startPhase = PHASE_ORDER.indexOf(sim.phase)
+  const elapsed = () => (sim.round - startRound) * PHASE_ORDER.length + (PHASE_ORDER.indexOf(sim.phase) - startPhase)
+  for (let seg = 0; seg < ROLLOUT_MAX_SEGMENTS; seg++) {
+    if (new Set(activeShips(sim).map((s) => s.side)).size <= 1) break
+    if (elapsed() >= ROLLOUT_PHASES) break
+    drive(true)
+    applyAction(sim, { type: 'advance-segment' })
+    frozen = false
+    drive(false)
+  }
+
+  const enemySide = sides.find((side) => side !== ship.side)
+  return health(sim, ship.side) - (enemySide ? health(sim, enemySide) : 0)
+}
+
 function bestPlot(
   game: GameState,
   ship: ShipState,
@@ -2034,6 +2157,15 @@ function bestPlot(
   let bestScore = -Infinity
   let second: Candidate = best
   let secondScore = -Infinity
+
+  /*
+   * When rollouts will settle this decision, the scoring loop's job changes:
+   * it is no longer choosing the plot, it is nominating the finalists. The
+   * shortlist is kept sorted, small, and only when someone will read it.
+   */
+  const shortlisting =
+    rolloutPlots && difficulty === 'admiral' && !fleeing && !survey && memo !== null
+  const shortlist: Array<{ score: number; cand: Candidate }> = []
 
   /*
    * The learned evaluator (see `plotModel.ts`), and the half of its feature
@@ -2567,6 +2699,16 @@ function bestPlot(
         }
       }
 
+      if (shortlisting) {
+        const at = shortlist.findIndex((e) => score > e.score)
+        const entry = { score, cand: { maneuver, direction, accel, turnRate } }
+        if (at === -1) {
+          if (shortlist.length < ROLLOUT_SHORTLIST) shortlist.push(entry)
+        } else {
+          shortlist.splice(at, 0, entry)
+          if (shortlist.length > ROLLOUT_SHORTLIST) shortlist.pop()
+        }
+      }
       if (score > bestScore) {
         second = best
         secondScore = bestScore
@@ -2588,6 +2730,29 @@ function bestPlot(
     return exploreChoice
   }
   if (watcher && bestFeatures) watcher(bestFeatures, ship.side, ship.id)
+  /*
+   * Resolve the finalists by simulation. Cached per (round, phase, ship):
+   * the orders segment re-plans until it settles, and the game state a plot
+   * depends on does not change inside that loop — recomputing a 15ms decision
+   * on every pass would triple its price for the same answer.
+   */
+  if (shortlisting && shortlist.length > 1) {
+    const key = `${game.round}:${game.phase}:${ship.id}`
+    const cached = memo!.plots.get(key)
+    if (cached) return cached
+    let winner = shortlist[0].cand
+    let winnerMargin = -Infinity
+    for (const { cand } of shortlist) {
+      const margin = rolloutMargin(game, ship, cand)
+      // Strict: on a tie the scorer's ordering stands.
+      if (margin > winnerMargin) {
+        winnerMargin = margin
+        winner = cand
+      }
+    }
+    memo!.plots.set(key, winner)
+    return winner
+  }
   // The fallible officer: sometimes the second-best plot looked right.
   if (difficulty === 'ensign' && secondScore > -Infinity) {
     if (jitter('plot', game.round, game.phase, ship.id) < 0.4) return second
