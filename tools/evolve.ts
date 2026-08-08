@@ -150,6 +150,40 @@ function main(): void {
     return
   }
 
+  /*
+   * Coordinate sweep: take the shipped weights and move one coefficient at a
+   * time, hard, in both directions.
+   *
+   * This is the cheap first pass at a newly widened search space, and it earns
+   * its place over jumping straight back to the evolution strategy for two
+   * reasons. It is embarrassingly parallel — `--keys` shards it across cores,
+   * where an ES is a chain — and it is *diagnostic*: an ES tells you where the
+   * optimum is and a coordinate sweep tells you which coefficients the season
+   * can even feel. Most of them cannot be felt at all, and knowing which is
+   * worth more than another decimal place on the ones that can.
+   *
+   *   npm run evolve -- --coords --keys lead,leadTurn,edgeCrowd
+   *   npm run evolve -- --coords --factors 0.5,2 --games-scale 1
+   */
+  if (process.argv.includes('--coords')) {
+    const keys = (flag('keys')?.split(',') ?? KEYS) as Array<keyof PlotWeights>
+    const factors = (flag('factors') ?? '0.5,2').split(',').map(Number)
+    const base = fitness(TUNED_PLOT_WEIGHTS, TRAIN)
+    console.log(`base    ${(base.rate * 100).toFixed(1)}%   ${base.detail}`)
+    for (const key of keys) {
+      for (const factor of factors) {
+        const trial = { ...TUNED_PLOT_WEIGHTS, [key]: TUNED_PLOT_WEIGHTS[key] * factor }
+        const result = fitness(trial, TRAIN)
+        const delta = (result.rate - base.rate) * 100
+        console.log(
+          `${key.padEnd(16)} x${String(factor).padEnd(5)} ${(result.rate * 100).toFixed(1)}%  ` +
+            `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}   ${result.detail}`,
+        )
+      }
+    }
+    return
+  }
+
   const validate = flag('validate')
   if (validate) {
     const weights = { ...DEFAULT_PLOT_WEIGHTS, ...(JSON.parse(validate) as Partial<PlotWeights>) }

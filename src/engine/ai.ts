@@ -1700,6 +1700,42 @@ export interface PlotWeights {
   /** How much the next phase's best follow-up counts, and its stress. */
   lookahead: number
   lookaheadStress: number
+
+  /*
+   * The second block: constants that were sitting loose in `bestPlot` when the
+   * first nineteen were extracted and searched. They were left out for no
+   * better reason than that they did not look like weights — a threshold in
+   * degrees, a gate on a ratio, a fraction of the enemy's speed. But every one
+   * of them was chosen the same way the first nineteen were, which is to say
+   * by somebody's judgment, and that judgment turned out to be worth 40 games
+   * a season when it was checked. So they are checked too.
+   *
+   * Only constants local to the plot scorer are here. The bracket weights
+   * inside `firepowerAt` and the falloff in `threatPoint` look equally
+   * tunable and are deliberately not: both are read by the volley planner and
+   * the tractor doctrine as well, and a coefficient that binds to the admiral
+   * cannot be shared with code the captain runs too.
+   */
+  /** Degrees off the bow that still count as "on target" for the bonus. */
+  bowThreshold: number
+  /** How much defensive appetite it takes before terrain cover is sought. */
+  coverGate: number
+  /** Reward for a leaver's plot that actually crosses the boundary (J9.2.2). */
+  fleeOffBoard: number
+  /** Standoff held while surveying a world (S3.2, J4.2.1 wants eight inches). */
+  surveyHold: number
+  /** Penalty for a plot that commits the ship off the board before she can
+   *  turn, and for eating into her stopping distance (S2.2.1). */
+  blindEdge: number
+  edgeCrowd: number
+  /** The floor under that stopping distance, for a hull that has nearly none. */
+  edgeFloor: number
+  /** Per point of speed over an asteroid field's safe speed (K2.1.6). */
+  rockPenalty: number
+  /** Fraction of the enemy's speed to lead by, and how far their bow is
+   *  assumed to come round toward us while we do it. */
+  lead: number
+  leadTurn: number
 }
 
 export const DEFAULT_PLOT_WEIGHTS: PlotWeights = {
@@ -1722,6 +1758,16 @@ export const DEFAULT_PLOT_WEIGHTS: PlotWeights = {
   stressUncovered: 4,
   lookahead: 0.5,
   lookaheadStress: 1.5,
+  bowThreshold: 45,
+  coverGate: 0.5,
+  fleeOffBoard: 30,
+  surveyHold: 5,
+  blindEdge: 12,
+  edgeCrowd: 8,
+  edgeFloor: 2,
+  rockPenalty: 3,
+  lead: 0.5,
+  leadTurn: 45,
 }
 
 /**
@@ -1776,6 +1822,16 @@ export const TUNED_PLOT_WEIGHTS: PlotWeights = {
   stressUncovered: 3.0768,
   lookahead: 0.605,
   lookaheadStress: 2.7352,
+  bowThreshold: 45,
+  coverGate: 0.5,
+  fleeOffBoard: 30,
+  surveyHold: 5,
+  blindEdge: 12,
+  edgeCrowd: 8,
+  edgeFloor: 2,
+  rockPenalty: 3,
+  lead: 0.5,
+  leadTurn: 45,
 }
 
 let tunedWeights: PlotWeights = TUNED_PLOT_WEIGHTS
@@ -1845,12 +1901,14 @@ function bestPlot(
    */
   const toUs = relativeBearing(enemy.placement.position, enemy.placement.heading, ship.placement.position)
   const signed = toUs > 180 ? toUs - 360 : toUs
-  const ev = headingVector(enemy.placement.heading + Math.max(-45, Math.min(45, signed)))
+  const ev = headingVector(
+    enemy.placement.heading + Math.max(-W.leadTurn, Math.min(W.leadTurn, signed)),
+  )
   const sifLine = ship.form.functions.find((l) => l.kind === 'sif')
   const sifCover = sifLine ? lineValue(ship, sifLine.id) : 0
   // Half the enemy's speed: a full-speed lead overshoots the moment the
   // enemy maneuvers, and in a turning fight the enemy is always maneuvering.
-  const lead = enemy.speed * 0.5
+  const lead = enemy.speed * W.lead
   /**
    * The admiral does not guess the lead — it plays the enemy's turn. One
    * prediction per enemy per phase (plotting is simultaneous, so their best
@@ -2057,7 +2115,7 @@ function bestPlot(
       } else if (survey) {
         // Close to scanning range and hold there — the mission is the planet,
         // and the picket is only in the way (J4.2.1 wants eight inches).
-        score = -Math.abs(actualRange(end.position, survey) - 5)
+        score = -Math.abs(actualRange(end.position, survey) - W.surveyHold)
       } else if (kite !== null && visibleEnemies.length > 0) {
         score = -(kite - nearestRange > 0 ? (kite - nearestRange) * W.kiteInside : (nearestRange - kite) * W.kiteOutside)
       } else {
@@ -2088,7 +2146,7 @@ function bestPlot(
         const bearing = relativeBearing(end.position, end.heading, predicted)
         offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
         score += ((180 - offBow) / 180) * W.bearing
-        if (offBow < 45) score += W.bowBonus
+        if (offBow < W.bowThreshold) score += W.bowBonus
       }
 
       // Rank is what the officer optimises. The ensign flies by feel —
@@ -2154,7 +2212,7 @@ function bestPlot(
             score += (field.cover ?? 0) * defensiveNeed
           }
         }
-        if (losObstacles.length > 0 && defensiveNeed > 0.5 && visibleEnemies.length > 0) {
+        if (losObstacles.length > 0 && defensiveNeed > W.coverGate && visibleEnemies.length > 0) {
           hiddenHere = visibleEnemies.every(
             (e) => !hasLineOfSight(e.placement.position, end.position, losObstacles),
           )
@@ -2219,7 +2277,7 @@ function bestPlot(
       let edgeShort = 0
       let blindOff = false
       if (fleeing) {
-        if (offBoard(end.position)) score += 30
+        if (offBoard(end.position)) score += W.fleeOffBoard
       } else {
         const brake = Math.max(1, accelerationBudget(ship))
         const speed = Math.abs(candidate.speed)
@@ -2242,12 +2300,12 @@ function bestPlot(
         // leaves in 7 of 8, with it in 4. Half the problem, and the half that
         // was costing the ship battles it was winning.
         blindOff = blindRounds > 0 && offBoard(committed)
-        if (blindOff) score -= 12
+        if (blindOff) score -= W.blindEdge
 
         // And the stopping distance proper: rounds to shed this speed, then
         // the ground covered doing it at an average of half of it.
         const rounds = Math.ceil(speed / brake)
-        const margin = Math.max(2, (speed * rounds) / 2)
+        const margin = Math.max(W.edgeFloor, (speed * rounds) / 2)
         const room = Math.min(
           end.position.x,
           end.position.y,
@@ -2259,7 +2317,7 @@ function bestPlot(
           // at the boundary itself, so a fast heavy turns early and a nimble
           // ship can still use the whole board.
           edgeShort = 1 - Math.max(0, room) / margin
-          score -= 8 * edgeShort
+          score -= W.edgeCrowd * edgeShort
         }
       }
 
@@ -2273,7 +2331,7 @@ function bestPlot(
         }
         if (fields.length > 0) break
       }
-      score -= 3 * rockRisk
+      score -= W.rockPenalty * rockRisk
 
       /**
        * Rank is search depth. The admiral looks one phase further: from this
@@ -2346,7 +2404,7 @@ function bestPlot(
             -Math.abs(r2 - ideal) * W.range +
             ((180 - off2) / 180) * W.bearing -
             then.stress * W.lookaheadStress
-          if (off2 < 45) s += W.bowBonus
+          if (off2 < W.bowThreshold) s += W.bowBonus
           const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
           s +=
             fp2 *
