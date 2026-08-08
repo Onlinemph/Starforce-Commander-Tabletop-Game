@@ -137,6 +137,47 @@ export const BASELINES = [
   },
 ] as const
 
+/**
+ * ORBITAL AMBUSH — an open weakness, measured and unexplained.
+ *
+ * Every baseline above is fought on a bare map. There is no terrain in either
+ * duel scenario and none in the squadron engagement, which is how four terrain
+ * coefficients in the plot scorer stayed unmeasured through an entire
+ * evolution run without anybody noticing (see TUNED_PLOT_WEIGHTS). Measuring
+ * on terrain for the first time turned up something worse than dead
+ * coefficients.
+ *
+ *     s3.3-orbital-ambush   admiral vs captain    40W-55L   (42%)
+ *     s3.3-orbital-ambush   admiral vs ensign     67W-29L   (70%)
+ *     s3.3-orbital-ambush   captain vs ensign     62W-33L   (65%)
+ *     exp3-nebula-patrol    admiral vs captain    56W-40L   (58%)
+ *     s3.5-mutual-surprise  admiral vs captain    53W-43L   (55%)
+ *
+ * Read those together. The admiral beats an ensign more soundly than the
+ * captain does, and still loses to the captain — the ranks are not transitive
+ * on this map, so this is not "the admiral is weaker", it is "something the
+ * admiral does is being punished here and nowhere else".
+ *
+ * Instrumenting 48 battles per matchup says what, but not yet why:
+ *
+ *     captain vs captain    mean range 14.1"   end health +0.170
+ *     admiral vs admiral    mean range  7.7"   end health -0.477
+ *
+ * The admiral closes to half the range and both sides are wrecked for it. The
+ * first suspect was that the plot scorer cannot see terrain — `firepowerAt`
+ * scores guns through a planet and the threat estimate flees fire that cannot
+ * reach. Both are true, both were fixed, and the fix was worth one game across
+ * four seasons; the note on `firepowerAt` explains why a blindness that even
+ * applies to every candidate cannot change which candidate wins.
+ *
+ * So the cause is still open. What is established: it is admiral-only
+ * doctrine, it shows on every map with terrain and worst where sight is
+ * blocked, it is about closing rather than hiding, and it is not the plot
+ * weights (the hand-set values read 42W-54L, inside noise of the evolved
+ * ones). That leaves the lookahead, the enemy-plot prediction, the turn rates
+ * and the focus-fire herding as the candidates nobody has ablated yet.
+ */
+
 interface Side {
   game: GameState
   memo: AiMemo

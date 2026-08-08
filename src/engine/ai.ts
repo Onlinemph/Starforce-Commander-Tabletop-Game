@@ -1628,25 +1628,36 @@ function nearest(ship: ShipState, enemies: ShipState[]): ShipState | null {
  * worth more in green (attacker rerolls, E1.2.1) and less in red. Only the
  * ship's own form is read; the enemy stays a counter on the table.
  */
+/*
+ * This function does not check line of sight, and the threat estimate beside
+ * it does not either. Both are genuinely blind: a world can stand squarely
+ * between two hulls and the helm will still score the guns as bearing, and
+ * still flee a volley that cannot reach it.
+ *
+ * It was fixed, measured and taken back out, which is worth more than the fix
+ * would have been. Threading the obstacle list through both terms moved four
+ * terrain seasons by one game in total — the orbital ambush 40W-55L to
+ * 39W-56L, and the other three *identical* to the win.
+ *
+ * The reason is worth keeping, because it generalises. A blind term only
+ * misleads if it is blind unevenly. Line of sight barely changes across the
+ * candidates of a single plot: a ship moves two or three inches a phase and a
+ * planet does not move at all, so either every candidate can see the target or
+ * none can, and a term that is equally wrong for all of them cannot change
+ * which one wins. The same principle showed up in the learned evaluator, where
+ * the features constant across a decision could not affect a ranking either.
+ *
+ * So the blindness is real and nearly free, and the thing that actually costs
+ * the admiral the orbital ambush is still open — see the note on ORBITAL
+ * AMBUSH in `season.ts`.
+ */
 function firepowerAt(
   ship: ShipState,
   placement: { position: Point; heading: number },
   targetPos: Point,
   targetLowSpeed: boolean,
   includeRed = true,
-  /**
-   * The world in the way. Guns that cannot see the target are worth nothing,
-   * and until this existed the helm did not know that: it scored arcs,
-   * brackets and readiness and never asked whether there was a planet between
-   * the two hulls. A ship therefore manoeuvred for a firing position it could
-   * not fire from, and then held it.
-   *
-   * Empty on a bare map, which is every scenario the standing baselines are
-   * measured on — so this costs nothing and changes nothing there.
-   */
-  obstacles: ReturnType<typeof terrainObstacles> = [],
 ): number {
-  if (obstacles.length > 0 && !hasLineOfSight(placement.position, targetPos, obstacles)) return 0
   const arcs = arcTo(placement.position, placement.heading, targetPos)
   const actual = actualRange(placement.position, targetPos)
   const effective = effectiveRange(actual, 0, ship.sensors.targeting)
@@ -1912,19 +1923,6 @@ function bestPlot(
     return game.scenario.terrain.find((t) => t.id === recon.target)?.center ?? null
   })()
   const losObstacles = terrainObstacles(game.scenario.terrain)
-  /**
-   * The enemies that could actually shoot at a point, which on a bare map is
-   * all of them and on a map with a world in it is not. The threat estimate
-   * used to sum every visible hull's chart regardless of what stood between,
-   * so the helm fled fire that could not reach it and, worse, treated a
-   * position sheltered behind a planet as no safer than open space. Paired
-   * with the same blindness in `firepowerAt`, that is what made the admiral
-   * close to knife range on the orbital ambush and die there.
-   */
-  const firingAt = (point: Point): ShipState[] =>
-    losObstacles.length === 0
-      ? visibleEnemies
-      : visibleEnemies.filter((e) => hasLineOfSight(e.placement.position, point, losObstacles))
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
    * captain wants their bow on us just as we want ours on them, so a
@@ -2198,7 +2196,7 @@ function bestPlot(
       let coverTaken = 0
       let hiddenHere = false
       if (difficulty !== 'ensign' && !fleeing) {
-        fp = firepowerAt(ship, end, predicted, enemy.speed === 0, true, losObstacles)
+        fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
         /**
          * Deep maneuver: the same guns are worth up to double pointed at a
          * battered facing. Which enemy shield this position attacks into is
@@ -2225,7 +2223,7 @@ function bestPlot(
          * is what makes range control emerge: kite the heavy batteries,
          * crowd the light ones.
          */
-        incoming = firingAt(end.position).reduce(
+        incoming = visibleEnemies.reduce(
           (sum, e) =>
             sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming) * dangerScale(memo, e.id),
           0,
@@ -2441,7 +2439,7 @@ function bestPlot(
             ((180 - off2) / 180) * W.bearing -
             then.stress * W.lookaheadStress
           if (off2 < W.bowThreshold) s += W.bowBonus
-          const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0, true, losObstacles)
+          const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
           s +=
             fp2 *
             W.firepower *
@@ -2459,7 +2457,7 @@ function bestPlot(
           )
           s += weakest2 * (fp2 > 0 ? W.shieldWithGuns : W.shieldQuiet)
           s -=
-            firingAt(then.end.position).reduce(
+            visibleEnemies.reduce(
               (sum, e) => sum + estimatedVolleyDamage(e, then.end.position, ship.sensors.jamming),
               0,
             ) * W.incomingSteady
@@ -2493,7 +2491,7 @@ function bestPlot(
         const allowedRate = turnTemplateAt(ship, candidate.speed)
         const theirBearing = relativeBearing(predicted, predictedHeading, end.position)
         const theirOffBow = Math.min(theirBearing, 360 - theirBearing)
-        const fpLive = firepowerAt(ship, end, predicted, enemy.speed === 0, false, losObstacles)
+        const fpLive = firepowerAt(ship, end, predicted, enemy.speed === 0, false)
         const losBlocked =
           losObstacles.length === 0 || visibleEnemies.length === 0
             ? 0
