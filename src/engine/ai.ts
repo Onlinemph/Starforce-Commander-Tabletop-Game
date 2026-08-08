@@ -1634,7 +1634,19 @@ function firepowerAt(
   targetPos: Point,
   targetLowSpeed: boolean,
   includeRed = true,
+  /**
+   * The world in the way. Guns that cannot see the target are worth nothing,
+   * and until this existed the helm did not know that: it scored arcs,
+   * brackets and readiness and never asked whether there was a planet between
+   * the two hulls. A ship therefore manoeuvred for a firing position it could
+   * not fire from, and then held it.
+   *
+   * Empty on a bare map, which is every scenario the standing baselines are
+   * measured on — so this costs nothing and changes nothing there.
+   */
+  obstacles: ReturnType<typeof terrainObstacles> = [],
 ): number {
+  if (obstacles.length > 0 && !hasLineOfSight(placement.position, targetPos, obstacles)) return 0
   const arcs = arcTo(placement.position, placement.heading, targetPos)
   const actual = actualRange(placement.position, targetPos)
   const effective = effectiveRange(actual, 0, ship.sensors.targeting)
@@ -1900,6 +1912,19 @@ function bestPlot(
     return game.scenario.terrain.find((t) => t.id === recon.target)?.center ?? null
   })()
   const losObstacles = terrainObstacles(game.scenario.terrain)
+  /**
+   * The enemies that could actually shoot at a point, which on a bare map is
+   * all of them and on a map with a world in it is not. The threat estimate
+   * used to sum every visible hull's chart regardless of what stood between,
+   * so the helm fled fire that could not reach it and, worse, treated a
+   * position sheltered behind a planet as no safer than open space. Paired
+   * with the same blindness in `firepowerAt`, that is what made the admiral
+   * close to knife range on the orbital ambush and die there.
+   */
+  const firingAt = (point: Point): ShipState[] =>
+    losObstacles.length === 0
+      ? visibleEnemies
+      : visibleEnemies.filter((e) => hasLineOfSight(e.placement.position, point, losObstacles))
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
    * captain wants their bow on us just as we want ours on them, so a
@@ -2173,7 +2198,7 @@ function bestPlot(
       let coverTaken = 0
       let hiddenHere = false
       if (difficulty !== 'ensign' && !fleeing) {
-        fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
+        fp = firepowerAt(ship, end, predicted, enemy.speed === 0, true, losObstacles)
         /**
          * Deep maneuver: the same guns are worth up to double pointed at a
          * battered facing. Which enemy shield this position attacks into is
@@ -2200,7 +2225,7 @@ function bestPlot(
          * is what makes range control emerge: kite the heavy batteries,
          * crowd the light ones.
          */
-        incoming = visibleEnemies.reduce(
+        incoming = firingAt(end.position).reduce(
           (sum, e) =>
             sum + estimatedVolleyDamage(e, end.position, ship.sensors.jamming) * dangerScale(memo, e.id),
           0,
@@ -2416,7 +2441,7 @@ function bestPlot(
             ((180 - off2) / 180) * W.bearing -
             then.stress * W.lookaheadStress
           if (off2 < W.bowThreshold) s += W.bowBonus
-          const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0)
+          const fp2 = firepowerAt(ship, then.end, afterEnemy, enemy.speed === 0, true, losObstacles)
           s +=
             fp2 *
             W.firepower *
@@ -2434,7 +2459,7 @@ function bestPlot(
           )
           s += weakest2 * (fp2 > 0 ? W.shieldWithGuns : W.shieldQuiet)
           s -=
-            visibleEnemies.reduce(
+            firingAt(then.end.position).reduce(
               (sum, e) => sum + estimatedVolleyDamage(e, then.end.position, ship.sensors.jamming),
               0,
             ) * W.incomingSteady
@@ -2468,7 +2493,7 @@ function bestPlot(
         const allowedRate = turnTemplateAt(ship, candidate.speed)
         const theirBearing = relativeBearing(predicted, predictedHeading, end.position)
         const theirOffBow = Math.min(theirBearing, 360 - theirBearing)
-        const fpLive = firepowerAt(ship, end, predicted, enemy.speed === 0, false)
+        const fpLive = firepowerAt(ship, end, predicted, enemy.speed === 0, false, losObstacles)
         const losBlocked =
           losObstacles.length === 0 || visibleEnemies.length === 0
             ? 0
