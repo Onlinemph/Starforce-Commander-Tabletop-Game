@@ -14,13 +14,20 @@
  *
  * The design, and why it is this and not a chess engine.
  *
- * A chess bot searches. Search is not on the table here: `structuredClone` of
- * a GameState costs 1.1 ms, a plot decision weighs up to 280 candidates, and a
- * season is 192 games — so a single ply of true lookahead is four orders of
+ * A chess bot searches. Search looked off the table here: `structuredClone`
+ * of a GameState costs 1.1 ms, a plot decision weighs up to 280 candidates,
+ * and a season is 192 games — so simulating every candidate is four orders of
  * magnitude over budget. What is affordable is a *static* evaluation that is
  * better than the hand-written one, and that is what this is: a small network
  * over features already computed inside the candidate loop, costing a few
  * hundred multiply-adds per candidate and no clones at all.
+ *
+ * (That premise later fell to arithmetic, and the thing that replaced it is
+ * the thing that finally worked: nobody needs to simulate 280 candidates when
+ * the scorer can nominate four finalists. See rollout plotting in `ai.ts` —
+ * clone the battle, play each finalist out a round, keep the one that ends
+ * ahead. This file's static-evaluation road stays closed for the reasons
+ * below; the search road reopened.)
  *
  * The features are deliberately a superset of the hand scorer's terms. That
  * matters: it means the model is not being asked to rediscover range

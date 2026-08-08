@@ -31,6 +31,7 @@ import { applyAction, type GameAction } from '../src/engine/actions'
 import {
   aiNextActions,
   createAiMemo,
+  setRolloutEnemyRank,
   type AiDifficulty,
   type AiMemo,
   type AiPersonality,
@@ -183,10 +184,15 @@ interface Side {
   memo: AiMemo
   sides: string[]
   difficulty: AiDifficulty
+  /** Who this side is fighting — the rank its rollouts cast the enemy at. */
+  enemyDifficulty: AiDifficulty
 }
 
 /** Run one side's captains until they have nothing left to say. */
 function drive(side: Side, closing: boolean, retreat: boolean, personality: AiPersonality): void {
+  // The rollout imagines the opponent it is actually fighting (see
+  // setRolloutEnemyRank) — a global, so it is re-declared per drive.
+  setRolloutEnemyRank(side.enemyDifficulty)
   for (let guard = 0; guard < 400; guard++) {
     const batch = aiNextActions(
       side.game,
@@ -239,8 +245,20 @@ export function playOne(options: GameOptions): GameState {
     ...options.setup,
   })
   const sides = [...new Set(game.ships.map((s) => s.side))]
-  const blue: Side = { game, memo: createAiMemo(), sides: [sides[0]], difficulty: options.blue }
-  const red: Side = { game, memo: createAiMemo(), sides: [sides[1]], difficulty: options.red }
+  const blue: Side = {
+    game,
+    memo: createAiMemo(),
+    sides: [sides[0]],
+    difficulty: options.blue,
+    enemyDifficulty: options.red,
+  }
+  const red: Side = {
+    game,
+    memo: createAiMemo(),
+    sides: [sides[1]],
+    difficulty: options.red,
+    enemyDifficulty: options.blue,
+  }
   /**
    * Both sides, until neither has anything left to say.
    *

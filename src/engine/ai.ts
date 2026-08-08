@@ -1944,7 +1944,15 @@ const ablated = (key: AiAblation): boolean => ablations.has(key)
  * and the future does not need to be played brilliantly to rank the present —
  * it needs to be played the same way for every candidate.
  */
-let rolloutPlots = false
+/**
+ * On by default: this is admiral doctrine now, not an experiment. Measured at
+ * 96 games per cell against the scorer alone — duel-vs-captain 68W-28L to
+ * 77W-18L, squadron-vs-ensign 87W-9L to 90W-6L once the enemy was cast at its
+ * true rank, and the orbital ambush, which the admiral had been losing to a
+ * captain 40W-55L, flipped to 101W-90L over 192. The off switch exists for
+ * measurement: every ablation and sweep in tools/ wants the scorer bare.
+ */
+let rolloutPlots = true
 
 export function setRolloutPlots(on: boolean): void {
   rolloutPlots = on

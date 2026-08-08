@@ -14,7 +14,7 @@ import {
   type ActionOutcome,
   type GameAction,
 } from '../engine/actions'
-import { aiNextActions, createAiMemo, type AiMemo } from '../engine/ai'
+import { aiNextActions, createAiMemo, setRolloutEnemyRank, type AiMemo } from '../engine/ai'
 import { probeDecision, type DamageChoice, type DamageDecision } from '../engine/damage'
 import { cloneGame, everyoneReady, sidesAwaited, type GameState } from '../engine/game'
 import { stateHash } from '../engine/stateHash'
@@ -558,6 +558,14 @@ async function driveAi(closing = false): Promise<void> {
   if (driving || aiSuppressed) return
   const sides = (setup.aiSides ?? []).filter((side) => game.ships.some((s) => s.side === side))
   if (sides.length === 0) return
+  /*
+   * Who the admiral's rollouts imagine on the other side. The app has one
+   * difficulty setting shared by every AI side, so the enemy is either
+   * another AI at that rank or a human — and a human is cast as a captain,
+   * the rank whose doctrine the rollout policy plays anyway.
+   */
+  const everySideIsAi = game.ships.every((ship) => sides.includes(ship.side))
+  setRolloutEnemyRank(everySideIsAi ? (setup.aiDifficulty ?? 'admiral') : 'captain')
   driving = true
   try {
     let changed = false
