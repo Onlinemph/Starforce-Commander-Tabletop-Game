@@ -53,6 +53,41 @@ const TRAIN = [
   { label: 'squadron', scenario: 'exp2-squadron-engagement', hi: 'admiral', lo: 'ensign', games: 96 },
 ] as const
 
+/**
+ * The terrain suite, and the hole it exists to fill.
+ *
+ * TRAIN above is two scenarios and **neither has a single piece of terrain**.
+ * So every coefficient in the plot scorer that governs terrain — the three
+ * cover appetites, the line-of-sight bonus, the gate that decides when cover
+ * is sought at all, and the penalty for tearing through rocks — was a free
+ * parameter during the whole weight evolution. It could not move the fitness,
+ * so nothing pulled it anywhere, and whatever it drifted to is not a measured
+ * value however confidently it is printed.
+ *
+ * This is what the coordinate sweep was for. Six coefficients came back at
+ * *exactly* zero effect, with identical win-loss records at half and double —
+ * which is not a small effect, it is an unreachable code path, and it is the
+ * kind of thing an evolution strategy will never tell you because a flat
+ * direction looks the same as a converged one.
+ *
+ * Two scenarios with real terrain and a rank gap wide enough to read: eight
+ * asteroid fields (cover, rocks and blocked sight all at once) and a planet
+ * (sight only). Both are training maps; the held-out three have no terrain
+ * either, which is its own problem and is noted where the holdout is defined.
+ */
+const TERRAIN = [
+  { label: 'asteroids', scenario: 's3.5-mutual-surprise', hi: 'admiral', lo: 'captain', games: 96 },
+  { label: 'planet', scenario: 's3.3-orbital-ambush', hi: 'admiral', lo: 'captain', games: 96 },
+] as const
+
+/**
+ * Held out, and honest about what it does not cover: none of these three has
+ * terrain either. So "validated on battles the search had never seen" is a
+ * true claim about range discipline, facing and stress, and no claim at all
+ * about how the captain uses cover — that half of the scorer has never been
+ * held out against anything. Fixing it means a terrain scenario nobody trains
+ * on, which the S3 set does not currently have spare.
+ */
 const HOLDOUT = [
   { label: 'flagship', scenario: 's3.6-target-the-flagship', hi: 'admiral', lo: 'captain', games: 192 },
   { label: 'raid', scenario: 'exp5-aurelian-raid', hi: 'admiral', lo: 'captain', games: 192 },
@@ -168,12 +203,14 @@ function main(): void {
   if (process.argv.includes('--coords')) {
     const keys = (flag('keys')?.split(',') ?? KEYS) as Array<keyof PlotWeights>
     const factors = (flag('factors') ?? '0.5,2').split(',').map(Number)
-    const base = fitness(TUNED_PLOT_WEIGHTS, TRAIN)
+    const suites: Record<string, Suite> = { train: TRAIN, terrain: TERRAIN, holdout: HOLDOUT }
+    const suite = suites[flag('suite') ?? 'train']
+    const base = fitness(TUNED_PLOT_WEIGHTS, suite)
     console.log(`base    ${(base.rate * 100).toFixed(1)}%   ${base.detail}`)
     for (const key of keys) {
       for (const factor of factors) {
         const trial = { ...TUNED_PLOT_WEIGHTS, [key]: TUNED_PLOT_WEIGHTS[key] * factor }
-        const result = fitness(trial, TRAIN)
+        const result = fitness(trial, suite)
         const delta = (result.rate - base.rate) * 100
         console.log(
           `${key.padEnd(16)} x${String(factor).padEnd(5)} ${(result.rate * 100).toFixed(1)}%  ` +

@@ -1788,9 +1788,20 @@ export const DEFAULT_PLOT_WEIGHTS: PlotWeights = {
  *
  *   - Range discipline is worth twice what it was given (x2.12). Standing in
  *     the right band is the single most undervalued thing the captain does.
- *   - Hide harder when hiding: line-of-sight blocks x1.64, asteroid cover
- *     while protecting x1.55 — but cover while the guns are working drops to
- *     x0.67. Take the terrain when running, ignore it when shooting.
+ *   - The four terrain coefficients — `hidden` x1.64, `coverProtect` x1.55,
+ *     `coverQuiet` x0.76, `coverArmed` x0.67 — MEAN NOTHING, and the reading
+ *     first written here ("take the terrain when running, ignore it when
+ *     shooting") was a story told about noise. Neither training scenario has a
+ *     single piece of terrain on it, so these four could not move the fitness
+ *     and nothing pulled them anywhere; what they drifted to is where the
+ *     random walk happened to stop. A later coordinate sweep is what caught
+ *     it: half and double each of them and the season comes back not merely
+ *     close but *identical*, the same 68W-28L and 87W-9L, which is the
+ *     signature of an unreachable code path rather than a converged
+ *     coefficient. An evolution strategy cannot tell those two apart — a flat
+ *     direction looks exactly like a finished one — and that is the general
+ *     lesson worth keeping from it. See the TERRAIN suite in `evolve.ts` for
+ *     where they get measured properly.
  *   - Angling a healthy shield into the fire is worth about a third less than
  *     it was given (x0.65 with guns bearing, x0.84 quiet). The hand-set values
  *     bought armour with firing position, and the trade was bad.
