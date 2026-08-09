@@ -12,6 +12,9 @@ import {
   scenarioFileContents,
 } from './customScenarios'
 import { newGame } from './store'
+import { checkScenarioPublishable } from '../engine/scenarioLibrary'
+import { MAX_AUTHOR_CHARS, MAX_NOTES_CHARS } from '../engine/shipLibrary'
+import { publishScenario } from './scenarioLibrary'
 
 /**
  * The scenario designer. A battle is laid out directly on a live map — click
@@ -167,6 +170,7 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
   const [selectedTerrain, setSelectedTerrain] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [vsAi, setVsAi] = useState(true)
+  const [publishing, setPublishing] = useState<CustomScenario | null>(null)
   const dragging = useRef<string | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -330,6 +334,13 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
           <button type="button" className="primary" onClick={download}>
             Download customScenarios.json
           </button>
+          <button
+            type="button"
+            title="Share this scenario in the library, along with any fan ships it fields"
+            onClick={() => setPublishing(save())}
+          >
+            Publish to library
+          </button>
           <label className="chip file-chip">
             Load a scenario file
             <input
@@ -344,6 +355,10 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
           </label>
           {status && <span className="builder-status">{status}</span>}
         </div>
+
+        {publishing && (
+          <PublishScenarioDialog scenario={publishing} onClose={() => setPublishing(null)} />
+        )}
 
         <div className="designer-body">
           <div className="designer-map-pane">
@@ -692,6 +707,122 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Publishing a scenario to the shared library.
+ *
+ * The same two facts the ship builder's dialog makes unmissable: publishing is
+ * permanent and public (an entry cannot be edited or withdrawn — battle files
+ * reference it, so an edit is a new entry), and the design is checked before
+ * it goes. The scenario-specific third fact: any fan ships the force lists
+ * field are packaged inside the entry, so it works on machines that have
+ * never seen them.
+ */
+function PublishScenarioDialog({
+  scenario,
+  onClose,
+}: {
+  scenario: CustomScenario
+  onClose: () => void
+}) {
+  const [author, setAuthor] = useState('')
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const check = checkScenarioPublishable(scenario, allShipForms(), author, notes)
+
+  const publish = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await publishScenario({
+        fingerprint: check.fingerprint,
+        pack: check.pack,
+        author,
+        notes,
+        sides: check.sides,
+        hulls: check.hulls,
+      })
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="segment-help publish-dialog">
+      <h3>Publish “{scenario.name}” to the library</h3>
+
+      {done ? (
+        <>
+          <p className="hint">
+            Published. Anyone pointed at this library can now find it under the Library&apos;s
+            Scenarios tab and take a copy.
+          </p>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="hint">
+            This is public and permanent: an entry cannot be edited or withdrawn, because battle
+            files that reference it have to keep replaying the same way. Publishing a changed
+            version makes a new entry rather than altering this one.
+            {check.pack.forms.length > 0 && (
+              <>
+                {' '}
+                The {check.pack.forms.length} fan ship(s) this scenario fields travel inside the
+                entry, so it works for people who do not have them.
+              </>
+            )}
+          </p>
+
+          {check.refusal && <p className="fire-error">{check.refusal}</p>}
+
+          <label className="field inline">
+            <span>Your name</span>
+            <input
+              value={author}
+              maxLength={MAX_AUTHOR_CHARS}
+              placeholder="optional"
+              onChange={(e) => setAuthor(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Notes</span>
+            <textarea
+              value={notes}
+              maxLength={MAX_NOTES_CHARS}
+              rows={3}
+              placeholder="What is the battle about? optional"
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+
+          {error && <p className="fire-error">{error}</p>}
+          <div className="builder-row">
+            <button
+              type="button"
+              className="primary"
+              disabled={!check.ok || busy}
+              onClick={() => void publish()}
+            >
+              {busy ? 'Publishing…' : 'Publish'}
+            </button>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

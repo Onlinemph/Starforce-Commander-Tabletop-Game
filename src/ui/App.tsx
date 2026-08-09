@@ -233,9 +233,9 @@ export function App() {
           type="button"
           disabled={enrolledInMatch}
           onClick={() => setLibrary(true)}
-          title="Browse ships other players have designed and take a copy"
+          title="Browse ships and scenarios other players have designed and take a copy"
         >
-          Ship library
+          Library
         </button>
         <button
           type="button"

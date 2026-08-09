@@ -66,7 +66,16 @@ export const MAX_NOTES_CHARS = 500
  */
 export function designFingerprint(form: ShipForm): string {
   const { id: _ignored, ...rules } = form
-  return fnv1a64(stableStringify(rules))
+  return contentFingerprint(rules)
+}
+
+/**
+ * The general form of the same idea, for anything else the libraries address
+ * by content — scenarios use it too. Key order never matters; `undefined`
+ * fields never matter.
+ */
+export function contentFingerprint(value: unknown): string {
+  return fnv1a64(stableStringify(value))
 }
 
 /**

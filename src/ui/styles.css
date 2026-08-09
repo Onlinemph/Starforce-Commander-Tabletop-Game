@@ -3402,6 +3402,13 @@ button.chip:hover:not(:disabled) {
   }
 }
 
+/* --- Ship & scenario library --------------------------------------------- */
+
+.library-tabs {
+  display: flex;
+  gap: 0.4rem;
+}
+
 /* --- Replay theater ------------------------------------------------------ */
 
 .picker.theater {

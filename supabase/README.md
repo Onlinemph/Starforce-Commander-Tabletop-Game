@@ -231,3 +231,32 @@ faction. It is what the browser filters on. It is deliberately *not* what tells
 a fan design from a printed one: a design may fly any flag it likes, and the
 game separates the two by identity instead, so nothing published here can slip
 into the canon roster however it is tagged or named.
+
+## The shared scenario library (optional, independent)
+
+`scenario-library.sql` is the same idea for designed scenarios: publish from
+the scenario designer, browse and take a copy from the Library's Scenarios
+tab. Run the file once in the SQL Editor. It is independent of both the match
+schema and the ship library — any combination works in one project.
+
+Everything above about immutability applies unchanged: entries are keyed by a
+hash of the packaged design, publishing an edit makes a new entry, and the
+only moderation levers are `hidden` and the report counter.
+
+The one scenario-specific mechanism is **packaging**. A scenario's force lists
+are references — ship form ids — and a designed scenario may field fan ships
+that exist only in its author's browser. Published as-is those references
+would dangle everywhere else, so the game publishes a package: the scenario
+plus every non-canon form it fields, with the references rewritten to the
+forms' content-addressed ids (the same `lib-…` ids the ship library mints).
+Taking a copy imports the fan ships into the roster and the scenario into the
+scenario list in one step, and the same entry lands under the same ids on
+every machine, so battle files that reference it travel too. The size cap is
+256 KB — a scenario and several fan hulls — enforced in the database.
+
+| Function | What it does |
+| --- | --- |
+| `sfc_publish_scenario` | Insert an entry, keyed by fingerprint; a repeat is a no-op |
+| `sfc_browse_scenarios` | Search by name or author, newest first |
+| `sfc_record_scenario_download` | Count an import — "somebody set this battle up" |
+| `sfc_report_scenario` | Flag an entry for you to look at |

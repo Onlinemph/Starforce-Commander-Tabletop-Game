@@ -63,12 +63,14 @@ async function connect(): Promise<Client> {
   return client
 }
 
-async function call(fn: string, args: Record<string, unknown>): Promise<unknown> {
+/** One RPC against the configured library project — the scenario library shares it. */
+export async function libraryCall(fn: string, args: Record<string, unknown>): Promise<unknown> {
   const supabase = await connect()
   const { data, error } = await supabase.rpc(fn, args)
   if (error) throw new Error(error.message)
   return data
 }
+const call = libraryCall
 
 /** Rows as the browse function returns them, widened into entries. */
 interface Row {
