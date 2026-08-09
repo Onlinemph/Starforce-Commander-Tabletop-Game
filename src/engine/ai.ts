@@ -60,6 +60,7 @@ import {
   type RepairCategory,
 } from './engineering'
 import {
+  ARC_START,
   actualRange,
   applyManeuver,
   effectiveRange,
@@ -2349,6 +2350,57 @@ function rolloutVolley(game: GameState, ship: ShipState, volley: GameAction | nu
   }
 }
 
+/**
+ * Where this hull's guns actually point, as a relative bearing — 0 is the
+ * bow, 180 the stern. Null means "the bow, and exactly the bow".
+ *
+ * The roster sweep that forced this: around forty hulls carry aft-arc
+ * weapons, and across four duels each NOT ONE aft system ever fired — the
+ * Athenas' and Pellews' rear torpedo tubes, the whole Vallari YAGUS line,
+ * dead weight in every game, while the light hulls built around the parting
+ * shot lost to a reference cruiser with their main armament silent. The
+ * cause was doctrine written for the Union: the bearing term pays per degree
+ * of BOW on target, and homing tubes score nothing positional at all, so a
+ * torpedo boat was flown like a gunless ship with running lights.
+ *
+ * The axis is the dice-weighted circular mean of every mount's arc coverage,
+ * homing tubes included (weighted like a heavy battery — a launch needs
+ * bearing exactly as a volley does). Hulls whose axis lies within 45 degrees
+ * of the bow SNAP to the bow: predominantly-forward ships keep the measured
+ * doctrine byte-for-byte, and every season baseline was flown by such a
+ * hull. Beyond the snap, the ship turns its armament — not its nose — onto
+ * the enemy, which is what a stern-tube raider's designer intended.
+ */
+const axisCache = new Map<string, number | null>()
+
+function batteryAxis(ship: ShipState): number | null {
+  const cached = axisCache.get(ship.form.id)
+  if (cached !== undefined) return cached
+  let x = 0
+  let y = 0
+  for (const weapon of ship.form.weapons) {
+    const homing = isHoming(weapon)
+    const dice = homing
+      ? 4
+      : Math.max(0, ...weapon.brackets.map((b) => b.dice.length + (b.bonus ?? 0)))
+    for (const mount of weapon.mounts) {
+      for (const arc of mount.arcs) {
+        const mid = ((ARC_START[arc] + 22.5) * Math.PI) / 180
+        x += Math.cos(mid) * dice
+        y += Math.sin(mid) * dice
+      }
+    }
+  }
+  let axis: number | null = null
+  if (x !== 0 || y !== 0) {
+    const degrees = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+    const off = Math.min(degrees, 360 - degrees)
+    axis = off <= 45 ? null : degrees
+  }
+  axisCache.set(ship.form.id, axis)
+  return axis
+}
+
 function bestPlot(
   game: GameState,
   ship: ShipState,
@@ -2381,6 +2433,7 @@ function bestPlot(
    * board edge — which is not a wall but the door (J9.2.2).
    */
   const fleeing = difficulty !== 'ensign' && wantsToLeave(game, ship, difficulty)
+  const axis = batteryAxis(ship)
   /**
    * A survey still to finish (S3.2). The raider's helm answers to the planet
    * rather than to the picket: a scan needs eight inches, and a ship that
@@ -2491,6 +2544,19 @@ function bestPlot(
   const shortlist: Array<{ score: number; cand: Candidate }> = []
   /** Diverse nomination: the best candidate of each plan shape. */
   const buckets = new Map<string, { score: number; cand: Candidate }>()
+  /**
+   * The gunner's nomination: the candidate that brings the most dice to
+   * bear, wherever its nose points. The roster sweep found forty hulls'
+   * aft-arc weapons silent across every game — a Savage's stern tube armed
+   * from round 2 and loaded all battle, never fired — because every
+   * nomination channel picks by score, the score pays per degree of BOW on
+   * target, and so even the hard-turn buckets send their least-sternward
+   * variant. The plot that actually uses a loaded stern gun never reached
+   * the rollout to make its case. Now it always does, and the simulation
+   * judges the trade like any other finalist. For a bow-armed hull this
+   * candidate is already the bucket winner and costs nothing.
+   */
+  let gunner: { fp: number; score: number; cand: Candidate } | null = null
 
   /*
    * The learned evaluator (see `plotModel.ts`), and the half of its feature
@@ -2697,7 +2763,10 @@ function bestPlot(
       let offBow = 180
       if (!fleeing) {
         const bearing = relativeBearing(end.position, end.heading, predicted)
-        offBow = Math.min(bearing, 360 - bearing) // 0 dead ahead … 180 dead astern
+        // Off the battery axis, not necessarily off the bow — a stern-tube
+        // raider comes about the other way. See batteryAxis.
+        const offset = axis === null ? bearing : (bearing - axis + 360) % 360
+        offBow = Math.min(offset, 360 - offset) // 0 on-axis … 180 opposite
         score += ((180 - offBow) / 180) * W.bearing
         if (offBow < W.bowThreshold) score += W.bowBonus
       }
@@ -2951,7 +3020,8 @@ function bestPlot(
           const then = plannedMovement(future, followUp)
           if (then.illegal) continue
           const r2 = actualRange(then.end.position, afterEnemy)
-          const b2 = relativeBearing(then.end.position, then.end.heading, afterEnemy)
+          const b2raw = relativeBearing(then.end.position, then.end.heading, afterEnemy)
+          const b2 = axis === null ? b2raw : (b2raw - axis + 360) % 360
           const off2 = Math.min(b2, 360 - b2)
           let s =
             -Math.abs(r2 - ideal) * W.range +
@@ -3061,6 +3131,9 @@ function bestPlot(
 
       if (shortlisting) {
         const entry = { score, cand: { maneuver, direction, accel, turnRate } }
+        if (fp > 0 && (!gunner || fp > gunner.fp || (fp === gunner.fp && score > gunner.score))) {
+          gunner = { fp, score, cand: entry.cand }
+        }
         if (rolloutConfig.diverse) {
           const bucket = `${maneuver}:${direction ?? ''}`
           const held = buckets.get(bucket)
@@ -3105,6 +3178,17 @@ function bestPlot(
   const finalists = rolloutConfig.diverse
     ? [...buckets.values()].sort((a, b) => b.score - a.score).slice(0, rolloutConfig.shortlist)
     : shortlist
+  if (gunner) {
+    const g = gunner.cand
+    const already = finalists.some(
+      (f) =>
+        f.cand.maneuver === g.maneuver &&
+        f.cand.direction === g.direction &&
+        f.cand.accel === g.accel &&
+        (f.cand.turnRate ?? null) === (g.turnRate ?? null),
+    )
+    if (!already) finalists.push({ score: gunner.score, cand: g })
+  }
   if (shortlisting && finalists.length > 1) {
     const key = `${game.round}:${game.phase}:${ship.id}`
     const cached = memo!.plots.get(key)
