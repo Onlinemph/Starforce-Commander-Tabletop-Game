@@ -1990,6 +1990,40 @@ export function setRolloutEnemyRank(rank: AiDifficulty): void {
 let inRollout = false
 
 /**
+ * The battle's round limit, when it has one — seasons end at round 12 and the
+ * final health margin decides. A rollout that does not know this plays two
+ * kinds of fiction: at round 11 it simulates rounds 13 and 14, futures the
+ * real battle will never have, and at round 9 it prices "keep brawling" as
+ * level when three of the next four rounds are all the game there is. The
+ * forensics that forced this: eight of the duel's eleven losses were games
+ * the admiral led from round 3 and brawled at knife range into a
+ * round-11-or-12 death — a lead held to the bell is a win, and the clone
+ * could not see the bell. Null means uncapped (the app's battles), and the
+ * horizon logic leaves those alone.
+ */
+let rolloutRoundCap: number | null = null
+
+export function setRolloutRoundCap(cap: number | null): void {
+  rolloutRoundCap = cap
+}
+
+/**
+ * The horizon a rollout should actually use: the configured depth — extended
+ * to the end of the battle when the end is in sight. "In sight" is within
+ * four rounds, which is where the forensics put every thrown-away lead; the
+ * extension costs up to double per simulation and is paid only in endgames.
+ */
+function rolloutHorizon(game: GameState): number {
+  const base = rolloutConfig.horizonPhases
+  if (rolloutRoundCap === null) return base
+  const phasesLeft =
+    (rolloutRoundCap - game.round) * PHASE_ORDER.length +
+    (PHASE_ORDER.length - PHASE_ORDER.indexOf(game.phase))
+  if (phasesLeft <= 0) return base
+  return phasesLeft <= PHASE_ORDER.length * 4 ? Math.max(base, phasesLeft) : base
+}
+
+/**
  * The rollout's tunable joints, in one place so they can be searched the way
  * the plot weights were — and then searched, the day after rollouts shipped.
  * The sweep, 96 games per cell, against the scorer-only admiral (mirror) and
@@ -2221,6 +2255,7 @@ function playOut(
     (sim.round - startRound) * PHASE_ORDER.length + (PHASE_ORDER.indexOf(sim.phase) - startPhase)
   for (let seg = 0; seg < ROLLOUT_MAX_SEGMENTS; seg++) {
     if (new Set(activeShips(sim).map((s) => s.side)).size <= 1) break
+    if (rolloutRoundCap !== null && sim.round > rolloutRoundCap) break
     if (elapsed() >= horizonPhases) break
     drive(true)
     applyAction(sim, { type: 'advance-segment' })
@@ -2247,7 +2282,7 @@ function rolloutVolley(game: GameState, ship: ShipState, volley: GameAction | nu
   try {
     const sim = cloneGame(game)
     applyAction(sim, volley ?? { type: 'pass-fire', shipId: ship.id })
-    return playOut(sim, ship.side, null, rolloutConfig.horizonPhases)
+    return playOut(sim, ship.side, null, rolloutHorizon(game))
   } finally {
     inRollout = false
   }
@@ -2979,16 +3014,17 @@ function bestPlot(
     const cached = memo!.plots.get(key)
     if (cached) return cached
     const cfg = rolloutConfig
+    const horizon = rolloutHorizon(game)
     const judged = finalists
-      .map((f) => ({ cand: f.cand, margin: rolloutValue(game, ship, f.cand, cfg.horizonPhases) }))
+      .map((f) => ({ cand: f.cand, margin: rolloutValue(game, ship, f.cand, horizon) }))
       // Stable: on equal margins the scorer's ordering stands.
       .sort((a, b) => b.margin - a.margin)
     let winner = judged[0].cand
     if (cfg.extendClose > 0 && judged.length > 1 && judged[0].margin - judged[1].margin <= cfg.extendClose) {
       // Too close to call at one round — play the two survivors out twice as
       // far and let the deeper look decide. Ties fall to the shallow ranking.
-      const deeperA = rolloutValue(game, ship, judged[0].cand, cfg.horizonPhases * 2)
-      const deeperB = rolloutValue(game, ship, judged[1].cand, cfg.horizonPhases * 2)
+      const deeperA = rolloutValue(game, ship, judged[0].cand, horizon * 2)
+      const deeperB = rolloutValue(game, ship, judged[1].cand, horizon * 2)
       if (deeperB > deeperA) winner = judged[1].cand
     }
     memo!.plots.set(key, winner)

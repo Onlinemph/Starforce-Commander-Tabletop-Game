@@ -33,6 +33,7 @@ import {
   createAiMemo,
   setRolloutEnemyRank,
   setRolloutPlots,
+  setRolloutRoundCap,
   type AiDifficulty,
   type AiMemo,
   type AiPersonality,
@@ -299,6 +300,9 @@ export function playOne(options: GameOptions): GameState {
     ...options.setup,
   })
   const sides = [...new Set(game.ships.map((s) => s.side))]
+  // The clone should know what the battle knows: it ends at options.rounds,
+  // and the margin at the bell is the result. See setRolloutRoundCap.
+  setRolloutRoundCap(options.rounds)
   const blue: Side = {
     game,
     memo: createAiMemo(),
