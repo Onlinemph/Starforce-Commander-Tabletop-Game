@@ -965,8 +965,16 @@ function polar(cx: number, cy: number, r: number, headingDeg: number) {
  * scaled to the counter, so the bow marks the ship's heading exactly where
  * the old bow triangle did. Purely cosmetic: the counter square below it is
  * still the 1.5-inch footprint the rules move and measure (A2.1).
+ *
+ * Within a faction the glyph varies by hull role, because size alone was not
+ * enough to tell a force apart at a glance: a size-4 raider and a size-5
+ * battlecruiser scaled to nearly the same footprint. Player feedback, from a
+ * fleet action where the one scout read as just another warship. The role
+ * comes off the printed class name; hulls from the builder without one fall
+ * back to tonnage.
  */
 type Silhouette = 'union' | 'vallari' | 'aurelian' | 'generic'
+type HullRole = 'scout' | 'escort' | 'cruiser' | 'battlecruiser' | 'dreadnought'
 
 function silhouetteFor(faction: string): Silhouette {
   if (/union/i.test(faction)) return 'union'
@@ -975,10 +983,82 @@ function silhouetteFor(faction: string): Silhouette {
   return 'generic'
 }
 
-function ShipGlyph({ kind }: { kind: Silhouette }) {
-  switch (kind) {
-    // Union: saucer forward, engineering hull aft, twin outboard nacelles.
-    case 'union':
+/** The role a class name declares: "V-2N FLANKER-class Scout" → scout. */
+export function hullRoleFor(form: { name: string; sizeClass: number }): HullRole {
+  const suffix = /-class\s+(.*)$/i.exec(form.name)?.[1]?.toLowerCase() ?? ''
+  if (/scout|survey/.test(suffix)) return 'scout'
+  if (/frigate|destroyer|monitor|corvette/.test(suffix)) return 'escort'
+  if (/battlecruiser/.test(suffix)) return 'battlecruiser'
+  if (/dreadnought|battleship/.test(suffix)) return 'dreadnought'
+  if (/cruiser/.test(suffix)) return 'cruiser'
+  if (form.sizeClass <= 2) return 'scout'
+  if (form.sizeClass === 3) return 'escort'
+  if (form.sizeClass <= 5) return 'cruiser'
+  if (form.sizeClass === 6) return 'battlecruiser'
+  return 'dreadnought'
+}
+
+/** Saucer forward, engineering hull aft, nacelles — count and stance by role. */
+function UnionGlyph({ role }: { role: HullRole }) {
+  switch (role) {
+    // Scout: a bare saucer over a single centreline nacelle.
+    case 'scout':
+      return (
+        <>
+          <rect className="glyph-hull" x={-4.5} y={2} width={9} height={30} rx={4.5} />
+          <rect className="glyph-trim" x={-3.5} y={3.5} width={7} height={7} rx={3.5} />
+          <ellipse className="glyph-hull" cx={0} cy={-14} rx={16} ry={13.5} />
+          <circle className="glyph-glass" cx={0} cy={-17} r={3.5} />
+        </>
+      )
+    // Escort: nacelles slung tight alongside the saucer, no secondary hull.
+    case 'escort':
+      return (
+        <>
+          <path className="glyph-pylon" d="M -12 0 L -16 2 M 12 0 L 16 2" />
+          <rect className="glyph-hull" x={-21} y={-8} width={8} height={30} rx={4} />
+          <rect className="glyph-hull" x={13} y={-8} width={8} height={30} rx={4} />
+          <rect className="glyph-trim" x={-20} y={-6.5} width={6} height={6} rx={3} />
+          <rect className="glyph-trim" x={14} y={-6.5} width={6} height={6} rx={3} />
+          <path className="glyph-hull" d="M -12 -2 L 12 -2 L 8 14 L -8 14 Z" />
+          <ellipse className="glyph-hull" cx={0} cy={-14} rx={18} ry={15} />
+          <circle className="glyph-glass" cx={0} cy={-18} r={4} />
+        </>
+      )
+    // Battlecruiser: the cruiser lines stretched — broad saucer, long hull,
+    // nacelles carried wide.
+    case 'battlecruiser':
+      return (
+        <>
+          <path className="glyph-pylon" d="M -9 6 L -25 20 M 9 6 L 25 20" />
+          <rect className="glyph-hull" x={-33} y={12} width={10} height={36} rx={5} />
+          <rect className="glyph-hull" x={23} y={12} width={10} height={36} rx={5} />
+          <rect className="glyph-trim" x={-32} y={13.5} width={8} height={8} rx={4} />
+          <rect className="glyph-trim" x={24} y={13.5} width={8} height={8} rx={4} />
+          <path className="glyph-hull" d="M -8 -10 L 8 -10 L 12 20 Q 0 28 -12 20 Z" />
+          <ellipse className="glyph-hull" cx={0} cy={-22} rx={25} ry={20} />
+          <path className="glyph-trim" d="M -19 -13 L 19 -13 L 15 -8 L -15 -8 Z" />
+          <circle className="glyph-glass" cx={0} cy={-27} r={4} />
+        </>
+      )
+    // Dreadnought: three nacelles under a heavy saucer — nothing else on the
+    // map carries a centreline engine.
+    case 'dreadnought':
+      return (
+        <>
+          <path className="glyph-pylon" d="M -9 2 L -27 16 M 9 2 L 27 16" />
+          <rect className="glyph-hull" x={-35} y={10} width={10} height={38} rx={5} />
+          <rect className="glyph-hull" x={25} y={10} width={10} height={38} rx={5} />
+          <rect className="glyph-hull" x={-5} y={16} width={10} height={34} rx={5} />
+          <rect className="glyph-trim" x={-34} y={11.5} width={8} height={8} rx={4} />
+          <rect className="glyph-trim" x={26} y={11.5} width={8} height={8} rx={4} />
+          <rect className="glyph-trim" x={-4} y={17.5} width={8} height={8} rx={4} />
+          <path className="glyph-hull" d="M -9 -12 L 9 -12 L 13 16 Q 0 24 -13 16 Z" />
+          <ellipse className="glyph-hull" cx={0} cy={-24} rx={26} ry={21} />
+          <circle className="glyph-glass" cx={0} cy={-29} r={4.5} />
+        </>
+      )
+    default:
       return (
         <>
           <path className="glyph-pylon" d="M -7 8 L -19 22 M 7 8 L 19 22" />
@@ -991,8 +1071,57 @@ function ShipGlyph({ kind }: { kind: Silhouette }) {
           <circle className="glyph-glass" cx={0} cy={-25} r={4} />
         </>
       )
-    // Vallari: a swept-wing raptor, all edges and intent.
-    case 'vallari':
+  }
+}
+
+/** A swept-wing raptor, all edges and intent — wingspan grows with the role. */
+function VallariGlyph({ role }: { role: HullRole }) {
+  switch (role) {
+    // Scout: a slim dart with barbs where the wings would be.
+    case 'scout':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -46 L 5 -16 L 18 6 L 14 12 L 5 4 L 6 24 L 10 36 L 0 28 L -10 36 L -6 24 L -5 4 L -14 12 L -18 6 L -5 -16 Z"
+          />
+          <path className="glyph-trim" d="M 0 -34 L 2.5 -20 L 0 -12 L -2.5 -20 Z" />
+        </>
+      )
+    // Escort: the raptor at half spread.
+    case 'escort':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -47 L 7 -18 L 28 10 L 22 19 L 7 7 L 6 26 L 12 39 L 0 31 L -12 39 L -6 26 L -7 7 L -22 19 L -28 10 L -7 -18 Z"
+          />
+          <path className="glyph-trim" d="M 0 -34 L 3 -20 L 0 -12 L -3 -20 Z" />
+        </>
+      )
+    // Battlecruiser: full spread with notched trailing edges.
+    case 'battlecruiser':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -47 L 10 -20 L 44 14 L 34 19 L 41 29 L 27 27 L 11 10 L 9 27 L 17 43 L 0 33 L -17 43 L -9 27 L -11 10 L -27 27 L -41 29 L -34 19 L -44 14 L -10 -20 Z"
+          />
+          <path className="glyph-trim" d="M 0 -34 L 4 -19 L 0 -10 L -4 -19 Z" />
+        </>
+      )
+    // Dreadnought: double-tiered wings, a raptor stooping.
+    case 'dreadnought':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -48 L 12 -22 L 46 10 L 36 24 L 12 8 L 10 20 L 30 36 L 20 44 L 8 30 L 0 38 L -8 30 L -20 44 L -30 36 L -10 20 L -12 8 L -36 24 L -46 10 L -12 -22 Z"
+          />
+          <path className="glyph-trim" d="M 0 -36 L 5 -18 L 0 -8 L -5 -18 Z" />
+        </>
+      )
+    default:
       return (
         <>
           <path
@@ -1002,8 +1131,60 @@ function ShipGlyph({ kind }: { kind: Silhouette }) {
           <path className="glyph-trim" d="M 0 -34 L 4 -20 L 0 -12 L -4 -20 Z" />
         </>
       )
-    // Aurelian: a smooth crescent dart, built to vanish.
-    case 'aurelian':
+  }
+}
+
+/** A smooth crescent dart, built to vanish — the crescent widens with the role. */
+function AurelianGlyph({ role }: { role: HullRole }) {
+  switch (role) {
+    // Scout: a sliver.
+    case 'scout':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -44 C 5 -24 8 -4 16 22 C 10 12 5 10 0 14 C -5 10 -10 12 -16 22 C -8 -4 -5 -24 0 -44 Z"
+          />
+          <path className="glyph-trim" d="M 0 -30 L 2 2 L 0 9 L -2 2 Z" />
+        </>
+      )
+    case 'escort':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -45 C 7 -24 11 -3 26 25 C 16 15 7 12 0 17 C -7 12 -16 15 -26 25 C -11 -3 -7 -24 0 -45 Z"
+          />
+          <path className="glyph-trim" d="M 0 -30 L 2.5 3 L 0 10 L -2.5 3 Z" />
+        </>
+      )
+    // Battlecruiser: the crescent grows fangs.
+    case 'battlecruiser':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -46 C 12 -24 18 0 42 24 L 34 34 C 24 20 12 16 0 21 C -12 16 -24 20 -34 34 L -42 24 C -18 0 -12 -24 0 -46 Z"
+          />
+          <path className="glyph-trim" d="M 0 -31 L 3.5 4 L 0 13 L -3.5 4 Z" />
+        </>
+      )
+    // Dreadnought: a mantle behind the dart, the crescent doubled.
+    case 'dreadnought':
+      return (
+        <>
+          <path
+            className="glyph-hull"
+            d="M 0 -48 C 14 -26 22 2 46 30 C 30 18 14 15 0 21 C -14 15 -30 18 -46 30 C -22 2 -14 -26 0 -48 Z"
+          />
+          <path
+            className="glyph-hull"
+            d="M 0 6 C 8 10 18 16 28 28 C 16 24 6 26 0 32 C -6 26 -16 24 -28 28 C -18 16 -8 10 0 6 Z"
+          />
+          <path className="glyph-trim" d="M 0 -32 L 4 4 L 0 14 L -4 4 Z" />
+        </>
+      )
+    default:
       return (
         <>
           <path
@@ -1013,14 +1194,35 @@ function ShipGlyph({ kind }: { kind: Silhouette }) {
           <path className="glyph-trim" d="M 0 -30 L 3 4 L 0 12 L -3 4 Z" />
         </>
       )
-    // Anything from the builder without a known faction: a plain wedge.
+  }
+}
+
+/** Builder hulls without a known faction: a wedge whose beam says the role. */
+function GenericGlyph({ role }: { role: HullRole }) {
+  const beam = { scout: 12, escort: 17, cruiser: 24, battlecruiser: 30, dreadnought: 36 }[role]
+  const notch = beam / 2
+  return (
+    <>
+      <path
+        className="glyph-hull"
+        d={`M 0 -44 L ${beam} 26 L ${notch} 20 L 0 33 L ${-notch} 20 L ${-beam} 26 Z`}
+      />
+      {role === 'dreadnought' && <path className="glyph-trim" d="M 0 -30 L 4 8 L 0 16 L -4 8 Z" />}
+      <circle className="glyph-glass" cx={0} cy={-14} r={role === 'scout' ? 3 : 4} />
+    </>
+  )
+}
+
+export function ShipGlyph({ kind, role }: { kind: Silhouette; role: HullRole }) {
+  switch (kind) {
+    case 'union':
+      return <UnionGlyph role={role} />
+    case 'vallari':
+      return <VallariGlyph role={role} />
+    case 'aurelian':
+      return <AurelianGlyph role={role} />
     default:
-      return (
-        <>
-          <path className="glyph-hull" d="M 0 -44 L 24 26 L 12 20 L 0 33 L -12 20 L -24 26 Z" />
-          <circle className="glyph-glass" cx={0} cy={-14} r={4} />
-        </>
-      )
+      return <GenericGlyph role={role} />
   }
 }
 
@@ -1237,7 +1439,7 @@ function ShipToken({
         className="ship-glyph"
         transform={`scale(${(size / 100) * Math.min(0.72 + 0.05 * ship.form.sizeClass, 1.05)})`}
       >
-        <ShipGlyph kind={silhouetteFor(ship.form.faction)} />
+        <ShipGlyph kind={silhouetteFor(ship.form.faction)} role={hullRoleFor(ship.form)} />
       </g>
 
       {/*

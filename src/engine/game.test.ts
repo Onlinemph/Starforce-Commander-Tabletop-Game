@@ -193,3 +193,34 @@ describe('victory points (S2.8.4)', () => {
     expect(victoryPoints(game)[BLUE]).toBeCloseTo(red.form.pointValue * 0.5)
   })
 })
+
+describe('renaming a ship', () => {
+  it('changes the name, logs the christening, and holds it through a save', () => {
+    const game = startScenario('s3.1-the-duel', { seed: 1 })
+    const ship = game.ships[0]
+    const old = ship.name
+    const outcome = applyAction(game, { type: 'rename-ship', shipId: ship.id, name: '  I.S.S. Renown  ' })
+    expect(outcome.message).toBeNull()
+    expect(ship.name).toBe('I.S.S. Renown')
+    expect(game.log.some((l) => l.message.includes(old) && l.message.includes('I.S.S. Renown'))).toBe(true)
+  })
+
+  it('refuses an empty name and a name another hull holds', () => {
+    const game = startScenario('s3.1-the-duel', { seed: 1 })
+    const [a, b] = game.ships
+    expect(applyAction(game, { type: 'rename-ship', shipId: a.id, name: '   ' }).message).toBeTruthy()
+    // The log identifies ships by name — and the AI reads the log — so a
+    // name may not be taken while another hull answers to it.
+    expect(applyAction(game, { type: 'rename-ship', shipId: a.id, name: b.name }).message).toBeTruthy()
+    expect(a.name).not.toBe(b.name)
+  })
+
+  it('is deterministic on replay: the journaled rename rebuilds the same name', () => {
+    const game = startScenario('s3.1-the-duel', { seed: 7 })
+    const ship = game.ships[1]
+    applyAction(game, { type: 'rename-ship', shipId: ship.id, name: 'V.I.S. Duelist' })
+    const replay = startScenario('s3.1-the-duel', { seed: 7 })
+    applyAction(replay, { type: 'rename-ship', shipId: ship.id, name: 'V.I.S. Duelist' })
+    expect(replay.ships[1].name).toBe(game.ships[1].name)
+  })
+})

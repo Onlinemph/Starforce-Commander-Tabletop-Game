@@ -1263,6 +1263,37 @@ input:focus-visible {
   color: var(--ink-dim);
   font-size: 0.78rem;
 }
+/* The christening pencil: quiet until the name is hovered. */
+.rename-button {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.8em;
+  margin-left: 0.35rem;
+  padding: 0 0.15rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ship-form-header h2:hover .rename-button,
+.rename-button:focus-visible {
+  opacity: 1;
+}
+.rename-button:hover {
+  color: var(--ink);
+}
+/* Sized like the h2 it replaces, so the header does not jump. */
+.rename-input {
+  font-size: 1.17em;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ink-dim);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  max-width: 14rem;
+}
 .general-data {
   display: flex;
   gap: 0.75rem;

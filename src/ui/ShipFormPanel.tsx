@@ -44,11 +44,54 @@ export function ShipFormPanel({ game, ship }: Props) {
   const [refusal, setRefusal] = useState<string | null>(null)
   const remaining = powerRemaining(ship)
 
+  /**
+   * Every ship gets a name from the scenario's pool, but it is the player's
+   * ship — the pencil hands them the christening. A rename is a journaled
+   * action like any other, so saves, replays and the other browser in a
+   * remote match all learn the new name.
+   */
+  const [draftName, setDraftName] = useState<string | null>(null)
+  const commitName = () => {
+    if (draftName !== null && draftName.trim() && draftName.trim() !== ship.name) {
+      // A rename can be refused — two hulls may not share a name — and the
+      // panel already has a place refusals are read.
+      setRefusal(dispatch({ type: 'rename-ship', shipId: ship.id, name: draftName }).message)
+    }
+    setDraftName(null)
+  }
+
   return (
     <div className="ship-form">
       <header className="ship-form-header">
         <div>
-          <h2>{ship.name}</h2>
+          {draftName === null ? (
+            <h2>
+              {ship.name}
+              <button
+                type="button"
+                className="rename-button"
+                title="Rename this ship"
+                aria-label={`Rename ${ship.name}`}
+                onClick={() => setDraftName(ship.name)}
+              >
+                ✎
+              </button>
+            </h2>
+          ) : (
+            <input
+              className="rename-input"
+              autoFocus
+              value={draftName}
+              maxLength={40}
+              aria-label="Ship name"
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitName()
+                if (e.key === 'Escape') setDraftName(null)
+              }}
+            />
+          )}
           <p className="ship-class">
             {ship.form.name} · {ship.form.faction}
           </p>

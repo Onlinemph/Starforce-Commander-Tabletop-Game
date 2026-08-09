@@ -113,6 +113,8 @@ export type GameAction =
   | { type: 'ops-next-step' }
   | { type: 'advance-firing-step' }
   | { type: 'set-coordinated-fire'; on: boolean }
+  /** Christen a hull — cosmetic, journaled so replays and saves keep the name. */
+  | { type: 'rename-ship'; shipId: string; name: string }
   // Resource Allocation (B2, E4.2)
   | { type: 'allocate'; shipId: string; lineId: string; circles: number }
   | { type: 'arm-mount'; shipId: string; weaponId: string; mountIndex: number }
@@ -317,6 +319,25 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       game.attackedThisPhase.clear()
       pushLog(game, `Coordinated Fire (H4) ${action.on ? 'in force' : 'switched off'}.`)
       return ok
+    case 'rename-ship': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      // Cosmetic and always legal for the owner, any time — a captain may
+      // christen the ship mid-battle. Bounded so a save file cannot carry a
+      // novel where a name goes.
+      const name = action.name.trim().slice(0, 40)
+      if (!name) return said('A ship needs a name.')
+      if (name === ship.name) return ok
+      // Names identify ships in the battle log — and the AI reads that log
+      // (observe() attributes volleys by name) — so two hulls may not share
+      // one.
+      if (game.ships.some((s) => s.id !== ship.id && s.name === name)) {
+        return said('Another ship already answers to that name.')
+      }
+      pushLog(game, `${ship.name} answers to ${name} now.`)
+      ship.name = name
+      return ok
+    }
 
     // ── Resource allocation ──────────────────────────────────────────────
     case 'spend-battery': {
