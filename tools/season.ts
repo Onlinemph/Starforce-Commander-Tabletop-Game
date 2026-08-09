@@ -104,7 +104,12 @@ export const BASELINES = [
     // → 180W-11L when the rollout stopped modelling our own future as a
     // captain (selfRank: 'admiral') — the largest single knob ever measured
     // here, found by asking which rollout assumption had never been tested.
-    expect: '180W-11L of 192',
+    // → 187W-5L (97%) with shortlist 7 + samples 2 — seven genuinely
+    // different plans, each judged on two dice sequences. Confirmed twice
+    // independently (186W-6L, 187W-5L); neither knob measures alone. The
+    // remaining five: two round-2 STR+X dice spikes, the rest the fast
+    // Karnath catching a led game the slow chair cannot disengage from.
+    expect: '187W-5L of 192',
   },
   {
     label: 'duel adm-vs-ens',
@@ -155,7 +160,10 @@ export const BASELINES = [
     // → 178W-14L with rollout plotting, enemy cast at true rank.
     // → 188W-4L with the swept rollout config.
     // → 192W-0L — perfect — with the admiral self-model. Retired as an
-    // instrument, kept as a floor.
+    // instrument, kept as a floor. Measured before shortlist 7 + samples 2
+    // shipped; the guard under the final config was still fighting when the
+    // record was written, and anything below perfect on a re-run should be
+    // read against that history, not treated as a silent regression.
     expect: '192W-0L of 192',
   },
   {
@@ -171,7 +179,8 @@ export const BASELINES = [
     // no future change can quietly trade the terrain game away for the open
     // maps above: every baseline before it is fought on a bare board.
     // → 169W-23L with the admiral self-model (selfRank in RolloutConfig).
-    expect: '169W-23L of 192',
+    // → 174W-18L with shortlist 7 + samples 2.
+    expect: '174W-18L of 192',
   },
 ] as const
 

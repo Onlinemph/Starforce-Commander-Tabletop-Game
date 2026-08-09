@@ -20,4 +20,4 @@
  */
 import { setRolloutConfig } from './engine/ai'
 
-setRolloutConfig({ selfRank: 'captain' })
+setRolloutConfig({ selfRank: 'captain', shortlist: 4, samples: 1 })

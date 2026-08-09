@@ -170,7 +170,7 @@ describe('the shipped rollout configuration', () => {
       const journal = fight('s3.1-the-duel', 11, 4)
       expect(journal.some((a) => a.type === 'plot-maneuver')).toBe(true)
     } finally {
-      setRolloutConfig({ selfRank: 'captain' })
+      setRolloutConfig({ selfRank: 'captain', shortlist: 4, samples: 1 })
     }
   })
 })

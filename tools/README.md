@@ -45,9 +45,11 @@ npm run evolve -- --validate '<json>'      # score a weight set on the holdout
 ```
 
 Both shipped. The allocation order was worth 57 games a season; the evolved plot weights were
-worth 40 on battles the search had never seen. The baselines then moved to 146/180/178 when
-rollout plotting shipped (see below), and to **167/191/188 — plus a new planet baseline at
-159W-33L** — when the rollout's own knobs were swept: nominate by plan shape, two-round horizon. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
+worth 40 on battles the search had never seen. Rollout plotting (see below) and three rounds of
+tuning its joints then carried the baselines to the current standing record: **duel vs captain
+187W-5L (97%), both ensign seasons perfect at 192W-0L, planet 174W-18L** — via plan-shape
+nomination, a two-round horizon, the admiral self-model, and finally seven finalists judged on
+two dice sequences each. Train and holdout are disjoint by scenario and the holdout is looked at **once**,
 at the end — a validation set consulted every generation is just a slower training set. Two of
 the three evolution restarts failed to generalise, which is what the discipline is for.
 

@@ -2119,12 +2119,26 @@ export interface RolloutConfig {
   endgameRisk: number
 }
 
+/*
+ * shortlist 7 + samples 2 shipped together, and neither ships alone — the
+ * pair is the finding. Alone, at 192 games against the captain: shortlist 7
+ * measured flat in the original sweep, samples 2 measured 177W-14L against
+ * the 180W-11L standing record. Together: 186W-6L, confirmed 187W-5L on an
+ * independent run, with the planet gaining five games on the same config
+ * (169W-23L to 174W-18L). More genuinely different plans, each judged on
+ * two dice sequences instead of one — the diversity needs the steadier
+ * evaluation to be picked correctly, and the steadier evaluation needs
+ * something different to pick. This is a midgame-quality change, and it is
+ * what finally converted the brawled-away-lead losses that both endgame
+ * mechanisms (the horizon extension and endgameRisk) measured exactly zero
+ * against: those battles needed to be won earlier, not managed better.
+ */
 const ROLLOUT_DEFAULTS: RolloutConfig = {
-  shortlist: 4,
+  shortlist: 7,
   horizonPhases: PHASE_ORDER.length * 2,
   diverse: true,
   extendClose: 0,
-  samples: 1,
+  samples: 2,
   /*
    * Measured and left off. Marginal seasons with plot rollouts held constant:
    * duel mirror 176W-16L -> 178W-14L over 192 (noise), squadron mirror
