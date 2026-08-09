@@ -370,7 +370,14 @@ def parse_ship(pno):
     ship['_blue'] = sum(1 for c in mid if c['color'] == C_BLUE)
     ship['_green'] = sum(1 for c in mid if c['color'] == C_GREEN)
     ship['_armor'] = sum(1 for c in mid if c['color'] in ARMOR_COLORS)
-    for y, (label, _) in sorted(label_rows(chars, 300, 400, 100, 140).items()):
+    # The window reaches 420, not 400, and the twenty points are a bug fix:
+    # the SHIELD GEN label drifts a few points page to page, and on the
+    # Soryu I the final N of GEN starts at x=402.3 — one clipped letter made
+    # the label read "SHIELD GE", the match fail, and the frigate lose its
+    # printed two-box generator. Found by a player. The generator boxes
+    # themselves are Wingdings and label_rows keeps only Arial, so the wider
+    # window cannot miscount them.
+    for y, (label, _) in sorted(label_rows(chars, 300, 420, 100, 140).items()):
         if 'SHIELD GEN' in label:
             ship['shieldGen'] = sum(1 for c in gl if abs(c['y'] - y) <= 6 and c['x'] > 395
                                     and c['font'].startswith('Wingdings') and c['o'] == BOX)
