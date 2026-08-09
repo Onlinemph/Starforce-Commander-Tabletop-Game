@@ -2555,6 +2555,18 @@ function bestPlot(
    * the rollout to make its case. Now it always does, and the simulation
    * judges the trade like any other finalist. For a bow-armed hull this
    * candidate is already the bucket winner and costs nothing.
+   *
+   * And the verdict, measured the day it shipped: the tubes STAY silent in
+   * head-on duels — nominated every phase, simulated every phase, rejected
+   * every phase, margins unchanged to the decimal across eight tube hulls.
+   * The geometry explains the ruling: aft arcs want the enemy nearly dead
+   * astern, no single phase's maneuver gets there from a bow-on fight, and
+   * two rounds of committed turning buys one small volley at the price of
+   * the whole forward battery's position. The stern tube is for geometries
+   * the ENEMY provides — an overshoot, a crossing pursuit — and bestVolley
+   * is arc-correct and fires it the moment they arise. This channel's job
+   * is to guarantee the option is always weighed, and it is kept for the
+   * hulls and situations where the answer flips.
    */
   let gunner: { fp: number; score: number; cand: Candidate } | null = null
 
