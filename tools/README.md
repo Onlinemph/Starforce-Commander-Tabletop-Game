@@ -30,6 +30,15 @@ won anything.
 It is deliberately outside `npm test`. A full season takes minutes, and a test suite nobody runs
 is worse than one that measures nothing.
 
+**The variance floor, measured once and worth keeping.** Twenty-four duel seeds, each played four
+times between two IDENTICAL admirals with decorrelated dice: 17 of 24 flipped winners — the duel
+between equals is ~71% dice-decided, every game ends in a kill, and the honest ceiling for any
+future AI against the current one is therefore ~65%. A claimed 95% mirror result is a
+best-response exploiter of the frozen policy, not a better player, and will lose to the ladder.
+The current admiral's 97% against the captain means the skill gap covers most bad-dice games;
+between equals that cushion does not exist. Side finding: the Karnath chair won 6 of the 7
+position-held seeds — the printed duel matchup mildly favours the V-7C between equal players.
+
 ## Tuning the AI against it
 
 Three of the things in `src/engine/ai.ts` were chosen by judgment rather than measured. These
