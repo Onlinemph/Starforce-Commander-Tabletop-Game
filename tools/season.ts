@@ -109,7 +109,12 @@ export const BASELINES = [
     // independently (186W-6L, 187W-5L); neither knob measures alone. The
     // remaining five: two round-2 STR+X dice spikes, the rest the fast
     // Karnath catching a led game the slow chair cannot disengage from.
-    expect: '187W-5L of 192',
+    // → 186W-6L with the player's stress doctrine adopted (uncancellable
+    // stress demands an enemy within reach — see bestPlot). Statistically
+    // the same season; recorded because it is what a re-run now prints, and
+    // because the doctrine removed the exact wound that lost the first
+    // human game while costing nothing here.
+    expect: '186W-6L of 192',
   },
   {
     label: 'duel adm-vs-ens',
