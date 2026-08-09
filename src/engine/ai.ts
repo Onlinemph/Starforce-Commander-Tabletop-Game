@@ -2015,12 +2015,21 @@ export function setRolloutRoundCap(cap: number | null): void {
  */
 function rolloutHorizon(game: GameState): number {
   const base = rolloutConfig.horizonPhases
-  if (rolloutRoundCap === null) return base
-  const phasesLeft =
+  const left = endgamePhasesLeft(game)
+  return left === null ? base : Math.max(base, left)
+}
+
+/**
+ * Phases until the bell, when there is a bell and it is near — within four
+ * rounds, which is where the forensics put every thrown-away lead. Null
+ * means "not an endgame": no cap, or the cap is still far.
+ */
+function endgamePhasesLeft(game: GameState): number | null {
+  if (rolloutRoundCap === null) return null
+  const left =
     (rolloutRoundCap - game.round) * PHASE_ORDER.length +
     (PHASE_ORDER.length - PHASE_ORDER.indexOf(game.phase))
-  if (phasesLeft <= 0) return base
-  return phasesLeft <= PHASE_ORDER.length * 4 ? Math.max(base, phasesLeft) : base
+  return left > 0 && left <= PHASE_ORDER.length * 4 ? left : null
 }
 
 /**
@@ -2082,6 +2091,22 @@ export interface RolloutConfig {
    * the simulation cost.
    */
   selfRank: 'captain' | 'admiral'
+  /**
+   * Risk-averse endgame: when the battle's end is in sight AND this ship's
+   * side holds a health lead, judge each finalist by the WORST of this many
+   * rollouts instead of a single one. Zero disables.
+   *
+   * The failure this answers: eight duel losses were leads brawled away in
+   * the last rounds, and neither a longer horizon nor mean-averaging touched
+   * them (180W-11L before and after, 177W-14L with samples 2) — because a
+   * single rollout prices the mean and the loss lives in the tail. "Keep
+   * brawling" usually simulates fine; that is how the lead was built. The
+   * kill volley is a once-in-five-dice-sequences event, and a leader is the
+   * one player who should be pricing it: max-margin play when behind or
+   * level, min-over-samples when ahead with the bell near. Asymmetric on
+   * purpose — pessimism is only a virtue when you already own the prize.
+   */
+  endgameRisk: number
 }
 
 const ROLLOUT_DEFAULTS: RolloutConfig = {
@@ -2107,6 +2132,7 @@ const ROLLOUT_DEFAULTS: RolloutConfig = {
    * version of this idea that could work, and is not this switch.
    */
   volleys: false,
+  endgameRisk: 0,
   /*
    * 'admiral', and it is the largest single knob ever measured here. The
    * founding guess was 'captain' — cheap, and "the future does not need to
@@ -2166,12 +2192,23 @@ function rolloutValue(
   ship: ShipState,
   cand: Candidate,
   horizonPhases: number,
+  pessimistic = 0,
 ): number {
-  const { samples } = rolloutConfig
-  let total = 0
   // Sample 0 is pristine, so every candidate's first look shares the same
   // dice; later samples burn s draws to walk the clone onto a different
   // sequence — still paired across candidates, sample for sample.
+  if (pessimistic > 0) {
+    // The leader's question is not "how does this usually go" but "what is
+    // the worst this does to my lead" — the minimum over the samples, so a
+    // plan that can lose the battle scores as the battle it loses.
+    let worst = Infinity
+    for (let s = 0; s < pessimistic; s++) {
+      worst = Math.min(worst, rolloutMargin(game, ship, cand, horizonPhases, s))
+    }
+    return worst
+  }
+  const { samples } = rolloutConfig
+  let total = 0
   for (let s = 0; s < Math.max(1, samples); s++) {
     total += rolloutMargin(game, ship, cand, horizonPhases, s)
   }
@@ -3015,8 +3052,19 @@ function bestPlot(
     if (cached) return cached
     const cfg = rolloutConfig
     const horizon = rolloutHorizon(game)
+    /*
+     * Risk posture flips with the scoreboard (see endgameRisk). Only a real
+     * lead triggers pessimism — 0.15 health is past dice noise — and the
+     * enemy in hand is the whole enemy side in a duel, which is the only
+     * place the forensics found leads being brawled away.
+     */
+    const lead = health(game, ship.side) - health(game, enemy.side)
+    const pessimistic =
+      cfg.endgameRisk > 0 && endgamePhasesLeft(game) !== null && lead >= 0.15
+        ? cfg.endgameRisk
+        : 0
     const judged = finalists
-      .map((f) => ({ cand: f.cand, margin: rolloutValue(game, ship, f.cand, horizon) }))
+      .map((f) => ({ cand: f.cand, margin: rolloutValue(game, ship, f.cand, horizon, pessimistic) }))
       // Stable: on equal margins the scorer's ordering stands.
       .sort((a, b) => b.margin - a.margin)
     let winner = judged[0].cand
