@@ -591,6 +591,28 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
   if (form.sublight.maxSpeed < 1) error('A ship needs a maximum speed of at least 1 (C1.2.7).')
   if (form.sublight.maxSpeed > 8) error('No ship may exceed speed 8 (C1.2.7).')
   if (form.reactors.length === 0) error('A ship needs at least one reactor (B2.1.1).')
+  /*
+   * Main reactor durability scales with the hull. The printed roster's
+   * ladder: 1 box per power point at sizes 1-2, alternating 2/1 at size 3,
+   * 2 at sizes 4-5, 3 at sizes 6-7 — floor(size/2), with the odd sizes
+   * allowed to alternate up to the ceiling the way the printed size-3s do
+   * (2,1,2,1). Found the hard way: a size-10 fan dreadnought shipped with
+   * size-7 reactors because nothing checked, and a player caught it.
+   */
+  const lo = Math.max(1, Math.floor(form.sizeClass / 2))
+  const hi = Math.max(1, Math.ceil(form.sizeClass / 2))
+  for (const reactor of form.reactors) {
+    if (!['left-main', 'right-main', 'center-main'].includes(reactor.hitKind)) continue
+    for (const point of reactor.points) {
+      if (point.boxes < lo || point.boxes > hi) {
+        error(
+          `${reactor.label}: a size-${form.sizeClass} hull's main reactor points carry ` +
+            `${lo === hi ? lo : `${lo}-${hi}`} boxes each (printed ladder, B2.1); this one has ${point.boxes}.`,
+        )
+        break
+      }
+    }
+  }
   if (form.weapons.length === 0) warn('The ship has no weapons.')
   if (form.structure.filter((e) => e.kind === 'box').length === 0) {
     error('A ship needs at least one structure box (B1.8).')

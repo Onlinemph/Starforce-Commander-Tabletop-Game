@@ -928,7 +928,9 @@ const SHARLIN: ShipForm = {
  * is in the bow. A frigate that stays behind its shoulder is a frigate it
  * cannot answer.
  *
- * **What it is worth, measured.** 429.8 points, and unlike the two hulls above
+ * **What it is worth, measured.** 441.6 points after the reactor correction
+ * below (429.8 before it — the model prices reactor durability, so five-box
+ * points cost their keep), and unlike the two hulls above
  * it carries no `costModifier`, because there is nothing here the model gets
  * wrong. Checked against the printed roster the spreadsheet is accurate to
  * about a point — UNION III 158 against a modelled 158.6, UNION II 76 against
@@ -996,9 +998,14 @@ const TRAFALGAR: ShipForm = {
    * same round, which is the interesting problem to hand a flagship captain.
    */
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    // Five boxes per main point, not three: the printed ladder is
+    // floor(size/2) — 2 at size 4-5, 3 at size 7 — and this hull shipped
+    // with size-7 reactors on a size-10 frame until a player noticed. The
+    // builder validates the ladder now. Tougher reactors only; the price
+    // model charges per power point, so the cost is unchanged.
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
   ],
@@ -1813,9 +1820,12 @@ const IMPERATOR: ShipForm = {
   damageControlRating: 4,
 
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 5 }, () => ({ boxes: 3 })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 5 }, () => ({ boxes: 3 })) },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: Array.from({ length: 4 }, () => ({ boxes: 3 })) },
+    // Size 9 sits between the ladder's rungs, so the points alternate 5/4
+    // the way the printed size-3s alternate 2/1 — same correction as the
+    // Trafalgar's, same player report, enforced by the builder now.
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [5, 4, 5, 4, 5].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [5, 4, 5, 4, 5].map((boxes) => ({ boxes })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [5, 4, 5, 4].map((boxes) => ({ boxes })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
