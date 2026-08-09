@@ -2105,6 +2105,16 @@ export interface RolloutConfig {
    * one player who should be pricing it: max-margin play when behind or
    * level, min-over-samples when ahead with the bell near. Asymmetric on
    * purpose — pessimism is only a virtue when you already own the prize.
+   *
+   * MEASURED ZERO, at 2 and at 3 samples: 180W-11L both, and the autopsy
+   * shows the identical eleven losses — not converted, not even reshuffled.
+   * Combined with the horizon extension's identical null, the reading is
+   * that the losing chair cannot disengage at all: the Karnath is the
+   * faster hull, every finalist gets caught, every pessimistic minimum
+   * looks alike, and the choice never changes. Those games were not endgame
+   * mistakes — they were games that should have been won in the midgame,
+   * which is what shortlist 7 + samples 2 turned out to do (186W-6L). The
+   * switch stays for battles where disengagement is real.
    */
   endgameRisk: number
 }
