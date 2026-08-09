@@ -100,7 +100,10 @@ export const BASELINES = [
     // that had been called saturated. See `setRolloutPlots` in ai.ts.
     // → 167W-24L when the rollout's own joints were swept (RolloutConfig):
     // nominate by plan shape, play the clones two rounds instead of one.
-    expect: '167W-24L of 192',
+    // → 180W-11L when the rollout stopped modelling our own future as a
+    // captain (selfRank: 'admiral') — the largest single knob ever measured
+    // here, found by asking which rollout assumption had never been tested.
+    expect: '180W-11L of 192',
   },
   {
     label: 'duel adm-vs-ens',
@@ -113,7 +116,10 @@ export const BASELINES = [
     // faces; imagined as a captain, the same doctrine LOST games here.
     // → 191W-1L with the swept rollout config. This season is a formality
     // now; the mirror below is where resolution lives.
-    expect: '191W-1L of 192',
+    // → 192W-0L — perfect — with the admiral self-model. Formally retired
+    // as an instrument: a season that cannot be lost cannot measure
+    // anything. It stays as a floor.
+    expect: '192W-0L of 192',
   },
   {
     label: 'squadron adm-vs-ens',
@@ -147,7 +153,9 @@ export const BASELINES = [
     // → 171W-21L with the evolved plot weights.
     // → 178W-14L with rollout plotting, enemy cast at true rank.
     // → 188W-4L with the swept rollout config.
-    expect: '188W-4L of 192',
+    // → 192W-0L — perfect — with the admiral self-model. Retired as an
+    // instrument, kept as a floor.
+    expect: '192W-0L of 192',
   },
   {
     label: 'planet adm-vs-capt',
@@ -161,7 +169,8 @@ export const BASELINES = [
     // what a battle bent around a planet needs to see. This entry exists so
     // no future change can quietly trade the terrain game away for the open
     // maps above: every baseline before it is fought on a bare board.
-    expect: '159W-33L of 192',
+    // → 169W-23L with the admiral self-model (selfRank in RolloutConfig).
+    expect: '169W-23L of 192',
   },
 ] as const
 

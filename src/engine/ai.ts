@@ -2073,7 +2073,26 @@ const ROLLOUT_DEFAULTS: RolloutConfig = {
    * version of this idea that could work, and is not this switch.
    */
   volleys: false,
-  selfRank: 'captain',
+  /*
+   * 'admiral', and it is the largest single knob ever measured here. The
+   * founding guess was 'captain' — cheap, and "the future does not need to
+   * be played brilliantly to rank the present". Wrong: it was a self-model
+   * mismatch, and the clone systematically undervalued the positions only
+   * an admiral can exploit — the kite bands it would not hold, the turn-rate
+   * geometry it would not fly. Fixing the cast, at 192 games per cell:
+   *
+   *     duel vs captain      167W-24L -> 180W-11L
+   *     duel vs ensign       191W-1L  -> 192W-0L   perfect
+   *     squadron vs ensign   188W-4L  -> 192W-0L   perfect
+   *     planet vs captain    159W-33L -> 169W-23L
+   *
+   * The price is ~4.7x per simulation — a second or two of thinking per
+   * phase in a six-hull battle, which reads fine at a table — and the two
+   * perfect seasons mean the ensign baselines are formally retired as
+   * instruments: only the captain seasons and the scorer-admiral mirror
+   * can still see a difference.
+   */
+  selfRank: 'admiral',
 }
 
 let rolloutConfig: RolloutConfig = { ...ROLLOUT_DEFAULTS }
