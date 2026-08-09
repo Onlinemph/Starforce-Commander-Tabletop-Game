@@ -2594,9 +2594,44 @@ function bestPlot(
     return [undefined, ...RATES.filter((r) => r < allowed)]
   }
 
+  /**
+   * A player's stress doctrine, adopted verbatim after the first human battle
+   * report: "I rarely do stress maneuvers unless I have the SIF to easily
+   * ignore it — sometimes I'll dip further if the gain from getting a good
+   * arc into a firing solution is worth the potential stress damage."
+   *
+   * The admiral had the second half of that sentence and not the first. In
+   * the reported game it took an uncancellable stress marker on a hard turn
+   * in ROUND ONE, sixty inches from the nearest gun, failed the check, lost
+   * its sublight drive, and with it the speed advantage that is the V-7C's
+   * whole identity — a game-losing wound, self-inflicted, for nothing. The
+   * rollout cannot price it because a failed stress check is a tail event
+   * and rollouts price the mean (the lesson endgameRisk documents).
+   *
+   * So the gate is the player's: stress the SIF will cancel is always
+   * allowed; stress that draws cards demands a firing solution in reach —
+   * an enemy within STRESS_REACH, the far edge of the longest charts, where
+   * an arc genuinely bought is worth a card genuinely risked. The ensign
+   * keeps banging its hull about; that is what an ensign is.
+   */
+  const STRESS_REACH = 20
+  const stressNeedsReason = difficulty !== 'ensign' && !fleeing
+  const nearestNow =
+    visibleEnemies.length > 0
+      ? Math.min(
+          ...visibleEnemies.map((e) => actualRange(ship.placement.position, e.placement.position)),
+        )
+      : Infinity
   for (const [maneuver, direction, stressCost] of maneuvers) {
     // Stress the ship cannot cancel is a real cost; near the rating, avoid it.
     if (stressCost > 0 && ship.stressMarkers + stressCost >= ship.form.stressRating) continue
+    if (
+      stressNeedsReason &&
+      stressCost > Math.max(0, sifCover - ship.stressMarkers) &&
+      nearestNow > STRESS_REACH
+    ) {
+      continue
+    }
     for (const accel of accels) {
      for (const turnRate of rateChoices(maneuver, ship.speed + accel)) {
       const candidate: CommandCard = {
