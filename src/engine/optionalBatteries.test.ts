@@ -195,3 +195,49 @@ describe('the battery ledger', () => {
     expect(b.ship.batteryCharged).toEqual(a.ship.batteryCharged)
   })
 })
+
+describe('rearming a fired weapon (B2.5.6)', () => {
+  const phaserOf = (ship: ShipState) => ship.form.weapons.find((w) => w.weaponClass === 'phaser')!
+  const lineFor = (ship: ShipState, weaponId: string) =>
+    ship.form.functions.find((l) => l.weaponSystemId === weaponId)!
+
+  it('arming points left unspent die with the Resource Allocation Segment (E4.2.10)', () => {
+    const { game, ship } = battle()
+    const weapon = phaserOf(ship)
+    // The line's free points exist while the segment is open…
+    expect(armingPointsAvailable(ship, weapon.id)).toBeGreaterThan(0)
+    toCombatCommand(game)
+    // …and are gone once it closes: the captain declined to spend them, and
+    // they must not resurface when the battery rules open the arming controls.
+    expect(armingPointsAvailable(ship, weapon.id)).toBe(0)
+  })
+
+  it('a battery buys fresh points mid-round and the mount spends them — the playtester’s phaser', () => {
+    const { game, ship } = battle()
+    const weapon = phaserOf(ship)
+    const line = lineFor(ship, weapon.id)
+    // Resource Allocation: one circle of power to the phasers, mount 0 armed.
+    applyAction(game, { type: 'allocate', shipId: ship.id, lineId: line.id, circles: 1 })
+    for (let guard = 0; ship.mounts[weapon.id][0].armed < weapon.mounts[0].armingCircles; guard++) {
+      if (guard > 8) throw new Error('mount never armed')
+      applyAction(game, { type: 'arm-mount', shipId: ship.id, weaponId: weapon.id, mountIndex: 0 })
+    }
+    toCombatCommand(game)
+    // The phaser fired — stand in for the volley by emptying the circles the
+    // shot consumed.
+    ship.mounts[weapon.id][0].armed = 0
+
+    // B2.5.2: battery power to the phaser line during a Command Segment…
+    expect(
+      applyAction(game, { type: 'spend-battery', shipId: ship.id, lineId: line.id }).message,
+    ).toBeNull()
+    // …buys points that are spendable right now (B2.5.6: "a weapon that has
+    // been fired may even be rearmed and potentially fired again")…
+    expect(armingPointsAvailable(ship, weapon.id)).toBeGreaterThan(0)
+    expect(
+      applyAction(game, { type: 'arm-mount', shipId: ship.id, weaponId: weapon.id, mountIndex: 0 })
+        .message,
+    ).toBeNull()
+    expect(ship.mounts[weapon.id][0].armed).toBe(1)
+  })
+})

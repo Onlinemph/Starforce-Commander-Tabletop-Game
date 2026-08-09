@@ -49,7 +49,7 @@ import {
   type FiringStep,
 } from './coordinatedFire'
 import { FACE_DAMAGE, rollDice, rollDie, Rng } from './dice'
-import { commitAllocation } from './engineering'
+import { commitAllocation, forfeitUnspentArming } from './engineering'
 import {
   alignToLead,
   formationOf,
@@ -1486,6 +1486,7 @@ function runSegmentExit(game: GameState): void {
         if (ship.derelict) continue // E11.2.4
         const result = commitAllocation(ship)
         for (const line of result.log) pushLog(game, line)
+        forfeitUnspentArming(ship)
       }
       cutUnpoweredCloaks(game)
       break

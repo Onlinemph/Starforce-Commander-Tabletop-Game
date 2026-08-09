@@ -36,6 +36,15 @@ interface Props {
 export function ShipFormPanel({ game, ship }: Props) {
   const allocating = game.phase === 'engineering' && game.segment === 'resource-allocation'
   /**
+   * B2.5.6: battery power plotted in a combat phase's Command Segment buys
+   * fresh arming points, spendable right then — "a weapon that has been fired
+   * may even be rearmed and potentially fired again." The engine forfeits
+   * whatever Resource Allocation left unspent (E4.2.10), so the only points
+   * alive here are the ones a battery just bought.
+   */
+  const batteryArming =
+    game.optionalBatteries && game.phase.startsWith('combat') && game.segment === 'command'
+  /**
    * Why the last click was refused. Allocation and arming both have rules that
    * can turn a click down — not enough power, arming points already spent, a
    * slow-arming diamond — and a button that silently does nothing reads as a
@@ -256,7 +265,8 @@ export function ShipFormPanel({ game, ship }: Props) {
       <section className="form-section">
         <h3>Weapons</h3>
         {ship.form.weapons.map((weapon) => {
-          const pending = allocating ? armingPointsAvailable(ship, weapon.id) : 0
+          const pending =
+            allocating || batteryArming ? armingPointsAvailable(ship, weapon.id) : 0
           return (
             <div key={weapon.id} className="weapon-block">
               <div className="weapon-head">

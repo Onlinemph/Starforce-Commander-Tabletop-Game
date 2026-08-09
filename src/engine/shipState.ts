@@ -74,6 +74,13 @@ export interface ShipState {
 
   // ── Weapons ────────────────────────────────────────────────────────────
   mounts: Record<string, MountState[]>
+  /**
+   * Arming points a weapon system left unspent when the Resource Allocation
+   * Segment closed — lost with the segment (E4.2.10), and recorded so the
+   * mid-round battery rules (B2.5.6) can hand out *fresh* points without
+   * resurrecting these.
+   */
+  armingForfeited: Record<string, number>
 
   // ── Defenses ───────────────────────────────────────────────────────────
   shieldGeneratorDamage: number
@@ -194,6 +201,7 @@ export function createShip(args: {
     ftlDriveDamage: 0,
     allocation: {},
     mounts,
+    armingForfeited: {},
     shieldGeneratorDamage: 0,
     blueShieldDamage: zeroSides(),
     greenShieldActive: zeroSides(),
@@ -665,4 +673,5 @@ export function beginRound(ship: ShipState): void {
   for (const states of Object.values(ship.mounts)) {
     for (const state of states) state.armedThisRound = 0
   }
+  ship.armingForfeited = {}
 }
