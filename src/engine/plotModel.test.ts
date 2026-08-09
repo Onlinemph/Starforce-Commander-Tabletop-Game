@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
-import { aiNextActions, createAiMemo } from './ai'
+import { aiNextActions, createAiMemo, setRolloutConfig } from './ai'
 import { activeShips } from './game'
 import {
   activePlotModel,
@@ -152,6 +152,26 @@ describe('the recorder', () => {
     expect(seen).toBe(0)
     fight('s3.1-the-duel', 2, 3, 'admiral')
     expect(seen).toBeGreaterThan(0)
+  })
+})
+
+describe('the shipped rollout configuration', () => {
+  it('fights a battle to termination at the true default', () => {
+    /*
+     * The suite-wide setup (src/testRollouts.ts) pins tests to the cheap
+     * rollout self-model for speed. This canary is the exception: it restores
+     * the SHIPPED defaults and fights one battle, so a wedge or crash that
+     * only the admiral self-model can produce still fails the suite. Short —
+     * four rounds of one duel — because its claim is termination, not
+     * strength; strength claims live in tools/season.ts.
+     */
+    setRolloutConfig(null)
+    try {
+      const journal = fight('s3.1-the-duel', 11, 4)
+      expect(journal.some((a) => a.type === 'plot-maneuver')).toBe(true)
+    } finally {
+      setRolloutConfig({ selfRank: 'captain' })
+    }
   })
 })
 

@@ -23,5 +23,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ["src/**/*.test.ts"],
+    // Whole-battle tests fly the cheap rollout self-model; see the file.
+    setupFiles: ["src/testRollouts.ts"],
   },
 })
