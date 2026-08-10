@@ -440,6 +440,10 @@ const HYPERION: ShipForm = {
  *                                  system boxes and a point of repair rating
  *     V-11C        147   31W- 9L   died 9 of 40
  *
+ * (Ladder below measured with the first-draft 34-inch laser; the lore pass
+ * trimmed it to 22 — see the note on the weapon — so read these as the shape
+ * of the hull, not current numbers.)
+ *
  * It beats the strongest hull in the printed roster, dies about a fifth of the
  * time doing it, and comes home wrecked either way.
  */
@@ -502,10 +506,17 @@ const OMEGA: ShipForm = {
       hitBoxes: 2,
       traits: ['PREC 1'],
       brackets: [
+        /*
+         * Reach 22, down from a first-draft 34 that out-ranged every gun in
+         * the printed game AND the Minbari neutron laser — which made the
+         * outgunned fleet of its own setting the longest arm on the table.
+         * The lore pass took the versus machine's word for it: at 34 the
+         * OMEGA beat the SHARLIN 33W-7L, which is not a sentence anyone who
+         * watched the Battle of the Line can read aloud.
+         */
         { min: 0, max: 10, band: 'green', dice: ['red', 'yellow'] },
-        { min: 11, max: 20, band: 'black', dice: ['red'] },
-        { min: 21, max: 28, band: 'red', dice: ['yellow'] },
-        { min: 29, max: 34, band: 'red', dice: ['green'] },
+        { min: 11, max: 16, band: 'black', dice: ['red'] },
+        { min: 17, max: 22, band: 'red', dice: ['yellow'] },
       ],
     }),
     // Pulse cannon: the Omega's answer to everything inside ten inches, on the
@@ -700,9 +711,23 @@ const OMEGA: ShipForm = {
  * hard-counters whole classes of opponent should be the expensive answer
  * rather than the efficient one.
  *
+ * **The lore pass (measured with tools/versus.ts).** The first build of this
+ * ship lost to a single OMEGA 7W-33L, which is the Battle of the Line run
+ * backwards. Three faults, each fixed in character: the OMEGA's first-draft
+ * laser out-ranged the Minbari beam (trimmed on the OMEGA), the neutron
+ * lasers' green band sat inside eight inches so the ship flew into knife
+ * range (now a long lance, green to sixteen, reach 36), and nine boxes of
+ * armour did not say "Earth's guns barely scratched it" (now twenty-four
+ * forward). Remeasured at captain: 27W-13L over one OMEGA, 37W-3L over an
+ * EXETER II — the jamming wall works against everything that cannot out-reach
+ * it. Against TWO Omegas it still dies 0W-40L, and that is left standing:
+ * numbers beat tonnage in this engine — two YORKTOWN Xs kill the TRAFALGAR
+ * just as dead — and no amount of Minbari exceptionalism should be allowed to
+ * repeal the physics every other hull in this file obeys.
+ *
  * The rest of the brief, in mechanics:
- *  - **Tough.** Twenty-two structure boxes, the most of any hull here, and a
- *    Damage Control Rating of 6 that no printed ship matches.
+ *  - **Tough.** Twenty-six structure boxes under twenty-four boxes of bow
+ *    plate, and a Damage Control Rating of 6 that no printed ship matches.
  *  - **Hits hard.** Three heavy neutron lasers firing two red dice each out to
  *    eight inches and still reaching twenty-eight — and with six targeting up,
  *    "eight inches" means fourteen on the ruler.
@@ -752,10 +777,10 @@ const SHARLIN: ShipForm = {
      * the best line in the printed game, and paired with six SENS boxes so
      * H2.2.3 lets all of it reach a single function.
      */
-    line('sensor', 'SENSORS', 'sensor', [8, 12], { freeValue: 4 }),
+    line('sensor', 'SENSORS', 'sensor', [10, 16], { freeValue: 5 }),
     line('gen-sys', 'GEN SYS', 'gen-sys', [1, 2], { freeValue: 1, sequential: false }),
-    line('f-neutron', 'NEUT LASER', 'weapon', [3, 5, 7], {
-      freeValue: 1,
+    line('f-neutron', 'NEUT LASER', 'weapon', [4, 6, 8], {
+      freeValue: 2,
       weaponSystemId: 'mb-neutron-laser',
     }),
     line('f-fusion', 'FUSION CAN', 'weapon', [4, 6], {
@@ -765,21 +790,29 @@ const SHARLIN: ShipForm = {
   ],
 
   weapons: [
-    // The main battery. Two red dice a mount inside eight inches, and it still
-    // reaches twenty-eight — the range band where its targeting does the most.
+    /*
+     * The main battery, remeasured into its lore. The first build reached 28
+     * inches with its green band inside eight — six inches SHORTER than the
+     * OMEGA's heavy laser, so the ship the Earth Alliance could not hit was
+     * flying into knife range against a longer gun, and lost the matchup
+     * 7W-33L. Minbari beams are long-lance weapons: four emitters now, green
+     * to sixteen, reach 36 — past everything the EA carries — so the war
+     * cruiser fights from the band where its jamming blinds the reply.
+     */
     weapon({
       id: 'mb-neutron-laser',
       name: 'HEAVY NEUTRON LASER',
       weaponClass: 'phaser',
-      mounts: forward(3),
+      mounts: forward(4),
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 2'],
       brackets: [
-        { min: 0, max: 8, band: 'green', dice: ['red', 'red'] },
-        { min: 9, max: 16, band: 'black', dice: ['red', 'yellow'] },
-        { min: 17, max: 22, band: 'red', dice: ['red'] },
-        { min: 23, max: 28, band: 'red', dice: ['yellow'] },
+        { min: 0, max: 8, band: 'green', dice: ['red', 'red'], bonus: 1 },
+        { min: 9, max: 16, band: 'green', dice: ['red', 'red'] },
+        { min: 17, max: 24, band: 'black', dice: ['red', 'yellow'] },
+        { min: 25, max: 30, band: 'red', dice: ['red', 'blue'] },
+        { min: 31, max: 36, band: 'red', dice: ['yellow'] },
       ],
     }),
     // Fusion cannon on the printed all-round mounting, so something always
@@ -827,14 +860,21 @@ const SHARLIN: ShipForm = {
    * counters rather than closing it, and the smallest layer that reads as a
    * layer is the right one.
    */
-  armor: { F: 9, S: 7, A: 5, P: 7 },
+  /*
+   * The lore pass quadrupled this. "The Earth Alliance could not hit it" was
+   * only half the Battle of the Line; the other half is that what did hit it
+   * did not matter. Armour is the honest mechanism — it never repairs (G2),
+   * so a fleet that keeps landing hits still wins eventually, which is also
+   * canon.
+   */
+  armor: { F: 24, S: 20, A: 14, P: 20 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 5 },
     // Six. Every printed hull in the game has three or four, and under H2.2.3
     // this number *is* the jamming ceiling — which is also why shooting them
     // off is the way to fight this ship.
-    { kind: 'SENS', label: 'Sensors', boxes: 6 },
+    { kind: 'SENS', label: 'Sensors', boxes: 8 },
     { kind: 'TRAC', label: 'Tractors', boxes: 2 },
     { kind: 'TRAN', label: 'Transporters', boxes: 2 },
     { kind: 'SHTL', label: 'Flyer Bays', boxes: 3 },
@@ -843,13 +883,13 @@ const SHARLIN: ShipForm = {
   ],
 
   structure: [
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
-    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
   ],
 

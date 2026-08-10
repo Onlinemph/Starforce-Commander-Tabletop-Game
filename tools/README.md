@@ -113,6 +113,22 @@ One rule learned the hard way: the rollout must cast the enemy at its *actual* r
 against phantom competence and loses games to its own caution — the squadron season regressed
 seven games before the cast was fixed and gained three after.
 
+## The versus machine
+
+```bash
+npx vite-node tools/versus.ts -- --a fan-sw-imperial-star-destroyer \
+    --b fan-b5-omega-destroyer,fan-b5-omega-destroyer --games 40 --rank captain
+```
+
+Any force against any force, measured — comma-separate form ids to field a
+fleet. Born from "would a Star Destroyer beat a Star Trek ship?", which no two
+fandoms have ever settled by argument. Findings that have already come out of
+it: the wedge kills any single cruiser 40-0 and still dies 0-40 to a
+points-matched three-ship wall; the lore pass it forced on the SHARLIN and the
+OMEGA is written up in tools/fan_designs.ts. One trap it also found: a
+scenario's ship ids are prefixed with the side name's first word, so two sides
+whose names share it collide and the battle silently scrambles.
+
 # Ship Book importer
 
 Regenerates `src/data/ships.json` from the StarForce Commander **Master Ship Book** PDF.

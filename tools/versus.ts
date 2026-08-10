@@ -1,0 +1,104 @@
+/**
+ * The versus machine: any force against any force, measured.
+ *
+ * Born from a question the fan-design file kept getting asked in different
+ * costumes — "would a Star Destroyer beat a Star Trek ship?" — which no two
+ * fandoms have ever settled by argument. This settles it the way everything
+ * else in this repository is settled: the game itself is the evaluator.
+ *
+ *     npx vite-node tools/versus.ts -- \
+ *         --a fan-b5-sharlin-warcruiser \
+ *         --b fan-b5-omega-destroyer,fan-b5-omega-destroyer \
+ *         --games 40 --rank captain
+ *
+ * Comma-separate a side's form ids to field a fleet. Hulls are fixed by the
+ * question, so each seed is played twice for sample size rather than
+ * mirrored. Health decides, as in the season harness: structure afloat,
+ * nothing for a hull that left, a penalty for one that died.
+ */
+
+import { FILE_FORMS, registerCustomForms, shipFormById } from '../src/data/ships'
+import { registerCustomScenarios, startScenario } from '../src/data/scenarios'
+import { applyAction, type GameAction } from '../src/engine/actions'
+import { aiNextActions, createAiMemo, type AiDifficulty, type AiMemo } from '../src/engine/ai'
+import { activeShips, type GameState } from '../src/engine/game'
+import { health } from '../src/engine/battleScore'
+
+const arg = (n: string) => {
+  const i = process.argv.indexOf(`--${n}`)
+  return i === -1 ? undefined : process.argv[i + 1]
+}
+
+registerCustomForms(FILE_FORMS)
+
+const forceA = (arg('a') ?? 'fan-sw-imperial-star-destroyer').split(',')
+const forceB = (arg('b') ?? 'fan-union-trafalgar-super-dreadnought').split(',')
+const games = Number(arg('games') ?? 40)
+const rank = (arg('rank') ?? 'captain') as AiDifficulty
+const rounds = Number(arg('rounds') ?? 12)
+
+for (const id of [...forceA, ...forceB]) {
+  if (!shipFormById(id)) {
+    console.error(`No such form: ${id}`)
+    process.exit(1)
+  }
+}
+const label = (ids: string[]) =>
+  ids.map((id) => shipFormById(id)!.name.split('-class')[0]).join(' + ')
+const points = (ids: string[]) =>
+  ids.reduce((n, id) => n + (shipFormById(id)!.pointValue || 0), 0)
+
+registerCustomScenarios([
+  {
+    id: 'versus',
+    name: 'Versus',
+    background: '',
+    victory: 'destruction',
+    bounds: { width: 72, height: 72, fixed: true },
+    terrain: [],
+    sides: [
+      { side: 'Alpha Fleet', objective: 'destroy', facing: 2, speed: 4, anchor: { x: 12, y: 36 }, spread: { x: 0, y: 6 }, force: forceA },
+      { side: 'Beta Fleet', objective: 'destroy', facing: 6, speed: 4, anchor: { x: 60, y: 36 }, spread: { x: 0, y: 6 }, force: forceB },
+    ],
+  },
+])
+
+let wins = 0
+let losses = 0
+let draws = 0
+for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
+  for (const rep of [0, 1]) {
+    const game: GameState = startScenario('versus', { seed: seed * 7919 + rep, mapScale: 2 })
+    const sides = [...new Set(game.ships.map((s) => s.side))]
+    const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
+    const drive = (closing: boolean) => {
+      for (let pass = 0; pass < 50; pass++) {
+        const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
+        for (const side of sides) {
+          for (let g = 0; g < 400; g++) {
+            const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g === 0, rank)
+            if (batch.length === 0) break
+            for (const a of batch) applyAction(game, a as GameAction)
+          }
+        }
+        if (game.log.length + game.firingStepIndex + game.firedThisSegment.size === before) return
+      }
+    }
+    drive(false)
+    for (let step = 0; step < 400; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > rounds) break
+      drive(true)
+      applyAction(game, { type: 'advance-segment' })
+      drive(false)
+    }
+    const margin = health(game, 'Alpha Fleet') - health(game, 'Beta Fleet')
+    if (margin > 0) wins++
+    else if (margin < 0) losses++
+    else draws++
+  }
+}
+
+console.log(
+  `${label(forceA)} (${points(forceA)} pts)  vs  ${label(forceB)} (${points(forceB)} pts)` +
+    `  [${rank}]\n   ${wins}W-${losses}L${draws ? `-${draws}D` : ''} of ${wins + losses + draws}`,
+)

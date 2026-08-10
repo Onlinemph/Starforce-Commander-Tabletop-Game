@@ -1084,26 +1084,18 @@
           },
           {
             "min": 11,
-            "max": 20,
+            "max": 16,
             "band": "black",
             "dice": [
               "red"
             ]
           },
           {
-            "min": 21,
-            "max": 28,
+            "min": 17,
+            "max": 22,
             "band": "red",
             "dice": [
               "yellow"
-            ]
-          },
-          {
-            "min": 29,
-            "max": 34,
-            "band": "red",
-            "dice": [
-              "green"
             ]
           }
         ],
@@ -1572,7 +1564,7 @@
     },
     "marineSquads": 14,
     "shuttles": 4,
-    "pointValue": 83.8,
+    "pointValue": 69.6,
     "year": 2258,
     "availability": "common"
   },
@@ -1855,15 +1847,15 @@
         "id": "sensor",
         "label": "SENSORS",
         "kind": "sensor",
-        "freeValue": 4,
+        "freeValue": 5,
         "steps": [
           {
             "powerCost": 1,
-            "value": 8
+            "value": 10
           },
           {
             "powerCost": 1,
-            "value": 12
+            "value": 16
           }
         ],
         "sequential": true
@@ -1889,19 +1881,19 @@
         "id": "f-neutron",
         "label": "NEUT LASER",
         "kind": "weapon",
-        "freeValue": 1,
+        "freeValue": 2,
         "steps": [
           {
             "powerCost": 1,
-            "value": 3
+            "value": 4
           },
           {
             "powerCost": 1,
-            "value": 5
+            "value": 6
           },
           {
             "powerCost": 1,
-            "value": 7
+            "value": 8
           }
         ],
         "sequential": true,
@@ -1958,6 +1950,15 @@
             ],
             "armingCircles": 2,
             "hitBoxes": 2
+          },
+          {
+            "id": "mb-neutron-laser-m4",
+            "arcs": [
+              "FS",
+              "FP"
+            ],
+            "armingCircles": 2,
+            "hitBoxes": 2
           }
         ],
         "brackets": [
@@ -1968,11 +1969,21 @@
             "dice": [
               "red",
               "red"
-            ]
+            ],
+            "bonus": 1
           },
           {
             "min": 9,
             "max": 16,
+            "band": "green",
+            "dice": [
+              "red",
+              "red"
+            ]
+          },
+          {
+            "min": 17,
+            "max": 24,
             "band": "black",
             "dice": [
               "red",
@@ -1980,16 +1991,17 @@
             ]
           },
           {
-            "min": 17,
-            "max": 22,
+            "min": 25,
+            "max": 30,
             "band": "red",
             "dice": [
-              "red"
+              "red",
+              "blue"
             ]
           },
           {
-            "min": 23,
-            "max": 28,
+            "min": 31,
+            "max": 36,
             "band": "red",
             "dice": [
               "yellow"
@@ -2109,10 +2121,10 @@
       }
     },
     "armor": {
-      "F": 9,
-      "S": 7,
-      "A": 5,
-      "P": 7
+      "F": 24,
+      "S": 20,
+      "A": 14,
+      "P": 20
     },
     "systems": [
       {
@@ -2123,7 +2135,7 @@
       {
         "kind": "SENS",
         "label": "Sensors",
-        "boxes": 6
+        "boxes": 8
       },
       {
         "kind": "TRAC",
@@ -2181,8 +2193,16 @@
         "color": "black"
       },
       {
+        "kind": "box",
+        "color": "black"
+      },
+      {
         "kind": "dc",
         "rating": 5
+      },
+      {
+        "kind": "box",
+        "color": "black"
       },
       {
         "kind": "box",
@@ -2233,8 +2253,16 @@
         "color": "red"
       },
       {
+        "kind": "box",
+        "color": "red"
+      },
+      {
         "kind": "dc",
         "rating": 3
+      },
+      {
+        "kind": "box",
+        "color": "red"
       },
       {
         "kind": "box",
@@ -2283,7 +2311,7 @@
     },
     "marineSquads": 12,
     "shuttles": 6,
-    "pointValue": 99,
+    "pointValue": 241.4,
     "year": 2245,
     "availability": "rare"
   },
