@@ -20,9 +20,6 @@
           },
           {
             "boxes": 2
-          },
-          {
-            "boxes": 2
           }
         ]
       },
@@ -31,9 +28,6 @@
         "label": "R MAIN",
         "hitKind": "right-main",
         "points": [
-          {
-            "boxes": 2
-          },
           {
             "boxes": 2
           },
@@ -283,15 +277,6 @@
           },
           {
             "id": "ea-heavy-laser-m3",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "ea-heavy-laser-m4",
             "arcs": [
               "FS",
               "FP"
@@ -569,10 +554,10 @@
       }
     },
     "armor": {
-      "F": 45,
-      "S": 36,
-      "A": 27,
-      "P": 36
+      "F": 22,
+      "S": 18,
+      "A": 12,
+      "P": 18
     },
     "systems": [
       {
@@ -741,7 +726,7 @@
     },
     "marineSquads": 8,
     "shuttles": 8,
-    "pointValue": 44.6,
+    "pointValue": 26.9,
     "year": 2245,
     "availability": "common"
   },
@@ -769,9 +754,6 @@
           },
           {
             "boxes": 3
-          },
-          {
-            "boxes": 3
           }
         ]
       },
@@ -780,9 +762,6 @@
         "label": "R MAIN",
         "hitKind": "right-main",
         "points": [
-          {
-            "boxes": 3
-          },
           {
             "boxes": 3
           },
@@ -821,7 +800,7 @@
         ]
       }
     ],
-    "batteries": 3,
+    "batteries": 2,
     "ftlDriveBoxes": 4,
     "functions": [
       {
@@ -1061,15 +1040,6 @@
             ],
             "armingCircles": 2,
             "hitBoxes": 2
-          },
-          {
-            "id": "ea-omega-laser-m4",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
           }
         ],
         "brackets": [
@@ -1079,7 +1049,7 @@
             "band": "green",
             "dice": [
               "red",
-              "yellow"
+              "green"
             ]
           },
           {
@@ -1286,18 +1256,6 @@
             "roundGates": [
               true
             ]
-          },
-          {
-            "id": "ea-omega-missile-m3",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
           }
         ],
         "brackets": [
@@ -1355,10 +1313,10 @@
       }
     },
     "armor": {
-      "F": 36,
-      "S": 28,
-      "A": 22,
-      "P": 30
+      "F": 14,
+      "S": 10,
+      "A": 8,
+      "P": 10
     },
     "systems": [
       {
@@ -1418,32 +1376,8 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
       },
       {
         "kind": "box",
@@ -1490,32 +1424,8 @@
         "color": "red"
       },
       {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
         "kind": "dc",
         "rating": 3
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -1564,7 +1474,7 @@
     },
     "marineSquads": 14,
     "shuttles": 4,
-    "pointValue": 69.6,
+    "pointValue": 39.7,
     "year": 2258,
     "availability": "common"
   },
@@ -1847,15 +1757,15 @@
         "id": "sensor",
         "label": "SENSORS",
         "kind": "sensor",
-        "freeValue": 5,
+        "freeValue": 4,
         "steps": [
           {
             "powerCost": 1,
-            "value": 10
+            "value": 8
           },
           {
             "powerCost": 1,
-            "value": 16
+            "value": 12
           }
         ],
         "sequential": true
@@ -1969,8 +1879,7 @@
             "dice": [
               "red",
               "red"
-            ],
-            "bonus": 1
+            ]
           },
           {
             "min": 9,
@@ -2121,10 +2030,10 @@
       }
     },
     "armor": {
-      "F": 20,
-      "S": 16,
-      "A": 10,
-      "P": 16
+      "F": 12,
+      "S": 10,
+      "A": 6,
+      "P": 10
     },
     "systems": [
       {
@@ -2135,7 +2044,7 @@
       {
         "kind": "SENS",
         "label": "Sensors",
-        "boxes": 8
+        "boxes": 6
       },
       {
         "kind": "TRAC",
@@ -2299,7 +2208,7 @@
     },
     "marineSquads": 12,
     "shuttles": 6,
-    "pointValue": 233.8,
+    "pointValue": 133.2,
     "year": 2245,
     "availability": "rare"
   },
@@ -6944,9 +6853,6 @@
           },
           {
             "boxes": 4
-          },
-          {
-            "boxes": 4
           }
         ]
       },
@@ -6955,9 +6861,6 @@
         "label": "R MAIN",
         "hitKind": "right-main",
         "points": [
-          {
-            "boxes": 4
-          },
           {
             "boxes": 4
           },
@@ -7387,7 +7290,7 @@
               "yellow",
               "yellow"
             ],
-            "bonus": 2
+            "bonus": 1
           },
           {
             "min": 6,
@@ -7396,8 +7299,7 @@
             "dice": [
               "yellow",
               "yellow"
-            ],
-            "bonus": 1
+            ]
           },
           {
             "min": 11,
@@ -7577,10 +7479,10 @@
     "shields": {
       "generatorBoxes": 5,
       "blue": {
-        "F": 36,
-        "S": 28,
-        "P": 28,
-        "A": 24
+        "F": 28,
+        "S": 22,
+        "P": 22,
+        "A": 18
       },
       "green": {
         "F": 5,
@@ -7673,10 +7575,6 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
       },
@@ -7705,24 +7603,8 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 4
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -7796,9 +7678,9 @@
         0
       ]
     },
-    "marineSquads": 20,
+    "marineSquads": 14,
     "shuttles": 8,
-    "pointValue": 278.3,
+    "pointValue": 217.3,
     "year": 3600,
     "availability": "rare",
     "art": "https://i.redd.it/r2qmrmipsxf61.png"

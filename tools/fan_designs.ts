@@ -93,6 +93,16 @@ import type { Arc, FunctionLineDef, ShipForm, WeaponSystemDef } from '../src/eng
  * honestly), and the YORKTOWN XXX remains satire and remains unfieldable.
  * Measured tables in the essays below that predate this pass are kept as
  * history and marked where they mislead.
+ *
+ * THE GUEST-UNIVERSE PASS came immediately after, on the next player
+ * request: the StarForce fan ships above keep their fits-in numbers, and
+ * every third-party hull — the three Babylon 5 ships and the Star Destroyer
+ * — scaled down together, ladder intact (ISD over SHARLIN over OMEGA over
+ * HYPERION, each matchup still decisive). The calibration anchor is the
+ * player's own: the YORKTOWN III stands in for the Enterprise refit, and an
+ * OMEGA does not get to beat the Enterprise — measured 11W-29L of 40 at
+ * near-equal points after the pass. The guests are guests now: the biggest
+ * of them prices just under the smallest StarForce super and coin-flips it.
  */
 
 const ALL_ROUND: Arc[][] = [
@@ -202,8 +212,8 @@ const HYPERION: ShipForm = {
   // instead of the usual two — on eight points nothing was ever fully charged
   // and the ship lost to cruisers costing a third less.
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
@@ -255,7 +265,7 @@ const HYPERION: ShipForm = {
       id: 'ea-heavy-laser',
       name: 'HEAVY LASER CANNON',
       weaponClass: 'phaser',
-      mounts: FORWARD,
+      mounts: forward(3),
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1'],
@@ -349,7 +359,7 @@ const HYPERION: ShipForm = {
    * still means something, so unlike the Omega this one could be calibrated
    * against a peer rather than against its own survivability.
    */
-  armor: { F: 45, S: 36, A: 27, P: 36 },
+  armor: { F: 22, S: 18, A: 12, P: 18 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 3 },
@@ -457,8 +467,10 @@ const HYPERION: ShipForm = {
  *     V-11C        147   31W- 9L   died 9 of 40
  *
  * (Ladder below measured with the first-draft 34-inch laser; the lore pass
- * trimmed it to 22 — see the note on the weapon — so read these as the shape
- * of the hull, not current numbers.)
+ * trimmed it to 22, and the guest-universe pass then took the hull itself
+ * down to cruiser weight — read these as the shape of the hull, not current
+ * numbers. The pass's anchor was this ship: the YORKTOWN III is the
+ * Enterprise refit, and the OMEGA now loses to it 11W-29L of 40.)
  *
  * It beats the strongest hull in the printed roster, dies about a fifth of the
  * time doing it, and comes home wrecked either way.
@@ -472,12 +484,12 @@ const OMEGA: ShipForm = {
   damageControlRating: 6,
 
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
-  batteries: 3,
+  batteries: 2,
   ftlDriveBoxes: 4,
 
   functions: [
@@ -517,7 +529,7 @@ const OMEGA: ShipForm = {
       id: 'ea-omega-laser',
       name: 'HEAVY LASER CANNON',
       weaponClass: 'phaser',
-      mounts: FORWARD,
+      mounts: forward(3),
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1'],
@@ -530,7 +542,7 @@ const OMEGA: ShipForm = {
          * OMEGA beat the SHARLIN 33W-7L, which is not a sentence anyone who
          * watched the Battle of the Line can read aloud.
          */
-        { min: 0, max: 10, band: 'green', dice: ['red', 'yellow'] },
+        { min: 0, max: 10, band: 'green', dice: ['red', 'green'] },
         { min: 11, max: 16, band: 'black', dice: ['red'] },
         { min: 17, max: 22, band: 'red', dice: ['yellow'] },
       ],
@@ -568,7 +580,7 @@ const OMEGA: ShipForm = {
       id: 'ea-omega-missile',
       name: 'Mk-VI NUCLEAR MISSILE',
       weaponClass: 'plasma-torpedo',
-      mounts: [['FS', 'FP'], ['FS', 'FP'], ['FS', 'FP']],
+      mounts: [['FS', 'FP'], ['FS', 'FP']],
       armingCircles: 2,
       hitBoxes: 1,
       slowArming: true,
@@ -617,7 +629,7 @@ const OMEGA: ShipForm = {
    * version did. That last column is the whole point: it is the difference
    * between a ship that survived and a ship that has been fought.
    */
-  armor: { F: 36, S: 28, A: 22, P: 30 },
+  armor: { F: 14, S: 10, A: 8, P: 10 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 4 },
@@ -638,13 +650,13 @@ const OMEGA: ShipForm = {
    * best in the first exchange and visibly less capable by the fourth.
    */
   structure: [
-    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
   ],
 
@@ -734,17 +746,17 @@ const OMEGA: ShipForm = {
  * lasers' green band sat inside eight inches so the ship flew into knife
  * range (now a long lance, green to sixteen, reach 36), and nine boxes of
  * armour did not say "Earth's guns barely scratched it" (now twenty-four
- * forward — since pulled back to twenty by the fits-in pass, which cost it
- * nothing it needed: still 20W-10L of 30 over an OMEGA after the trim).
- * Remeasured at captain: dominance over one OMEGA, 37W-3L over an
- * EXETER II — the jamming wall works against everything that cannot out-reach
+ * forward — pulled back to twelve by the guest-universe pass, alongside the
+ * jamming wall returning to six boxes and the OMEGA shrinking with it:
+ * 19W-1L of 20 over an OMEGA after both passes). Measured at captain:
+ * dominance over one OMEGA, and (pre-pass) 37W-3L over an EXETER II — the jamming wall works against everything that cannot out-reach
  * it. Against TWO Omegas it still dies 0W-40L, and that is left standing:
  * numbers beat tonnage in this engine — two YORKTOWN Xs kill the TRAFALGAR
  * just as dead — and no amount of Minbari exceptionalism should be allowed to
  * repeal the physics every other hull in this file obeys.
  *
  * The rest of the brief, in mechanics:
- *  - **Tough.** Twenty-three structure boxes under twenty boxes of bow
+ *  - **Tough.** Twenty-three structure boxes under twelve boxes of bow
  *    plate, and a Damage Control Rating of 6 that no printed ship matches.
  *  - **Hits hard.** Three heavy neutron lasers firing two red dice each out to
  *    eight inches and still reaching twenty-eight — and with six targeting up,
@@ -795,7 +807,7 @@ const SHARLIN: ShipForm = {
      * the best line in the printed game, and paired with six SENS boxes so
      * H2.2.3 lets all of it reach a single function.
      */
-    line('sensor', 'SENSORS', 'sensor', [10, 16], { freeValue: 5 }),
+    line('sensor', 'SENSORS', 'sensor', [8, 12], { freeValue: 4 }),
     line('gen-sys', 'GEN SYS', 'gen-sys', [1, 2], { freeValue: 1, sequential: false }),
     line('f-neutron', 'NEUT LASER', 'weapon', [4, 6, 8], {
       freeValue: 2,
@@ -826,7 +838,7 @@ const SHARLIN: ShipForm = {
       hitBoxes: 2,
       traits: ['PREC 2'],
       brackets: [
-        { min: 0, max: 8, band: 'green', dice: ['red', 'red'], bonus: 1 },
+        { min: 0, max: 8, band: 'green', dice: ['red', 'red'] },
         { min: 9, max: 16, band: 'green', dice: ['red', 'red'] },
         { min: 17, max: 24, band: 'black', dice: ['red', 'yellow'] },
         { min: 25, max: 30, band: 'red', dice: ['red', 'blue'] },
@@ -885,14 +897,14 @@ const SHARLIN: ShipForm = {
    * so a fleet that keeps landing hits still wins eventually, which is also
    * canon.
    */
-  armor: { F: 20, S: 16, A: 10, P: 16 },
+  armor: { F: 12, S: 10, A: 6, P: 10 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 5 },
     // Six. Every printed hull in the game has three or four, and under H2.2.3
     // this number *is* the jamming ceiling — which is also why shooting them
     // off is the way to fight this ship.
-    { kind: 'SENS', label: 'Sensors', boxes: 8 },
+    { kind: 'SENS', label: 'Sensors', boxes: 6 },
     { kind: 'TRAC', label: 'Tractors', boxes: 2 },
     { kind: 'TRAN', label: 'Transporters', boxes: 2 },
     { kind: 'SHTL', label: 'Flyer Bays', boxes: 3 },
@@ -2324,7 +2336,7 @@ interface Design {
  *    covering everything except the stern, and four ion cannons ahead. The
  *    stern itself is naked — no mount on this ship bears aft, which is how
  *    the films say it too.
- *  - **The reactor globe.** Thirteen power points at size 9 (the V41 ladder
+ *  - **The reactor globe.** Eleven power points at size 9 (the V41 ladder
  *    puts four boxes on every main point) — a plant that can light the whole
  *    gun line or the whole shield grid, but not both, which is the same
  *    decision the TRAFALGAR forces and the same reason it prices high.
@@ -2340,15 +2352,15 @@ interface Design {
  *    forward-heavy screen at the printed ceiling (36/28/28/24) — and when
  *    the generators go, they go the way Admiral Piett found out.
  *
- * **What it is worth, measured.** 278.3 points after the fits-in pass
- * (443.6 before it), and the pass reshuffled the fan meta: with the
- * TRAFALGAR down to six tubes and the IMPERATOR's gun wall trimmed, the
- * wedge now takes BOTH rival supers 29W-1L of 30 at captain rank — the
- * apex predator of the fan hangar, at a price a scenario can actually
- * field. Against a single printed cruiser it is still 20W-0L; against a
- * points-matched printed wall it still dies every time, because numbers
- * beat tonnage in every measurement this file has ever taken. Bring
- * escorts, Admiral.
+ * **What it is worth, measured.** 217.3 points after the guest-universe
+ * pass (443.6 at its debut, 278.3 after fits-in). It briefly reigned as
+ * the apex of the fan hangar; as a guest it now prices just under the
+ * TRAFALGAR and coin-flips it, 10W-9L-1D of 20 — an even super-fight,
+ * which is where a visiting flagship belongs. It still rules its own
+ * neighbourhood (30W-0L over the SHARLIN, 20W-0L over any single printed
+ * cruiser) and still dies on schedule to any points-matched wall, because
+ * numbers beat tonnage in every measurement this file has ever taken.
+ * Bring escorts, Admiral.
  *
  * The first draft carried no gun past 24 inches and lost the approach
  * phase of every duel until the dorsal heavy battery below fixed it —
@@ -2365,8 +2377,8 @@ const STAR_DESTROYER: ShipForm = {
 
   reactors: [
     // Four boxes per main point: the designer's ladder at size 9, enforced.
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4].map((boxes) => ({ boxes })) },
     { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4].map((boxes) => ({ boxes })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }] },
@@ -2427,8 +2439,8 @@ const STAR_DESTROYER: ShipForm = {
       hitBoxes: 2,
       traits: ['PREC 1'],
       brackets: [
-        { min: 0, max: 5, band: 'green', dice: ['yellow', 'yellow'], bonus: 2 },
-        { min: 6, max: 10, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 0, max: 5, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 6, max: 10, band: 'green', dice: ['yellow', 'yellow'] },
         { min: 11, max: 14, band: 'black', dice: ['yellow', 'green'] },
         { min: 15, max: 18, band: 'black', dice: ['green', 'green'] },
         { min: 19, max: 24, band: 'red', dice: ['green', 'blue'] },
@@ -2482,7 +2494,7 @@ const STAR_DESTROYER: ShipForm = {
   // the naked number aft is the second hole, on purpose.
   shields: {
     generatorBoxes: 5,
-    blue: { F: 36, S: 28, P: 28, A: 24 },
+    blue: { F: 28, S: 22, P: 22, A: 18 },
     green: { F: 5, S: 4, P: 4, A: 3 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -2502,11 +2514,11 @@ const STAR_DESTROYER: ShipForm = {
   ],
 
   structure: [
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 2 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 4 },
     ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
@@ -2524,7 +2536,7 @@ const STAR_DESTROYER: ShipForm = {
     dmgTopSpeed: [5, 4, 3, 2, 1, 0],
   },
 
-  marineSquads: 20,
+  marineSquads: 14,
   shuttles: 8,
 
   pointValue: 0,
