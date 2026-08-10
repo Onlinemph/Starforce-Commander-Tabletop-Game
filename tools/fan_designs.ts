@@ -2260,6 +2260,238 @@ interface Design {
   costNote?: string
 }
 
+// ---------------------------------------------------------------------------
+
+/**
+ * IMPERIAL I-class Star Destroyer (Star Wars) — the first design to arrive
+ * with its own face: ShipForm.art carries a player-supplied image, so the map
+ * flies the wedge everyone recognises instead of a class silhouette.
+ *
+ * The translation problem is that the film ship is defined by three excesses
+ * and two famous holes, and all five have honest homes in these rules:
+ *
+ *  - **The gun line.** Everything that matters fires forward or abeam of the
+ *    dorsal superstructure: eight heavy turbolasers in two broadside banks
+ *    covering everything except the stern, and four ion cannons ahead. The
+ *    stern itself is naked — no mount on this ship bears aft, which is how
+ *    the films say it too.
+ *  - **The reactor globe.** Fifteen power points at size 9 (the V41 ladder
+ *    puts four boxes on every main point) — a plant that can light the whole
+ *    gun line or the whole shield grid, but not both, which is the same
+ *    decision the TRAFALGAR forces and the same reason it prices high.
+ *  - **The legion and the wing.** Twenty squads of marines, eight shuttles,
+ *    an eight-box hangar with launch tubes, and six boxes of tractor beams —
+ *    J3 capture doctrine is this ship's whole personality against anything
+ *    small enough to hold.
+ *  - **Hole one: no point defence.** Not a single PD MODE mount. The film
+ *    ship famously cannot hit anything small and fast, so a plasma-torpedo
+ *    wave gets exactly one answer here: tractor beams catching missiles
+ *    (J3.2.6), and after that the hull takes it.
+ *  - **Hole two: the bridge domes.** Five generator boxes carrying a
+ *    forward-heavy over-cap screen (44/38/38/30 — waived G1.1.3 ceiling,
+ *    same argument as the TRAFALGAR's) — and when the generators go, they
+ *    go the way Admiral Piett found out.
+ *
+ * **What it is worth, measured.** 443.6 points, and three forty-game
+ * measurements at captain rank (hulls fixed, twenty seeds twice each) say
+ * the price is honest and the character is real:
+ *
+ *     vs IMPERATOR (384.3)            28W-12L  — the wedge out-guns the
+ *                                       cloaked super at a 15% premium
+ *     vs TRAFALGAR (424.9)             6W-32L  — ten torpedo tubes and a
+ *                                       34-box hull out-alpha the gun line
+ *                                       at near-equal points
+ *     vs a 299-point printed wall      0W-40L  — UNION III + EXETER II +
+ *                                       XERXES III; numbers beat tonnage,
+ *                                       as they have in every measurement
+ *                                       this file has ever taken
+ *
+ * The first draft carried no gun past 24 inches and went 7W-33L against the
+ * IMPERATOR — it lost the approach phase of every duel. The dorsal heavy
+ * battery below is what fixed it, which is pleasingly the same reason the
+ * film ship carries its heavies on the spine.
+ */
+const STAR_DESTROYER: ShipForm = {
+  id: 'fan-sw-imperial-star-destroyer',
+  name: 'IMPERIAL I-class Star Destroyer',
+  faction: 'Galactic Empire',
+  sizeClass: 9,
+  stressRating: 5,
+  damageControlRating: 5,
+
+  reactors: [
+    // Four boxes per main point: the designer's ladder at size 9, enforced.
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }] },
+  ],
+  batteries: 4,
+  ftlDriveBoxes: 4,
+
+  functions: [
+    line('accel', 'ACC/DEC', 'accel', [2, 3]),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1, 2, 3, 4], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3, 4]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    line('sensor', 'SENSOR', 'sensor', [5, 8], { freeValue: 3 }),
+    line('gen-sys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    line('w-turbo', 'TRBOLSR', 'weapon', [6, 9, 12], {
+      freeValue: 4,
+      weaponSystemId: 'xx9-heavy-turbolaser',
+    }),
+    line('w-heavy', 'HVY BTRY', 'weapon', [3, 4], {
+      freeValue: 2,
+      weaponSystemId: 'dbY-heavy-battery',
+    }),
+    line('w-ion', 'ION CANNON', 'weapon', [4, 6], {
+      freeValue: 2,
+      weaponSystemId: 'nk7-ion-cannon',
+    }),
+  ],
+
+  weapons: [
+    /*
+     * Two broadside banks of four, flanking the superstructure: each bank
+     * covers its own side from dead ahead round to the rear quarter, and the
+     * two overlap only ahead — so the killing zone is the bow, the beams are
+     * strong, and the stern is a promise to every frigate that can reach it.
+     */
+    weapon({
+      id: 'xx9-heavy-turbolaser',
+      name: 'XX-9 HEAVY TURBOLASER',
+      weaponClass: 'phaser',
+      mounts: [
+        ...Array.from({ length: 4 }, () => ['FP', 'PF', 'PA'] as Arc[]),
+        ...Array.from({ length: 4 }, () => ['FS', 'SF', 'SA'] as Arc[]),
+      ],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['yellow', 'yellow'], bonus: 2 },
+        { min: 6, max: 10, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 11, max: 14, band: 'black', dice: ['yellow', 'green'] },
+        { min: 15, max: 18, band: 'black', dice: ['green', 'green'] },
+        { min: 19, max: 24, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    /*
+     * The dorsal heavies: two long guns on the spine, ahead only. The first
+     * measurement had no answer past 24 inches and lost the approach phase of
+     * every duel; these are the answer, and they are why the wedge points at
+     * you.
+     */
+    weapon({
+      id: 'dbY-heavy-battery',
+      name: 'DBY-827 HEAVY BATTERY',
+      weaponClass: 'phaser',
+      mounts: forward(2),
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1'],
+      brackets: [
+        { min: 0, max: 6, band: 'green', dice: ['yellow', 'yellow'], bonus: 2 },
+        { min: 7, max: 12, band: 'green', dice: ['yellow', 'yellow'] },
+        { min: 13, max: 17, band: 'black', dice: ['yellow', 'green'] },
+        { min: 18, max: 24, band: 'black', dice: ['green', 'green'] },
+        { min: 25, max: 30, band: 'red', dice: ['green', 'blue'] },
+      ],
+    }),
+    // Ion cannon: a particle weapon ahead, for stripping a target the
+    // tractors mean to hold (PARTCL, like the Vallari disruptor family).
+    weapon({
+      id: 'nk7-ion-cannon',
+      name: 'NK-7 ION CANNON',
+      weaponClass: 'disruptor',
+      mounts: [
+        ['FS', 'SF'] as Arc[],
+        ['FS', 'FP'] as Arc[],
+        ['FS', 'FP'] as Arc[],
+        ['FP', 'PF'] as Arc[],
+      ],
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PARTCL'],
+      brackets: [
+        { min: 0, max: 5, band: 'green', dice: ['yellow', 'yellow'], bonus: 1 },
+        { min: 6, max: 10, band: 'black', dice: ['yellow', 'green'] },
+        { min: 11, max: 16, band: 'red', dice: ['green', 'green'] },
+      ],
+    }),
+  ],
+
+  // Forward-heavy and over the printed cap, the TRAFALGAR's argument exactly;
+  // the naked number aft is the second hole, on purpose.
+  shields: {
+    generatorBoxes: 5,
+    blue: { F: 44, S: 38, P: 38, A: 30 },
+    green: { F: 5, S: 4, P: 4, A: 3 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 3 },
+    { kind: 'SENS', label: 'Sensors', boxes: 5 },
+    // The famous array: six boxes, catches missiles and holds prizes (J3).
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 6 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 3 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 4 },
+    { kind: 'HNGR', label: 'Hangar Bay', boxes: 8 },
+    { kind: 'LNCH', label: 'Launch Tubes', boxes: 2 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 10 },
+    { kind: 'CMND', label: 'Command Systems', boxes: 4 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 4 },
+  ],
+
+  structure: [
+    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 5 },
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 3 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+  ],
+
+  sublight: {
+    maxSpeed: 5,
+    turnBySpeed: [25, 20, 20, 15, 15, 10],
+    maxAccelPerPhase: 2,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 4,
+    driveBoxes: 6,
+    dmgTopSpeed: [5, 4, 3, 2, 1, 0],
+  },
+
+  marineSquads: 20,
+  shuttles: 8,
+
+  pointValue: 0,
+  year: 3600,
+  availability: 'rare',
+  // Player-supplied art, linked rather than embedded: whoever views the
+  // battle fetches it, and a dead link falls back to the class silhouette.
+  art: 'https://i.redd.it/r2qmrmipsxf61.png',
+}
+
 const DESIGNS: Design[] = [
   {
     form: HYPERION,
@@ -2314,6 +2546,9 @@ const DESIGNS: Design[] = [
   // Not an extrapolation and not pretending to be: five centuries out, the
   // question is which parts of a ship are technology and which are identity.
   { form: YORKTOWN_XXX },
+  // The first design with its own face (ShipForm.art). No modifier: repairing
+  // Union-style screens are exactly what the model assumes.
+  { form: STAR_DESTROYER },
 ]
 
 /**
