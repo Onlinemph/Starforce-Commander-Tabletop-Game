@@ -741,7 +741,7 @@
     },
     "marineSquads": 8,
     "shuttles": 8,
-    "pointValue": 49.5,
+    "pointValue": 44.6,
     "year": 2245,
     "availability": "common"
   },
@@ -1572,7 +1572,7 @@
     },
     "marineSquads": 14,
     "shuttles": 4,
-    "pointValue": 96.4,
+    "pointValue": 83.8,
     "year": 2258,
     "availability": "common"
   },
@@ -1590,16 +1590,16 @@
         "hitKind": "left-main",
         "points": [
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           }
         ]
       },
@@ -1609,16 +1609,16 @@
         "hitKind": "right-main",
         "points": [
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           }
         ]
       },
@@ -2283,7 +2283,7 @@
     },
     "marineSquads": 12,
     "shuttles": 6,
-    "pointValue": 103.4,
+    "pointValue": 99,
     "year": 2245,
     "availability": "rare"
   },
@@ -3333,7 +3333,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 441.6,
+    "pointValue": 424.9,
     "year": 3680,
     "availability": "rare"
   },
@@ -4198,7 +4198,7 @@
     },
     "marineSquads": 14,
     "shuttles": 6,
-    "pointValue": 214.8,
+    "pointValue": 206.6,
     "year": 3695,
     "availability": "rare"
   },
@@ -5170,7 +5170,7 @@
     },
     "marineSquads": 18,
     "shuttles": 6,
-    "pointValue": 541.8,
+    "pointValue": 523,
     "year": 3705,
     "availability": "rare"
   },
@@ -5188,19 +5188,19 @@
         "hitKind": "left-main",
         "points": [
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
           },
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
           },
           {
-            "boxes": 5
+            "boxes": 4
           }
         ]
       },
@@ -5210,19 +5210,19 @@
         "hitKind": "right-main",
         "points": [
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
           },
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
           },
           {
-            "boxes": 5
+            "boxes": 4
           }
         ]
       },
@@ -5232,13 +5232,13 @@
         "hitKind": "center-main",
         "points": [
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
           },
           {
-            "boxes": 5
+            "boxes": 4
           },
           {
             "boxes": 4
@@ -6308,7 +6308,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 555.4,
+    "pointValue": 384.3,
     "year": 3690,
     "availability": "rare"
   },
@@ -6326,28 +6326,28 @@
         "hitKind": "left-main",
         "points": [
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           }
         ]
       },
@@ -6357,28 +6357,28 @@
         "hitKind": "right-main",
         "points": [
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           },
           {
-            "boxes": 3
+            "boxes": 2
           }
         ]
       },
@@ -7304,7 +7304,7 @@
     },
     "marineSquads": 16,
     "shuttles": 6,
-    "pointValue": 3247.2,
+    "pointValue": 3013.7,
     "year": 4210,
     "availability": "rare"
   }

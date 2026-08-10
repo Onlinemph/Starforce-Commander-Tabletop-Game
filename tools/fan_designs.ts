@@ -719,8 +719,10 @@ const SHARLIN: ShipForm = {
   damageControlRating: 6,
 
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    // Two boxes per point at size 6 — the designer's V41 table stays at 2
+    // through size 6 and only climbs to 3 at size 7; not floor(size/2).
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
@@ -928,9 +930,9 @@ const SHARLIN: ShipForm = {
  * is in the bow. A frigate that stays behind its shoulder is a frigate it
  * cannot answer.
  *
- * **What it is worth, measured.** 441.6 points after the reactor correction
- * below (429.8 before it — the model prices reactor durability, so five-box
- * points cost their keep), and unlike the two hulls above
+ * **What it is worth, measured.** 424.9 points under the designer's V41
+ * model (441.6 under V38 with the same reactors — the revision trimmed how
+ * far sensors stretch a weapon's priced reach), and unlike the two hulls above
  * it carries no `costModifier`, because there is nothing here the model gets
  * wrong. Checked against the printed roster the spreadsheet is accurate to
  * about a point — UNION III 158 against a modelled 158.6, UNION II 76 against
@@ -1290,8 +1292,9 @@ const TRAFALGAR: ShipForm = {
  * cruisers. A Mark X is not durable enough to be focus-fired by two good guns.
  *
  * And the last line is concentration of force pointing the other way for once:
- * two of these, at 429.6 against the TRAFALGAR's 429.8, take the super
- * dreadnought apart in all forty games for four losses.
+ * two of these against one TRAFALGAR — near-equal points when it was measured
+ * (429.6 to 429.8 under the V38 model; both hulls have since repriced) — take
+ * the super dreadnought apart in all forty games for four losses.
  */
 const YORKTOWN_X: ShipForm = {
   id: 'fan-union-yorktown-x-heavy-cruiser',
@@ -1820,12 +1823,13 @@ const IMPERATOR: ShipForm = {
   damageControlRating: 4,
 
   reactors: [
-    // Size 9 sits between the ladder's rungs, so the points alternate 5/4
-    // the way the printed size-3s alternate 2/1 — same correction as the
-    // Trafalgar's, same player report, enforced by the builder now.
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [5, 4, 5, 4, 5].map((boxes) => ({ boxes })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [5, 4, 5, 4, 5].map((boxes) => ({ boxes })) },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [5, 4, 5, 4].map((boxes) => ({ boxes })) },
+    // Four boxes per point: the designer's V41 builder table gives size 9
+    // exactly 4 (odd and even points alike). The alternating 5/4 this ship
+    // briefly carried was an inference from floor(size/2) that the real
+    // table contradicts — size 9 is not "between rungs", it has its own.
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
@@ -2093,8 +2097,10 @@ const YORKTOWN_XXX: ShipForm = {
   damageControlRating: 8,
 
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 8 }, () => ({ boxes: 3 })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 8 }, () => ({ boxes: 3 })) },
+    // Two boxes per point — a size-5 hull, however absurd the rest of it,
+    // carries size-5 reactors (the designer's V41 builder table).
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 8 }, () => ({ boxes: 2 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 8 }, () => ({ boxes: 2 })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }, { boxes: 3 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
   ],

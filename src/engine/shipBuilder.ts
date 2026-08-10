@@ -102,8 +102,17 @@ const ARMING_TIME_MULTIPLIER: Record<number, number> = {
 }
 
 /**
- * Weapon trait modifiers, as printed in the sheet's lookup table. Positive
- * values make a weapon dearer, negative ones cheaper.
+ * Weapon trait modifiers, as printed in the sheet's lookup table (V41 — the
+ * designer's 2026-04 revision; its internal stamp reads "Version 39.6").
+ * Positive values make a weapon dearer, negative ones cheaper.
+ *
+ * The V41 repricing moved four families: homing guidance fell to a fraction
+ * of its old cost (0.08→0.01 at the bottom step, 0.3→0.08 at the top),
+ * missiles got much deeper discounts (−0.25→−0.8 at MISSILE-1), particle
+ * weapons got cheaper, and point defence swapped its weighting (AREA 2→1,
+ * INTCP 5→7) while gaining a PD COOP trait. The old spellings of the armour
+ * and precision traits are kept as aliases so data written under either
+ * revision prices identically.
  */
 export const TRAIT_MODIFIERS: Record<string, number> = {
   'AMMO 3': -0.18,
@@ -113,38 +122,45 @@ export const TRAIT_MODIFIERS: Record<string, number> = {
   'AMMO 12': -0.03,
   'AMMO 16': -0.02,
   'AREA EFC': 0.5,
-  'ARMR (+1)': 0.1,
-  'ARMR (+2)': 0.2,
+  'ARMOR (+1)': 0.1,
+  'ARMOR (+2)': 0.2,
   ARRAY: 0.5,
   ATMO: 0.05,
   CAPACTR: 0.05,
   ENVLPNG: 0.05,
   FTL: 0.1,
-  'HOMING 1': 0.08,
-  'HOMING 2': 0.15,
-  'HOMING 3': 0.2,
-  'HOMING 4': 0.3,
+  'HOMING 1': 0.01,
+  'HOMING 2': 0.03,
+  'HOMING 3': 0.05,
+  'HOMING 4': 0.08,
   'LIGHT 2+1': 0.33,
   'MED 3+1': 0.11,
-  'MISSILE-1': -0.25,
-  'MISSILE-2': -0.2,
-  'MISSILE-3': -0.14,
-  'MISSILE-4': -0.05,
+  'MISSILE-1': -0.8,
+  'MISSILE-2': -0.65,
+  'MISSILE-3': -0.4,
+  'MISSILE-4': -0.33,
   NoBAT: -0.1,
   NoSTRCT: -0.2,
-  PARTCL: -0.15,
-  'PD AREA': 2,
-  'PD INTCP': 5,
+  PARTCL: -0.2,
+  'PD AREA': 1,
+  'PD COOP': 2,
+  'PD INTCP': 7,
   PDMODE: 0.05,
   PDWPN: -0.2,
   'PREC 0': 0,
   'PREC 1': 0,
   'PREC 2': 0,
+  'PRCS ENG': 0.15,
+  'PRCS SHLD': 0.05,
+  'PRCS WPN': 0.15,
+  'PROX MD': 0.05,
+  SPLASH: 0.1,
+  // V38 spellings of the same traits, kept so older data still prices.
+  'ARMR (+1)': 0.1,
+  'ARMR (+2)': 0.2,
   'PREC EN': 0.15,
   'PREC SH': 0.05,
   'PREC WP': 0.15,
-  'PROX MD': 0.05,
-  SPLASH: 0.1,
 }
 
 /**
@@ -298,7 +314,11 @@ export interface WeaponValue {
  */
 export function valueWeapon(
   weapon: WeaponSystemDef,
-  opts: { scienceBoxes: number; sensorPointsAtOnePower: number },
+  /**
+   * `sensorReach` is the sheet's "1 PWR SENSOR" cell: V41 reads it as half
+   * the ship's best sensor line value (it was the one-power value in V38).
+   */
+  opts: { scienceBoxes: number; sensorReach: number },
 ): WeaponValue {
   const precision = precisionBonus(weapon, opts.scienceBoxes)
 
@@ -314,7 +334,7 @@ export function valueWeapon(
   }
 
   const maxRange = weapon.brackets.reduce((m, b) => Math.max(m, b.max), 0)
-  const reach = Math.max(1, maxRange + opts.sensorPointsAtOnePower)
+  const reach = Math.max(1, maxRange + opts.sensorReach)
   const rangeModifier = reach / (Math.sqrt(reach) * 4)
 
   const armingMultiplier = ARMING_TIME_MULTIPLIER[armingTime(weapon)] ?? 1
@@ -427,9 +447,11 @@ export function pointValue(form: ShipForm, specialModifier = 1): PointBreakdown 
   const scienceBoxes = systemBoxes(form, 'SCNC')
 
   // ---- offense, which everything else is priced against ------------------
-  const weapons = form.weapons.map((w) =>
-    valueWeapon(w, { scienceBoxes, sensorPointsAtOnePower: sensorAtOne }),
-  )
+  // V41: a weapon's effective reach is stretched by half the ship's best
+  // sensor line value, whichever power level that is (it was the one-power
+  // value, whole, in V38).
+  const sensorReach = Math.max(sensorAtZero, sensorAtOne, sensorAtTwo) / 2
+  const weapons = form.weapons.map((w) => valueWeapon(w, { scienceBoxes, sensorReach }))
   const totalOffense = COMPONENT_WEIGHTS.offense * weapons.reduce((n, w) => n + w.value, 0)
 
   // ---- actual power ------------------------------------------------------
@@ -438,6 +460,7 @@ export function pointValue(form: ShipForm, specialModifier = 1): PointBreakdown 
   // on a weapon line (B2.2.3).
   const freeAccel = lineValueAt(form, 'accel', 0)
   const freeSif = lineValueAt(form, 'sif', 0)
+  const freeShieldPower = lineValueAt(form, 'shield-reinforce', 0)
   const freeArmingPower = form.weapons.reduce((n, w, i) => {
     const line = form.functions.find((l) => l.weaponSystemId === w.id)
     return n + (line?.freeValue ?? 0) * weapons[i].powerPerArmingPoint
@@ -446,6 +469,9 @@ export function pointValue(form: ShipForm, specialModifier = 1): PointBreakdown 
     (sensorRating > 0 ? (sensorAtZero / sensorRating) * powerPerBox : 0) +
     freeAccel * powerPerBox +
     freeSif * powerPerBox +
+    // V41 counts free shield power as free power too. No printed or fan hull
+    // carries any today, so this term is faithful rather than consequential.
+    freeShieldPower * powerPerBox +
     freeArmingPower
   const actualPower = powerPerBox * pointsAndBatteries + freePower
   const powerRatio = actualPower / REFERENCE_POWER
@@ -476,7 +502,9 @@ export function pointValue(form: ShipForm, specialModifier = 1): PointBreakdown 
   // value, a cloak the whole of it, and a scout sensor its own fixed cost.
   const specialistSystems =
     systemBoxes(form, 'CMND') * (sensorValue / 8) +
-    systemBoxes(form, 'CLOAK') * sensorValue +
+    // V41 halved the cloak's price: half the ship's sensor value per box
+    // (it was the whole of it in V38).
+    systemBoxes(form, 'CLOAK') * sensorValue * 0.5 +
     (form.scoutSensor?.sensors ?? 0) * SCOUT_SENSOR_COST
 
   const generalSystems =
@@ -484,7 +512,6 @@ export function pointValue(form: ShipForm, specialModifier = 1): PointBreakdown 
     specialistSystems +
     form.marineSquads * MARINE_MODIFIER
 
-  const freeShieldPower = lineValueAt(form, 'shield-reinforce', 0)
   const shieldGenerator =
     hitRatio * pointsAndBatteries * (form.shields.generatorBoxes / 10) +
     freeShieldPower * form.shields.generatorBoxes * hitRatio
@@ -592,24 +619,32 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
   if (form.sublight.maxSpeed > 8) error('No ship may exceed speed 8 (C1.2.7).')
   if (form.reactors.length === 0) error('A ship needs at least one reactor (B2.1.1).')
   /*
-   * Main reactor durability scales with the hull. The printed roster's
-   * ladder: 1 box per power point at sizes 1-2, alternating 2/1 at size 3,
-   * 2 at sizes 4-5, 3 at sizes 6-7 — floor(size/2), with the odd sizes
-   * allowed to alternate up to the ceiling the way the printed size-3s do
-   * (2,1,2,1). Found the hard way: a size-10 fan dreadnought shipped with
-   * size-7 reactors because nothing checked, and a player caught it.
+   * Main reactor durability scales with the hull, and the designer's own
+   * builder sheet (V41) prints the exact table — boxes per power point, odd
+   * and even points separately, which is how the printed size-3s alternate
+   * 2,1,2,1. Checked against all 93 printed forms: not one deviates. It is
+   * NOT floor(size/2): size 6 carries 2, size 9 carries 4. Sublight and
+   * auxiliary reactors are deliberately unchecked, because the printed forms
+   * themselves stray from the sheet's ladder there (the size-3 sublights
+   * carry 2,2). Found the hard way, twice: first a size-10 fan dreadnought
+   * shipped with size-7 reactors because nothing checked, then the inferred
+   * floor/ceil rule this replaced let a size-9 carry fives.
    */
-  const lo = Math.max(1, Math.floor(form.sizeClass / 2))
-  const hi = Math.max(1, Math.ceil(form.sizeClass / 2))
-  for (const reactor of form.reactors) {
-    if (!['left-main', 'right-main', 'center-main'].includes(reactor.hitKind)) continue
-    for (const point of reactor.points) {
-      if (point.boxes < lo || point.boxes > hi) {
+  const MAIN_LADDER: Record<number, [number, number]> = {
+    1: [1, 1], 2: [1, 1], 3: [2, 1], 4: [2, 2], 5: [2, 2],
+    6: [2, 2], 7: [3, 3], 8: [3, 3], 9: [4, 4], 10: [5, 5],
+  }
+  const rungs = MAIN_LADDER[form.sizeClass]
+  if (rungs) {
+    for (const reactor of form.reactors) {
+      if (!['left-main', 'right-main', 'center-main'].includes(reactor.hitKind)) continue
+      const off = reactor.points.findIndex((p, i) => p.boxes !== rungs[i % 2])
+      if (off >= 0) {
+        const want = rungs[0] === rungs[1] ? `${rungs[0]} boxes` : `${rungs[0]},${rungs[1]} boxes, alternating`
         error(
           `${reactor.label}: a size-${form.sizeClass} hull's main reactor points carry ` +
-            `${lo === hi ? lo : `${lo}-${hi}`} boxes each (printed ladder, B2.1); this one has ${point.boxes}.`,
+            `${want} (the designer's builder table); point ${off + 1} has ${reactor.points[off].boxes}.`,
         )
-        break
       }
     }
   }
@@ -813,8 +848,9 @@ export function blankForm(id: string): ShipForm {
     stressRating: 3,
     damageControlRating: 3,
     reactors: [
-      { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }] },
-      { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }] },
+      // Size 3 alternates 2,1 per the designer's table, like the printed 3s.
+      { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 1 }] },
+      { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 1 }] },
     ],
     batteries: 1,
     ftlDriveBoxes: 2,
