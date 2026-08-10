@@ -18,6 +18,7 @@ import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
 import type { BattleFx } from './fx'
+import { OFFICIAL_SILHOUETTES, type OfficialFaction } from './officialSilhouettes'
 import { labelHalfWidth, stackLabels } from './mapLabels'
 
 /**
@@ -998,140 +999,16 @@ export function hullRoleFor(form: { name: string; sizeClass: number }): HullRole
   return 'dreadnought'
 }
 
-/** Saucer forward, engineering hull aft, nacelles — count and stance by role. */
-function UnionGlyph({ role }: { role: HullRole }) {
-  switch (role) {
-    // Scout: a bare saucer over a single centreline nacelle.
-    case 'scout':
-      return (
-        <>
-          <rect className="glyph-hull" x={-4.5} y={2} width={9} height={30} rx={4.5} />
-          <rect className="glyph-trim" x={-3.5} y={3.5} width={7} height={7} rx={3.5} />
-          <ellipse className="glyph-hull" cx={0} cy={-14} rx={16} ry={13.5} />
-          <circle className="glyph-glass" cx={0} cy={-17} r={3.5} />
-        </>
-      )
-    // Escort: nacelles slung tight alongside the saucer, no secondary hull.
-    case 'escort':
-      return (
-        <>
-          <path className="glyph-pylon" d="M -12 0 L -16 2 M 12 0 L 16 2" />
-          <rect className="glyph-hull" x={-21} y={-8} width={8} height={30} rx={4} />
-          <rect className="glyph-hull" x={13} y={-8} width={8} height={30} rx={4} />
-          <rect className="glyph-trim" x={-20} y={-6.5} width={6} height={6} rx={3} />
-          <rect className="glyph-trim" x={14} y={-6.5} width={6} height={6} rx={3} />
-          <path className="glyph-hull" d="M -12 -2 L 12 -2 L 8 14 L -8 14 Z" />
-          <ellipse className="glyph-hull" cx={0} cy={-14} rx={18} ry={15} />
-          <circle className="glyph-glass" cx={0} cy={-18} r={4} />
-        </>
-      )
-    // Battlecruiser: the cruiser lines stretched — broad saucer, long hull,
-    // nacelles carried wide.
-    case 'battlecruiser':
-      return (
-        <>
-          <path className="glyph-pylon" d="M -9 6 L -25 20 M 9 6 L 25 20" />
-          <rect className="glyph-hull" x={-33} y={12} width={10} height={36} rx={5} />
-          <rect className="glyph-hull" x={23} y={12} width={10} height={36} rx={5} />
-          <rect className="glyph-trim" x={-32} y={13.5} width={8} height={8} rx={4} />
-          <rect className="glyph-trim" x={24} y={13.5} width={8} height={8} rx={4} />
-          <path className="glyph-hull" d="M -8 -10 L 8 -10 L 12 20 Q 0 28 -12 20 Z" />
-          <ellipse className="glyph-hull" cx={0} cy={-22} rx={25} ry={20} />
-          <path className="glyph-trim" d="M -19 -13 L 19 -13 L 15 -8 L -15 -8 Z" />
-          <circle className="glyph-glass" cx={0} cy={-27} r={4} />
-        </>
-      )
-    // Dreadnought: three nacelles under a heavy saucer — nothing else on the
-    // map carries a centreline engine.
-    case 'dreadnought':
-      return (
-        <>
-          <path className="glyph-pylon" d="M -9 2 L -27 16 M 9 2 L 27 16" />
-          <rect className="glyph-hull" x={-35} y={10} width={10} height={38} rx={5} />
-          <rect className="glyph-hull" x={25} y={10} width={10} height={38} rx={5} />
-          <rect className="glyph-hull" x={-5} y={16} width={10} height={34} rx={5} />
-          <rect className="glyph-trim" x={-34} y={11.5} width={8} height={8} rx={4} />
-          <rect className="glyph-trim" x={26} y={11.5} width={8} height={8} rx={4} />
-          <rect className="glyph-trim" x={-4} y={17.5} width={8} height={8} rx={4} />
-          <path className="glyph-hull" d="M -9 -12 L 9 -12 L 13 16 Q 0 24 -13 16 Z" />
-          <ellipse className="glyph-hull" cx={0} cy={-24} rx={26} ry={21} />
-          <circle className="glyph-glass" cx={0} cy={-29} r={4.5} />
-        </>
-      )
-    default:
-      return (
-        <>
-          <path className="glyph-pylon" d="M -7 8 L -19 22 M 7 8 L 19 22" />
-          <rect className="glyph-hull" x={-25} y={14} width={9} height={32} rx={4.5} />
-          <rect className="glyph-hull" x={16} y={14} width={9} height={32} rx={4.5} />
-          <rect className="glyph-trim" x={-24} y={15.5} width={7} height={7} rx={3.5} />
-          <rect className="glyph-trim" x={17} y={15.5} width={7} height={7} rx={3.5} />
-          <path className="glyph-hull" d="M -6 -8 L 6 -8 L 9 18 Q 0 25 -9 18 Z" />
-          <ellipse className="glyph-hull" cx={0} cy={-21} rx={21} ry={18} />
-          <circle className="glyph-glass" cx={0} cy={-25} r={4} />
-        </>
-      )
-  }
-}
-
-/** A swept-wing raptor, all edges and intent — wingspan grows with the role. */
-function VallariGlyph({ role }: { role: HullRole }) {
-  switch (role) {
-    // Scout: a slim dart with barbs where the wings would be.
-    case 'scout':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -46 L 5 -16 L 18 6 L 14 12 L 5 4 L 6 24 L 10 36 L 0 28 L -10 36 L -6 24 L -5 4 L -14 12 L -18 6 L -5 -16 Z"
-          />
-          <path className="glyph-trim" d="M 0 -34 L 2.5 -20 L 0 -12 L -2.5 -20 Z" />
-        </>
-      )
-    // Escort: the raptor at half spread.
-    case 'escort':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -47 L 7 -18 L 28 10 L 22 19 L 7 7 L 6 26 L 12 39 L 0 31 L -12 39 L -6 26 L -7 7 L -22 19 L -28 10 L -7 -18 Z"
-          />
-          <path className="glyph-trim" d="M 0 -34 L 3 -20 L 0 -12 L -3 -20 Z" />
-        </>
-      )
-    // Battlecruiser: full spread with notched trailing edges.
-    case 'battlecruiser':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -47 L 10 -20 L 44 14 L 34 19 L 41 29 L 27 27 L 11 10 L 9 27 L 17 43 L 0 33 L -17 43 L -9 27 L -11 10 L -27 27 L -41 29 L -34 19 L -44 14 L -10 -20 Z"
-          />
-          <path className="glyph-trim" d="M 0 -34 L 4 -19 L 0 -10 L -4 -19 Z" />
-        </>
-      )
-    // Dreadnought: double-tiered wings, a raptor stooping.
-    case 'dreadnought':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -48 L 12 -22 L 46 10 L 36 24 L 12 8 L 10 20 L 30 36 L 20 44 L 8 30 L 0 38 L -8 30 L -20 44 L -30 36 L -10 20 L -12 8 L -36 24 L -46 10 L -12 -22 Z"
-          />
-          <path className="glyph-trim" d="M 0 -36 L 5 -18 L 0 -8 L -5 -18 Z" />
-        </>
-      )
-    default:
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -47 L 9 -18 L 40 14 L 32 25 L 10 10 L 8 26 L 15 41 L 0 32 L -15 41 L -8 26 L -10 10 L -32 25 L -40 14 L -9 -18 Z"
-          />
-          <path className="glyph-trim" d="M 0 -34 L 4 -20 L 0 -12 L -4 -20 Z" />
-        </>
-      )
-  }
+/**
+ * Union and Vallari fly the designer's own silhouettes — the shapes the
+ * printed playing pieces use, traced from his drafts deck
+ * (tools/trace_silhouettes.py). One solid path per hull role, through the
+ * same .glyph-hull pipeline as the drawn art, so tinting, damage washes and
+ * selection glows are unchanged. The Aurelians and builder hulls keep the
+ * hand-drawn glyphs below: the deck has no art for them.
+ */
+function OfficialGlyph({ faction, role }: { faction: OfficialFaction; role: HullRole }) {
+  return <path className="glyph-hull" d={OFFICIAL_SILHOUETTES[faction][role]} />
 }
 
 /** A smooth crescent dart, built to vanish — the crescent widens with the role. */
@@ -1216,9 +1093,8 @@ function GenericGlyph({ role }: { role: HullRole }) {
 export function ShipGlyph({ kind, role }: { kind: Silhouette; role: HullRole }) {
   switch (kind) {
     case 'union':
-      return <UnionGlyph role={role} />
     case 'vallari':
-      return <VallariGlyph role={role} />
+      return <OfficialGlyph faction={kind} role={role} />
     case 'aurelian':
       return <AurelianGlyph role={role} />
     default:
