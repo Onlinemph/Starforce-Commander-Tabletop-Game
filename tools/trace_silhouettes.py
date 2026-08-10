@@ -10,7 +10,8 @@ classes, slides 4-5 show the playing-piece versions, slide 3 the capital
 drafts. The mapping below is by (faction x hull role), matching MapView's
 glyph buckets.
 
-    python3 tools/trace_silhouettes.py /path/to/SHIP_Sillhouette_DRAFTS.pptx
+    python3 tools/trace_silhouettes.py \
+        /path/to/SHIP_Sillhouette_DRAFTS.pptx /path/to/AURELIAN_SHIPS_IMAGES.pptx
 
 Pure PIL — no numpy, no potrace: marching-edge contour following plus
 Douglas-Peucker simplification is enough for solid silhouettes.
@@ -22,19 +23,29 @@ from io import BytesIO
 
 from PIL import Image
 
-# (faction, role) -> media name inside the deck. Slide-2 labels name the
-# classes; the role buckets are MapView's.
+# (faction, role) -> (deck index on the command line, media name inside it).
+# Deck 0 is the silhouette drafts deck (slide-2 labels name the classes);
+# deck 1 is the Aurelian ships deck, whose slide 6 carries the flat counter
+# silhouettes — unlabeled, so roles are assigned by apparent tonnage against
+# the Aurelian roster (frigates and destroyers small, the cruiser wall broad,
+# the INVICTUS crown biggest). Images 12/13 and 15/16 are iteration pairs;
+# one of each pair is used.
 MAPPING = {
-    ('union', 'scout'): 'image16.png',  # Xerxes-piece: saucer + single nacelle
-    ('union', 'escort'): 'image15.png',  # Soryu frigate playing piece
-    ('union', 'cruiser'): 'image14.png',  # Yorktown playing piece
-    ('union', 'battlecruiser'): 'image10.png',  # slide-3 battlecruiser draft
-    ('union', 'dreadnought'): 'image9.png',  # slide-3 dreadnought draft
-    ('vallari', 'scout'): 'image2.png',  # V2 Flanker
-    ('vallari', 'escort'): 'image29.png',  # V5 Corsair
-    ('vallari', 'cruiser'): 'image13.png',  # V6 Savage
-    ('vallari', 'battlecruiser'): 'image12.png',  # V7 Raider
-    ('vallari', 'dreadnought'): 'image8.png',  # slide-3 dreadnought draft
+    ('union', 'scout'): (0, 'image16.png'),  # Xerxes-piece: saucer + single nacelle
+    ('union', 'escort'): (0, 'image15.png'),  # Soryu frigate playing piece
+    ('union', 'cruiser'): (0, 'image14.png'),  # Yorktown playing piece
+    ('union', 'battlecruiser'): (0, 'image10.png'),  # slide-3 battlecruiser draft
+    ('union', 'dreadnought'): (0, 'image9.png'),  # slide-3 dreadnought draft
+    ('vallari', 'scout'): (0, 'image2.png'),  # V2 Flanker
+    ('vallari', 'escort'): (0, 'image29.png'),  # V5 Corsair
+    ('vallari', 'cruiser'): (0, 'image13.png'),  # V6 Savage
+    ('vallari', 'battlecruiser'): (0, 'image12.png'),  # V7 Raider
+    ('vallari', 'dreadnought'): (0, 'image8.png'),  # slide-3 dreadnought draft
+    ('aurelian', 'scout'): (1, 'image11.png'),  # slim spired dart
+    ('aurelian', 'escort'): (1, 'image15.png'),  # compact wide escort
+    ('aurelian', 'cruiser'): (1, 'image14.png'),  # broad multi-prong cruiser
+    ('aurelian', 'battlecruiser'): (1, 'image12.png'),  # spired capital, lighter
+    ('aurelian', 'dreadnought'): (1, 'image13.png'),  # spired capital, heaviest
 }
 
 BOX = 96  # fit into -48..48 of the 100-unit glyph box
@@ -157,11 +168,10 @@ def trace(im: Image.Image) -> str:
 
 
 def main() -> None:
-    deck = sys.argv[1]
-    z = zipfile.ZipFile(deck)
+    decks = [zipfile.ZipFile(p) for p in sys.argv[1:]]
     entries = []
-    for (faction, role), media in MAPPING.items():
-        im = Image.open(BytesIO(z.read(f'ppt/media/{media}')))
+    for (faction, role), (deck_index, media) in MAPPING.items():
+        im = Image.open(BytesIO(decks[deck_index].read(f'ppt/media/{media}')))
         d = trace(im)
         entries.append((faction, role, media, d))
         print(f'{faction:8} {role:14} {media:12} -> {len(d)} chars')
@@ -178,12 +188,12 @@ def main() -> None:
         ' * damage washes, selection glows, cloak fades.',
         ' */',
         '',
-        "export type OfficialFaction = 'union' | 'vallari'",
+        "export type OfficialFaction = 'union' | 'vallari' | 'aurelian'",
         "export type OfficialRole = 'scout' | 'escort' | 'cruiser' | 'battlecruiser' | 'dreadnought'",
         '',
         'export const OFFICIAL_SILHOUETTES: Record<OfficialFaction, Record<OfficialRole, string>> = {',
     ]
-    for faction in ('union', 'vallari'):
+    for faction in ('union', 'vallari', 'aurelian'):
         lines.append(f'  {faction}: {{')
         for _, role, media, d in [e for e in entries if e[0] == faction]:
             lines.append(f'    // {media}')

@@ -1004,74 +1004,11 @@ export function hullRoleFor(form: { name: string; sizeClass: number }): HullRole
  * printed playing pieces use, traced from his drafts deck
  * (tools/trace_silhouettes.py). One solid path per hull role, through the
  * same .glyph-hull pipeline as the drawn art, so tinting, damage washes and
- * selection glows are unchanged. The Aurelians and builder hulls keep the
- * hand-drawn glyphs below: the deck has no art for them.
+ * selection glows are unchanged. Builder hulls without a known faction keep
+ * the hand-drawn wedge below: no deck carries art for them.
  */
 function OfficialGlyph({ faction, role }: { faction: OfficialFaction; role: HullRole }) {
   return <path className="glyph-hull" d={OFFICIAL_SILHOUETTES[faction][role]} />
-}
-
-/** A smooth crescent dart, built to vanish — the crescent widens with the role. */
-function AurelianGlyph({ role }: { role: HullRole }) {
-  switch (role) {
-    // Scout: a sliver.
-    case 'scout':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -44 C 5 -24 8 -4 16 22 C 10 12 5 10 0 14 C -5 10 -10 12 -16 22 C -8 -4 -5 -24 0 -44 Z"
-          />
-          <path className="glyph-trim" d="M 0 -30 L 2 2 L 0 9 L -2 2 Z" />
-        </>
-      )
-    case 'escort':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -45 C 7 -24 11 -3 26 25 C 16 15 7 12 0 17 C -7 12 -16 15 -26 25 C -11 -3 -7 -24 0 -45 Z"
-          />
-          <path className="glyph-trim" d="M 0 -30 L 2.5 3 L 0 10 L -2.5 3 Z" />
-        </>
-      )
-    // Battlecruiser: the crescent grows fangs.
-    case 'battlecruiser':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -46 C 12 -24 18 0 42 24 L 34 34 C 24 20 12 16 0 21 C -12 16 -24 20 -34 34 L -42 24 C -18 0 -12 -24 0 -46 Z"
-          />
-          <path className="glyph-trim" d="M 0 -31 L 3.5 4 L 0 13 L -3.5 4 Z" />
-        </>
-      )
-    // Dreadnought: a mantle behind the dart, the crescent doubled.
-    case 'dreadnought':
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -48 C 14 -26 22 2 46 30 C 30 18 14 15 0 21 C -14 15 -30 18 -46 30 C -22 2 -14 -26 0 -48 Z"
-          />
-          <path
-            className="glyph-hull"
-            d="M 0 6 C 8 10 18 16 28 28 C 16 24 6 26 0 32 C -6 26 -16 24 -28 28 C -18 16 -8 10 0 6 Z"
-          />
-          <path className="glyph-trim" d="M 0 -32 L 4 4 L 0 14 L -4 4 Z" />
-        </>
-      )
-    default:
-      return (
-        <>
-          <path
-            className="glyph-hull"
-            d="M 0 -46 C 10 -24 16 -2 36 27 C 22 16 10 14 0 19 C -10 14 -22 16 -36 27 C -16 -2 -10 -24 0 -46 Z"
-          />
-          <path className="glyph-trim" d="M 0 -30 L 3 4 L 0 12 L -3 4 Z" />
-        </>
-      )
-  }
 }
 
 /** Builder hulls without a known faction: a wedge whose beam says the role. */
@@ -1094,9 +1031,8 @@ export function ShipGlyph({ kind, role }: { kind: Silhouette; role: HullRole }) 
   switch (kind) {
     case 'union':
     case 'vallari':
-      return <OfficialGlyph faction={kind} role={role} />
     case 'aurelian':
-      return <AurelianGlyph role={role} />
+      return <OfficialGlyph faction={kind} role={role} />
     default:
       return <GenericGlyph role={role} />
   }
