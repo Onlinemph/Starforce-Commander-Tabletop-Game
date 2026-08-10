@@ -79,6 +79,22 @@ import type { Arc, FunctionLineDef, ShipForm, WeaponSystemDef } from '../src/eng
  * and a weapon that is not laid out this way only fires when the ship is
  * pointed the right direction.
  */
+/*
+ * THE FITS-IN PASS (player request: "make all the fan stuff weaker so it
+ * fits in better"). The printed roster tops out at the UNION III's 158
+ * points, and the fan capitals had grown to two and three times that. Every
+ * design here was pulled back toward the printed envelope: blue shields at
+ * or under the printed ceilings (36 fore and aft, 28 abeam — no more waived
+ * G1.1.3), power plants and gun lines and structure tracks trimmed a
+ * quarter to a half. The supers now land at 1.4-1.8x the printed flagship
+ * instead of 2.7-3.3x. Two exceptions, both deliberate: the SHARLIN kept
+ * its jamming wall and plate because weakening them repeals the Battle of
+ * the Line (it pays for the privilege — the model prices the hard counter
+ * honestly), and the YORKTOWN XXX remains satire and remains unfieldable.
+ * Measured tables in the essays below that predate this pass are kept as
+ * history and marked where they mislead.
+ */
+
 const ALL_ROUND: Arc[][] = [
   ['AP', 'PA', 'PF', 'FP'],
   ['FS', 'SF', 'PF', 'FP'],
@@ -718,7 +734,9 @@ const OMEGA: ShipForm = {
  * lasers' green band sat inside eight inches so the ship flew into knife
  * range (now a long lance, green to sixteen, reach 36), and nine boxes of
  * armour did not say "Earth's guns barely scratched it" (now twenty-four
- * forward). Remeasured at captain: 27W-13L over one OMEGA, 37W-3L over an
+ * forward — since pulled back to twenty by the fits-in pass, which cost it
+ * nothing it needed: still 20W-10L of 30 over an OMEGA after the trim).
+ * Remeasured at captain: dominance over one OMEGA, 37W-3L over an
  * EXETER II — the jamming wall works against everything that cannot out-reach
  * it. Against TWO Omegas it still dies 0W-40L, and that is left standing:
  * numbers beat tonnage in this engine — two YORKTOWN Xs kill the TRAFALGAR
@@ -726,7 +744,7 @@ const OMEGA: ShipForm = {
  * repeal the physics every other hull in this file obeys.
  *
  * The rest of the brief, in mechanics:
- *  - **Tough.** Twenty-six structure boxes under twenty-four boxes of bow
+ *  - **Tough.** Twenty-three structure boxes under twenty boxes of bow
  *    plate, and a Damage Control Rating of 6 that no printed ship matches.
  *  - **Hits hard.** Three heavy neutron lasers firing two red dice each out to
  *    eight inches and still reaching twenty-eight — and with six targeting up,
@@ -867,7 +885,7 @@ const SHARLIN: ShipForm = {
    * so a fleet that keeps landing hits still wins eventually, which is also
    * canon.
    */
-  armor: { F: 24, S: 20, A: 14, P: 20 },
+  armor: { F: 20, S: 16, A: 10, P: 16 },
 
   systems: [
     { kind: 'SCNC', label: 'Sciences', boxes: 5 },
@@ -883,9 +901,9 @@ const SHARLIN: ShipForm = {
   ],
 
   structure: [
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
     ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
@@ -1031,8 +1049,8 @@ const TRAFALGAR: ShipForm = {
   damageControlRating: 6,
 
   /*
-   * Fifteen power points against the UNION III's twelve — deliberately not
-   * more. Power is the dominant term in the cost of a large hull: the model
+   * Twelve power points, the UNION III's own count — cut from fifteen by
+   * the fits-in pass, and the cut is most of why the price halved. Power is the dominant term in the cost of a large hull: the model
    * charges size × 2 a point, so at size 10 every reactor point is twenty
    * points of purchase price, and a plant big enough to light the whole form
    * at once priced this ship past four hundred. Fifteen leaves it unable to
@@ -1047,11 +1065,11 @@ const TRAFALGAR: ShipForm = {
     // model charges per power point, so the cost is unchanged.
     { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
     { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [{ boxes: 5 }, { boxes: 5 }, { boxes: 5 }, { boxes: 5 }] },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [{ boxes: 5 }, { boxes: 5 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
-    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
-  batteries: 3,
+  batteries: 2,
   ftlDriveBoxes: 4,
 
   functions: [
@@ -1094,7 +1112,7 @@ const TRAFALGAR: ShipForm = {
 
   weapons: [
     /*
-     * Ten tubes, all forward. The diamond is deliberate and matches every
+     * Six tubes, all forward (ten before the fits-in pass). The diamond is deliberate and matches every
      * printed A/MAT battery (E4.2.8): one circle a round, so the full salvo
      * comes every second round and cannot be hurried out of a battery
      * (B2.5.6). A ship that could throw this every round would not be a
@@ -1104,7 +1122,7 @@ const TRAFALGAR: ShipForm = {
       id: 'mk-8-a-mat-torpedo',
       name: 'MK-8 A/MAT TORPEDO',
       weaponClass: 'a-mat-torpedo',
-      mounts: forward(10),
+      mounts: forward(6),
       armingCircles: 2,
       hitBoxes: 1,
       traits: ['NoBAT', 'FTL'],
@@ -1121,7 +1139,7 @@ const TRAFALGAR: ShipForm = {
       id: 'lnc-1600-phaser',
       name: 'LNC-1600 PHASER',
       weaponClass: 'phaser',
-      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      mounts: [...ALL_ROUND],
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1', 'PD MODE'],
@@ -1152,25 +1170,17 @@ const TRAFALGAR: ShipForm = {
   ],
 
   /*
-   * Over the printed ceiling, deliberately.
-   *
-   * G1.1.3 caps a blue shield at 36 fore and aft and 28 to either beam, and
-   * that cap is flat: the same number for a frigate and for the largest hull
-   * the rules allow. Held to it, this ship carried a heavy cruiser's screens,
-   * which made the size class a label rather than a fact — so the cap is
-   * waived here and the validator reports it as a warning, which is what it
-   * is. Nothing enforces the ceiling at play time; a ship over it is entirely
-   * playable, and the point model charges honestly for every box.
-   *
-   * Scaled 1.6x off the UNION III's 30/26/26/26, which is close to the ratio
-   * of the two structure tracks (34 boxes against 22). Six generator boxes
-   * put them back up, because that is the Union's whole doctrine: nothing is
-   * spent permanently.
+   * At the printed ceiling exactly (G1.1.3: 36 fore and aft, 28 abeam). An
+   * earlier build waived the cap and carried 48/42/42/42; the fits-in pass
+   * put the roster's own ceiling back over every fan hull, this one
+   * included. The size class still shows in the structure track and the
+   * five generator boxes — the Union doctrine that nothing is spent
+   * permanently — rather than in screens no printed ship may raise.
    */
   shields: {
-    generatorBoxes: 6,
-    blue: { F: 48, A: 42, P: 42, S: 42 },
-    green: { F: 6, S: 6, A: 6, P: 6 },
+    generatorBoxes: 5,
+    blue: { F: 36, A: 36, P: 28, S: 28 },
+    green: { F: 5, S: 5, A: 5, P: 5 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
 
@@ -1190,16 +1200,16 @@ const TRAFALGAR: ShipForm = {
     { kind: 'CRGO', label: 'Cargo', boxes: 5 },
   ],
 
-  // Thirty-four boxes and five repair markers: where the tonnage actually
-  // went, since the size class does not carry it.
+  // Twenty-six boxes and five repair markers (thirty-four before the
+  // fits-in pass): still the deepest Union track, no longer an era of it.
   structure: [
-    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 6 },
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
     ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
@@ -1347,8 +1357,8 @@ const YORKTOWN_X: ShipForm = {
 
   // Fourteen points, from the V's ten: +0.75 a mark, five marks on.
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
   ],
@@ -1414,7 +1424,7 @@ const YORKTOWN_X: ShipForm = {
       id: 'lnc-2000-phaser',
       name: 'LNC-2000 PHASER',
       weaponClass: 'phaser',
-      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      mounts: [...ALL_ROUND, ALL_ARCS],
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1', 'PD MODE'],
@@ -1458,7 +1468,7 @@ const YORKTOWN_X: ShipForm = {
    */
   shields: {
     generatorBoxes: 5,
-    blue: { F: 40, A: 38, P: 38, S: 38 },
+    blue: { F: 36, A: 28, P: 28, S: 28 },
     green: { F: 5, S: 5, A: 5, P: 5 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -1598,11 +1608,11 @@ const UNION_X: ShipForm = {
   // Twenty-two points, from the III's twelve, in the III's own arrangement:
   // three equal main groups, a sublight plant and an auxiliary.
   reactors: [
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: Array.from({ length: 6 }, () => ({ boxes: 3 })) },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 4 }, () => ({ boxes: 3 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 4 }, () => ({ boxes: 3 })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: Array.from({ length: 4 }, () => ({ boxes: 3 })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }, { boxes: 2 }] },
-    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
   // Two. Every printed mark carries two, so this one does.
   batteries: 2,
@@ -1651,7 +1661,7 @@ const UNION_X: ShipForm = {
       id: 'mk-13-a-mat-torpedo',
       name: 'MK-13 A/MAT TORPEDO',
       weaponClass: 'a-mat-torpedo',
-      mounts: forward(6),
+      mounts: forward(4),
       armingCircles: 2,
       hitBoxes: 1,
       traits: ['NoBAT', 'FTL'],
@@ -1668,7 +1678,7 @@ const UNION_X: ShipForm = {
       id: 'lnc-3000-phaser',
       name: 'LNC-3000 PHASER',
       weaponClass: 'phaser',
-      mounts: [...ALL_ROUND, ALL_ARCS],
+      mounts: [...ALL_ROUND],
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1', 'PD MODE'],
@@ -1709,7 +1719,7 @@ const UNION_X: ShipForm = {
    */
   shields: {
     generatorBoxes: 4,
-    blue: { F: 51, A: 47, P: 47, S: 47 },
+    blue: { F: 36, A: 36, P: 28, S: 28 },
     green: { F: 4, S: 4, A: 4, P: 4 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -1728,11 +1738,11 @@ const UNION_X: ShipForm = {
 
   // Thirty-two boxes, from the III's twenty-two.
   structure: [
-    ...Array.from({ length: 9 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 4 },
     ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
@@ -1867,9 +1877,9 @@ const IMPERATOR: ShipForm = {
     // exactly 4 (odd and even points alike). The alternating 5/4 this ship
     // briefly carried was an inference from floor(size/2) that the real
     // table contradicts — size 9 is not "between rungs", it has its own.
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4].map((boxes) => ({ boxes })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }] },
   ],
@@ -1944,7 +1954,6 @@ const IMPERATOR: ShipForm = {
         ['PA', 'PF', 'FP'],
         ['FS', 'SF', 'SA'],
         ['AP', 'PA', 'PF'],
-        ['SF', 'SA', 'AS'],
       ],
       armingCircles: 6,
       hitBoxes: 1,
@@ -1963,7 +1972,7 @@ const IMPERATOR: ShipForm = {
       id: 'adm-20-heavy-disruptor',
       name: 'ADM-20 HEAVY DISRUPTOR',
       weaponClass: 'disruptor',
-      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS],
+      mounts: [...ALL_ROUND],
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 1', 'PD MODE', 'ATMO'],
@@ -2000,7 +2009,7 @@ const IMPERATOR: ShipForm = {
    */
   shields: {
     generatorBoxes: 5,
-    blue: { F: 34, A: 28, P: 30, S: 30 },
+    blue: { F: 34, A: 28, P: 28, S: 28 },
     green: { F: 4, S: 4, A: 4, P: 4 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -2020,11 +2029,11 @@ const IMPERATOR: ShipForm = {
   ],
 
   structure: [
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
     ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
     ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },
@@ -2139,12 +2148,12 @@ const YORKTOWN_XXX: ShipForm = {
   reactors: [
     // Two boxes per point — a size-5 hull, however absurd the rest of it,
     // carries size-5 reactors (the designer's V41 builder table).
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 8 }, () => ({ boxes: 2 })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 8 }, () => ({ boxes: 2 })) },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: Array.from({ length: 4 }, () => ({ boxes: 2 })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: Array.from({ length: 4 }, () => ({ boxes: 2 })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }, { boxes: 3 }] },
-    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }, { boxes: 3 }, { boxes: 3 }, { boxes: 3 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }, { boxes: 3 }] },
   ],
-  batteries: 5,
+  batteries: 3,
   ftlDriveBoxes: 4,
 
   functions: [
@@ -2191,7 +2200,7 @@ const YORKTOWN_XXX: ShipForm = {
       id: 'mk-30-a-mat-torpedo',
       name: 'MK-30 A/MAT TORPEDO',
       weaponClass: 'a-mat-torpedo',
-      mounts: forward(4),
+      mounts: forward(3),
       armingCircles: 2,
       hitBoxes: 1,
       traits: ['NoBAT', 'FTL'],
@@ -2209,7 +2218,7 @@ const YORKTOWN_XXX: ShipForm = {
       id: 'lnc-9000-phaser',
       name: 'LNC-9000 PHASER',
       weaponClass: 'phaser',
-      mounts: [...ALL_ROUND, ALL_ARCS, ALL_ARCS, ALL_ARCS, ALL_ARCS],
+      mounts: [...ALL_ROUND],
       armingCircles: 2,
       hitBoxes: 2,
       traits: ['PREC 2', 'PD MODE'],
@@ -2239,7 +2248,7 @@ const YORKTOWN_XXX: ShipForm = {
 
   shields: {
     generatorBoxes: 8,
-    blue: { F: 60, A: 54, P: 54, S: 54 },
+    blue: { F: 36, A: 36, P: 28, S: 28 },
     green: { F: 8, S: 8, A: 8, P: 8 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -2311,11 +2320,11 @@ interface Design {
  * and two famous holes, and all five have honest homes in these rules:
  *
  *  - **The gun line.** Everything that matters fires forward or abeam of the
- *    dorsal superstructure: eight heavy turbolasers in two broadside banks
+ *    dorsal superstructure: six heavy turbolasers in two broadside banks
  *    covering everything except the stern, and four ion cannons ahead. The
  *    stern itself is naked — no mount on this ship bears aft, which is how
  *    the films say it too.
- *  - **The reactor globe.** Fifteen power points at size 9 (the V41 ladder
+ *  - **The reactor globe.** Thirteen power points at size 9 (the V41 ladder
  *    puts four boxes on every main point) — a plant that can light the whole
  *    gun line or the whole shield grid, but not both, which is the same
  *    decision the TRAFALGAR forces and the same reason it prices high.
@@ -2328,28 +2337,23 @@ interface Design {
  *    wave gets exactly one answer here: tractor beams catching missiles
  *    (J3.2.6), and after that the hull takes it.
  *  - **Hole two: the bridge domes.** Five generator boxes carrying a
- *    forward-heavy over-cap screen (44/38/38/30 — waived G1.1.3 ceiling,
- *    same argument as the TRAFALGAR's) — and when the generators go, they
- *    go the way Admiral Piett found out.
+ *    forward-heavy screen at the printed ceiling (36/28/28/24) — and when
+ *    the generators go, they go the way Admiral Piett found out.
  *
- * **What it is worth, measured.** 443.6 points, and three forty-game
- * measurements at captain rank (hulls fixed, twenty seeds twice each) say
- * the price is honest and the character is real:
+ * **What it is worth, measured.** 278.3 points after the fits-in pass
+ * (443.6 before it), and the pass reshuffled the fan meta: with the
+ * TRAFALGAR down to six tubes and the IMPERATOR's gun wall trimmed, the
+ * wedge now takes BOTH rival supers 29W-1L of 30 at captain rank — the
+ * apex predator of the fan hangar, at a price a scenario can actually
+ * field. Against a single printed cruiser it is still 20W-0L; against a
+ * points-matched printed wall it still dies every time, because numbers
+ * beat tonnage in every measurement this file has ever taken. Bring
+ * escorts, Admiral.
  *
- *     vs IMPERATOR (384.3)            28W-12L  — the wedge out-guns the
- *                                       cloaked super at a 15% premium
- *     vs TRAFALGAR (424.9)             6W-32L  — ten torpedo tubes and a
- *                                       34-box hull out-alpha the gun line
- *                                       at near-equal points
- *     vs a 299-point printed wall      0W-40L  — UNION III + EXETER II +
- *                                       XERXES III; numbers beat tonnage,
- *                                       as they have in every measurement
- *                                       this file has ever taken
- *
- * The first draft carried no gun past 24 inches and went 7W-33L against the
- * IMPERATOR — it lost the approach phase of every duel. The dorsal heavy
- * battery below is what fixed it, which is pleasingly the same reason the
- * film ship carries its heavies on the spine.
+ * The first draft carried no gun past 24 inches and lost the approach
+ * phase of every duel until the dorsal heavy battery below fixed it —
+ * pleasingly the same reason the film ship carries its heavies on the
+ * spine.
  */
 const STAR_DESTROYER: ShipForm = {
   id: 'fan-sw-imperial-star-destroyer',
@@ -2361,13 +2365,13 @@ const STAR_DESTROYER: ShipForm = {
 
   reactors: [
     // Four boxes per main point: the designer's ladder at size 9, enforced.
-    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
-    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
-    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [4, 4, 4, 4].map((boxes) => ({ boxes })) },
+    { id: 'c-main', label: 'C MAIN', hitKind: 'center-main', points: [4, 4, 4].map((boxes) => ({ boxes })) },
     { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 3 }] },
     { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 3 }] },
   ],
-  batteries: 4,
+  batteries: 3,
   ftlDriveBoxes: 4,
 
   functions: [
@@ -2416,8 +2420,8 @@ const STAR_DESTROYER: ShipForm = {
       name: 'XX-9 HEAVY TURBOLASER',
       weaponClass: 'phaser',
       mounts: [
-        ...Array.from({ length: 4 }, () => ['FP', 'PF', 'PA'] as Arc[]),
-        ...Array.from({ length: 4 }, () => ['FS', 'SF', 'SA'] as Arc[]),
+        ...Array.from({ length: 3 }, () => ['FP', 'PF', 'PA'] as Arc[]),
+        ...Array.from({ length: 3 }, () => ['FS', 'SF', 'SA'] as Arc[]),
       ],
       armingCircles: 2,
       hitBoxes: 2,
@@ -2449,7 +2453,7 @@ const STAR_DESTROYER: ShipForm = {
         { min: 7, max: 12, band: 'green', dice: ['yellow', 'yellow'] },
         { min: 13, max: 17, band: 'black', dice: ['yellow', 'green'] },
         { min: 18, max: 24, band: 'black', dice: ['green', 'green'] },
-        { min: 25, max: 30, band: 'red', dice: ['green', 'blue'] },
+        { min: 25, max: 30, band: 'red', dice: ['green'] },
       ],
     }),
     // Ion cannon: a particle weapon ahead, for stripping a target the
@@ -2460,7 +2464,6 @@ const STAR_DESTROYER: ShipForm = {
       weaponClass: 'disruptor',
       mounts: [
         ['FS', 'SF'] as Arc[],
-        ['FS', 'FP'] as Arc[],
         ['FS', 'FP'] as Arc[],
         ['FP', 'PF'] as Arc[],
       ],
@@ -2479,7 +2482,7 @@ const STAR_DESTROYER: ShipForm = {
   // the naked number aft is the second hole, on purpose.
   shields: {
     generatorBoxes: 5,
-    blue: { F: 44, S: 38, P: 38, A: 30 },
+    blue: { F: 36, S: 28, P: 28, A: 24 },
     green: { F: 5, S: 4, P: 4, A: 3 },
   },
   armor: { F: 0, S: 0, A: 0, P: 0 },
@@ -2499,13 +2502,13 @@ const STAR_DESTROYER: ShipForm = {
   ],
 
   structure: [
-    ...Array.from({ length: 8 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 5 },
     ...Array.from({ length: 7 }, () => ({ kind: 'box' as const, color: 'black' as const })),
     { kind: 'dc' as const, rating: 4 },
-    ...Array.from({ length: 6 }, () => ({ kind: 'box' as const, color: 'red' as const })),
-    { kind: 'dc' as const, rating: 4 },
     ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 3 },
     ...Array.from({ length: 3 }, () => ({ kind: 'box' as const, color: 'red' as const })),
     { kind: 'dc' as const, rating: 2 },

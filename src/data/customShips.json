@@ -2121,10 +2121,10 @@
       }
     },
     "armor": {
-      "F": 24,
-      "S": 20,
-      "A": 14,
-      "P": 20
+      "F": 20,
+      "S": 16,
+      "A": 10,
+      "P": 16
     },
     "systems": [
       {
@@ -2189,20 +2189,8 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
-      },
-      {
-        "kind": "box",
-        "color": "black"
       },
       {
         "kind": "box",
@@ -2311,7 +2299,7 @@
     },
     "marineSquads": 12,
     "shuttles": 6,
-    "pointValue": 241.4,
+    "pointValue": 233.8,
     "year": 2245,
     "availability": "rare"
   },
@@ -2371,12 +2359,6 @@
           },
           {
             "boxes": 5
-          },
-          {
-            "boxes": 5
-          },
-          {
-            "boxes": 5
           }
         ]
       },
@@ -2397,14 +2379,11 @@
         "points": [
           {
             "boxes": 2
-          },
-          {
-            "boxes": 2
           }
         ]
       }
     ],
-    "batteries": 3,
+    "batteries": 2,
     "ftlDriveBoxes": 4,
     "functions": [
       {
@@ -2790,54 +2769,6 @@
             "roundGates": [
               true
             ]
-          },
-          {
-            "id": "mk-8-a-mat-torpedo-m7",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
-          },
-          {
-            "id": "mk-8-a-mat-torpedo-m8",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
-          },
-          {
-            "id": "mk-8-a-mat-torpedo-m9",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
-          },
-          {
-            "id": "mk-8-a-mat-torpedo-m10",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
           }
         ],
         "brackets": [
@@ -2925,36 +2856,6 @@
               "SF",
               "SA",
               "AS"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-1600-phaser-m5",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-1600-phaser-m6",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
             ],
             "armingCircles": 2,
             "hitBoxes": 2
@@ -3107,18 +3008,18 @@
       }
     ],
     "shields": {
-      "generatorBoxes": 6,
+      "generatorBoxes": 5,
       "blue": {
-        "F": 48,
-        "A": 42,
-        "P": 42,
-        "S": 42
+        "F": 36,
+        "A": 36,
+        "P": 28,
+        "S": 28
       },
       "green": {
-        "F": 6,
-        "S": 6,
-        "A": 6,
-        "P": 6
+        "F": 5,
+        "S": 5,
+        "A": 5,
+        "P": 5
       }
     },
     "armor": {
@@ -3204,24 +3105,8 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 6
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
       },
       {
         "kind": "box",
@@ -3272,24 +3157,8 @@
         "color": "red"
       },
       {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
         "kind": "dc",
         "rating": 4
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -3361,7 +3230,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 424.9,
+    "pointValue": 225.1,
     "year": 3680,
     "availability": "rare"
   },
@@ -3389,9 +3258,6 @@
           },
           {
             "boxes": 2
-          },
-          {
-            "boxes": 2
           }
         ]
       },
@@ -3400,9 +3266,6 @@
         "label": "R MAIN",
         "hitKind": "right-main",
         "points": [
-          {
-            "boxes": 2
-          },
           {
             "boxes": 2
           },
@@ -3903,21 +3766,6 @@
             ],
             "armingCircles": 2,
             "hitBoxes": 2
-          },
-          {
-            "id": "lnc-2000-phaser-m6",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
           }
         ],
         "brackets": [
@@ -4047,10 +3895,10 @@
     "shields": {
       "generatorBoxes": 5,
       "blue": {
-        "F": 40,
-        "A": 38,
-        "P": 38,
-        "S": 38
+        "F": 36,
+        "A": 28,
+        "P": 28,
+        "S": 28
       },
       "green": {
         "F": 5,
@@ -4226,7 +4074,7 @@
     },
     "marineSquads": 14,
     "shuttles": 6,
-    "pointValue": 206.6,
+    "pointValue": 152.5,
     "year": 3695,
     "availability": "rare"
   },
@@ -4243,12 +4091,6 @@
         "label": "L MAIN",
         "hitKind": "left-main",
         "points": [
-          {
-            "boxes": 3
-          },
-          {
-            "boxes": 3
-          },
           {
             "boxes": 3
           },
@@ -4279,12 +4121,6 @@
           },
           {
             "boxes": 3
-          },
-          {
-            "boxes": 3
-          },
-          {
-            "boxes": 3
           }
         ]
       },
@@ -4293,12 +4129,6 @@
         "label": "C MAIN",
         "hitKind": "center-main",
         "points": [
-          {
-            "boxes": 3
-          },
-          {
-            "boxes": 3
-          },
           {
             "boxes": 3
           },
@@ -4331,9 +4161,6 @@
         "label": "AUX PWR",
         "hitKind": "aux",
         "points": [
-          {
-            "boxes": 2
-          },
           {
             "boxes": 2
           }
@@ -4702,30 +4529,6 @@
             "roundGates": [
               true
             ]
-          },
-          {
-            "id": "mk-13-a-mat-torpedo-m5",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
-          },
-          {
-            "id": "mk-13-a-mat-torpedo-m6",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
           }
         ],
         "brackets": [
@@ -4813,21 +4616,6 @@
               "SF",
               "SA",
               "AS"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-3000-phaser-m5",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
             ],
             "armingCircles": 2,
             "hitBoxes": 2
@@ -4964,10 +4752,10 @@
     "shields": {
       "generatorBoxes": 4,
       "blue": {
-        "F": 51,
-        "A": 47,
-        "P": 47,
-        "S": 47
+        "F": 36,
+        "A": 36,
+        "P": 28,
+        "S": 28
       },
       "green": {
         "F": 4,
@@ -5054,14 +4842,6 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
       },
@@ -5090,24 +4870,8 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -5198,7 +4962,7 @@
     },
     "marineSquads": 18,
     "shuttles": 6,
-    "pointValue": 523,
+    "pointValue": 314.2,
     "year": 3705,
     "availability": "rare"
   },
@@ -5215,9 +4979,6 @@
         "label": "L MAIN",
         "hitKind": "left-main",
         "points": [
-          {
-            "boxes": 4
-          },
           {
             "boxes": 4
           },
@@ -5248,9 +5009,6 @@
           },
           {
             "boxes": 4
-          },
-          {
-            "boxes": 4
           }
         ]
       },
@@ -5259,12 +5017,6 @@
         "label": "C MAIN",
         "hitKind": "center-main",
         "points": [
-          {
-            "boxes": 4
-          },
-          {
-            "boxes": 4
-          },
           {
             "boxes": 4
           },
@@ -5818,23 +5570,6 @@
               true,
               false
             ]
-          },
-          {
-            "id": "rp-e-med-plasma-m4",
-            "arcs": [
-              "SF",
-              "SA",
-              "AS"
-            ],
-            "armingCircles": 6,
-            "hitBoxes": 1,
-            "roundGates": [
-              false,
-              true,
-              false,
-              true,
-              false
-            ]
           }
         ],
         "brackets": [
@@ -5940,36 +5675,6 @@
               "SF",
               "SA",
               "AS"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "adm-20-heavy-disruptor-m5",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "adm-20-heavy-disruptor-m6",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
             ],
             "armingCircles": 2,
             "hitBoxes": 2
@@ -6114,8 +5819,8 @@
       "blue": {
         "F": 34,
         "A": 28,
-        "P": 30,
-        "S": 30
+        "P": 28,
+        "S": 28
       },
       "green": {
         "F": 4,
@@ -6203,14 +5908,6 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 4
       },
@@ -6245,14 +5942,6 @@
       {
         "kind": "dc",
         "rating": 4
-      },
-      {
-        "kind": "box",
-        "color": "red"
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -6336,7 +6025,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 384.3,
+    "pointValue": 273.9,
     "year": 3690,
     "availability": "rare"
   },
@@ -6364,18 +6053,6 @@
           },
           {
             "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
           }
         ]
       },
@@ -6384,18 +6061,6 @@
         "label": "R MAIN",
         "hitKind": "right-main",
         "points": [
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
-          {
-            "boxes": 2
-          },
           {
             "boxes": 2
           },
@@ -6433,17 +6098,11 @@
           },
           {
             "boxes": 3
-          },
-          {
-            "boxes": 3
-          },
-          {
-            "boxes": 3
           }
         ]
       }
     ],
-    "batteries": 5,
+    "batteries": 3,
     "ftlDriveBoxes": 4,
     "functions": [
       {
@@ -6805,18 +6464,6 @@
             "roundGates": [
               true
             ]
-          },
-          {
-            "id": "mk-30-a-mat-torpedo-m4",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 1,
-            "roundGates": [
-              true
-            ]
           }
         ],
         "brackets": [
@@ -6906,66 +6553,6 @@
               "SF",
               "SA",
               "AS"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-9000-phaser-m5",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-9000-phaser-m6",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-9000-phaser-m7",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "lnc-9000-phaser-m8",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA",
-              "AS",
-              "AP",
-              "PA",
-              "PF",
-              "FP"
             ],
             "armingCircles": 2,
             "hitBoxes": 2
@@ -7112,10 +6699,10 @@
     "shields": {
       "generatorBoxes": 8,
       "blue": {
-        "F": 60,
-        "A": 54,
-        "P": 54,
-        "S": 54
+        "F": 36,
+        "A": 36,
+        "P": 28,
+        "S": 28
       },
       "green": {
         "F": 8,
@@ -7332,7 +6919,7 @@
     },
     "marineSquads": 16,
     "shuttles": 6,
-    "pointValue": 3013.7,
+    "pointValue": 1263.4,
     "year": 4210,
     "availability": "rare"
   },
@@ -7349,9 +6936,6 @@
         "label": "L MAIN",
         "hitKind": "left-main",
         "points": [
-          {
-            "boxes": 4
-          },
           {
             "boxes": 4
           },
@@ -7382,9 +6966,6 @@
           },
           {
             "boxes": 4
-          },
-          {
-            "boxes": 4
           }
         ]
       },
@@ -7393,12 +6974,6 @@
         "label": "C MAIN",
         "hitKind": "center-main",
         "points": [
-          {
-            "boxes": 4
-          },
-          {
-            "boxes": 4
-          },
           {
             "boxes": 4
           },
@@ -7431,7 +7006,7 @@
         ]
       }
     ],
-    "batteries": 4,
+    "batteries": 3,
     "ftlDriveBoxes": 4,
     "functions": [
       {
@@ -7775,9 +7350,9 @@
           {
             "id": "xx9-heavy-turbolaser-m4",
             "arcs": [
-              "FP",
-              "PF",
-              "PA"
+              "FS",
+              "SF",
+              "SA"
             ],
             "armingCircles": 2,
             "hitBoxes": 2
@@ -7794,26 +7369,6 @@
           },
           {
             "id": "xx9-heavy-turbolaser-m6",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "xx9-heavy-turbolaser-m7",
-            "arcs": [
-              "FS",
-              "SF",
-              "SA"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "xx9-heavy-turbolaser-m8",
             "arcs": [
               "FS",
               "SF",
@@ -7943,8 +7498,7 @@
             "max": 30,
             "band": "red",
             "dice": [
-              "green",
-              "blue"
+              "green"
             ]
           }
         ],
@@ -7977,15 +7531,6 @@
           },
           {
             "id": "nk7-ion-cannon-m3",
-            "arcs": [
-              "FS",
-              "FP"
-            ],
-            "armingCircles": 2,
-            "hitBoxes": 2
-          },
-          {
-            "id": "nk7-ion-cannon-m4",
             "arcs": [
               "FP",
               "PF"
@@ -8032,10 +7577,10 @@
     "shields": {
       "generatorBoxes": 5,
       "blue": {
-        "F": 44,
-        "S": 38,
-        "P": 38,
-        "A": 30
+        "F": 36,
+        "S": 28,
+        "P": 28,
+        "A": 24
       },
       "green": {
         "F": 5,
@@ -8132,10 +7677,6 @@
         "color": "black"
       },
       {
-        "kind": "box",
-        "color": "black"
-      },
-      {
         "kind": "dc",
         "rating": 5
       },
@@ -8192,16 +7733,8 @@
         "color": "red"
       },
       {
-        "kind": "box",
-        "color": "red"
-      },
-      {
         "kind": "dc",
         "rating": 4
-      },
-      {
-        "kind": "box",
-        "color": "red"
       },
       {
         "kind": "box",
@@ -8265,7 +7798,7 @@
     },
     "marineSquads": 20,
     "shuttles": 8,
-    "pointValue": 443.6,
+    "pointValue": 278.3,
     "year": 3600,
     "availability": "rare",
     "art": "https://i.redd.it/r2qmrmipsxf61.png"
