@@ -370,6 +370,74 @@ const AURELIAN_NAMES = [
   'A.I.S. Penumbra',
 ]
 
+/**
+ * Names follow the flag, not the side. A battle report arrived headlined
+ * "U.S.S. Yorktown — OMEGA-class Destroyer": an Earth Alliance hull flying a
+ * Starfleet prefix, and colliding with a printed Union class name besides,
+ * because names were dealt from per-side pools. Cross-universe fleets are a
+ * real thing players field now, so a ship whose faction has a pool of its
+ * own draws from that pool; anything unrecognised keeps the side's pool.
+ * For the printed scenarios every faction matches its side's pool already,
+ * so nothing the canon game names changes.
+ */
+const FACTION_NAMES: Array<{ match: RegExp; names: string[] }> = [
+  { match: /union/i, names: BLUE_NAMES },
+  { match: /vallari/i, names: RED_NAMES },
+  { match: /aurelian/i, names: AURELIAN_NAMES },
+  {
+    match: /earth alliance/i,
+    names: [
+      'E.A.S. Agamemnon',
+      'E.A.S. Achilles',
+      'E.A.S. Apollo',
+      'E.A.S. Nike',
+      'E.A.S. Juno',
+      'E.A.S. Pollux',
+      'E.A.S. Vesta',
+      'E.A.S. Heracles',
+    ],
+  },
+  {
+    match: /minbari/i,
+    names: ['Ingata', 'Trigati', 'Valen’Tha', 'Enfili', 'Solaris', 'Drala Fi', 'Shantar', 'Anla’Shok'],
+  },
+  {
+    match: /galactic empire/i,
+    names: [
+      'Devastator',
+      'Avenger',
+      'Relentless',
+      'Chimaera',
+      'Judicator',
+      'Accuser',
+      'Tyrant',
+      'Vigilance',
+    ],
+  },
+]
+
+/**
+ * The pool a ship draws its name from: its faction's own, else the side's.
+ * `taken` keeps names unique across the whole battle — two sides can now
+ * legitimately field the same faction.
+ */
+function shipName(faction: string, sidePool: string[], taken: Set<string>): string {
+  const pool = FACTION_NAMES.find((f) => f.match.test(faction))?.names ?? sidePool
+  for (const name of pool) {
+    if (!taken.has(name)) {
+      taken.add(name)
+      return name
+    }
+  }
+  for (let n = 2; ; n++) {
+    const name = `${pool[0]} ${n}`
+    if (!taken.has(name)) {
+      taken.add(name)
+      return name
+    }
+  }
+}
+
 function pickForm(id: string | undefined, fallback: ShipForm): ShipForm {
   return (id ? shipFormById(id) : undefined) ?? fallback
 }
@@ -479,6 +547,7 @@ function applyAlert(ship: ShipState, alert: 'green' | 'yellow' | 'red'): void {
 
 function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): ShipState[] {
   const ships: ShipState[] = []
+  const taken = new Set<string>()
   const clamp = (v: number, max: number) =>
     Math.min(max - EDGE_MARGIN, Math.max(EDGE_MARGIN, v))
   // Secret placement is seeded from the battle, never from the clock, so the
@@ -527,7 +596,7 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
       const ship = createShip({
         id: `${prefix}-${i + 1}`,
         side: setup.side,
-        name: setup.names[i] ?? `${setup.names[0]} ${i + 1}`,
+        name: shipName(form.faction ?? '', setup.names, taken),
         form,
         placement: {
           position: {
