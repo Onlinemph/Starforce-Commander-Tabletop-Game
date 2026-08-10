@@ -15,6 +15,7 @@ import {
   POWER_MULTIPLIER,
   REFERENCE_POWER,
 } from './shipBuilder'
+import { designFingerprint } from './shipLibrary'
 import type { Arc, ShipForm, WeaponSystemDef } from './types'
 
 /**
@@ -435,5 +436,41 @@ describe('special systems', () => {
     scout.scoutSensor = blankScoutSensor()
     syncSpecialLines(scout)
     expect(pointValue(scout).points).toBeGreaterThan(pointValue(plain).points)
+  })
+})
+
+describe('custom counter art (ShipForm.art)', () => {
+  const TINY_PNG =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+  it('accepts an embedded image or an https link, and nothing else', () => {
+    const form = sheetExample()
+    const errs = (art: string | undefined) => {
+      const f = { ...form, art }
+      return validateDesign(f).filter(
+        (p) => p.severity === 'error' && p.message.includes('art'),
+      )
+    }
+    expect(errs(undefined)).toHaveLength(0)
+    expect(errs(TINY_PNG)).toHaveLength(0)
+    expect(errs('https://example.com/ship.png')).toHaveLength(0)
+    // Anything that is not an image source is refused — art travels inside
+    // library entries and battle files, so the string is not trusted.
+    expect(errs('javascript:alert(1)').length).toBeGreaterThan(0)
+    expect(errs('http://example.com/ship.png').length).toBeGreaterThan(0)
+    expect(errs('data:text/html;base64,AAAA').length).toBeGreaterThan(0)
+  })
+
+  it('caps embedded art so a design still fits the library', () => {
+    const form = { ...sheetExample(), art: 'data:image/png;base64,' + 'A'.repeat(50_000) }
+    expect(
+      validateDesign(form).some((p) => p.severity === 'error' && p.message.includes('art')),
+    ).toBe(true)
+  })
+
+  it('is part of a design’s identity: new art is a new library entry', () => {
+    const plain = sheetExample()
+    const dressed = { ...plain, art: TINY_PNG }
+    expect(designFingerprint(dressed)).not.toBe(designFingerprint(plain))
   })
 })

@@ -648,6 +648,20 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
       }
     }
   }
+  /*
+   * Custom counter art is cosmetic, but it travels inside the form — into
+   * saves, library entries and remote matches — so it has to be something an
+   * <image> can safely draw and something the library's size cap can carry.
+   * The embedded cap leaves room for the rest of a big design under
+   * MAX_DESIGN_BYTES.
+   */
+  if (form.art !== undefined) {
+    if (!/^data:image\/(png|jpeg|webp);base64,/.test(form.art) && !/^https:\/\//.test(form.art)) {
+      error('Counter art must be an embedded PNG/JPEG/WebP or an https:// link.')
+    } else if (form.art.length > 48_000) {
+      error('Embedded counter art is too large — the builder scales uploads down for a reason.')
+    }
+  }
   if (form.weapons.length === 0) warn('The ship has no weapons.')
   if (form.structure.filter((e) => e.kind === 'box').length === 0) {
     error('A ship needs at least one structure box (B1.8).')

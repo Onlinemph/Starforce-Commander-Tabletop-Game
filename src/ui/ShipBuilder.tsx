@@ -466,7 +466,99 @@ function Identity({ draft, edit }: { draft: ShipForm; edit: Edit }) {
           onChange={(e) => edit((f) => void (f.notes = e.target.value))}
         />
       </label>
+      <CounterArt draft={draft} edit={edit} />
     </Section>
+  )
+}
+
+/**
+ * Custom counter art. Two roads in, both cosmetic: upload an image (scaled
+ * down and embedded in the form, so it travels inside saves, library entries
+ * and remote matches with no link to rot) or paste an https:// URL (small,
+ * but whoever views the battle fetches it — offline and dead links fall back
+ * to the class silhouette). Player-requested, both halves.
+ */
+function CounterArt({ draft, edit }: { draft: ShipForm; edit: Edit }) {
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const upload = async (file: File) => {
+    setProblem(null)
+    const url = URL.createObjectURL(file)
+    try {
+      const img = new Image()
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('That file is not an image this browser can read.'))
+        img.src = url
+      })
+      /*
+       * Scale down until the data URL fits the form comfortably (the library
+       * caps a whole design at 64K; validateDesign holds art to 48K). PNG
+       * keeps transparency, which counter art usually wants; step down in
+       * size rather than to JPEG so a transparent background never turns
+       * into a white box.
+       */
+      let embedded: string | null = null
+      for (const limit of [128, 96, 64, 48]) {
+        const scale = Math.min(1, limit / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(img.width * scale))
+        canvas.height = Math.max(1, Math.round(img.height * scale))
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const data = canvas.toDataURL('image/png')
+        if (data.length <= 45_000) {
+          embedded = data
+          break
+        }
+      }
+      if (!embedded) {
+        setProblem('That image does not compress small enough to embed — try a simpler one.')
+        return
+      }
+      edit((f) => void (f.art = embedded))
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : String(e))
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  return (
+    <div className="builder-row counter-art">
+      <label className="chip file-chip" title="Embed an image in the design — it travels inside saves and library entries. Scaled down to fit; transparency is kept. Draw it nose-up.">
+        Upload counter art
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void upload(file)
+            e.target.value = ''
+          }}
+        />
+      </label>
+      <label className="field grow" title="Or link an image by URL. Smaller than embedding, but whoever views the battle fetches it — offline play and dead links fall back to the class silhouette.">
+        <span>…or image URL</span>
+        <input
+          placeholder="https://…/my-ship.png"
+          value={draft.art?.startsWith('https://') ? draft.art : ''}
+          onChange={(e) =>
+            edit((f) => void (f.art = e.target.value.trim() || undefined))
+          }
+        />
+      </label>
+      {draft.art && (
+        <>
+          <span className="art-preview">
+            <img src={draft.art} alt="Counter art preview" />
+          </span>
+          <button type="button" className="chip" onClick={() => edit((f) => void (f.art = undefined))}>
+            Use class silhouette
+          </button>
+        </>
+      )}
+      {problem && <p className="fire-error">{problem}</p>}
+    </div>
   )
 }
 

@@ -338,6 +338,16 @@ export interface ShipForm {
    */
   provisional?: boolean
   notes?: string
+
+  /**
+   * Custom counter art, purely cosmetic: what the map draws instead of the
+   * class silhouette. Either a `data:image/...` URL (embedded, travels inside
+   * saves and library entries like the rest of the form) or an `https:` URL
+   * (fetched by whoever views it — smaller, but breaks offline and when the
+   * link rots; the map falls back to the class silhouette if it fails to
+   * load). Drawn nose-up, fitted to the counter.
+   */
+  art?: string
 }
 
 // ---------------------------------------------------------------------------

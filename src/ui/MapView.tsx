@@ -975,7 +975,12 @@ function polar(cx: number, cy: number, r: number, headingDeg: number) {
  * back to tonnage.
  */
 type Silhouette = 'union' | 'vallari' | 'aurelian' | 'generic'
-type HullRole = 'scout' | 'escort' | 'cruiser' | 'battlecruiser' | 'dreadnought'
+/**
+ * Six buckets, matching the printed counter sheet's own distinctions: it
+ * gives destroyers (DD) and frigates (FF) different counters, so the map
+ * does too.
+ */
+type HullRole = 'scout' | 'frigate' | 'destroyer' | 'cruiser' | 'battlecruiser' | 'dreadnought'
 
 function silhouetteFor(faction: string): Silhouette {
   if (/union/i.test(faction)) return 'union'
@@ -988,12 +993,13 @@ function silhouetteFor(faction: string): Silhouette {
 export function hullRoleFor(form: { name: string; sizeClass: number }): HullRole {
   const suffix = /-class\s+(.*)$/i.exec(form.name)?.[1]?.toLowerCase() ?? ''
   if (/scout|survey/.test(suffix)) return 'scout'
-  if (/frigate|destroyer|monitor|corvette/.test(suffix)) return 'escort'
+  if (/frigate|corvette/.test(suffix)) return 'frigate'
+  if (/destroyer|monitor/.test(suffix)) return 'destroyer'
   if (/battlecruiser/.test(suffix)) return 'battlecruiser'
   if (/dreadnought|battleship/.test(suffix)) return 'dreadnought'
   if (/cruiser/.test(suffix)) return 'cruiser'
-  if (form.sizeClass <= 2) return 'scout'
-  if (form.sizeClass === 3) return 'escort'
+  if (form.sizeClass <= 2) return 'frigate'
+  if (form.sizeClass === 3) return 'destroyer'
   if (form.sizeClass <= 5) return 'cruiser'
   if (form.sizeClass === 6) return 'battlecruiser'
   return 'dreadnought'
@@ -1013,7 +1019,7 @@ function OfficialGlyph({ faction, role }: { faction: OfficialFaction; role: Hull
 
 /** Builder hulls without a known faction: a wedge whose beam says the role. */
 function GenericGlyph({ role }: { role: HullRole }) {
-  const beam = { scout: 12, escort: 17, cruiser: 24, battlecruiser: 30, dreadnought: 36 }[role]
+  const beam = { scout: 12, frigate: 14, destroyer: 17, cruiser: 24, battlecruiser: 30, dreadnought: 36 }[role]
   const notch = beam / 2
   return (
     <>
@@ -1024,6 +1030,33 @@ function GenericGlyph({ role }: { role: HullRole }) {
       {role === 'dreadnought' && <path className="glyph-trim" d="M 0 -30 L 4 8 L 0 16 L -4 8 Z" />}
       <circle className="glyph-glass" cx={0} cy={-14} r={role === 'scout' ? 3 : 4} />
     </>
+  )
+}
+
+/**
+ * Custom counter art from the ship builder (ShipForm.art): the player's own
+ * image where the class silhouette would be. Falls back to the silhouette
+ * when the image cannot load — a rotten https link, an offline session — so
+ * a counter never renders as nothing.
+ */
+function ArtGlyph({ art, kind, role }: { art: string; kind: Silhouette; role: HullRole }) {
+  const [broken, setBroken] = useState(false)
+  // The builder validates this shape before publishing, but a library entry
+  // or battle file is somebody else's data — the map re-checks rather than
+  // handing an arbitrary string to <image>.
+  const safe = /^data:image\/(png|jpeg|webp);base64,/.test(art) || /^https:\/\//.test(art)
+  if (broken || !safe) return <ShipGlyph kind={kind} role={role} />
+  return (
+    <image
+      className="glyph-art"
+      href={art}
+      x={-50}
+      y={-50}
+      width={100}
+      height={100}
+      preserveAspectRatio="xMidYMid meet"
+      onError={() => setBroken(true)}
+    />
   )
 }
 
@@ -1251,7 +1284,15 @@ function ShipToken({
         className="ship-glyph"
         transform={`scale(${(size / 100) * Math.min(0.72 + 0.05 * ship.form.sizeClass, 1.05)})`}
       >
-        <ShipGlyph kind={silhouetteFor(ship.form.faction)} role={hullRoleFor(ship.form)} />
+        {ship.form.art ? (
+          <ArtGlyph
+            art={ship.form.art}
+            kind={silhouetteFor(ship.form.faction)}
+            role={hullRoleFor(ship.form)}
+          />
+        ) : (
+          <ShipGlyph kind={silhouetteFor(ship.form.faction)} role={hullRoleFor(ship.form)} />
+        )}
       </g>
 
       {/*

@@ -30,19 +30,25 @@ from PIL import Image
 # the Aurelian roster (frigates and destroyers small, the cruiser wall broad,
 # the INVICTUS crown biggest). Images 12/13 and 15/16 are iteration pairs;
 # one of each pair is used.
+# The printed counter sheet is the authority on which shape is which: it
+# labels the Union counters CH/CL/DD/FF and the Vallari V7/V6/V5/V2, so
+# destroyers and frigates carry different shapes and the buckets follow.
 MAPPING = {
-    ('union', 'scout'): (0, 'image16.png'),  # Xerxes-piece: saucer + single nacelle
-    ('union', 'escort'): (0, 'image15.png'),  # Soryu frigate playing piece
-    ('union', 'cruiser'): (0, 'image14.png'),  # Yorktown playing piece
+    ('union', 'scout'): (0, 'image16.png'),  # DD shape doubles for scouts
+    ('union', 'frigate'): (0, 'image15.png'),  # FF: Soryu playing piece
+    ('union', 'destroyer'): (0, 'image16.png'),  # DD: saucer + single nacelle
+    ('union', 'cruiser'): (0, 'image14.png'),  # CH: Yorktown playing piece
     ('union', 'battlecruiser'): (0, 'image10.png'),  # slide-3 battlecruiser draft
     ('union', 'dreadnought'): (0, 'image9.png'),  # slide-3 dreadnought draft
     ('vallari', 'scout'): (0, 'image2.png'),  # V2 Flanker
-    ('vallari', 'escort'): (0, 'image29.png'),  # V5 Corsair
+    ('vallari', 'frigate'): (0, 'image2.png'),  # V2 shape doubles for frigates
+    ('vallari', 'destroyer'): (0, 'image29.png'),  # V5 Corsair
     ('vallari', 'cruiser'): (0, 'image13.png'),  # V6 Savage
     ('vallari', 'battlecruiser'): (0, 'image12.png'),  # V7 Raider
     ('vallari', 'dreadnought'): (0, 'image8.png'),  # slide-3 dreadnought draft
     ('aurelian', 'scout'): (1, 'image11.png'),  # slim spired dart
-    ('aurelian', 'escort'): (1, 'image15.png'),  # compact wide escort
+    ('aurelian', 'frigate'): (1, 'image16.png'),  # compact wide, lighter variant
+    ('aurelian', 'destroyer'): (1, 'image15.png'),  # compact wide escort
     ('aurelian', 'cruiser'): (1, 'image14.png'),  # broad multi-prong cruiser
     ('aurelian', 'battlecruiser'): (1, 'image12.png'),  # spired capital, lighter
     ('aurelian', 'dreadnought'): (1, 'image13.png'),  # spired capital, heaviest
@@ -189,7 +195,7 @@ def main() -> None:
         ' */',
         '',
         "export type OfficialFaction = 'union' | 'vallari' | 'aurelian'",
-        "export type OfficialRole = 'scout' | 'escort' | 'cruiser' | 'battlecruiser' | 'dreadnought'",
+        "export type OfficialRole = 'scout' | 'frigate' | 'destroyer' | 'cruiser' | 'battlecruiser' | 'dreadnought'",
         '',
         'export const OFFICIAL_SILHOUETTES: Record<OfficialFaction, Record<OfficialRole, string>> = {',
     ]
