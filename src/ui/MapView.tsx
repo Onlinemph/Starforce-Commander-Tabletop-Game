@@ -13,7 +13,6 @@ import {
   greenShieldRemaining,
   type ShipState,
 } from '../engine/shipState'
-import { estimatedShieldRemaining } from '../engine/ai'
 import { adjustedSpeed, isLinked } from '../engine/tractor'
 import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
@@ -1127,15 +1126,11 @@ function armorOnly(ship: ShipState, side: 'F' | 'S' | 'A' | 'P'): boolean {
 }
 
 function ShieldRing({
-  game,
   ship,
   radius,
-  redacted,
 }: {
-  game: GameState
   ship: ShipState
   radius: number
-  redacted: boolean
 }) {
   return (
     <g className="shield-ring" aria-hidden="true">
@@ -1147,11 +1142,12 @@ function ShieldRing({
         // Armour cannot be lowered and a cloak does not switch it off, so an
         // armour-only facing is never "down".
         const down = !armor && ship.shieldsDown[side]
+        // Shield state is public information on this table — house rule, by
+        // playtest request. Every counter shows its true strength, friend or
+        // enemy; the AI still targets by the honest running estimate.
         const remaining = armor
           ? armorRemaining(ship, side)
-          : redacted
-            ? estimatedShieldRemaining(game, ship, side)
-            : blueShieldRemaining(ship, side) + greenShieldRemaining(ship, side)
+          : blueShieldRemaining(ship, side) + greenShieldRemaining(ship, side)
         const fraction = printed > 0 ? Math.min(1, remaining / printed) : 0
         const d = arcPath(radius, from, to)
         return (
@@ -1220,13 +1216,12 @@ function ShipToken({
     // A hull with no screens on this facing shows what it actually has. Armour
     // is not switched off by a cloak and cannot be lowered, so neither of the
     // tests below applies to it.
-    if (armorOnly(ship, side)) return redacted ? '' : `${armorRemaining(ship, side)}`
+    if (armorOnly(ship, side)) return `${armorRemaining(ship, side)}`
     // A running cloak takes the shields with it (H6.4.1), so the counter must
     // not print a strength the ship no longer has.
     if (cloakRunning || ship.shieldsDown[side]) return '—'
-    // Strengths are printed on the hidden form (B1.9); an enemy counter shows
-    // only that the shield is up.
-    if (redacted) return ''
+    // Shield strength is public on this table (house rule, by playtest
+    // request): every counter prints its true blue+green, enemy included.
     const green = greenShieldRemaining(ship, side)
     const blue = blueShieldRemaining(ship, side)
     return green > 0 ? `${blue}+${green}` : `${blue}`
@@ -1273,7 +1268,7 @@ function ShipToken({
       */}
       <rect x={-size / 2} y={-size / 2} width={size} height={size} className="ship-hit" />
 
-      <ShieldRing game={game} ship={ship} radius={size * 0.62} redacted={redacted} />
+      <ShieldRing ship={ship} radius={size * 0.62} />
 
       {/*
         The hull, scaled so bigger size classes fill more of their counter —

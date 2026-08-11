@@ -1,6 +1,13 @@
 import type { GameState } from '../engine/game'
 import { infoPoints } from '../engine/operations'
-import { damageLevel, SHIELD_SIDES, type ShipState } from '../engine/shipState'
+import {
+  armorRemaining,
+  blueShieldRemaining,
+  damageLevel,
+  greenShieldRemaining,
+  SHIELD_SIDES,
+  type ShipState,
+} from '../engine/shipState'
 
 /**
  * What an enemy commander legitimately knows about a ship.
@@ -52,9 +59,21 @@ export function IntelPanel({
         </div>
       </dl>
 
+      {/*
+        Shield strength is public on this table — house rule, by playtest
+        request. Same numbers the counter prints: blue boxes, +green while
+        reinforcement holds, and the armour where a facing carries plate.
+      */}
       <p className="hint">
         Shields:{' '}
-        {SHIELD_SIDES.map((side) => `${side} ${ship.shieldsDown[side] ? 'down' : 'up'}`).join(' · ')}
+        {SHIELD_SIDES.map((side) => {
+          const armor = armorRemaining(ship, side)
+          if (ship.shieldsDown[side]) return `${side} down${armor > 0 ? ` (${armor} armor)` : ''}`
+          const blue = blueShieldRemaining(ship, side)
+          const green = greenShieldRemaining(ship, side)
+          const strength = green > 0 ? `${blue}+${green}` : `${blue}`
+          return `${side} ${strength}${armor > 0 ? ` (+${armor} armor)` : ''}`
+        }).join(' · ')}
       </p>
 
       {ship.derelict && <p className="hint">Derelict — no crew answers.</p>}

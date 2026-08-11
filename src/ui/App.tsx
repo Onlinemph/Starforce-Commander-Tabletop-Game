@@ -1031,21 +1031,74 @@ function MissionStatus({ game }: { game: GameState }) {
   )
 }
 
+/**
+ * The battle log lives pinned under the board, and a busy battle writes a lot
+ * of it — every card, every ready check — until the board is paying for the
+ * prose. Compact mode shrinks it to its latest line; the preference is
+ * remembered, because a player who wants the board big wants it big every
+ * session.
+ */
+const LOG_COMPACT_KEY = 'sfc.log-compact.v1'
+
 function LogPanel({ game }: { game: GameState }) {
+  const [compact, setCompact] = useState(() => {
+    try {
+      return localStorage.getItem(LOG_COMPACT_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggle = () => {
+    setCompact((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(LOG_COMPACT_KEY, next ? '1' : '0')
+      } catch {
+        // Only the remembered preference is lost.
+      }
+      return next
+    })
+  }
   const recent = game.log.slice(-60).reverse()
+  const latest = recent[0]
   return (
-    <div className="log">
-      <h3>Battle log</h3>
-      <ol>
-        {recent.map((entry, i) => (
-          <li key={i}>
+    <div className={`log${compact ? ' is-compact' : ''}`}>
+      <header className="log-head">
+        <h3>Battle log</h3>
+        <button
+          type="button"
+          className="chip"
+          onClick={toggle}
+          title={
+            compact
+              ? 'Show the full battle log again'
+              : 'Shrink the log to its latest line and give the board the room'
+          }
+        >
+          {compact ? 'Expand' : 'Compact'}
+        </button>
+      </header>
+      {compact ? (
+        latest && (
+          <p className="log-latest">
             <span className="log-where">
-              R{entry.round} {SEGMENT_LABELS[entry.segment]}
+              R{latest.round} {SEGMENT_LABELS[latest.segment]}
             </span>
-            {entry.message}
-          </li>
-        ))}
-      </ol>
+            {latest.message}
+          </p>
+        )
+      ) : (
+        <ol>
+          {recent.map((entry, i) => (
+            <li key={i}>
+              <span className="log-where">
+                R{entry.round} {SEGMENT_LABELS[entry.segment]}
+              </span>
+              {entry.message}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   )
 }

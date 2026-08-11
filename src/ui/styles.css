@@ -1985,6 +1985,30 @@ input:focus-visible {
 
 /* ── Log & brief ────────────────────────────────────────────────────────── */
 
+.log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.log-head h3 {
+  margin: 0;
+}
+/* Compact: the log is its latest line, and the board gets the rest. */
+.log.is-compact {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+.log-latest {
+  margin: 0.25rem 0 0;
+  font-size: 0.74rem;
+  display: flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .log ol {
   list-style: none;
   margin: 0;
