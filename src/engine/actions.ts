@@ -165,6 +165,16 @@ export type GameAction =
    * own.
    */
   | { type: 'queue-damage-choices'; choices: DamageChoice[] }
+  /**
+   * A damaging action held while the console commanding `awaiting` answers its
+   * damage-card choices (E8.4.1 across a wire). The battle refuses everything
+   * else until `resolve-staged-action` lands it. Re-staged with a longer
+   * script — and possibly a different `awaiting` — as each console answers the
+   * choices that are its player's to make.
+   */
+  | { type: 'stage-damage-action'; action: GameAction; choices: DamageChoice[]; awaiting: string }
+  /** The staged action finally lands, with the complete script of answers. */
+  | { type: 'resolve-staged-action'; choices: DamageChoice[] }
   | { type: 'declare-coordinated'; shipIds: string[]; targetId: string }
   | { type: 'fire-small-target'; attackerId: string; targetId: string; weaponId: string; mountIndex: number }
   | { type: 'catch-missile'; shipId: string; homingId: string; beams: number }
@@ -266,6 +276,23 @@ function maybeFlushTieGroup(game: GameState): FlushedVolley[] | undefined {
  * behind would be answers to questions a later volley never asked.
  */
 export function applyAction(game: GameState, action: GameAction): ActionOutcome {
+  /*
+   * While a staged action waits on another console's damage-card answers,
+   * the battle holds still. Anything else mutating meanwhile would change
+   * the state the stage's script was probed against, and the answers would
+   * land on different cards than the ones the player was shown. The refusal
+   * is deterministic, so consoles that race an action into the journal
+   * during the hold all refuse it identically on replay.
+   */
+  if (
+    game.stagedAction &&
+    action.type !== 'stage-damage-action' &&
+    action.type !== 'resolve-staged-action'
+  ) {
+    return said(
+      `${game.stagedAction.awaiting} is choosing where the damage falls — the battle holds until they have.`,
+    )
+  }
   const outcome = resolveAction(game, action)
   if (action.type !== 'queue-damage-choices') game.damageScript = []
   return outcome
@@ -277,6 +304,39 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       // The captain's decisions, made before the cards come out (E8.4.1).
       game.damageScript = [...action.choices]
       return ok
+
+    case 'stage-damage-action': {
+      const inner = action.action
+      // An envelope holds a damaging action, never another envelope — and a
+      // queued script travels inside the stage's own `choices`, not alongside.
+      if (
+        inner.type === 'stage-damage-action' ||
+        inner.type === 'resolve-staged-action' ||
+        inner.type === 'queue-damage-choices'
+      ) {
+        return said('That action cannot be staged.')
+      }
+      const before = game.stagedAction
+      game.stagedAction = { action: inner, choices: [...action.choices], awaiting: action.awaiting }
+      // Narrate the hold — and each handoff — but not every extension of the
+      // script, or the log would count the questions instead of the answers.
+      if (!before || before.awaiting !== action.awaiting) {
+        pushLog(game, `${action.awaiting} is choosing where the damage falls…`)
+      }
+      // A summary, not a refusal: the panel that fired shows the player why
+      // no dice have appeared yet.
+      return said(`Waiting for ${action.awaiting} to choose where the damage falls (E8.4.1).`)
+    }
+
+    case 'resolve-staged-action': {
+      const staged = game.stagedAction
+      if (!staged) return said('No held action is waiting on damage choices.')
+      // The hold lifts, the answers become the script, and the action lands
+      // exactly as it would have on the console that first dispatched it.
+      game.stagedAction = null
+      game.damageScript = [...action.choices]
+      return resolveAction(game, staged.action)
+    }
     // ── Sequence of play ─────────────────────────────────────────────────
     case 'advance-segment':
       /**
@@ -1013,6 +1073,11 @@ export function actionSide(game: GameState, action: GameAction): string | null {
     case 'advance-firing-step':
     case 'set-coordinated-fire':
     case 'queue-damage-choices':
+    // The relay actions belong to the table, not to a side: staging is done
+    // by whichever console the volley started on, and resolving by whichever
+    // console answered last — the store's ownership gate must let both pass.
+    case 'stage-damage-action':
+    case 'resolve-staged-action':
       return null
     default:
       return of((action as { shipId?: string }).shipId)

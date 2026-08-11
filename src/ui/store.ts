@@ -145,10 +145,16 @@ function restore(): GameState {
  * trigger.
  */
 function applyJournaled(action: GameAction): ActionOutcome {
-  const pre = fxBefore(game, action)
+  // A resolve is the held volley finally landing: the effects layer should
+  // see the volley, not the envelope, so the fire flashes on every console.
+  const shown =
+    action.type === 'resolve-staged-action' && game.stagedAction
+      ? game.stagedAction.action
+      : action
+  const pre = fxBefore(game, shown)
   const outcome = applyAction(game, action)
   journal.push(action)
-  queueFx(pre, fxAfter(game, action, outcome))
+  queueFx(pre, fxAfter(game, shown, outcome))
   return outcome
 }
 
@@ -180,6 +186,9 @@ export function dispatch(action: GameAction): ActionOutcome {
   emit()
   net?.onAction(action, journal.length)
   void driveAi()
+  // A local dispatch can be the first quiet moment after a staged action
+  // arrived mid-prompt; make sure the relay is picked back up.
+  void settleStagedAction()
   return outcome
 }
 
@@ -198,9 +207,14 @@ export function dispatch(action: GameAction): ActionOutcome {
  * about to — and once every question is answered the answers are journalled
  * ahead of the action that consumes them.
  *
- * A ship the local player does not command is answered by the doctrine, which
- * covers the AI, and covers the far side of an online match: the attacker's
- * browser must not stop to ask the defender's, and cannot ask on their behalf.
+ * A ship the AI commands is answered by the doctrine. A ship the *other
+ * player* commands in an online match is neither: the attacker's browser
+ * cannot ask on the defender's behalf, so it journals the action *staged* —
+ * held, with the answers so far — and the defender's console picks the relay
+ * up (settleStagedAction), asks its own player, and lands the action. The
+ * playtest that forced this: a full broadside into the Karnath, and the
+ * Yorktown's own damage-card choices silently played by doctrine because the
+ * return volley resolved on the other console.
  */
 let pending: { decision: DamageDecision; answer: (choice: DamageChoice) => void } | null = null
 
@@ -225,9 +239,9 @@ function playerCommands(shipId: string): boolean {
    * found the hard way: the host fired on the guest's cruiser and was then
    * handed the GUEST'S damage-card choices, while the guest stared at an
    * undamaged ship because the volley sat unjournalled behind the prompts.
-   * The far side's choices go to doctrine (the attacker's browser cannot
-   * stop to ask the defender's), which is E8.4.1 answered by the same
-   * damage-control advice the prompt itself recommends.
+   * The far side's choices are not doctrine's either: `remoteChooser` hands
+   * them across the wire (stage-damage-action), so the defender answers
+   * E8.4.1 at their own console. Doctrine keeps only the empty chairs.
    */
   if (matchSide !== null) return ship.side === matchSide
   // A guest's actions come over the wire already resolved; only the side
@@ -236,16 +250,39 @@ function playerCommands(shipId: string): boolean {
 }
 
 /**
- * Dispatch an action, stopping to ask about any damage-card choice it raises.
- * Panels that can cause damage use this instead of `dispatch`.
+ * The side whose console must answer a choice for this ship, when that console
+ * is not ours. Null means the answer is made here: the local player's prompt,
+ * or the doctrine — which still covers the AI's ships, and a side with nobody
+ * connected, because an empty chair cannot be asked and must not deadlock the
+ * battle.
  */
-async function askAbout(action: GameAction): Promise<DamageChoice[]> {
-  const script: DamageChoice[] = []
+function remoteChooser(shipId: string): string | null {
+  const ship = game.ships.find((s) => s.id === shipId)
+  if (!ship) return null
+  if (matchSide === null || ship.side === matchSide) return null
+  if ((setup.aiSides ?? []).includes(ship.side)) return null
+  if (!matchPresent.includes(ship.side)) return null
+  return ship.side
+}
+
+/**
+ * Gather answers for every damage-card choice an action raises, prompting the
+ * local player for their own ships and playing doctrine for the AI's — until
+ * the probe reaches a choice that belongs to another connected console, at
+ * which point the script so far comes back with `handoff` naming that side.
+ */
+async function askAbout(
+  action: GameAction,
+  base: DamageChoice[] = [],
+): Promise<{ script: DamageChoice[]; handoff: string | null }> {
+  const script = [...base]
   for (let guard = 0; guard < 64; guard++) {
     const decision = probeDecision(script, () => {
       applyAction(cloneGame(game), action)
     })
     if (!decision || decision.options.length === 0) break
+    const handoff = remoteChooser(decision.shipId)
+    if (handoff) return { script, handoff }
     const fallback = decision.options.find((o) => o.recommended) ?? decision.options[0]
     script.push(
       playerCommands(decision.shipId)
@@ -256,7 +293,7 @@ async function askAbout(action: GameAction): Promise<DamageChoice[]> {
         : fallback.choice,
     )
   }
-  return script
+  return { script, handoff: null }
 }
 
 export async function dispatchWithChoices(action: GameAction): Promise<ActionOutcome> {
@@ -264,9 +301,60 @@ export async function dispatchWithChoices(action: GameAction): Promise<ActionOut
   // it: the AI's closing volleys move the deck, and a script written against
   // the state before them would be answering different cards.
   if (action.type === 'advance-segment') await driveAi(true)
-  const script = await askAbout(action)
+  const { script, handoff } = await askAbout(action)
+  if (handoff) {
+    // Some of the cards are the other player's to answer. The action goes
+    // into the journal *held*, the battle stops, and their console takes the
+    // relay from here — the volley lands when they have chosen.
+    return dispatch({ type: 'stage-damage-action', action, choices: script, awaiting: handoff })
+  }
   if (script.length > 0) dispatch({ type: 'queue-damage-choices', choices: script })
   return dispatch(action)
+}
+
+/**
+ * Pick up a staged action whose next answer is this console's to give.
+ *
+ * Runs after anything that could have delivered or unblocked a stage: a
+ * remote action, a corrective sync, claiming a side, a presence change. The
+ * console named by `awaiting` prompts its player and either lands the action
+ * (script complete), or re-stages it with more answers when the cards bounce
+ * the choice back across the table. The creator's console additionally covers
+ * a chooser who has disconnected mid-relay — by doctrine, the same way it
+ * readies absent sides — so a dropped tab cannot freeze the battle forever.
+ */
+let settling = false
+
+async function settleStagedAction(): Promise<void> {
+  const staged = game.stagedAction
+  if (!staged || settling || matchSide === null || pending) return
+  const mine = staged.awaiting === matchSide
+  const covering = !mine && matchCreator && !matchPresent.includes(staged.awaiting)
+  if (!mine && !covering) return
+  settling = true
+  try {
+    // Probing the *resolve* rather than the inner action matters: the clone
+    // still holds the stage, and the engine refuses everything else while it
+    // does. The probe's provider intercepts every choice, so the empty script
+    // here is never actually consulted.
+    const probe: GameAction = { type: 'resolve-staged-action', choices: [] }
+    const { script, handoff } = await askAbout(probe, staged.choices)
+    // The world may have moved while the player was thinking — a corrective
+    // sync, another console covering. Only act on the stage still standing.
+    if (game.stagedAction !== staged) return
+    if (handoff) {
+      dispatch({ type: 'stage-damage-action', action: staged.action, choices: script, awaiting: handoff })
+      return
+    }
+    dispatch({ type: 'resolve-staged-action', choices: script })
+  } finally {
+    settling = false
+  }
+  // The stage may have been replaced under us mid-prompt (a corrective sync,
+  // a re-stage racing in). The answers gathered against the old one are
+  // dropped — they were probed against a state that no longer exists — and
+  // the standing stage gets a fresh look instead of waiting on luck.
+  if (game.stagedAction && game.stagedAction !== staged) void settleStagedAction()
 }
 
 /**
@@ -319,9 +407,28 @@ export function currentSetup(): GameSetup {
  */
 let matchSide: string | null = null
 
+/**
+ * Who is at a console right now, and whether this client created the match —
+ * mirrored from the match client so the damage-choice relay can tell a side
+ * that must be asked from a chair that is empty. Outside a match both stay at
+ * their idle values and nothing consults them.
+ */
+let matchPresent: string[] = []
+let matchCreator = false
+
 export function setMatchSide(side: string | null): void {
   matchSide = side
   emit()
+  // Claiming a side can make a waiting stage this console's to answer.
+  void settleStagedAction()
+}
+
+export function setMatchPresence(present: readonly string[], creator: boolean): void {
+  matchPresent = [...present]
+  matchCreator = creator
+  // A presence change can orphan a stage (its chooser left) or hand one to a
+  // console that just arrived; either way the relay deserves a fresh look.
+  void settleStagedAction()
 }
 
 export function currentMatchSide(): string | null {
@@ -339,6 +446,11 @@ export function currentMatchSide(): string | null {
 export function undoRefusal(): string | null {
   if (journal.length === 0) return 'Nothing to take back.'
   if (!matchSide) return null
+  // Mid-relay nothing moves, backwards included: rewinding the stage would
+  // rip the question out from under the console currently answering it.
+  if (game.stagedAction) {
+    return 'Damage is being allocated — nothing can be taken back until it lands.'
+  }
   const last = journal[journal.length - 1]
   if (actionSide(game, last) !== matchSide && actionSide(game, last) !== null) {
     return 'That was the other commander’s order — only your own can be taken back.'
@@ -526,6 +638,8 @@ export function applyRemoteAction(action: GameAction, seq: number, force: boolea
   autosave()
   emit()
   void driveAi()
+  // The arriving action may be a stage whose next answer is this console's.
+  void settleStagedAction()
   return 'ok'
 }
 
@@ -550,6 +664,9 @@ export function applyRemoteSave(save: SavedGame): string | null {
   journal = save.actions
   autosave()
   emit()
+  // A synced or freshly joined battle can arrive mid-relay — a refresh while
+  // the cards were waiting on this very console is exactly that.
+  void settleStagedAction()
   return null
 }
 
@@ -583,6 +700,9 @@ let driving = false
  */
 async function driveAi(closing = false): Promise<void> {
   if (driving || aiSuppressed) return
+  // While a staged action waits on another console the whole battle holds,
+  // the computer included; the resolve will wake the driver again.
+  if (game.stagedAction) return
   const sides = (setup.aiSides ?? []).filter((side) => game.ships.some((s) => s.side === side))
   if (sides.length === 0) return
   /*
@@ -607,8 +727,20 @@ async function driveAi(closing = false): Promise<void> {
         setup.aiRetreats ?? true,
       )
       if (batch.length === 0) break
+      let held = false
       for (const action of batch) {
-        const script = await askAbout(action)
+        const { script, handoff } = await askAbout(action)
+        if (handoff) {
+          // The computer's volley raises a choice belonging to a player on
+          // another console. Same relay as a human attacker: stage it, stop
+          // driving, and let the resolve wake the driver back up.
+          const stage: GameAction = { type: 'stage-damage-action', action, choices: script, awaiting: handoff }
+          applyJournaled(stage)
+          net?.onAction(stage, journal.length)
+          changed = true
+          held = true
+          break
+        }
         if (script.length > 0) {
           const queue: GameAction = { type: 'queue-damage-choices', choices: script }
           applyJournaled(queue)
@@ -618,6 +750,7 @@ async function driveAi(closing = false): Promise<void> {
         net?.onAction(action, journal.length)
         changed = true
       }
+      if (held) break
       closing = false
     }
     if (changed) {
@@ -648,6 +781,10 @@ export function useGame(): GameState {
 }
 
 // A restored battle may owe AI duties (a save from before the AI finished a
-// segment, or one made as a suppressed remote guest). Settle up once the
-// module is fully initialised.
-queueMicrotask(() => void driveAi())
+// segment, or one made as a suppressed remote guest) — or a staged action
+// whose answers are this console's to give (a refresh mid-relay). Settle up
+// once the module is fully initialised.
+queueMicrotask(() => {
+  void driveAi()
+  void settleStagedAction()
+})

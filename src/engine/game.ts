@@ -12,6 +12,9 @@ import {
   type VolleyDamage,
   type VolleyOutcome,
 } from './damage'
+// Type-only, and deliberately so: actions.ts imports this module at runtime,
+// and a value import back the other way would be a genuine cycle.
+import type { GameAction } from './actions'
 import { applyHeldVolley, type HeldVolley } from './combat'
 import {
   commandSystemBoxes,
@@ -477,6 +480,21 @@ export interface GameState {
    */
   damageScript: DamageChoice[]
   /**
+   * A damaging action held in mid-air while another console answers its
+   * damage-card choices (online matches).
+   *
+   * The cards hand their choices to the *defender* (E8.4.1), but the console
+   * that resolves a volley is the attacker's — it cannot stop mid-resolution
+   * to ask a browser on the other side of the wire. So instead of resolving,
+   * it journals the action here with the choices answered so far, and the
+   * battle holds: every other action is refused until the console commanding
+   * `awaiting` extends the script with its player's answers and, once the
+   * script is complete, lands the action with `resolve-staged-action`. Being
+   * journalled like everything else, the hold survives refreshes and replays
+   * identically on every console.
+   */
+  stagedAction: StagedAction | null
+  /**
    * The table's public record of shield punishment: every volley resolves in
    * the open — the struck side is declared and the absorption narrated — so
    * both players can tally what each facing has soaked. Keyed by ship id,
@@ -529,6 +547,16 @@ export interface GameState {
   /** Crew units in safe hands, credited to the side holding them (E11.4.2). */
   crewRescued: Record<string, number>
   options: DestructionOptions
+}
+
+/** A damaging action mid-relay: what will land, and whose answers it waits on. */
+export interface StagedAction {
+  /** The action to apply once every damage-card choice has an answer. */
+  action: GameAction
+  /** The answers gathered so far, in the order the resolution asks. */
+  choices: DamageChoice[]
+  /** The side whose console must answer the next unanswered choice. */
+  awaiting: string
 }
 
 /** Ships of one faction attacking a single target together (H4.5). */
@@ -597,6 +625,7 @@ export function createGame(args: {
     firedThisSegment: new Set(),
     pendingVolleys: [],
     damageScript: [],
+    stagedAction: null,
     shieldHitsSeen: {},
     shieldChangedThisPhase: new Set(),
     command,

@@ -13,6 +13,7 @@ import {
   gateIsWaiting,
   journalLength,
   readyAbsentSides,
+  setMatchPresence,
   setMatchSide,
   setNetHooks,
   suppressAi,
@@ -136,15 +137,20 @@ let leaving = false
 let version = 0
 const listeners = new Set<() => void>()
 function set(next: Partial<OnlineState>): void {
-  const before = state.side
+  const before = state
   state = { ...state, ...next }
   /*
    * The store needs to know which side this console commands, because that is
    * what makes undo answerable to somebody. Routing it through the one setter
    * covers every path that can change it — enrolling, claiming a side mid-
    * match, and leaving, which nulls it and hands undo back its freedom.
+   * Presence rides along for the damage-choice relay, which must tell a side
+   * that can be asked from a chair that is empty.
    */
-  if (state.side !== before) setMatchSide(state.side)
+  if (state.present !== before.present || state.creator !== before.creator) {
+    setMatchPresence(state.present, state.creator)
+  }
+  if (state.side !== before.side) setMatchSide(state.side)
   version += 1
   for (const l of listeners) l()
 }
