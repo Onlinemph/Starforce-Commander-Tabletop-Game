@@ -3448,6 +3448,10 @@ button.chip:hover:not(:disabled) {
   gap: 0.6rem;
   margin-top: 1rem;
 }
+.claim-sides .is-occupied {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 /* --- Ship & scenario library --------------------------------------------- */
 

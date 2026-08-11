@@ -331,22 +331,32 @@ export function App() {
               side you command — your view locks to it, and the other players see the claim.
             </p>
             <div className="claim-sides">
-              {(online.sides.length > 0 ? online.sides : sides).map((side) => (
-                <button
-                  key={side}
-                  type="button"
-                  className={online.present.includes(side) ? '' : 'primary'}
-                  title={
-                    online.present.includes(side)
-                      ? `${side} already has a commander connected`
-                      : `${side} is unclaimed`
-                  }
-                  onClick={() => claimSide(side)}
-                >
-                  {online.present.includes(side) ? '● ' : '○ '}
-                  Command {side}
-                </button>
-              ))}
+              {(() => {
+                const matchSides = online.sides.length > 0 ? online.sides : sides
+                // An occupied side is not on offer — unless every side is
+                // occupied, in which case refusing them all would strand the
+                // joiner with no way in at all.
+                const allTaken = matchSides.every((s) => online.present.includes(s))
+                return matchSides.map((side) => {
+                  const occupied = online.present.includes(side)
+                  return (
+                    <button
+                      key={side}
+                      type="button"
+                      className={occupied ? 'is-occupied' : 'primary'}
+                      disabled={occupied && !allTaken}
+                      title={
+                        occupied
+                          ? `${side} already has a commander connected — pick the other side`
+                          : `${side} has no commander yet`
+                      }
+                      onClick={() => claimSide(side)}
+                    >
+                      {occupied ? `● ${side} — occupied` : `○ Take command of ${side}`}
+                    </button>
+                  )
+                })
+              })()}
             </div>
           </div>
         </div>

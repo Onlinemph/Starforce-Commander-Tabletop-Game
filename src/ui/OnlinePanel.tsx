@@ -324,22 +324,31 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
               )}
 
               <div className="online-sides">
-                {(online.sides.length > 0 ? online.sides : sides).map((side) => (
-                  <button
-                    key={side}
-                    type="button"
-                    className={`chip${online.side === side ? ' is-on' : ''}`}
-                    title={
-                      online.present.includes(side)
-                        ? `${side} has a commander connected`
-                        : `${side} is unclaimed right now`
-                    }
-                    onClick={() => claimSide(side)}
-                  >
-                    {online.present.includes(side) ? '●' : '○'} {side}
-                    {online.side === side ? ' — you' : ''}
-                  </button>
-                ))}
+                {(online.sides.length > 0 ? online.sides : sides).map((side) => {
+                  // Somebody else's chair is not a button. Your own stays
+                  // live (a refresh re-claims it), and a side with nobody
+                  // connected is what switching is for.
+                  const occupiedByOther = online.present.includes(side) && online.side !== side
+                  return (
+                    <button
+                      key={side}
+                      type="button"
+                      className={`chip${online.side === side ? ' is-on' : ''}`}
+                      disabled={occupiedByOther}
+                      title={
+                        occupiedByOther
+                          ? `${side} has a commander connected — occupied`
+                          : online.side === side
+                            ? `${side} is yours`
+                            : `${side} is unclaimed right now`
+                      }
+                      onClick={() => claimSide(side)}
+                    >
+                      {online.present.includes(side) ? '●' : '○'} {side}
+                      {online.side === side ? ' — you' : occupiedByOther ? ' — occupied' : ''}
+                    </button>
+                  )
+                })}
               </div>
               <p className="online-hint">
                 Share the invite link (it carries the code and password), or the code and password
