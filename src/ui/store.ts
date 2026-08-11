@@ -646,6 +646,17 @@ export function gateIsWaiting(): boolean {
   return game.readyGate && !everyoneReady(game)
 }
 
+/**
+ * The sides the battle is waiting on right now — the ready gate's unanswered
+ * chairs, plus the side a staged volley is waiting on for its damage-card
+ * answers. What the match browser shows as "waiting on…".
+ */
+export function waitingSides(): string[] {
+  if (game.stagedAction) return [game.stagedAction.awaiting]
+  if (!game.readyGate) return []
+  return sidesAwaited(game).filter((side) => !game.readySides.includes(side))
+}
+
 /** The current battle record, for the network to ship whole. */
 export function currentSave(): SavedGame {
   return saved()

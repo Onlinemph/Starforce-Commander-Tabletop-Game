@@ -16,7 +16,9 @@ import {
   setMatchPresence,
   setMatchSide,
   setNetHooks,
+  subscribeStore,
   suppressAi,
+  waitingSides,
 } from './store'
 // The Supabase client is a substantial dependency and most battles never
 // touch it, so it is fetched only when an online match actually needs it.
@@ -93,6 +95,27 @@ export const DEFAULT_MATCH_KEY: string = firstConfigured(
 )
 
 const ENROLL_KEY = 'sfc.online-match.v1'
+
+/**
+ * This browser's claim key: the opaque name a server-refereed side claim is
+ * held under. Stable across sessions, so a refresh renews the same claim
+ * instead of fighting itself for the chair.
+ */
+const CLAIM_KEY = 'sfc.claim-key.v1'
+
+function claimKey(): string {
+  try {
+    let key = localStorage.getItem(CLAIM_KEY)
+    if (!key) {
+      key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+      localStorage.setItem(CLAIM_KEY, key)
+    }
+    return key
+  } catch {
+    // Private browsing: a per-load key still referees within the session.
+    return `ephemeral-${Math.random().toString(36).slice(2)}`
+  }
+}
 
 interface Enrollment {
   server: string
@@ -305,8 +328,22 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
     enrolled.password,
     enrolled.side,
     {
-      onAction: (action, seq) => {
-        if (applyRemoteAction(action, seq, false) === 'mismatch') void supabase?.resync()
+      onAction: (action, seq, hash) => {
+        if (applyRemoteAction(action, seq, false) === 'mismatch') {
+          void supabase?.resync()
+          return
+        }
+        /*
+         * Same journal, different board — the desync the sequence check
+         * cannot see, because both clients agree about every action taken
+         * and disagree about the result. The Worker path has always
+         * checked this; the ledger now carries the fingerprint too, so the
+         * Supabase path stops trusting silence.
+         */
+        if (hash && hash !== currentStateHash()) {
+          set({ error: 'The two boards had drifted apart — resynchronising from the match record.' })
+          void supabase?.resync()
+        }
       },
       onResync: (save) => {
         applyRemoteSave(save)
@@ -315,6 +352,7 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
       onDropped: retry,
     },
     journalLength,
+    claimKey(),
   )
 
   // A wrong password or a missing match is final; a link that would not open
@@ -347,7 +385,10 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
   // One AI driver per match — the creator's client.
   suppressAi(!enrolled.creator)
   setNetHooks({
-    onAction: (action, seq) => void supabase?.append(action, seq),
+    // The hash is of the state this action just produced, so a receiver can
+    // check that applying the same action left it in the same place — the
+    // same stamp the Worker path has always carried.
+    onAction: (action, seq) => void supabase?.append(action, seq, currentStateHash()),
     onUndo: (lengthAfter) => void supabase?.undo(lengthAfter),
     onReplace: (saved) => void supabase?.replace(saved),
   })
@@ -359,6 +400,68 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
     creator: enrolled.creator,
     error: null,
   })
+  // Renew (or discover the loss of) our claimed chair, then keep the claim
+  // warm and the whose-move column current while the link stands.
+  startMatchUpkeep()
+  void renewClaim()
+}
+
+// ---------------------------------------------------------------------------
+// Match upkeep — the claim kept warm, the whose-move column kept current
+// ---------------------------------------------------------------------------
+
+let renewTimer: ReturnType<typeof setInterval> | null = null
+let waitingUnsub: (() => void) | null = null
+let waitingDebounce: ReturnType<typeof setTimeout> | null = null
+let lastWaitingSent = ''
+
+function stopMatchUpkeep(): void {
+  if (renewTimer) clearInterval(renewTimer)
+  renewTimer = null
+  waitingUnsub?.()
+  waitingUnsub = null
+  if (waitingDebounce) clearTimeout(waitingDebounce)
+  waitingDebounce = null
+  lastWaitingSent = ''
+}
+
+/**
+ * Renew this console's side claim — and notice a chair stolen while the
+ * claim had gone stale (a laptop asleep past the five-minute window). Losing
+ * the chair sends the player back to the picker rather than letting two
+ * consoles command one side.
+ */
+async function renewClaim(): Promise<void> {
+  const side = enrollment?.side
+  if (!side || !supabase) return
+  const verdict = await supabase.claim(side)
+  if (verdict === 'taken' && enrollment?.side === side) {
+    enrollment.side = null
+    remember()
+    set({ side: null, error: `${side} was claimed from another console while you were away.` })
+  }
+}
+
+/** Report the sides the battle is waiting on, when that set changes. */
+function reportWaiting(): void {
+  if (waitingDebounce) clearTimeout(waitingDebounce)
+  waitingDebounce = setTimeout(() => {
+    if (!supabase) return
+    const waiting = waitingSides()
+    const sent = JSON.stringify(waiting)
+    if (sent === lastWaitingSent) return
+    lastWaitingSent = sent
+    void supabase.setWaiting(waiting)
+  }, 800)
+}
+
+function startMatchUpkeep(): void {
+  stopMatchUpkeep()
+  // Claims go stale after five silent minutes; renewing every two keeps a
+  // live console's chair warm with margin for a missed beat.
+  renewTimer = setInterval(() => void renewClaim(), 120_000)
+  waitingUnsub = subscribeStore(reportWaiting)
+  reportWaiting()
 }
 
 /**
@@ -527,19 +630,35 @@ export function joinMatch(server: string, matchId: string, password: string, key
   connect()
 }
 
-/** Take command of a side (shown to the other players as presence). */
-export function claimSide(side: string): void {
+/**
+ * Take command of a side. On a Supabase match the ledger referees: a chair
+ * another console holds a live claim on is refused, and the refusal surfaces
+ * as the panel's error rather than as two players on one side. The Worker
+ * path (and an older schema) stays presence-only, as it always was.
+ */
+export async function claimSide(side: string): Promise<void> {
   if (!enrollment) return
+  if (supabase) {
+    const verdict = await supabase.claim(side)
+    if (verdict === 'taken') {
+      set({ error: `${side} already has a commander — its claim is held from another console.` })
+      return
+    }
+  } else {
+    sendRaw({ t: 'claim', side })
+  }
   enrollment.side = side
   remember()
-  set({ side })
-  if (supabase) void supabase.claim(side)
-  else sendRaw({ t: 'claim', side })
+  set({ side, error: null })
 }
 
 /** Leave for good: forget the enrollment and stop reconnecting. */
 export function leaveMatch(): void {
   leaving = true
+  stopMatchUpkeep()
+  // Give the chair back on the way out, so the next player need not wait
+  // out the claim's freshness window. Best-effort — silence releases too.
+  if (enrollment?.side && supabase) void supabase.claim(null)
   enrollment = null
   remember()
   if (retryTimer) clearTimeout(retryTimer)
@@ -580,6 +699,21 @@ export function lastKey(): string {
  */
 export function inMatch(state: OnlineState): boolean {
   return state.matchId !== null && state.phase !== 'idle' && state.phase !== 'failed'
+}
+
+/**
+ * "3h ago", for the match browser — a correspondence game is picked back up
+ * by how long the other player has kept you waiting.
+ */
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const then = Date.parse(iso)
+  if (Number.isNaN(then)) return ''
+  const minutes = Math.floor((now - then) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
 /** Browse the matches a project is offering. Supabase backend only. */

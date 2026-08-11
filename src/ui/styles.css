@@ -4070,6 +4070,12 @@ button.chip:hover:not(:disabled) {
   opacity: 0.72;
 }
 
+/* Whose move it is — the one fact a correspondence player scans the list for. */
+.match-turn {
+  font-style: normal;
+  color: var(--accent, #ffb851);
+}
+
 /* A view the player may not change: their chair in a match. */
 .chip.is-locked {
   cursor: default;

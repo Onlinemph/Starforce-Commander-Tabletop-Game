@@ -30,8 +30,16 @@ written to be repeatable.
 
 That file creates two tables (`sfc_matches`, `sfc_actions`), turns on Realtime
 for the action feed, locks both tables behind Row Level Security, and defines
-the five functions the game calls. Passwords are bcrypt-hashed by Postgres and
+the functions the game calls. Passwords are bcrypt-hashed by Postgres and
 never readable by a browser.
+
+**Upgrading:** when the game gains features that need the database's help,
+re-running the current `schema.sql` the same way is the whole upgrade. The
+latest run adds server-refereed side claims (two players can no longer grab
+the same side in the same instant), a state fingerprint on every action (two
+boards that drift apart now notice and resynchronise by themselves), and a
+whose-move column the match browser shows. The game works against an older
+schema too — those three features just quietly stand down until you re-run.
 
 ## 3. Copy the two values
 

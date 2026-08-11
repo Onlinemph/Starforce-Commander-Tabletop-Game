@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { firstConfigured, inMatch, looksLikeSupabase, type OnlineState } from './online'
+import { firstConfigured, inMatch, looksLikeSupabase, timeAgo, type OnlineState } from './online'
+import { dispatch, enableReadyGate, getGame, newGame, waitingSides } from './store'
 
 /**
  * The match layer speaks to two backends — a Supabase project or a deployed
@@ -77,5 +78,46 @@ describe('choosing a configured value', () => {
 
   it('is empty when nothing was configured at all', () => {
     expect(firstConfigured(undefined, '', '   ')).toBe('')
+  })
+})
+
+/**
+ * The match browser's "whose move is it" line: what a correspondence player
+ * scans the list for, so both halves — the waiting set and the clock — are
+ * worth pinning.
+ */
+describe('whose move it is', () => {
+  it('names the sides the ready gate still waits on', () => {
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    enableReadyGate()
+    expect(waitingSides().sort()).toEqual(['Blue Force', 'Red Force'])
+    dispatch({ type: 'signal-ready', side: 'Blue Force', ready: true })
+    expect(waitingSides()).toEqual(['Red Force'])
+  })
+
+  it('names the side a staged volley waits on for its damage answers', () => {
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    enableReadyGate()
+    dispatch({
+      type: 'stage-damage-action',
+      action: { type: 'pass-fire', shipId: getGame().ships[0].id },
+      choices: [],
+      awaiting: 'Blue Force',
+    })
+    expect(waitingSides()).toEqual(['Blue Force'])
+  })
+
+  it('says nothing outside a gated battle', () => {
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    expect(waitingSides()).toEqual([])
+  })
+
+  it('turns a timestamp into a waiting time a human reads at a glance', () => {
+    const now = Date.parse('2026-08-11T12:00:00Z')
+    expect(timeAgo('2026-08-11T11:59:40Z', now)).toBe('just now')
+    expect(timeAgo('2026-08-11T11:45:00Z', now)).toBe('15m ago')
+    expect(timeAgo('2026-08-11T07:00:00Z', now)).toBe('5h ago')
+    expect(timeAgo('2026-08-08T12:00:00Z', now)).toBe('3d ago')
+    expect(timeAgo('not a date', now)).toBe('')
   })
 })

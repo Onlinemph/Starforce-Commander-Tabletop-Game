@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
@@ -63,6 +63,9 @@ import {
 
 /** Which side's player is holding the console. Survives a refresh mid-handoff. */
 const VIEW_KEY = 'sfc.view-side.v1'
+
+/** What the tab is called when the battle is not waiting on this console. */
+const BASE_TITLE = typeof document !== 'undefined' ? document.title : 'StarForce Commander'
 
 /**
  * Why the setup controls stand down inside a match. The battle belongs to the
@@ -129,6 +132,25 @@ export function App() {
   }
   /** A blackout while the device changes hands, so nothing leaks in passing. */
   const [handoff, setHandoff] = useState<string | null>(null)
+
+  /*
+   * The tab knows whose move it is. A persistent match is played like
+   * correspondence chess — the other player answers when they answer — so
+   * the title grows a dot when this console is what the battle waits on:
+   * a segment it has not readied, or a staged volley waiting on its
+   * damage-card answers. Visible from a pinned tab without switching to it.
+   */
+  useEffect(() => {
+    const mySide = online.side
+    const myMove =
+      enrolledInMatch &&
+      mySide !== null &&
+      (game.stagedAction?.awaiting === mySide ||
+        (game.readyGate &&
+          sidesAwaited(game).includes(mySide) &&
+          !game.readySides.includes(mySide)))
+    document.title = myMove ? `● Your move — ${BASE_TITLE}` : BASE_TITLE
+  })
 
   const selected = game.ships.find((s) => s.id === selectedId) ?? ships[0] ?? null
   const enemySelected = viewSide !== null && selected !== null && selected.side !== viewSide
@@ -350,7 +372,7 @@ export function App() {
                           ? `${side} already has a commander connected — pick the other side`
                           : `${side} has no commander yet`
                       }
-                      onClick={() => claimSide(side)}
+                      onClick={() => void claimSide(side)}
                     >
                       {occupied ? `● ${side} — occupied` : `○ Take command of ${side}`}
                     </button>
@@ -358,6 +380,8 @@ export function App() {
                 })
               })()}
             </div>
+            {/* The claim referee's refusal ("that chair is held") lands here. */}
+            {online.error && <p className="online-error">{online.error}</p>}
           </div>
         </div>
       )}

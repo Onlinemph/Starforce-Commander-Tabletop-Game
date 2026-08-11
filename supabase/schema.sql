@@ -54,6 +54,21 @@ create table if not exists sfc_actions (
 -- first release, so existing databases pick it up on a re-run.
 alter table sfc_matches add column if not exists is_public boolean not null default true;
 
+-- Side claims, enforced by the ledger rather than by politeness. Maps a side
+-- name to {key, at}: the claimant's per-browser key and when the claim was
+-- last renewed. A claim goes stale after five minutes without renewal, so a
+-- closed tab releases its chair by silence. Added after the first release.
+alter table sfc_matches add column if not exists claims jsonb not null default '{}'::jsonb;
+
+-- The sides the battle is waiting on, reported by connected clients so the
+-- match browser can say whose move it is without opening the battle.
+alter table sfc_matches add column if not exists waiting jsonb not null default '[]'::jsonb;
+
+-- Each action may carry a fingerprint of the state it produced, so a client
+-- applying it can detect that its board has drifted from the sender's and
+-- resynchronise from the ledger instead of playing on in silence.
+alter table sfc_actions add column if not exists hash text;
+
 create index if not exists sfc_actions_match_seq on sfc_actions (match_id, seq);
 create index if not exists sfc_matches_updated on sfc_matches (updated_at);
 
@@ -152,6 +167,7 @@ language sql security definer set search_path = public, extensions as $$
              'sides', m.sides,
              'updatedAt', m.updated_at,
              'createdAt', m.created_at,
+             'waiting', m.waiting,
              'moves', (select count(*) from sfc_actions a where a.match_id = m.id)
            ) as row
       from sfc_matches m
@@ -197,11 +213,18 @@ end $$;
 -- the row lock lets exactly one win. The loser's proposal does not match the
 -- ledger any more, so it is refused with -1 and that client re-reads the
 -- ledger instead — the ledger wins, always, and both boards converge on it.
+-- The signature gained p_hash after the first release; the old one has to go
+-- or a four-argument call becomes ambiguous. p_hash defaults to null, so a
+-- client on an older build still appends — its rows simply carry no
+-- fingerprint, and receivers skip the check for them.
+drop function if exists sfc_append_action(text, text, integer, jsonb);
+
 create or replace function sfc_append_action(
   p_id       text,
   p_password text,
   p_seq      integer,
-  p_action   jsonb
+  p_action   jsonb,
+  p_hash     text default null
 ) returns integer
 language plpgsql security definer set search_path = public, extensions as $$
 declare
@@ -222,9 +245,85 @@ begin
     return -1; -- the sender is out of step; it will re-read and catch up
   end if;
 
-  insert into sfc_actions (match_id, seq, action) values (m.id, v_next, p_action);
+  insert into sfc_actions (match_id, seq, action, hash) values (m.id, v_next, p_action, p_hash);
   update sfc_matches set updated_at = now() where id = m.id;
   return v_next;
+end $$;
+
+-- Claim a side, with the ledger as the referee.
+--
+-- Presence alone cannot stop two players taking the same chair in the same
+-- instant — it only reports, after the fact, that both sat down. This does:
+-- the row lock lets exactly one claim land. A claim names its holder by an
+-- opaque per-browser key and must be renewed (any repeat claim renews it);
+-- five silent minutes and the chair is free again, so a closed tab cannot
+-- lock a side out of the match forever. One chair per key: claiming a side
+-- releases any other side the same key held. A null side just releases.
+create or replace function sfc_claim_side(
+  p_id       text,
+  p_password text,
+  p_side     text,
+  p_key      text
+) returns text
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  m     sfc_matches;
+  k     text;
+  entry jsonb;
+  fresh jsonb := '{}'::jsonb;
+begin
+  select * into m from sfc_matches where id = upper(p_id) for update;
+  if not found then
+    raise exception 'No match with that code.';
+  end if;
+  if m.password_hash <> crypt(p_password, m.password_hash) then
+    raise exception 'That password does not open this match.';
+  end if;
+  if p_key is null or length(p_key) < 1 then
+    raise exception 'A claim needs a key.';
+  end if;
+
+  -- Keep only the claims that still bind: someone else's, and still warm.
+  for k in select jsonb_object_keys(coalesce(m.claims, '{}'::jsonb)) loop
+    entry := m.claims -> k;
+    if (entry ->> 'key') is distinct from p_key
+       and (entry ->> 'at')::timestamptz > now() - interval '5 minutes' then
+      fresh := fresh || jsonb_build_object(k, entry);
+    end if;
+  end loop;
+
+  if p_side is not null then
+    if fresh ? p_side then
+      update sfc_matches set claims = fresh where id = m.id;
+      return 'taken';
+    end if;
+    fresh := fresh || jsonb_build_object(p_side, jsonb_build_object('key', p_key, 'at', now()));
+  end if;
+
+  update sfc_matches set claims = fresh where id = m.id;
+  return 'ok';
+end $$;
+
+-- Whose move it is, for the match browser. Reported by connected clients
+-- whenever the waiting set changes; deliberately does not touch updated_at,
+-- which means "when the battle last moved".
+create or replace function sfc_set_waiting(
+  p_id       text,
+  p_password text,
+  p_waiting  jsonb
+) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  m sfc_matches;
+begin
+  select * into m from sfc_matches where id = upper(p_id) for update;
+  if not found then
+    raise exception 'No match with that code.';
+  end if;
+  if m.password_hash <> crypt(p_password, m.password_hash) then
+    raise exception 'That password does not open this match.';
+  end if;
+  update sfc_matches set waiting = coalesce(p_waiting, '[]'::jsonb) where id = m.id;
 end $$;
 
 -- Undo: drop everything from `p_length_after` onward (the game's undo is a
@@ -308,9 +407,11 @@ end $$;
 grant execute on function sfc_create_match(text, text, jsonb, jsonb, boolean) to anon, authenticated;
 grant execute on function sfc_list_matches(integer)                    to anon, authenticated;
 grant execute on function sfc_open_match(text, text)                   to anon, authenticated;
-grant execute on function sfc_append_action(text, text, integer, jsonb) to anon, authenticated;
+grant execute on function sfc_append_action(text, text, integer, jsonb, text) to anon, authenticated;
 grant execute on function sfc_undo(text, text, integer)                to anon, authenticated;
 grant execute on function sfc_replace_match(text, text, jsonb, jsonb)  to anon, authenticated;
+grant execute on function sfc_claim_side(text, text, text, text)       to anon, authenticated;
+grant execute on function sfc_set_waiting(text, text, jsonb)           to anon, authenticated;
 
 -- PostgREST answers from a cached picture of the schema, and it matches
 -- functions by their exact argument names — so a stale cache reports a

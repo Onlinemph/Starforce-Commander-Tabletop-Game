@@ -17,8 +17,13 @@ import type { GameAction } from '../engine/actions'
  */
 
 export interface MatchHandlers {
-  /** One action arrived. `seq` is 1-based, matching the store's journal. */
-  onAction(action: GameAction, seq: number): void
+  /**
+   * One action arrived. `seq` is 1-based, matching the store's journal.
+   * `hash` fingerprints the state the action produced on the sender's board,
+   * when their build stamps one — compare after applying, and a mismatch
+   * means the boards have drifted and the ledger should settle it.
+   */
+  onAction(action: GameAction, seq: number, hash?: string): void
   /** The ledger changed shape (an undo, a replacement) — take it whole. */
   onResync(save: SavedGame): void
   /** Sides with somebody connected right now. */
@@ -28,11 +33,19 @@ export interface MatchHandlers {
 }
 
 export interface MatchLink {
-  /** `seq` is the store's 1-based journal position for this action. */
-  append(action: GameAction, seq: number): Promise<void>
+  /** `seq` is the store's 1-based journal position; `hash` fingerprints the state it produced. */
+  append(action: GameAction, seq: number, hash?: string): Promise<void>
   undo(lengthAfter: number): Promise<void>
   replace(save: SavedGame): Promise<void>
-  claim(side: string | null): Promise<void>
+  /**
+   * Claim a side, with the ledger as referee. 'taken' means another console
+   * holds a live claim on it; 'ok' covers success and projects on an older
+   * schema, which cannot referee and fall back to presence-only claims.
+   * Null releases this console's chair.
+   */
+  claim(side: string | null): Promise<'ok' | 'taken'>
+  /** Tell the browser listing whose move it is. Best-effort. */
+  setWaiting(sides: string[]): Promise<void>
   /** Take the ledger whole — the answer to any disagreement. */
   resync(): Promise<void>
   close(): void
@@ -104,6 +117,8 @@ export interface MatchSummary {
   sides: string[]
   moves: number
   updatedAt: string
+  /** Sides the battle is waiting on, as last reported by a connected client. */
+  waiting: string[]
 }
 
 /**
@@ -130,6 +145,7 @@ export async function listSupabaseMatches(
         sides: Array.isArray(r.sides) ? r.sides.map(String) : [],
         moves: Number(r.moves ?? 0),
         updatedAt: String(r.updatedAt ?? ''),
+        waiting: Array.isArray(r.waiting) ? r.waiting.map(String) : [],
       }
     }),
   }
@@ -189,6 +205,8 @@ export async function openSupabaseMatch(
   side: string | null,
   handlers: MatchHandlers,
   journalLength: () => number,
+  /** This browser's opaque claim key — what a side claim names as its holder. */
+  claimKey = '',
 ): Promise<{ opened?: OpenedMatch; error?: string }> {
   const client = clientFor(config)
   const id = matchId.trim().toUpperCase()
@@ -221,13 +239,13 @@ export async function openSupabaseMatch(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'sfc_actions', filter: `match_id=eq.${id}` },
       (payload) => {
-        const row = payload.new as { seq?: number; action?: GameAction }
+        const row = payload.new as { seq?: number; action?: GameAction; hash?: string | null }
         if (typeof row?.seq !== 'number' || !row.action) return
         // The ledger counts from zero; the store's journal counts from one.
         const seq = row.seq + 1
         // Our own action, echoed back — already applied when it was taken.
         if (seq <= journalLength()) return
-        handlers.onAction(row.action, seq)
+        handlers.onAction(row.action, seq, row.hash ?? undefined)
       },
     )
     .on(
@@ -282,14 +300,25 @@ export async function openSupabaseMatch(
   void resync()
 
   const link: MatchLink = {
-    async append(action, seq) {
-      const { data: placed, error: appendError } = await client.rpc('sfc_append_action', {
+    async append(action, seq, hash) {
+      let { data: placed, error: appendError } = await client.rpc('sfc_append_action', {
         p_id: id,
         p_password: password,
         // The store counts from one; the ledger counts from zero.
         p_seq: seq - 1,
         p_action: action,
+        p_hash: hash ?? null,
       })
+      // A project on the pre-hash schema knows only the four-argument
+      // function; the action still matters more than its fingerprint.
+      if (isMissingFunction(appendError)) {
+        ;({ data: placed, error: appendError } = await client.rpc('sfc_append_action', {
+          p_id: id,
+          p_password: password,
+          p_seq: seq - 1,
+          p_action: action,
+        }))
+      }
       // -1 means the ledger moved while we were deciding: it wins, we re-read.
       if (appendError || placed === -1) await resync()
     },
@@ -310,8 +339,36 @@ export async function openSupabaseMatch(
       })
     },
     async claim(next) {
+      /*
+       * The ledger referees first: presence can only report that two players
+       * sat in the same chair, the claim function refuses the second one.
+       * A project on an older schema has no referee — the claim proceeds on
+       * presence alone there, exactly as before the function existed.
+       */
+      if (claimKey) {
+        const { data, error } = await client.rpc('sfc_claim_side', {
+          p_id: id,
+          p_password: password,
+          p_side: next,
+          p_key: claimKey,
+        })
+        if (!error && data === 'taken') return 'taken'
+        // Any other failure — older schema, transient network — falls back
+        // to the presence-only claim this always was. Refusing here would
+        // read as "side taken" to a player whose wifi blinked.
+      }
       claimed = next
       await channel.track({ side: next })
+      return 'ok'
+    },
+    async setWaiting(sides) {
+      const { error } = await client.rpc('sfc_set_waiting', {
+        p_id: id,
+        p_password: password,
+        p_waiting: sides,
+      })
+      // Best-effort: an older schema simply has no whose-move column.
+      void error
     },
     resync,
     close() {

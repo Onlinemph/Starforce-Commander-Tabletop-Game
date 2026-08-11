@@ -11,6 +11,7 @@ import {
   lastKey,
   leaveMatch,
   looksLikeSupabase,
+  timeAgo,
   useOnline,
 } from './online'
 import type { MatchSummary } from './supabaseMatch'
@@ -273,6 +274,11 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                             <span className="match-meta">
                               {m.id} · {m.sides.join(' vs ') || 'unknown sides'} ·{' '}
                               {m.moves === 0 ? 'not started' : `${m.moves} moves`}
+                              {/* Correspondence play: whose move, and for how long. */}
+                              {m.waiting.length > 0 && (
+                                <em className="match-turn"> · waiting on {m.waiting.join(' and ')}</em>
+                              )}
+                              {timeAgo(m.updatedAt) && ` · ${timeAgo(m.updatedAt)}`}
                             </span>
                           </button>
                         </li>
@@ -342,7 +348,7 @@ export function OnlinePanel({ onClose }: { onClose: () => void }) {
                             ? `${side} is yours`
                             : `${side} is unclaimed right now`
                       }
-                      onClick={() => claimSide(side)}
+                      onClick={() => void claimSide(side)}
                     >
                       {online.present.includes(side) ? '●' : '○'} {side}
                       {online.side === side ? ' — you' : occupiedByOther ? ' — occupied' : ''}
