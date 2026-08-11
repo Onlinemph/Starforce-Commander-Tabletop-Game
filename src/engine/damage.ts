@@ -3,6 +3,7 @@ import { FACE_DAMAGE, rollDice, Rng, rollForSpecial } from './dice'
 import { formationOf, type Formation } from './formation'
 import { distance, shieldsFacing } from './geometry'
 import { damageScoutSensor, scoutSensorAvailable } from './scouting'
+import { stableStringify } from './shipLibrary'
 import {
   armorRemaining,
   blueShieldRemaining,
@@ -417,8 +418,13 @@ export function scriptedChoices(
     const next = script[0]
     if (next?.kind === kind) {
       script.shift()
+      // Structural equality, not byte equality: a script that crossed the
+      // match ledger comes back with its keys re-sorted (Postgres jsonb),
+      // and a byte-wise comparison rejected the player's own legal answer —
+      // the console that made the pick kept it while every other console
+      // fell back to doctrine, and the boards drifted apart.
       const legal = decision.options.some(
-        (o) => JSON.stringify(o.choice) === JSON.stringify(next),
+        (o) => stableStringify(o.choice) === stableStringify(next),
       )
       if (legal) return next as Extract<DamageChoice, { kind: K }>
     }

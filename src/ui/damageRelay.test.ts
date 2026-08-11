@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { HIT_LABELS } from '../data/damageDeck'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from '../engine/actions'
-import { defaultCommandCard, type GameState } from '../engine/game'
+import { probeDecision, resolveCard } from '../engine/damage'
+import { cloneGame, damageContext, defaultCommandCard, type GameState } from '../engine/game'
 import { arcTo, canBearOn } from '../engine/geometry'
 import { SHIELD_SIDES, type ShipState } from '../engine/shipState'
 import { stateHash } from '../engine/stateHash'
@@ -40,6 +42,25 @@ import {
 
 function duel(seed = 5): GameState {
   return startScenario('s3.1-the-duel', { seed })
+}
+
+/**
+ * What the match ledger does to every action that crosses it: Postgres jsonb
+ * stores objects with their keys re-sorted, so {kind,hit} leaves one console
+ * and {hit,kind} arrives at the other. Reports 8 and 9 are two consoles'
+ * accounts of the same volley resolved with *different weapon mounts* —
+ * byte-wise comparisons treated the respelled script as a forgery and fell
+ * back to doctrine on every board but the author's.
+ */
+function jsonbNormalize<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => jsonbNormalize(v)) as unknown as T
+  if (value !== null && typeof value === 'object') {
+    const src = value as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(src).sort()) out[key] = jsonbNormalize(src[key])
+    return out as T
+  }
+  return value
 }
 
 describe('a staged action holds the battle', () => {
@@ -115,6 +136,11 @@ describe('a staged action holds the battle', () => {
     }
     expect(applyAction(game, extension).message).toMatch(/Waiting for Blue Force/)
     expect(game.stagedAction?.choices).toHaveLength(1)
+    // And an extension that crossed the ledger — keys re-sorted by jsonb —
+    // is still the same action, not a rival to refuse.
+    expect(applyAction(game, jsonbNormalize(structuredClone(extension))).message).toMatch(
+      /Waiting for Blue Force/,
+    )
   })
 
   it('narrates the hold and each handoff, not every extension', () => {
@@ -139,6 +165,37 @@ describe('a staged action holds the battle', () => {
       awaiting: 'Red Force',
     })
     expect(holds()).toBe(2)
+  })
+})
+
+describe('a script that crossed the ledger (reports 8 and 9)', () => {
+  const anyHitCard = {
+    id: 'probe',
+    category: 'general' as const,
+    primary: 'any-hit' as const,
+    stressIcon: false,
+  }
+
+  it('still counts as the player’s answer, not a forgery', () => {
+    const game = duel(11)
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const decision = probeDecision([], () => {
+      const copy = cloneGame(game)
+      resolveCard(copy.ships.find((s) => s.id === blue.id)!, anyHitCard, damageContext(copy))
+    })
+    // Something the doctrine would not have taken, so a doctrine fallback is
+    // visible in the log as the wrong pick.
+    const contrary = decision!.options.filter((o) => !o.recommended)[0]
+    const hit = contrary.choice.kind === 'any-hit' ? contrary.choice.hit : 'structure'
+
+    // The queued script arrives respelled, exactly as a remote console gets
+    // it from the match service — and the pick must still land.
+    applyAction(
+      game,
+      jsonbNormalize({ type: 'queue-damage-choices', choices: [contrary.choice] } as GameAction),
+    )
+    resolveCard(blue, anyHitCard, damageContext(game))
+    expect(game.log.some((l) => l.message.includes(`Any Hit → ${HIT_LABELS[hit]}`))).toBe(true)
   })
 })
 
@@ -311,8 +368,11 @@ describe('the relay between consoles', () => {
       { type: 'pass-fire', shipId: host.red.id },
       { type: 'resolve-staged-action', choices: [{ kind: 'any-hit', hit: 'sensors' }] },
     ]
+    // The host applies its own actions as written; the guest gets them back
+    // from the ledger with every object's keys re-sorted (jsonb). Same
+    // battle either way — reports 8 and 9 are what happens when it is not.
     for (const action of relay) applyAction(host.game, structuredClone(action))
-    for (const action of relay) applyAction(guest.game, structuredClone(action))
+    for (const action of relay) applyAction(guest.game, jsonbNormalize(structuredClone(action)))
     expect(host.game.stagedAction).toBeNull()
     expect(stateHash(host.game)).toBe(stateHash(guest.game))
     expect(marks(host.blue)).toBeGreaterThan(0)

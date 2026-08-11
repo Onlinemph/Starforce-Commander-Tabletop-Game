@@ -10,6 +10,7 @@ import {
 } from './cloaking'
 import { firingOrder, resolveVolley, type FireMode, type MountSelection, type VolleyResult } from './combat'
 import type { DamageChoice } from './damage'
+import { stableStringify } from './shipLibrary'
 import { setCommandAssignment } from './command'
 import {
   armMount,
@@ -325,7 +326,14 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
        * A re-stage carrying the *same* action is the relay extending its
        * script and passes; a different action waits its turn and refires.
        */
-      if (before && JSON.stringify(before.action) !== JSON.stringify(inner)) {
+      /*
+       * Structural comparison, for the same reason the script's legality
+       * check uses it: a re-stage that crossed the match ledger comes back
+       * with its keys re-sorted (Postgres jsonb), and a byte-wise comparison
+       * refused the relay's own extension as a rival — one console kept the
+       * hold, the other advanced it, and the two journals stopped agreeing.
+       */
+      if (before && stableStringify(before.action) !== stableStringify(inner)) {
         return said(
           `${before.awaiting} is choosing where the damage falls — the battle holds until they have.`,
         )

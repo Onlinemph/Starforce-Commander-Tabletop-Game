@@ -79,10 +79,18 @@ export function contentFingerprint(value: unknown): string {
 }
 
 /**
- * JSON with object keys in a fixed order, so two designs that differ only in
- * the order their fields were written hash the same.
+ * JSON with object keys in a fixed order, so two values that differ only in
+ * the order their fields were written compare the same.
+ *
+ * Not just for fingerprints. Postgres jsonb stores objects with their keys
+ * re-sorted, so any action that crosses the match ledger comes back respelled
+ * — {kind,hit} leaves, {hit,kind} returns — and a byte-wise JSON.stringify
+ * comparison then treats a player's own answer as a different value. Found
+ * the hard way: two consoles resolved the same volley with different weapon
+ * mounts, because the one that got the damage script through the ledger
+ * failed its legality check and quietly fell back to doctrine.
  */
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
   const entries = Object.entries(value as Record<string, unknown>)
