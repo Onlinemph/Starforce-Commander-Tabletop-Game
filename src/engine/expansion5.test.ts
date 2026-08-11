@@ -68,6 +68,7 @@ import {
   displayPlacement,
   impactingHoming,
   launchHoming,
+  PHASE_SEGMENTS,
   resolveHomingImpacts,
   shipIsCloaked,
   type GameState,
@@ -964,5 +965,65 @@ describe('unusual situations, played out (E5.9.1, E5.9.2)', () => {
     expect(overflightShield(s)).toBe('A')
     s.speed = 3
     expect(overflightShield(s)).toBe('F')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Impacts nobody answered (the frozen-torpedo report)
+// ---------------------------------------------------------------------------
+
+describe('impacts nobody answered (E5.4)', () => {
+  /**
+   * The playtest that found this: plasma torpedoes impacted the Yorktown,
+   * the player never pressed Resolve Impacts, and the counters froze on the
+   * map with their warheads unspent — forever. The impact question expires
+   * with the Combat Segment; the warheads must not.
+   */
+  function impactedBattle() {
+    const aur = ship({ id: 'aur', form: PASSER })
+    const foe = ship({ id: 'foe', side: 'Red', form: VALLARI_CRUISER, y: -5 })
+    const game = createGame({ scenario: THE_DUEL, ships: [aur, foe], seed: 7 })
+    for (let i = 0; i < 2; i++) {
+      const hw = launchHomingWeapon({ launcher: aur, weapon: PLASMA, target: foe, arc: 'FS' })
+      hw.impacted = true
+      hw.position = { ...foe.placement.position }
+      hw.phasesFlown = 1
+      game.homing.push(hw)
+    }
+    game.phase = 'combat-1'
+    game.segment = 'combat'
+    return { game, foe }
+  }
+
+  const marks = (s: ShipState) =>
+    Object.values(s.blueShieldDamage).reduce((a, b) => a + b, 0) +
+    s.structureDamaged.filter(Boolean).length +
+    Object.values(s.systemDamage).reduce((a, b) => a + b, 0)
+
+  it('sets the warheads off when the Combat Segment closes, with no point defense', () => {
+    const { game, foe } = impactedBattle()
+    expect(marks(foe)).toBe(0)
+    advanceSegment(game)
+    expect(game.homing).toHaveLength(0)
+    expect(game.log.some((l) => l.message.includes('offers no point defense'))).toBe(true)
+    expect(marks(foe)).toBeGreaterThan(0)
+  })
+
+  it('catches anything left at the round boundary too', () => {
+    const { game, foe } = impactedBattle()
+    game.phase = 'final'
+    game.segment = PHASE_SEGMENTS.final[PHASE_SEGMENTS.final.length - 1]
+    advanceSegment(game)
+    expect(game.round).toBe(2)
+    expect(game.homing).toHaveLength(0)
+    expect(marks(foe)).toBeGreaterThan(0)
+  })
+
+  it('sweeps counters aimed at a ship that is already gone', () => {
+    const { game, foe } = impactedBattle()
+    foe.destroyed = true
+    advanceSegment(game)
+    expect(game.homing).toHaveLength(0)
+    expect(marks(foe)).toBe(0)
   })
 })

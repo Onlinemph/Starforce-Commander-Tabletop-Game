@@ -1472,6 +1472,35 @@ export function resolveHomingImpacts(
   game.homing = game.homing.filter((hw) => !hw.impacted && !hw.destroyed)
 }
 
+/**
+ * Impacted homing weapons nobody answered: the warheads go off anyway.
+ *
+ * Point defense is the defender's decision and the Resolve Impacts button is
+ * where they make it — but the impact itself is not optional, and a player
+ * who advanced past the Combat Segment without pressing it used to leave the
+ * torpedoes frozen on the map, warheads unspent, forever (playtest report:
+ * four plasma torpedoes parked against the Yorktown doing nothing). Run at
+ * the moments the question expires: the Combat Segment closing, and the
+ * round turning over. Zero point defense — declining to answer is a legal
+ * answer, and the log says that is what happened.
+ */
+export function resolveUnansweredImpacts(game: GameState): void {
+  for (const ship of game.ships) {
+    const arrived = impactingHoming(game, ship)
+    if (arrived.length === 0) continue
+    if (ship.destroyed || ship.disengaged) {
+      // Nothing left to strike: the counters go with their target.
+      game.homing = game.homing.filter((hw) => !arrived.includes(hw))
+      continue
+    }
+    pushLog(
+      game,
+      `${ship.name} offers no point defense — ${arrived.length} unanswered impact${arrived.length === 1 ? '' : 's'} resolve${arrived.length === 1 ? 's' : ''} (E5.4).`,
+    )
+    resolveHomingImpacts(game, ship, {})
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Segment transitions (A3)
 // ---------------------------------------------------------------------------
@@ -1608,6 +1637,9 @@ function runSegmentExit(game: GameState): void {
       // Any damage still held for a tie group lands before the segment closes
       // (H2.4.2) — nothing may carry a rolled-but-unapplied volley forward.
       flushPendingVolleys(game)
+      // Nor may an impacted homing weapon: the segment where the defender
+      // could answer with point defense is over, so the warheads go off.
+      resolveUnansweredImpacts(game)
       // J3.6.4 — a lock whose last tractor beam has been shot away lets go at
       // once, as does one whose ship has just been destroyed.
       const report = pruneLinks(game.ops.links, game.ships, (id) => positionOfObject(game, id))
@@ -1824,6 +1856,9 @@ function runSegmentEnter(game: GameState): void {
 }
 
 function startNewRound(game: GameState): void {
+  // The catch-all half of the combat-exit sweep: nothing impacted may cross
+  // a round boundary unresolved, whatever segment it arrived in.
+  resolveUnansweredImpacts(game)
   game.round += 1
   game.phase = 'engineering'
   game.segment = 'resource-allocation'

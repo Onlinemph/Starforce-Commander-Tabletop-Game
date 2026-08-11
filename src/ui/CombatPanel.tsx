@@ -207,6 +207,29 @@ export function CombatPanel({ game, attacker }: Props) {
           <MissileCatch game={game} defender={attacker} />
         </>
       )}
+      {/*
+        The playtest that demanded this line: torpedoes impacted a ship the
+        player never re-selected, and nothing on screen said so. The engine
+        now resolves unanswered impacts when the segment closes — but with no
+        point defense, which is worth a warning while there is time to act.
+      */}
+      {(() => {
+        const waiting = game.ships.filter(
+          (s) =>
+            s.side === attacker.side &&
+            s.id !== attacker.id &&
+            !s.destroyed &&
+            impactingHoming(game, s).length > 0,
+        )
+        if (waiting.length === 0) return null
+        return (
+          <p className="fire-error">
+            Incoming homing weapons on {waiting.map((s) => s.name).join(' and ')} — select{' '}
+            {waiting.length === 1 ? 'it' : 'each'} to allocate point defense. Impacts left
+            unanswered resolve without any when the segment ends (E5.4).
+          </p>
+        )
+      })()}
       {target && <HomingLaunch attacker={attacker} target={target} />}
 
       {target && (
@@ -811,6 +834,8 @@ function HomingImpacts({ game, target }: { game: GameState; target: ShipState })
       <p className="hint">
         Every three points of point defense damage takes one point off a particle weapon&apos;s
         warhead; a missile is destroyed outright once it has taken its `MISL X` (F1.16.2, F13.2).
+        Impacts you do not resolve here go off by themselves — with no point defense — when the
+        segment ends (E5.4).
       </p>
     </div>
   )
