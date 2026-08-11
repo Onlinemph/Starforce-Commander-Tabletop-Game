@@ -37,7 +37,7 @@ import { sequenceOutline } from './sequence'
 import { FlightOpsPanel } from './FlightOpsPanel'
 import { IntelPanel } from './IntelPanel'
 import { useNet } from './net'
-import { inMatch, useOnline } from './online'
+import { claimSide, inMatch, useOnline } from './online'
 import { setMuted, setVolume, useSound } from './sound'
 import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
@@ -314,6 +314,44 @@ export function App() {
         the device between players shows the incoming commander nothing of the
         outgoing one's screen.
       */}
+      {/*
+        A match with no side claimed is not a state to play from: the view
+        would fall back to the referee's open table (or a stale local
+        preference), which is how a joiner once found themselves apparently
+        commanding the host's fleet. The claim is forced before anything else
+        happens — full blackout, same as the hot-seat handoff, because until a
+        side is chosen this player is nobody and should see nothing.
+      */}
+      {enrolledInMatch && !online.side && (
+        <div className="handoff-backdrop" role="dialog" aria-label="Choose your side">
+          <div className="handoff-card">
+            <h2>Take command</h2>
+            <p>
+              You have joined <strong>{online.matchName ?? online.matchId}</strong>. Choose the
+              side you command — your view locks to it, and the other players see the claim.
+            </p>
+            <div className="claim-sides">
+              {(online.sides.length > 0 ? online.sides : sides).map((side) => (
+                <button
+                  key={side}
+                  type="button"
+                  className={online.present.includes(side) ? '' : 'primary'}
+                  title={
+                    online.present.includes(side)
+                      ? `${side} already has a commander connected`
+                      : `${side} is unclaimed`
+                  }
+                  onClick={() => claimSide(side)}
+                >
+                  {online.present.includes(side) ? '● ' : '○ '}
+                  Command {side}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {handoff && (
         <div className="handoff-backdrop" role="dialog" aria-label="Console handoff">
           <div className="handoff-card">

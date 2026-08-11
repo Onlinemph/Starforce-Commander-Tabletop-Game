@@ -150,8 +150,12 @@ describe('the undo button in and out of a match', () => {
 
   it('will not reach across the table for the other side’s orders', () => {
     const red = getGame().ships.find((s) => s.side === 'Red Force')!
-    setMatchSide('Blue Force')
+    // The other commander's order arrives before this console claims a side
+    // (live, it arrives over the wire): the gate below would refuse writing
+    // it locally, which is its own test.
+    setMatchSide(null)
     dispatch({ type: 'plot-accel', shipId: red.id, delta: 1 })
+    setMatchSide('Blue Force')
 
     expect(canUndo()).toBe(false)
     expect(undoRefusal()).toMatch(/other commander/)
@@ -256,5 +260,37 @@ describe('the state fingerprint', () => {
     applyAction(game, { type: 'plot-turn-rate', shipId: game.ships[0].id, rate: 20 })
     // Orders are secret and unresolved: the boards still match.
     expect(stateHash(game)).toBe(before)
+  })
+})
+
+describe('the dispatch gate: one console, one side', () => {
+  beforeEach(() => {
+    setMatchSide(null)
+  })
+
+  it('refuses orders for the other commander’s ships in a match', () => {
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    setMatchSide('Blue Force')
+    const red = getGame().ships.find((s) => s.side === 'Red Force')!
+    const before = journalLength()
+    const refused = dispatch({ type: 'plot-accel', shipId: red.id, delta: 1 })
+    expect(refused.message).toContain('another console')
+    // Nothing was journalled for the other side to receive.
+    expect(journalLength()).toBe(before)
+    // An own-side action passes the gate (rename is legal in any segment).
+    const blue = getGame().ships.find((s) => s.side === 'Blue Force')!
+    expect(dispatch({ type: 'rename-ship', shipId: blue.id, name: 'U.S.S. Gatekeeper' }).message).toBeNull()
+    setMatchSide(null)
+  })
+
+  it('still lets the creator ready an absent side through the gate', () => {
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5 })
+    enableReadyGate()
+    setMatchSide('Blue Force')
+    // signal-ready is the one side-carrying action left open: the creator
+    // covers sides with nobody at their console (readyAbsentSides).
+    const outcome = dispatch({ type: 'signal-ready', side: 'Red Force', ready: true })
+    expect(outcome.message === null || !outcome.message.includes('another console')).toBe(true)
+    setMatchSide(null)
   })
 })

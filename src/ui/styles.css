@@ -3441,6 +3441,14 @@ button.chip:hover:not(:disabled) {
   }
 }
 
+/* The forced side claim on joining a match. */
+.claim-sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
 /* --- Ship & scenario library --------------------------------------------- */
 
 .library-tabs {

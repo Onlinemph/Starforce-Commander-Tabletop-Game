@@ -154,6 +154,23 @@ function applyJournaled(action: GameAction): ActionOutcome {
 
 /** Apply an action, journal it, autosave, notify. The only way state changes. */
 export function dispatch(action: GameAction): ActionOutcome {
+  /*
+   * In an online match this console speaks only for its claimed side. The
+   * view redaction always *discouraged* touching the other fleet, but
+   * nothing refused it — and a joiner clicking around an enemy panel could
+   * journal orders for ships that were never theirs, which reads to both
+   * players as the game malfunctioning. The exceptions are deliberate:
+   * sides the computer commands are driven from the creator's console, and
+   * `signal-ready` stays open because the creator readies absent sides
+   * through the gate (readyAbsentSides). Actions with no side — advancing
+   * the shared sequence, damage-choice scripts — pass untouched.
+   */
+  if (matchSide !== null && action.type !== 'signal-ready') {
+    const owner = actionSide(game, action)
+    if (owner !== null && owner !== matchSide && !(setup.aiSides ?? []).includes(owner)) {
+      return { message: `${owner} is commanded from another console.` }
+    }
+  }
   // Before the human closes a segment, the AI settles anything it was still
   // waiting on — a firing slot later in the Tactical Scan order, above all —
   // so a segment never ends with its guns silent.
@@ -203,6 +220,16 @@ function playerCommands(shipId: string): boolean {
   const ship = game.ships.find((s) => s.id === shipId)
   if (!ship) return false
   if ((setup.aiSides ?? []).includes(ship.side)) return false
+  /*
+   * In an online match this console commands exactly its claimed side —
+   * found the hard way: the host fired on the guest's cruiser and was then
+   * handed the GUEST'S damage-card choices, while the guest stared at an
+   * undamaged ship because the volley sat unjournalled behind the prompts.
+   * The far side's choices go to doctrine (the attacker's browser cannot
+   * stop to ask the defender's), which is E8.4.1 answered by the same
+   * damage-control advice the prompt itself recommends.
+   */
+  if (matchSide !== null) return ship.side === matchSide
   // A guest's actions come over the wire already resolved; only the side
   // driving the battle can be at a console to answer.
   return !aiSuppressed
