@@ -169,16 +169,16 @@ describe('the empty chair (ready gate)', () => {
     enableReadyGate()
   })
 
-  it('holds the segment while both sides are at their consoles', () => {
+  it('holds the segment while both sides are at their consoles', async () => {
     const game = getGame()
     expect(game.readyGate).toBe(true)
     dispatch({ type: 'signal-ready', side: 'Blue Force', ready: true })
-    readyAbsentSides(['Blue Force', 'Red Force'], [])
+    await readyAbsentSides(['Blue Force', 'Red Force'], [])
     expect(getGame().readySides).toEqual(['Blue Force'])
     expect(gateIsWaiting()).toBe(true)
   })
 
-  it('readies a side nobody is connected for, so the gate is not a deadlock', () => {
+  it('readies a side nobody is connected for, so the gate is not a deadlock', async () => {
     const segment = getGame().segment
     dispatch({ type: 'signal-ready', side: 'Blue Force', ready: true })
     expect(gateIsWaiting()).toBe(true)
@@ -186,28 +186,28 @@ describe('the empty chair (ready gate)', () => {
     // Red has closed the tab. With the last chair covered the gate opens and
     // the segment closes, which is the whole point — and closing it clears the
     // ready marks for the next one, so look at the segment, not the marks.
-    readyAbsentSides(['Blue Force'], [])
+    await readyAbsentSides(['Blue Force'], [])
     expect(getGame().segment).not.toBe(segment)
   })
 
-  it('journals it, so both clients and any later replay agree it happened', () => {
+  it('journals it, so both clients and any later replay agree it happened', async () => {
     const before = journalLength()
-    readyAbsentSides(['Blue Force'], [])
+    await readyAbsentSides(['Blue Force'], [])
     expect(journalLength()).toBeGreaterThan(before)
     expect(getGame().log.some((l) => l.message.includes('Red Force is ready'))).toBe(true)
   })
 
-  it('leaves the computer’s sides alone — this very client drives them', () => {
+  it('leaves the computer’s sides alone — this very client drives them', async () => {
     newGame({ scenarioId: 's3.1-the-duel', seed: 5, aiSides: ['Red Force'] })
     enableReadyGate()
-    readyAbsentSides(['Blue Force'], ['Red Force'])
+    await readyAbsentSides(['Blue Force'], ['Red Force'])
     expect(getGame().readySides).not.toContain('Red Force')
   })
 
-  it('says nothing twice about a side already readied', () => {
-    readyAbsentSides(['Blue Force'], [])
+  it('says nothing twice about a side already readied', async () => {
+    await readyAbsentSides(['Blue Force'], [])
     const after = journalLength()
-    readyAbsentSides(['Blue Force'], [])
+    await readyAbsentSides(['Blue Force'], [])
     expect(journalLength()).toBe(after)
   })
 })

@@ -91,6 +91,32 @@ describe('a staged action holds the battle', () => {
     expect(game.stagedAction).toBeNull()
   })
 
+  it('holds one action at a time — a second volley cannot clobber the first', () => {
+    const game = duel()
+    stage(game)
+    const first = game.stagedAction
+    // Two consoles fired in the same instant; the second stage arrives
+    // carrying a different action. Refused — the first held volley stands.
+    const rival: GameAction = {
+      type: 'stage-damage-action',
+      action: { type: 'pass-fire', shipId: game.ships[1].id },
+      choices: [],
+      awaiting: 'Red Force',
+    }
+    expect(applyAction(game, rival).message).toMatch(/choosing where the damage falls/)
+    expect(game.stagedAction).toBe(first)
+    // The relay extending its own script is not a rival: same action, longer
+    // script, passes.
+    const extension: GameAction = {
+      type: 'stage-damage-action',
+      action: { type: 'pass-fire', shipId: game.ships[0].id },
+      choices: [{ kind: 'any-hit', hit: 'sensors' }],
+      awaiting: 'Blue Force',
+    }
+    expect(applyAction(game, extension).message).toMatch(/Waiting for Blue Force/)
+    expect(game.stagedAction?.choices).toHaveLength(1)
+  })
+
   it('narrates the hold and each handoff, not every extension', () => {
     const game = duel()
     stage(game)
@@ -308,6 +334,28 @@ describe('the relay between consoles', () => {
     expect(getGame().stagedAction).toBeNull()
     expect(marks(blue)).toBeGreaterThan(0)
     setMatchSide(null)
+  })
+
+  it('settles locally after leaving a match mid-relay, instead of bricking the battle', async () => {
+    const { blue, red } = stageableDuel(12)
+    setMatchPresence(['Blue Force', 'Red Force'], false)
+    setMatchSide('Red Force')
+    await fireOn(red, blue)
+    expect(getGame().stagedAction?.awaiting).toBe('Blue Force')
+
+    // The player leaves the match with the cards still in the air. Nobody is
+    // coming to answer, and every action is refused until somebody does — so
+    // the console settles it as the solo game it now is, prompting for the
+    // human ships the way hot-seat play always has.
+    setMatchPresence([], false)
+    setMatchSide(null)
+    for (let guard = 0; guard < 40 && getGame().stagedAction; guard++) {
+      await tick()
+      const decision = pendingDamageDecision()
+      if (decision) answerDamageDecision(decision.options[0].choice)
+    }
+    expect(getGame().stagedAction).toBeNull()
+    expect(marks(blue)).toBeGreaterThan(0)
   })
 
   it('answers by doctrine outright when the defender was never connected', async () => {

@@ -10,7 +10,7 @@ import {
   CAPTURED_FTL_LOCKOUT,
 } from '../engine/boarding'
 import { crewIsArmed, type ShipState } from '../engine/shipState'
-import { dispatch } from './store'
+import { dispatch, dispatchWithChoices } from './store'
 
 /**
  * Boarding Combat (J6.2). Marines who reached an enemy hull by transporter
@@ -109,7 +109,11 @@ function BoardingAction({ game, target }: { game: GameState; target: ShipState }
               type="button"
               className="chip"
               onClick={() =>
-                setError(dispatch({ type: 'fight-boarders', targetId: target.id, side }).message)
+                // Sabotage lands as damage cards (J6.2.4), and cards carry
+                // choices — through the probe, so the defender is asked.
+                void dispatchWithChoices({ type: 'fight-boarders', targetId: target.id, side }).then(
+                  (outcome) => setError(outcome.message),
+                )
               }
             >
               Fight it out now

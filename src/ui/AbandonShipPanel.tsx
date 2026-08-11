@@ -3,7 +3,7 @@ import { crewComplement, POD_LANDING_RANGE, VICTORY_POINTS_PER_CREW } from '../e
 import { type GameState } from '../engine/game'
 import { actualRange } from '../engine/geometry'
 import type { ShipState } from '../engine/shipState'
-import { dispatch } from './store'
+import { dispatch, dispatchWithChoices } from './store'
 
 /**
  * Abandoning ship (E11.4 – E11.6, optional).
@@ -99,10 +99,14 @@ export function AbandonShipPanel({ game, ship }: Props) {
               <button
                 type="button"
                 onClick={() =>
-                  setError(
-                    dispatch({ type: 'abandon-ship', shipId: ship.id, selfDestruct: scuttle })
-                      .message,
-                  )
+                  // A scuttled hull explodes, and the blast draws damage
+                  // cards on every neighbour (E11.3.3) — their choices go
+                  // through the probe like any volley's.
+                  void dispatchWithChoices({
+                    type: 'abandon-ship',
+                    shipId: ship.id,
+                    selfDestruct: scuttle,
+                  }).then((outcome) => setError(outcome.message))
                 }
               >
                 Take to the pods

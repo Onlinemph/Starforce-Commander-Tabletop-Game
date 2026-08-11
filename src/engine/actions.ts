@@ -317,6 +317,19 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
         return said('That action cannot be staged.')
       }
       const before = game.stagedAction
+      /*
+       * One hold at a time, and it belongs to the action that got there
+       * first. Two consoles can fire in the same instant, each probing
+       * before the other's stage arrived — without this, the second stage
+       * would replace the first and a held volley would silently vanish.
+       * A re-stage carrying the *same* action is the relay extending its
+       * script and passes; a different action waits its turn and refires.
+       */
+      if (before && JSON.stringify(before.action) !== JSON.stringify(inner)) {
+        return said(
+          `${before.awaiting} is choosing where the damage falls — the battle holds until they have.`,
+        )
+      }
       game.stagedAction = { action: inner, choices: [...action.choices], awaiting: action.awaiting }
       // Narrate the hold — and each handoff — but not every extension of the
       // script, or the log would count the questions instead of the answers.

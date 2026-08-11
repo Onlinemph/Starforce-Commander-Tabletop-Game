@@ -327,10 +327,22 @@ let settling = false
 
 async function settleStagedAction(): Promise<void> {
   const staged = game.stagedAction
-  if (!staged || settling || matchSide === null || pending) return
-  const mine = staged.awaiting === matchSide
-  const covering = !mine && matchCreator && !matchPresent.includes(staged.awaiting)
-  if (!mine && !covering) return
+  if (!staged || settling || pending) return
+  if (matchSide === null) {
+    /*
+     * No match side and a stage standing: the player left a match mid-relay,
+     * or imported a battle file that ends inside one. Nobody is coming to
+     * answer, and every action is refused until somebody does — so this
+     * console settles it like the solo game it now is, prompting for human
+     * ships and playing doctrine for the AI's. The one console that must
+     * not is a WebRTC guest (aiSuppressed): its host resolves everything.
+     */
+    if (aiSuppressed) return
+  } else {
+    const mine = staged.awaiting === matchSide
+    const covering = !mine && matchCreator && !matchPresent.includes(staged.awaiting)
+    if (!mine && !covering) return
+  }
   settling = true
   try {
     // Probing the *resolve* rather than the inner action matters: the clone
@@ -485,6 +497,9 @@ export function undo(): void {
   autosave()
   emit()
   net?.onUndo(journal.length)
+  // Rewinding a resolve puts the battle back into its hold (solo only — in a
+  // match the hold refuses undo); pick the relay straight back up.
+  void settleStagedAction()
 }
 
 // ---------------------------------------------------------------------------
@@ -512,6 +527,9 @@ export function importBattle(text: string): string | null {
   emit()
   net?.onReplace(saved())
   void driveAi()
+  // A battle file can end mid-relay; the hold replays with it and the
+  // importer's console is the only one left to answer.
+  void settleStagedAction()
   return null
 }
 
@@ -603,7 +621,10 @@ export function currentStateHash(): string {
  * One client does this — the creator's, the same one that drives the AI — so
  * two consoles cannot both volunteer the same absent side.
  */
-export function readyAbsentSides(present: readonly string[], aiSides: readonly string[]): void {
+export async function readyAbsentSides(
+  present: readonly string[],
+  aiSides: readonly string[],
+): Promise<void> {
   if (!game.readyGate) return
   for (const side of sidesAwaited(game)) {
     if (game.readySides.includes(side)) continue
@@ -611,7 +632,12 @@ export function readyAbsentSides(present: readonly string[], aiSides: readonly s
     // the absent ones, and readying them would race the driver.
     if (aiSides.includes(side)) continue
     if (present.includes(side)) continue
-    dispatch({ type: 'signal-ready', side, ready: true })
+    // Through the probe, never around it: the last ready closes the segment,
+    // and a segment exit can draw damage cards — homing impacts, asteroid
+    // and nebula transits — whose choices belong at somebody's console. A
+    // plain dispatch here answered them all by doctrine, the local player's
+    // own ships included.
+    await dispatchWithChoices({ type: 'signal-ready', side, ready: true })
   }
 }
 

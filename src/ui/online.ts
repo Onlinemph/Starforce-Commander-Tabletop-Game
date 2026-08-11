@@ -372,7 +372,7 @@ async function connectSupabase(enrolled: Enrollment): Promise<void> {
 function coverAbsentSides(present: string[]): void {
   if (!enrollment?.creator) return
   if (!gateIsWaiting()) return
-  readyAbsentSides(present, currentSetup().aiSides ?? [])
+  void readyAbsentSides(present, currentSetup().aiSides ?? [])
 }
 
 function receive(msg: ServerMessage): void {
