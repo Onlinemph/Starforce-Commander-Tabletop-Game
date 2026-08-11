@@ -1983,6 +1983,81 @@ input:focus-visible {
   text-align: left;
 }
 
+/* ── Battle summary ─────────────────────────────────────────────────────── */
+
+.picker.battle-summary {
+  width: min(760px, 100%);
+  border-left-color: var(--lc-gold, #ffb851);
+}
+
+.summary-body {
+  padding: 0.9rem 1.1rem 1.1rem;
+  overflow-y: auto;
+}
+
+.summary-outcome {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-lcars);
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  color: var(--lc-gold, #ffb851);
+}
+
+.summary-line {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.summary-side {
+  margin-bottom: 1rem;
+}
+
+.summary-side h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.35rem;
+}
+
+.summary-points {
+  font-size: 0.8rem;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.summary-side table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.summary-side th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+  padding: 0.2rem 0.5rem 0.2rem 0;
+}
+
+.summary-side td {
+  padding: 0.25rem 0.5rem 0.25rem 0;
+  border-top: 1px solid #1a2130;
+}
+
+.summary-side td em {
+  display: block;
+  font-style: normal;
+  font-size: 0.72rem;
+  opacity: 0.6;
+}
+
+.summary-side tr.is-out td {
+  opacity: 0.55;
+}
+
 /* ── Log & brief ────────────────────────────────────────────────────────── */
 
 .log-head {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
@@ -15,7 +15,9 @@ import {
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, type ShipState } from '../engine/shipState'
+import { battleSummary } from '../engine/battleSummary'
 import { AbandonShipPanel } from './AbandonShipPanel'
+import { BattleSummaryPanel } from './BattleSummary'
 import { BoardingPanel } from './BoardingPanel'
 import { ShipLibraryPanel } from './ShipLibraryPanel'
 import { CloakPanel } from './CloakPanel'
@@ -132,6 +134,19 @@ export function App() {
   }
   /** A blackout while the device changes hands, so nothing leaks in passing. */
   const [handoff, setHandoff] = useState<string | null>(null)
+
+  /*
+   * The battle, summed up — and shown unprompted the moment it ends. `over`
+   * is edge-triggered so dismissing the screen stays dismissed; a new battle
+   * arms it again. The menu reopens it any time, including mid-battle.
+   */
+  const summary = battleSummary(game)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  const wasOver = useRef(false)
+  useEffect(() => {
+    if (summary.over && !wasOver.current) setSummaryOpen(true)
+    wasOver.current = summary.over
+  }, [summary.over])
 
   /*
    * The tab knows whose move it is. A persistent match is played like
@@ -308,7 +323,12 @@ export function App() {
               ? '… Online'
               : 'Online'}
         </button>
-        <BattleMenu game={game} locked={enrolledInMatch} onReplay={() => setReplaying(true)} />
+        <BattleMenu
+        game={game}
+        locked={enrolledInMatch}
+        onReplay={() => setReplaying(true)}
+        onSummary={() => setSummaryOpen(true)}
+      />
       </header>
 
       {library && <ShipLibraryPanel onClose={() => setLibrary(false)} />}
@@ -326,6 +346,13 @@ export function App() {
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
+      {summaryOpen && (
+        <BattleSummaryPanel
+          summary={summary}
+          scenarioName={game.scenario.name}
+          onClose={() => setSummaryOpen(false)}
+        />
+      )}
       {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
       {/* Sits above everything: a volley stops here until the captain answers. */}
       <DamageChoicePrompt />
@@ -645,6 +672,35 @@ function battleReport(game: GameState): string {
   }
   lines.push('')
 
+  // The summary the end-of-battle screen shows, kept with the record.
+  const summary = battleSummary(game)
+  lines.push('## Summary')
+  lines.push('')
+  lines.push(summary.outcome)
+  lines.push('')
+  lines.push(
+    `${summary.rounds} round${summary.rounds === 1 ? '' : 's'} · ` +
+      `${summary.totalVolleys} volley${summary.totalVolleys === 1 ? '' : 's'} fired · ` +
+      `${summary.totalCards} damage card${summary.totalCards === 1 ? '' : 's'} drawn` +
+      (summary.biggestVolley
+        ? ` · heaviest volley: ${summary.biggestVolley.attacker} hit ${summary.biggestVolley.target} for ${summary.biggestVolley.damage}`
+        : ''),
+  )
+  lines.push('')
+  for (const side of summary.sides) {
+    lines.push(`### ${side.side} — ${side.points} VP · fleet condition ${Math.round(side.health * 100)}%`)
+    lines.push('')
+    lines.push('| Ship | Fate | Structure | Volleys | Damage rolled | Cards taken |')
+    lines.push('| --- | --- | --- | --- | --- | --- |')
+    for (const ship of side.ships) {
+      const fate = ship.status === 'fighting' ? `${ship.damage} damage` : ship.status
+      lines.push(
+        `| ${ship.name} | ${fate} | ${ship.structureLeft}/${ship.structureTotal} | ${ship.volleys} | ${ship.damageRolled} | ${ship.cardsTaken} |`,
+      )
+    }
+    lines.push('')
+  }
+
   lines.push('## Log')
   let round = 0
   for (const entry of game.log) {
@@ -709,11 +765,13 @@ function BattleMenu({
   game,
   locked,
   onReplay,
+  onSummary,
 }: {
   game: GameState
   /** In a match: saving and reading stay, loading a different battle does not. */
   locked: boolean
   onReplay: () => void
+  onSummary: () => void
 }) {
   const [note, setNote] = useState<string | null>(null)
 
@@ -751,6 +809,13 @@ function BattleMenu({
         title="Watch this battle back from deployment — every action, every die, scrubbed like a tape"
       >
         Replay
+      </button>
+      <button
+        type="button"
+        onClick={onSummary}
+        title="The battle summed up — who holds the field, the score, and what every hull did"
+      >
+        Summary
       </button>
       <label
         className={`chip file-chip${locked ? ' is-disabled' : ''}`}
