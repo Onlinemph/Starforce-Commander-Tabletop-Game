@@ -103,6 +103,19 @@ describe('the verdict', () => {
     expect(summary.outcome).toBe('Red Force holds the field.')
   })
 
+  it('counts a derelict out of the fight, and never as "destroyed damage"', () => {
+    // The Aurelian Raid report that found this: the Nocturne drifted at zero
+    // structure as a derelict, the forces list read "destroyed damage", and
+    // the summary said the battle was still in progress against a hulk.
+    const { game, red } = armedDuel()
+    red.derelict = true
+    const summary = battleSummary(game)
+    const nocturne = summary.sides.find((s) => s.side === 'Red Force')!.ships[0]
+    expect(nocturne.status).toBe('derelict')
+    expect(summary.over).toBe(true)
+    expect(summary.outcome).toBe('Blue Force holds the field.')
+  })
+
   it('calls mutual destruction what it is', () => {
     const { game } = armedDuel()
     for (const ship of game.ships) ship.destroyed = true

@@ -528,7 +528,15 @@ export function App() {
                     }}
                   >
                     {ship.name}
-                    <em>{ship.destroyed ? 'destroyed' : ship.disengaged ? 'disengaged' : damageLevel(ship)}</em>
+                    <em>
+                      {ship.destroyed
+                        ? 'destroyed'
+                        : ship.disengaged
+                          ? 'disengaged'
+                          : ship.derelict
+                            ? 'derelict'
+                            : damageLevel(ship)}
+                    </em>
                   </button>
                 ))}
               </div>
@@ -655,9 +663,11 @@ function battleReport(game: GameState): string {
           ? 'disengaged'
           : ship.capturedBy
             ? `captured by ${ship.capturedBy}`
-            : damageLevel(ship) === 'none'
-              ? 'undamaged'
-              : `${damageLevel(ship)} damage`
+            : ship.derelict
+              ? 'derelict'
+              : damageLevel(ship) === 'none'
+                ? 'undamaged'
+                : `${damageLevel(ship)} damage`
       lines.push(`- **${ship.name}** — ${ship.form.name} (${status})`)
     }
     lines.push('')

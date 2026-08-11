@@ -67,12 +67,16 @@ function statusOf(ship: ShipState): string {
   if (ship.destroyed) return 'destroyed'
   if (ship.disengaged) return 'disengaged'
   if (ship.capturedBy) return `captured by ${ship.capturedBy}`
+  // Before 'fighting', because a derelict is anything but: it drifts, gives
+  // no orders, and used to be reported as the nonsense "destroyed damage" —
+  // and, worse, counted as a reason the battle was still in progress.
+  if (ship.derelict) return 'derelict'
   return 'fighting'
 }
 
-/** Still able to fight: on the map, under its own flag. */
+/** Still able to fight: on the map, under its own flag, with a crew answering. */
 function fighting(ship: ShipState): boolean {
-  return !ship.destroyed && !ship.disengaged && !ship.capturedBy
+  return !ship.destroyed && !ship.disengaged && !ship.capturedBy && !ship.derelict
 }
 
 export function battleSummary(game: GameState): BattleSummary {
