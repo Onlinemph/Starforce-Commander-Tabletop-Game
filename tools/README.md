@@ -201,6 +201,23 @@ rotates and mirrors a small set of source images) and reading its eight wedges.
 Scouts also carry a SCOUT SENSOR block below the FUNCTIONS list; its power circles, damage boxes and
 three range numbers (targeting, jamming, scan) are read positionally.
 
+**Damage boxes that are a picture, not a font.** Most of the roster draws a mount's damage boxes as
+black Wingdings box glyphs. The Aurelian book does not always: 25 of its 94 mount rows paste the
+boxes in as a small bitmap, and those rows read as *zero* boxes — which a `max(1, ...)` floor then
+turned into one. That floor is why the error survived so long. It never threw, never failed
+validation, and never printed a warning; it wrote a plausible number over a missing one, and every
+plasma launcher in the faction came out two to three times more fragile than the printed ship.
+
+`hit_box_bitmaps` counts them instead. The strip is a row of identical square outlines on white, so
+the scanline through their middles has two dark runs per box — one per vertical stroke — and no
+other row in the strip has more; half the maximum run count is the answer, with no threshold to
+tune. Strips are claimed by position rather than shape: a mount takes the bitmap sitting *below* its
+arming row, because the firing-arc icon is the other small image nearby and sits above it. Shape
+cannot do this job — a two-box strip is 25x21 against an icon's 19x19.
+
+The Master Ship Book is unaffected: 0 of 192 mount rows. Union and Vallari were always read
+correctly.
+
 `generate_ships.py` maps those records onto the engine's `ShipForm` schema, joins the Master Ship
 List for point values, availability, year and the victory table, applies the errata list, and
 cross-checks each ship against its own printed TOTAL POWER, battery count and shield values — plus,

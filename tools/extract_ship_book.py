@@ -489,6 +489,52 @@ def endurance_boxes(page):
     return out
 
 
+def hit_box_bitmaps(page):
+    """
+    Weapon damage boxes that are a picture rather than a font.
+
+    Most of the roster draws a mount's damage boxes as black Wingdings box
+    glyphs, which read straight out of the text layer. The Aurelian book does
+    not always: 25 of its 94 mount rows paste the boxes in as a small bitmap
+    instead, and those rows read as zero boxes and were then floored to one by
+    the caller. Every plasma launcher in the faction came out with a single hit
+    box, which is why they all died to one damage card — the printed forms give
+    the small tubes two and the heavies three.
+
+    Counting them is easier than it sounds. The strip is a row of identical
+    square outlines on white, so the scanline crossing their middles has two
+    dark runs per box — one for each vertical stroke — and no other row in the
+    strip has more. Halving the maximum run count gives the number of boxes,
+    and it needs no threshold tuning: the strokes are solid black on white.
+    """
+    out = []
+    for info in page.get_image_info():
+        r = fitz.Rect(info['bbox'])
+        # Anything small in the weapons column is a candidate. Shape does not
+        # separate these from the firing-arc icons — a two-box strip is 25x21
+        # against an icon's 19x19 — so the caller picks by position instead,
+        # taking only strips that sit *below* a mount's arming row. The icons
+        # sit above it.
+        if r.x0 < 500 or r.height > 30 or r.width > 140:
+            continue
+        pix = page.get_pixmap(matrix=fitz.Matrix(10, 10), clip=r, colorspace=fitz.csGRAY)
+        w, h, buf = pix.width, pix.height, pix.samples
+        best = 0
+        for y in range(h):
+            row, runs, dark = buf[y * w:(y + 1) * w], 0, False
+            for v in row:
+                if v < 110:
+                    if not dark:
+                        runs += 1
+                    dark = True
+                else:
+                    dark = False
+            best = max(best, runs)
+        if best >= 2:
+            out.append({'x0': r.x0, 'x1': r.x1, 'y0': r.y0, 'y1': r.y1, 'boxes': (best + 1) // 2})
+    return out
+
+
 def parse_weapons(page, chars, gl):
     right = [c for c in gl if c['x'] > 500 and c['y'] < 500]
     boxes = endurance_boxes(page)
@@ -511,6 +557,7 @@ def parse_weapons(page, chars, gl):
                 heads.append((cs[0]['y'], re.sub(r'\s+', ' ', t)))
 
     icons = arc_icons(page)
+    bitmap_hits = hit_box_bitmaps(page)
     out = []
     for idx, (y0, name) in enumerate(heads):
         y1 = heads[idx + 1][0] if idx + 1 < len(heads) else 1e9
@@ -601,6 +648,7 @@ def parse_weapons(page, chars, gl):
 
         arm_b = bucket(arming)
         hit_b = bucket(hits)
+        strips = [s for s in bitmap_hits if y0 - 3 <= s['y0'] < y1 - 3]
 
         mounts = []
         for i in range(len(anchors)):
@@ -612,9 +660,20 @@ def parse_weapons(page, chars, gl):
                     seen += 1
                 elif c['o'] == DIAMOND and seen > 0:
                     gates.append(seen - 1)
+            # Glyph boxes first; a mount that has none may still have them as a
+            # pasted bitmap. Claim the strip that sits directly under this
+            # mount's arming row — below it, because the firing-arc icon is the
+            # other small image nearby and sits above.
+            n = len(hit_b[i])
+            if n == 0 and strips and g:
+                arm_y = min(c['y'] for c in g)
+                under = [s for s in strips if 0 < s['y0'] - arm_y < 26
+                         and abs((s['x0'] + s['x1']) / 2 - anchors[i]) < 45]
+                if under:
+                    n = min(under, key=lambda s: abs((s['x0'] + s['x1']) / 2 - anchors[i]))['boxes']
             mounts.append({
                 'armingCircles': max(1, len(circles)),
-                'hitBoxes': max(1, len(hit_b[i])),
+                'hitBoxes': max(1, n),
                 'gates': gates,
                 'arcs': block_icons[i]['arcs'] if i < len(block_icons) else [],
             })

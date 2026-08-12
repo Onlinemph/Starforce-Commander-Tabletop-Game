@@ -1,0 +1,3504 @@
+[
+ {
+  "class": "UNION-Class Dreadnought (DN)",
+  "year": 3656,
+  "pointValue": 50,
+  "availability": "rare",
+  "pwrBatt": 11,
+  "shieldsArmor": 84,
+  "systemBoxes": 87,
+  "structure": 19,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 13
+   },
+   {
+    "damage": 10,
+    "points": 25
+   },
+   {
+    "damage": 14,
+    "points": 38
+   },
+   {
+    "damage": 17,
+    "points": 45
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "UNION II-Class Dreadnought (DN)",
+  "year": 3668,
+  "pointValue": 76,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 90,
+  "systemBoxes": 93,
+  "structure": 20,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 8
+   },
+   {
+    "damage": 5,
+    "points": 19
+   },
+   {
+    "damage": 10,
+    "points": 38
+   },
+   {
+    "damage": 15,
+    "points": 57
+   },
+   {
+    "damage": 18,
+    "points": 69
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "UNION III-Class Dreadnought (DN)",
+  "year": 3675,
+  "pointValue": 158,
+  "availability": "rare",
+  "pwrBatt": 14,
+  "shieldsArmor": 108,
+  "systemBoxes": 102,
+  "structure": 22,
+  "victory": [
+   {
+    "damage": 5,
+    "points": 16
+   },
+   {
+    "damage": 6,
+    "points": 40
+   },
+   {
+    "damage": 11,
+    "points": 79
+   },
+   {
+    "damage": 17,
+    "points": 119
+   },
+   {
+    "damage": 20,
+    "points": 143
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "KURSK I Class Battlecruiser (CB)",
+  "year": 3655,
+  "pointValue": 50,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 68,
+  "systemBoxes": 67,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 13
+   },
+   {
+    "damage": 7,
+    "points": 25
+   },
+   {
+    "damage": 11,
+    "points": 38
+   },
+   {
+    "damage": 13,
+    "points": 45
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN I-Class Heavy Cruiser (CH)",
+  "year": 3645,
+  "pointValue": 23,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 53,
+  "systemBoxes": 55,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 7,
+    "points": 12
+   },
+   {
+    "damage": 10,
+    "points": 17
+   },
+   {
+    "damage": 12,
+    "points": 21
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN II-Class Heavy Cruiser (CH)",
+  "year": 3655,
+  "pointValue": 29,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 61,
+  "systemBoxes": 59,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 7,
+    "points": 15
+   },
+   {
+    "damage": 10,
+    "points": 22
+   },
+   {
+    "damage": 12,
+    "points": 26
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN IIc-Class Command Cruiser (CC)",
+  "year": 3655,
+  "pointValue": 32,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 61,
+  "systemBoxes": 61,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 16
+   },
+   {
+    "damage": 10,
+    "points": 24
+   },
+   {
+    "damage": 12,
+    "points": 29
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN III-Class Heavy Cruiser (CH)",
+  "year": 3662,
+  "pointValue": 42,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 74,
+  "systemBoxes": 59,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 11
+   },
+   {
+    "damage": 7,
+    "points": 21
+   },
+   {
+    "damage": 11,
+    "points": 32
+   },
+   {
+    "damage": 13,
+    "points": 38
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN IIIc-Class Command Cruiser (CC)",
+  "year": 3663,
+  "pointValue": 49,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 74,
+  "systemBoxes": 64,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 12
+   },
+   {
+    "damage": 7,
+    "points": 25
+   },
+   {
+    "damage": 11,
+    "points": 37
+   },
+   {
+    "damage": 13,
+    "points": 44
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN IV-Class Heavy Cruiser (CH)",
+  "year": 3667,
+  "pointValue": 48,
+  "availability": "uncommon",
+  "pwrBatt": 10,
+  "shieldsArmor": 82,
+  "systemBoxes": 63,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 24
+   },
+   {
+    "damage": 11,
+    "points": 36
+   },
+   {
+    "damage": 14,
+    "points": 44
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN IVc-Class Command Cruiser (CC)",
+  "year": 3668,
+  "pointValue": 58,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 82,
+  "systemBoxes": 68,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 14
+   },
+   {
+    "damage": 8,
+    "points": 29
+   },
+   {
+    "damage": 11,
+    "points": 43
+   },
+   {
+    "damage": 14,
+    "points": 52
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN V-Class Heavy Cruiser (CH)",
+  "year": 3672,
+  "pointValue": 78,
+  "availability": "common",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 70,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 4,
+    "points": 20
+   },
+   {
+    "damage": 8,
+    "points": 39
+   },
+   {
+    "damage": 12,
+    "points": 59
+   },
+   {
+    "damage": 14,
+    "points": 70
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "YORKTOWN Vc-Class Command Cruiser (CC)",
+  "year": 3673,
+  "pointValue": 115,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 78,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 12
+   },
+   {
+    "damage": 4,
+    "points": 29
+   },
+   {
+    "damage": 8,
+    "points": 58
+   },
+   {
+    "damage": 12,
+    "points": 86
+   },
+   {
+    "damage": 14,
+    "points": 104
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "EXETER I-Class Heavy Cruiser (CH)",
+  "year": 3670,
+  "pointValue": 86,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 106,
+  "systemBoxes": 72,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 4,
+    "points": 22
+   },
+   {
+    "damage": 8,
+    "points": 43
+   },
+   {
+    "damage": 12,
+    "points": 65
+   },
+   {
+    "damage": 14,
+    "points": 78
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "EXETER II-Class Heavy Cruiser (CH)",
+  "year": 3673,
+  "pointValue": 100,
+  "availability": "uncommon",
+  "pwrBatt": 12,
+  "shieldsArmor": 106,
+  "systemBoxes": 72,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 4,
+    "points": 25
+   },
+   {
+    "damage": 8,
+    "points": 50
+   },
+   {
+    "damage": 12,
+    "points": 75
+   },
+   {
+    "damage": 14,
+    "points": 90
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "COVENTRY I-Class Light Cruiser (CL)",
+  "year": 3652,
+  "pointValue": 20,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 50,
+  "systemBoxes": 51,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 6,
+    "points": 10
+   },
+   {
+    "damage": 8,
+    "points": 15
+   },
+   {
+    "damage": 10,
+    "points": 18
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "COVENTRY II-Class Light Cruiser (CL)",
+  "year": 3667,
+  "pointValue": 27,
+  "availability": "uncommon",
+  "pwrBatt": 9,
+  "shieldsArmor": 55,
+  "systemBoxes": 53,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 6,
+    "points": 14
+   },
+   {
+    "damage": 9,
+    "points": 21
+   },
+   {
+    "damage": 11,
+    "points": 25
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "COVENTRY IIc-Class Light Cmnd Cruiser (CCL)",
+  "year": 3667,
+  "pointValue": 30,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 64,
+  "systemBoxes": 53,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 6,
+    "points": 15
+   },
+   {
+    "damage": 9,
+    "points": 22
+   },
+   {
+    "damage": 11,
+    "points": 27
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "KNOX I Class Escort Cruiser(CE)",
+  "year": 3666,
+  "pointValue": 22,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 55,
+  "systemBoxes": 49,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 2
+   },
+   {
+    "damage": 4,
+    "points": 5
+   },
+   {
+    "damage": 7,
+    "points": 11
+   },
+   {
+    "damage": 11,
+    "points": 16
+   },
+   {
+    "damage": 13,
+    "points": 19
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "KNOX II Class Survey Cruiser (CS)",
+  "year": 3667,
+  "pointValue": 37,
+  "availability": "rare",
+  "pwrBatt": 8,
+  "shieldsArmor": 55,
+  "systemBoxes": 50,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 9
+   },
+   {
+    "damage": 7,
+    "points": 18
+   },
+   {
+    "damage": 11,
+    "points": 28
+   },
+   {
+    "damage": 13,
+    "points": 33
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "KNOX III Class Adv Escort Cruiser (CE)",
+  "year": 3673,
+  "pointValue": 43,
+  "availability": "uncommon",
+  "pwrBatt": 11,
+  "shieldsArmor": 82,
+  "systemBoxes": 57,
+  "structure": 14,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 11
+   },
+   {
+    "damage": 7,
+    "points": 22
+   },
+   {
+    "damage": 11,
+    "points": 32
+   },
+   {
+    "damage": 13,
+    "points": 39
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "ATHENA I-Class Light Cruiser (CL)",
+  "year": 3670,
+  "pointValue": 56,
+  "availability": "uncommon",
+  "pwrBatt": 11,
+  "shieldsArmor": 72,
+  "systemBoxes": 69,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 14
+   },
+   {
+    "damage": 8,
+    "points": 28
+   },
+   {
+    "damage": 11,
+    "points": 42
+   },
+   {
+    "damage": 14,
+    "points": 50
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "ATHENA II-Class Light Cruiser (CL)",
+  "year": 3674,
+  "pointValue": 79,
+  "availability": "common",
+  "pwrBatt": 11,
+  "shieldsArmor": 82,
+  "systemBoxes": 70,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 4,
+    "points": 20
+   },
+   {
+    "damage": 8,
+    "points": 39
+   },
+   {
+    "damage": 11,
+    "points": 59
+   },
+   {
+    "damage": 14,
+    "points": 71
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "XERXES I-Class Destroyer (DD)",
+  "year": 3647,
+  "pointValue": 16,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 37,
+  "systemBoxes": 39,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 5,
+    "points": 8
+   },
+   {
+    "damage": 8,
+    "points": 12
+   },
+   {
+    "damage": 9,
+    "points": 15
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "XERXES II-Class Destroyer (DD)",
+  "year": 3661,
+  "pointValue": 24,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 45,
+  "systemBoxes": 41,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 5,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 18
+   },
+   {
+    "damage": 9,
+    "points": 21
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "XERXES III-Class Destroyer (DD)",
+  "year": 3667,
+  "pointValue": 41,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 62,
+  "systemBoxes": 48,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 6,
+    "points": 21
+   },
+   {
+    "damage": 8,
+    "points": 31
+   },
+   {
+    "damage": 10,
+    "points": 37
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "XERXES IV-Class Destroyer (DD)",
+  "year": 3676,
+  "pointValue": 69,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 72,
+  "systemBoxes": 49,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 7
+   },
+   {
+    "damage": 3,
+    "points": 17
+   },
+   {
+    "damage": 6,
+    "points": 35
+   },
+   {
+    "damage": 8,
+    "points": 52
+   },
+   {
+    "damage": 10,
+    "points": 62
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "HERMES I-Class Scout (DS)",
+  "year": 3652,
+  "pointValue": 21,
+  "availability": "rare",
+  "pwrBatt": 7,
+  "shieldsArmor": 37,
+  "systemBoxes": 38,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 11
+   },
+   {
+    "damage": 8,
+    "points": 16
+   },
+   {
+    "damage": 9,
+    "points": 19
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "HERMES II-Class Scout (DS)",
+  "year": 3665,
+  "pointValue": 25,
+  "availability": "rare",
+  "pwrBatt": 8,
+  "shieldsArmor": 45,
+  "systemBoxes": 40,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 5,
+    "points": 13
+   },
+   {
+    "damage": 8,
+    "points": 19
+   },
+   {
+    "damage": 9,
+    "points": 23
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "HERMES III-Class Scout (DS)",
+  "year": 3669,
+  "pointValue": 39,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 62,
+  "systemBoxes": 48,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 6,
+    "points": 20
+   },
+   {
+    "damage": 8,
+    "points": 29
+   },
+   {
+    "damage": 10,
+    "points": 35
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "HERMES IV-Class Scout (DS)",
+  "year": 3674,
+  "pointValue": 54,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 72,
+  "systemBoxes": 49,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 3,
+    "points": 13
+   },
+   {
+    "damage": 6,
+    "points": 27
+   },
+   {
+    "damage": 8,
+    "points": 40
+   },
+   {
+    "damage": 10,
+    "points": 48
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "SORYU I-Class Frigate (FF)",
+  "year": 3646,
+  "pointValue": 12,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 33,
+  "systemBoxes": 40,
+  "structure": 8,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 4,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 9
+   },
+   {
+    "damage": 7,
+    "points": 11
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "SORYU II-Class-Frigate (FF)",
+  "year": 3662,
+  "pointValue": 17,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 40,
+  "systemBoxes": 42,
+  "structure": 8,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 9
+   },
+   {
+    "damage": 6,
+    "points": 13
+   },
+   {
+    "damage": 7,
+    "points": 16
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "NELSON I-Class Frigate (FF)",
+  "year": 3658,
+  "pointValue": 12,
+  "availability": "uncommon",
+  "pwrBatt": 8,
+  "shieldsArmor": 41,
+  "systemBoxes": 30,
+  "structure": 6,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 5,
+    "points": 9
+   },
+   {
+    "damage": 5,
+    "points": 11
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "NELSON II-Class Frigate (FF)",
+  "year": 3659,
+  "pointValue": 15,
+  "availability": "uncommon",
+  "pwrBatt": 9,
+  "shieldsArmor": 41,
+  "systemBoxes": 32,
+  "structure": 6,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 5,
+    "points": 12
+   },
+   {
+    "damage": 5,
+    "points": 14
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "PELLEW III-Class Frigate (FF)",
+  "year": 3665,
+  "pointValue": 32,
+  "availability": "uncommon",
+  "pwrBatt": 9,
+  "shieldsArmor": 51,
+  "systemBoxes": 44,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 5,
+    "points": 16
+   },
+   {
+    "damage": 8,
+    "points": 24
+   },
+   {
+    "damage": 9,
+    "points": 29
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "PELLEW IV-Class Frigate (FF)",
+  "year": 3673,
+  "pointValue": 53,
+  "availability": "common",
+  "pwrBatt": 11,
+  "shieldsArmor": 58,
+  "systemBoxes": 48,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 3,
+    "points": 13
+   },
+   {
+    "damage": 6,
+    "points": 26
+   },
+   {
+    "damage": 8,
+    "points": 39
+   },
+   {
+    "damage": 10,
+    "points": 47
+   }
+  ],
+  "faction": "union",
+  "future": false
+ },
+ {
+  "class": "V-11A PREDATOR-Class Dreadnought",
+  "year": 3656,
+  "pointValue": 51,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 72,
+  "systemBoxes": 89,
+  "structure": 18,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 13
+   },
+   {
+    "damage": 9,
+    "points": 26
+   },
+   {
+    "damage": 14,
+    "points": 38
+   },
+   {
+    "damage": 16,
+    "points": 46
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-11B PREDATOR-Class Dreadnought",
+  "year": 3668,
+  "pointValue": 68,
+  "availability": "rare",
+  "pwrBatt": 11,
+  "shieldsArmor": 82,
+  "systemBoxes": 93,
+  "structure": 19,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 7
+   },
+   {
+    "damage": 5,
+    "points": 17
+   },
+   {
+    "damage": 10,
+    "points": 34
+   },
+   {
+    "damage": 14,
+    "points": 51
+   },
+   {
+    "damage": 17,
+    "points": 61
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-11C PREDATOR-Class Dreadnought",
+  "year": 3675,
+  "pointValue": 142,
+  "availability": "rare",
+  "pwrBatt": 13,
+  "shieldsArmor": 92,
+  "systemBoxes": 100,
+  "structure": 19,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 14
+   },
+   {
+    "damage": 5,
+    "points": 35
+   },
+   {
+    "damage": 10,
+    "points": 71
+   },
+   {
+    "damage": 14,
+    "points": 106
+   },
+   {
+    "damage": 17,
+    "points": 128
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-10B HAVOC Heavy Battlecruiser",
+  "year": 3657,
+  "pointValue": 44,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 66,
+  "systemBoxes": 73,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 11
+   },
+   {
+    "damage": 8,
+    "points": 22
+   },
+   {
+    "damage": 11,
+    "points": 33
+   },
+   {
+    "damage": 14,
+    "points": 39
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-10D HAVOC Heavy Battlecruiser",
+  "year": 3668,
+  "pointValue": 58,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 75,
+  "systemBoxes": 73,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 15
+   },
+   {
+    "damage": 8,
+    "points": 29
+   },
+   {
+    "damage": 11,
+    "points": 44
+   },
+   {
+    "damage": 14,
+    "points": 52
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-10E HAVOC Heavy Battlecruiser",
+  "year": 3674,
+  "pointValue": 100,
+  "availability": "rare",
+  "pwrBatt": 11,
+  "shieldsArmor": 82,
+  "systemBoxes": 77,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 4,
+    "points": 25
+   },
+   {
+    "damage": 8,
+    "points": 50
+   },
+   {
+    "damage": 11,
+    "points": 75
+   },
+   {
+    "damage": 14,
+    "points": 90
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7A RAIDER-Class Battlecruiser",
+  "year": 3645,
+  "pointValue": 19,
+  "availability": "common",
+  "pwrBatt": 8,
+  "shieldsArmor": 42,
+  "systemBoxes": 53,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 6,
+    "points": 10
+   },
+   {
+    "damage": 8,
+    "points": 14
+   },
+   {
+    "damage": 10,
+    "points": 17
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7B RAIDER-Class Battlecruiser",
+  "year": 3648,
+  "pointValue": 21,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 45,
+  "systemBoxes": 55,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 6,
+    "points": 10
+   },
+   {
+    "damage": 8,
+    "points": 16
+   },
+   {
+    "damage": 10,
+    "points": 19
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7C RAIDER-Class Battlecruiser",
+  "year": 3656,
+  "pointValue": 25,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 56,
+  "systemBoxes": 55,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 19
+   },
+   {
+    "damage": 10,
+    "points": 22
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7CC RAIDER-Class Command Cruiser",
+  "year": 3656,
+  "pointValue": 26,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 56,
+  "systemBoxes": 57,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 13
+   },
+   {
+    "damage": 8,
+    "points": 19
+   },
+   {
+    "damage": 10,
+    "points": 23
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7D RAIDER-Class Battlecruiser",
+  "year": 3661,
+  "pointValue": 29,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 57,
+  "systemBoxes": 57,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 7,
+    "points": 14
+   },
+   {
+    "damage": 10,
+    "points": 22
+   },
+   {
+    "damage": 12,
+    "points": 26
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7E RAIDER-Class Command Cruiser",
+  "year": 3661,
+  "pointValue": 32,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 64,
+  "systemBoxes": 60,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 16
+   },
+   {
+    "damage": 10,
+    "points": 24
+   },
+   {
+    "damage": 12,
+    "points": 29
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7G RAIDER-Class Battlecruiser",
+  "year": 3667,
+  "pointValue": 33,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 68,
+  "systemBoxes": 57,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 17
+   },
+   {
+    "damage": 10,
+    "points": 25
+   },
+   {
+    "damage": 12,
+    "points": 30
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7H RAIDER-Class Command Cruiser",
+  "year": 3667,
+  "pointValue": 35,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 68,
+  "systemBoxes": 60,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 7,
+    "points": 17
+   },
+   {
+    "damage": 10,
+    "points": 26
+   },
+   {
+    "damage": 12,
+    "points": 31
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7M-1 MARAUDER-Class Battlecruiser",
+  "year": 3670,
+  "pointValue": 57,
+  "availability": "common",
+  "pwrBatt": 11,
+  "shieldsArmor": 64,
+  "systemBoxes": 62,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 14
+   },
+   {
+    "damage": 8,
+    "points": 28
+   },
+   {
+    "damage": 11,
+    "points": 42
+   },
+   {
+    "damage": 14,
+    "points": 51
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7M-2 MARAUDER-Class Battlecruiser",
+  "year": 3675,
+  "pointValue": 64,
+  "availability": "common",
+  "pwrBatt": 11,
+  "shieldsArmor": 72,
+  "systemBoxes": 62,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 16
+   },
+   {
+    "damage": 8,
+    "points": 32
+   },
+   {
+    "damage": 11,
+    "points": 48
+   },
+   {
+    "damage": 14,
+    "points": 58
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-7M-3 MARAUDER-Class Battlecruiser",
+  "year": 3678,
+  "pointValue": 75,
+  "availability": "common",
+  "pwrBatt": 11,
+  "shieldsArmor": 72,
+  "systemBoxes": 62,
+  "structure": 15,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 4,
+    "points": 19
+   },
+   {
+    "damage": 8,
+    "points": 37
+   },
+   {
+    "damage": 11,
+    "points": 56
+   },
+   {
+    "damage": 14,
+    "points": 67
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-6L SAVAGE-Class Light Cruiser",
+  "year": 3649,
+  "pointValue": 17,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 42,
+  "systemBoxes": 51,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 6,
+    "points": 8
+   },
+   {
+    "damage": 8,
+    "points": 13
+   },
+   {
+    "damage": 10,
+    "points": 15
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-6M SAVAGE-Class Light Cruiser",
+  "year": 3659,
+  "pointValue": 20,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 49,
+  "systemBoxes": 51,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 6,
+    "points": 10
+   },
+   {
+    "damage": 9,
+    "points": 15
+   },
+   {
+    "damage": 11,
+    "points": 18
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-6N SAVAGE-Class Light Cruiser",
+  "year": 3663,
+  "pointValue": 22,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 53,
+  "systemBoxes": 51,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 11
+   },
+   {
+    "damage": 9,
+    "points": 17
+   },
+   {
+    "damage": 11,
+    "points": 20
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-6P SAVAGE-Class Light Cruiser",
+  "year": 3672,
+  "pointValue": 35,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 64,
+  "systemBoxes": 55,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 6,
+    "points": 18
+   },
+   {
+    "damage": 9,
+    "points": 27
+   },
+   {
+    "damage": 11,
+    "points": 32
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5J CORSAIR-Class Destroyer",
+  "year": 3656,
+  "pointValue": 15,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 37,
+  "systemBoxes": 43,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 5,
+    "points": 7
+   },
+   {
+    "damage": 7,
+    "points": 11
+   },
+   {
+    "damage": 8,
+    "points": 13
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5K CORSAIR-Class Destroyer",
+  "year": 3661,
+  "pointValue": 17,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 41,
+  "systemBoxes": 43,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 5,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 13
+   },
+   {
+    "damage": 8,
+    "points": 15
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5L CORSAIR-Class Destroyer",
+  "year": 3665,
+  "pointValue": 20,
+  "availability": "common",
+  "pwrBatt": 9,
+  "shieldsArmor": 48,
+  "systemBoxes": 44,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 10
+   },
+   {
+    "damage": 7,
+    "points": 15
+   },
+   {
+    "damage": 8,
+    "points": 18
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5M CORSAIR-Class Destroyer",
+  "year": 3672,
+  "pointValue": 33,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 62,
+  "systemBoxes": 47,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 5,
+    "points": 17
+   },
+   {
+    "damage": 8,
+    "points": 25
+   },
+   {
+    "damage": 9,
+    "points": 30
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5Q SPECTRA-Class Heavy Scout",
+  "year": 3664,
+  "pointValue": 25,
+  "availability": "rare",
+  "pwrBatt": 9,
+  "shieldsArmor": 48,
+  "systemBoxes": 44,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 6
+   },
+   {
+    "damage": 5,
+    "points": 12
+   },
+   {
+    "damage": 7,
+    "points": 19
+   },
+   {
+    "damage": 8,
+    "points": 22
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-5R SPECTRA-Class Heavy Scout",
+  "year": 3674,
+  "pointValue": 37,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 62,
+  "systemBoxes": 47,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 5,
+    "points": 19
+   },
+   {
+    "damage": 8,
+    "points": 28
+   },
+   {
+    "damage": 9,
+    "points": 33
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-8A RAVAGER-Class Destroyer",
+  "year": 3670,
+  "pointValue": 47,
+  "availability": "uncommon",
+  "pwrBatt": 10,
+  "shieldsArmor": 56,
+  "systemBoxes": 50,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 3,
+    "points": 12
+   },
+   {
+    "damage": 6,
+    "points": 24
+   },
+   {
+    "damage": 9,
+    "points": 35
+   },
+   {
+    "damage": 11,
+    "points": 42
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-8B RAVAGER-Class Destroyer",
+  "year": 3681,
+  "pointValue": 63,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 64,
+  "systemBoxes": 50,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 6
+   },
+   {
+    "damage": 3,
+    "points": 16
+   },
+   {
+    "damage": 6,
+    "points": 31
+   },
+   {
+    "damage": 9,
+    "points": 47
+   },
+   {
+    "damage": 11,
+    "points": 56
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-2N FLANKER-Class Scout",
+  "year": 3646,
+  "pointValue": 8,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 23,
+  "systemBoxes": 24,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 6
+   },
+   {
+    "damage": 5,
+    "points": 7
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-2P FLANKER-Class Scout",
+  "year": 3653,
+  "pointValue": 10,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 28,
+  "systemBoxes": 26,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 7
+   },
+   {
+    "damage": 5,
+    "points": 9
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-2Q FLANKER-Class Scout",
+  "year": 3663,
+  "pointValue": 13,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 40,
+  "systemBoxes": 26,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 4,
+    "points": 10
+   },
+   {
+    "damage": 5,
+    "points": 12
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-2R FLANKER-Class LR Scout",
+  "year": 3664,
+  "pointValue": 15,
+  "availability": "rare",
+  "pwrBatt": 8,
+  "shieldsArmor": 42,
+  "systemBoxes": 26,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 4,
+    "points": 11
+   },
+   {
+    "damage": 5,
+    "points": 13
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-12A HUNTER Class Scout",
+  "year": 3672,
+  "pointValue": 13,
+  "availability": "uncommon",
+  "pwrBatt": 7,
+  "shieldsArmor": 45,
+  "systemBoxes": 27,
+  "structure": 6,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 5,
+    "points": 10
+   },
+   {
+    "damage": 5,
+    "points": 12
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "V-12B HUNTER Class Scout",
+  "year": 3673,
+  "pointValue": 16,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 47,
+  "systemBoxes": 29,
+  "structure": 6,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 8
+   },
+   {
+    "damage": 5,
+    "points": 12
+   },
+   {
+    "damage": 5,
+    "points": 15
+   }
+  ],
+  "faction": "vallari",
+  "future": false
+ },
+ {
+  "class": "INVICTUS I-class Dreadnought",
+  "year": 3669,
+  "pointValue": 75,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 92,
+  "systemBoxes": 98,
+  "structure": 20,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 7
+   },
+   {
+    "damage": 5,
+    "points": 19
+   },
+   {
+    "damage": 10,
+    "points": 37
+   },
+   {
+    "damage": 15,
+    "points": 56
+   },
+   {
+    "damage": 18,
+    "points": 67
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "INVICTUS II-class Dreadnought (Exp 6)",
+  "year": 3675,
+  "pointValue": 158,
+  "availability": "rare",
+  "pwrBatt": 16,
+  "shieldsArmor": 110,
+  "systemBoxes": 111,
+  "structure": 18,
+  "victory": [
+   {
+    "damage": 4,
+    "points": 16
+   },
+   {
+    "damage": 5,
+    "points": 39
+   },
+   {
+    "damage": 9,
+    "points": 79
+   },
+   {
+    "damage": 14,
+    "points": 118
+   },
+   {
+    "damage": 16,
+    "points": 142
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "AQUILA BELLUM I class Heavy Cruiser",
+  "year": 3651,
+  "pointValue": 18,
+  "availability": "uncommon",
+  "pwrBatt": 8,
+  "shieldsArmor": 59,
+  "systemBoxes": 42,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 6,
+    "points": 9
+   },
+   {
+    "damage": 8,
+    "points": 13
+   },
+   {
+    "damage": 10,
+    "points": 16
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AQUILA BELLUM II class Heavy Cruiser",
+  "year": 3665,
+  "pointValue": 26,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 73,
+  "systemBoxes": 49,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 13
+   },
+   {
+    "damage": 8,
+    "points": 19
+   },
+   {
+    "damage": 10,
+    "points": 23
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AQUILA BELLUM III class Command Cruiser",
+  "year": 3665,
+  "pointValue": 27,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 73,
+  "systemBoxes": 54,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 6,
+    "points": 14
+   },
+   {
+    "damage": 8,
+    "points": 20
+   },
+   {
+    "damage": 10,
+    "points": 24
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AQUILA BELLUM IV class Exploration Cruiser",
+  "year": 3665,
+  "pointValue": 24,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 73,
+  "systemBoxes": 52,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 18
+   },
+   {
+    "damage": 10,
+    "points": 22
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AQUILA BELLUM V class Assault Cruiser",
+  "year": 3665,
+  "pointValue": 23,
+  "availability": "rare",
+  "pwrBatt": 10,
+  "shieldsArmor": 73,
+  "systemBoxes": 55,
+  "structure": 11,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 17
+   },
+   {
+    "damage": 10,
+    "points": 21
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AQUILA BELLUM VI class Heavy Cruiser (Exp 6)",
+  "year": 3676,
+  "pointValue": 60,
+  "availability": "uncommon",
+  "pwrBatt": 13,
+  "shieldsArmor": 89,
+  "systemBoxes": 67,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 6
+   },
+   {
+    "damage": 3,
+    "points": 15
+   },
+   {
+    "damage": 6,
+    "points": 30
+   },
+   {
+    "damage": 9,
+    "points": 45
+   },
+   {
+    "damage": 11,
+    "points": 54
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "LUPUS I class Cruiser",
+  "year": 3668,
+  "pointValue": 28,
+  "availability": "uncommon",
+  "pwrBatt": 9,
+  "shieldsArmor": 58,
+  "systemBoxes": 58,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 3,
+    "points": 7
+   },
+   {
+    "damage": 6,
+    "points": 14
+   },
+   {
+    "damage": 9,
+    "points": 21
+   },
+   {
+    "damage": 11,
+    "points": 25
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "LUPUS II-class Cruiser (Exp 6)",
+  "year": 3675,
+  "pointValue": 42,
+  "availability": "uncommon",
+  "pwrBatt": 11,
+  "shieldsArmor": 66,
+  "systemBoxes": 63,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 6,
+    "points": 21
+   },
+   {
+    "damage": 9,
+    "points": 31
+   },
+   {
+    "damage": 11,
+    "points": 38
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "TONITRUS I class Heavy Cruiser",
+  "year": 3667,
+  "pointValue": 36,
+  "availability": "uncommon",
+  "pwrBatt": 10,
+  "shieldsArmor": 68,
+  "systemBoxes": 56,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 6,
+    "points": 18
+   },
+   {
+    "damage": 9,
+    "points": 27
+   },
+   {
+    "damage": 11,
+    "points": 32
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "TONITRUS II class Heavy Cruiser",
+  "year": 3669,
+  "pointValue": 47,
+  "availability": "uncommon",
+  "pwrBatt": 10,
+  "shieldsArmor": 72,
+  "systemBoxes": 62,
+  "structure": 12,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 3,
+    "points": 12
+   },
+   {
+    "damage": 6,
+    "points": 24
+   },
+   {
+    "damage": 9,
+    "points": 36
+   },
+   {
+    "damage": 11,
+    "points": 43
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "TONITRUS III class Command Cruiser",
+  "year": 3670,
+  "pointValue": 81,
+  "availability": "rare",
+  "pwrBatt": 11,
+  "shieldsArmor": 80,
+  "systemBoxes": 72,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 8
+   },
+   {
+    "damage": 3,
+    "points": 20
+   },
+   {
+    "damage": 7,
+    "points": 40
+   },
+   {
+    "damage": 10,
+    "points": 60
+   },
+   {
+    "damage": 12,
+    "points": 73
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "TONITRUS IV class Heavy Cruiser (Exp 6)",
+  "year": 3673,
+  "pointValue": 93,
+  "availability": "uncommon",
+  "pwrBatt": 12,
+  "shieldsArmor": 90,
+  "systemBoxes": 71,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 9
+   },
+   {
+    "damage": 3,
+    "points": 23
+   },
+   {
+    "damage": 7,
+    "points": 46
+   },
+   {
+    "damage": 10,
+    "points": 70
+   },
+   {
+    "damage": 12,
+    "points": 84
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "TONITRUS V class Command Cruiser (Exp 6)",
+  "year": 3674,
+  "pointValue": 101,
+  "availability": "rare",
+  "pwrBatt": 13,
+  "shieldsArmor": 90,
+  "systemBoxes": 76,
+  "structure": 13,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 10
+   },
+   {
+    "damage": 3,
+    "points": 25
+   },
+   {
+    "damage": 7,
+    "points": 50
+   },
+   {
+    "damage": 10,
+    "points": 76
+   },
+   {
+    "damage": 12,
+    "points": 91
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "DEFENSOR ALATUS I-class Hvy Cruiser",
+  "year": 3672,
+  "pointValue": 87,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 75,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 4,
+    "points": 22
+   },
+   {
+    "damage": 8,
+    "points": 44
+   },
+   {
+    "damage": 12,
+    "points": 65
+   },
+   {
+    "damage": 14,
+    "points": 78
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "DEFENSOR ALATUS II-class Hvy Cruiser (Exp 6)",
+  "year": 3674,
+  "pointValue": 103,
+  "availability": "uncommon",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 75,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 10
+   },
+   {
+    "damage": 4,
+    "points": 26
+   },
+   {
+    "damage": 8,
+    "points": 52
+   },
+   {
+    "damage": 12,
+    "points": 77
+   },
+   {
+    "damage": 14,
+    "points": 93
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "DEFENSOR ALATUS III-class Cmnd Cruiser (Exp 6)",
+  "year": 3674,
+  "pointValue": 109,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 76,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 11
+   },
+   {
+    "damage": 4,
+    "points": 27
+   },
+   {
+    "damage": 8,
+    "points": 54
+   },
+   {
+    "damage": 12,
+    "points": 81
+   },
+   {
+    "damage": 14,
+    "points": 98
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "DEFENSOR ALATUS IV-class Exp Cruiser (Exp 6)",
+  "year": 3674,
+  "pointValue": 94,
+  "availability": "rare",
+  "pwrBatt": 12,
+  "shieldsArmor": 98,
+  "systemBoxes": 77,
+  "structure": 16,
+  "victory": [
+   {
+    "damage": 3,
+    "points": 9
+   },
+   {
+    "damage": 4,
+    "points": 24
+   },
+   {
+    "damage": 8,
+    "points": 47
+   },
+   {
+    "damage": 12,
+    "points": 71
+   },
+   {
+    "damage": 14,
+    "points": 85
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "AVIS VETUS I class Monitor",
+  "year": 3644,
+  "pointValue": 10,
+  "availability": "uncommon",
+  "pwrBatt": 6,
+  "shieldsArmor": 38,
+  "systemBoxes": 35,
+  "structure": 8,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 4,
+    "points": 5
+   },
+   {
+    "damage": 6,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 9
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AVIS VETUS II class Light Cruiser",
+  "year": 3644,
+  "pointValue": 12,
+  "availability": "common",
+  "pwrBatt": 6,
+  "shieldsArmor": 47,
+  "systemBoxes": 35,
+  "structure": 8,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 3
+   },
+   {
+    "damage": 4,
+    "points": 6
+   },
+   {
+    "damage": 6,
+    "points": 9
+   },
+   {
+    "damage": 7,
+    "points": 10
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AVIS VETUS III class Light Cruiser",
+  "year": 3655,
+  "pointValue": 15,
+  "availability": "common",
+  "pwrBatt": 6,
+  "shieldsArmor": 55,
+  "systemBoxes": 39,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 1
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 5,
+    "points": 7
+   },
+   {
+    "damage": 7,
+    "points": 11
+   },
+   {
+    "damage": 8,
+    "points": 13
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "AVIS VETUS IV class Light Cruiser",
+  "year": 3666,
+  "pointValue": 20,
+  "availability": "uncommon",
+  "pwrBatt": 8,
+  "shieldsArmor": 63,
+  "systemBoxes": 43,
+  "structure": 10,
+  "victory": [
+   {
+    "damage": 2,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 10
+   },
+   {
+    "damage": 8,
+    "points": 15
+   },
+   {
+    "damage": 9,
+    "points": 18
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "ACIPTER I class Destroyer",
+  "year": 3659,
+  "pointValue": 15,
+  "availability": "common",
+  "pwrBatt": 6,
+  "shieldsArmor": 51,
+  "systemBoxes": 36,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 4
+   },
+   {
+    "damage": 5,
+    "points": 8
+   },
+   {
+    "damage": 7,
+    "points": 12
+   },
+   {
+    "damage": 8,
+    "points": 14
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "ACIPTER II class Destroyer",
+  "year": 3667,
+  "pointValue": 18,
+  "availability": "common",
+  "pwrBatt": 7,
+  "shieldsArmor": 59,
+  "systemBoxes": 38,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 9
+   },
+   {
+    "damage": 7,
+    "points": 14
+   },
+   {
+    "damage": 8,
+    "points": 17
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "CORVUS I class Destroyer",
+  "year": 3668,
+  "pointValue": 22,
+  "availability": "uncommon",
+  "pwrBatt": 9,
+  "shieldsArmor": 48,
+  "systemBoxes": 46,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 11
+   },
+   {
+    "damage": 7,
+    "points": 16
+   },
+   {
+    "damage": 8,
+    "points": 20
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "CORVUS II class Destroyer (Exp 6)",
+  "year": 3674,
+  "pointValue": 36,
+  "availability": "uncommon",
+  "pwrBatt": 11,
+  "shieldsArmor": 60,
+  "systemBoxes": 55,
+  "structure": 9,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 4
+   },
+   {
+    "damage": 2,
+    "points": 9
+   },
+   {
+    "damage": 5,
+    "points": 18
+   },
+   {
+    "damage": 7,
+    "points": 27
+   },
+   {
+    "damage": 8,
+    "points": 33
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "PASSER I Class Frigate",
+  "year": 3656,
+  "pointValue": 6,
+  "availability": "common",
+  "pwrBatt": 6,
+  "shieldsArmor": 19,
+  "systemBoxes": 24,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 3
+   },
+   {
+    "damage": 4,
+    "points": 5
+   },
+   {
+    "damage": 5,
+    "points": 6
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "PASSER II Class Frigate",
+  "year": 3665,
+  "pointValue": 9,
+  "availability": "common",
+  "pwrBatt": 6,
+  "shieldsArmor": 26,
+  "systemBoxes": 27,
+  "structure": 5,
+  "victory": [
+   {
+    "damage": 0,
+    "points": 1
+   },
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 3,
+    "points": 4
+   },
+   {
+    "damage": 4,
+    "points": 7
+   },
+   {
+    "damage": 5,
+    "points": 8
+   }
+  ],
+  "faction": "aurelian",
+  "future": false
+ },
+ {
+  "class": "PASSER III Class Frigate (Exp 6)",
+  "year": 3674,
+  "pointValue": 19,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 34,
+  "systemBoxes": 41,
+  "structure": 7,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 9
+   },
+   {
+    "damage": 5,
+    "points": 14
+   },
+   {
+    "damage": 6,
+    "points": 17
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ },
+ {
+  "class": "PASSER IV Class Frigate (Exp 6)",
+  "year": 3674,
+  "pointValue": 22,
+  "availability": "common",
+  "pwrBatt": 10,
+  "shieldsArmor": 42,
+  "systemBoxes": 40,
+  "structure": 7,
+  "victory": [
+   {
+    "damage": 1,
+    "points": 2
+   },
+   {
+    "damage": 2,
+    "points": 5
+   },
+   {
+    "damage": 4,
+    "points": 11
+   },
+   {
+    "damage": 5,
+    "points": 16
+   },
+   {
+    "damage": 6,
+    "points": 20
+   }
+  ],
+  "faction": "aurelian",
+  "future": true
+ }
+]
