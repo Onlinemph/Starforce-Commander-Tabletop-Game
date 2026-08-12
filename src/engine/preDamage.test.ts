@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { YORKTOWN } from '../data/ships'
 import { registerCustomScenarios, startScenario, THE_DUEL } from '../data/scenarios'
-import { createGame, pointsAgainst } from './game'
+import { createGame, pointsAgainst, victoryPoints } from './game'
 import {
   applyPreDamage,
   createShip,
@@ -151,5 +151,73 @@ describe('a designed scenario fields wounded ships', () => {
   it('leaves printed scenarios untouched', () => {
     const game = createGame({ scenario: THE_DUEL, ships: [hull()], seed: 1 })
     expect(game.ships[0].preDamaged).toBe(0)
+  })
+})
+
+describe('a scenario re-prices its hulls (S2.8 override)', () => {
+  it('scores the override by damage fractions, ignoring the printed table', () => {
+    const ship = hull()
+    ship.pointValue = 100
+    // 7 of 13 boxes is moderate (50%): half of 100, not the table's 12.
+    for (let i = 0; i < 7; i++) ship.structureDamaged[i] = true
+    expect(pointsAgainst(ship)).toBe(50)
+    ship.destroyed = true
+    expect(pointsAgainst(ship)).toBe(100)
+  })
+
+  it('keeps the printed victory table while the book value stands', () => {
+    const ship = hull()
+    for (let i = 0; i < 7; i++) ship.structureDamaged[i] = true
+    expect(pointsAgainst(ship)).toBe(12)
+  })
+
+  it('composes with pre-damage: the override prices only this battle', () => {
+    const ship = hull()
+    ship.pointValue = 100
+    applyPreDamage(ship, 0.5) // 6 of 13: minor side of moderate -> 25%
+    ship.destroyed = true
+    expect(pointsAgainst(ship)).toBe(100 - 25)
+  })
+
+  it('flows from the scenario side to the deployed hull', () => {
+    registerCustomScenarios([
+      {
+        id: 'test-worth',
+        name: 'The Freighter',
+        background: '',
+        victory: '',
+        bounds: { width: 36, height: 36, fixed: true },
+        terrain: [],
+        sides: [
+          {
+            side: 'Blue',
+            objective: '',
+            facing: 2,
+            speed: 2,
+            anchor: { x: 6, y: 18 },
+            spread: { x: 0, y: 4 },
+            force: ['union-yorktown-i-class-heavy-cruiser', 'union-yorktown-i-class-heavy-cruiser'],
+            value: [0, 60],
+          },
+          {
+            side: 'Red',
+            objective: '',
+            facing: 6,
+            speed: 4,
+            anchor: { x: 30, y: 18 },
+            spread: { x: 0, y: 4 },
+            force: ['vallari-v-7c-raider-class-battlecruiser'],
+          },
+        ],
+      },
+    ])
+    const game = startScenario('test-worth', { seed: 3 })
+    const [escort, prize] = game.ships.filter((s) => s.side === 'Blue')
+    // Index 0 was left at 0 = "printed value", index 1 re-priced to 60.
+    expect(escort.pointValue).toBe(escort.form.pointValue)
+    expect(prize.pointValue).toBe(60)
+    prize.destroyed = true
+    expect(victoryPoints(game)['Red']).toBe(60)
+    registerCustomScenarios([])
   })
 })

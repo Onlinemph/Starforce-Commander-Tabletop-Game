@@ -4381,7 +4381,16 @@ function focusTargetFor(game: GameState, ship: ShipState, difficulty: AiDifficul
     const carrier =
       game.scenario.missions?.length &&
       carryingCargo(game.scenario.missions, game.missions, enemy.id)
-    const score = danger / (structureRemaining(enemy) + 4) + (carrier ? 100 : 0)
+    /**
+     * A hull the scenario has re-priced is worth fire in proportion to its
+     * worth, guns or no guns — the freighter the raid is about draws the
+     * volleys a threat model alone would never send it. Gated on the
+     * scenario actually re-pricing something, so the printed battles (and
+     * every season baseline) keep their pure threat-over-structure focus.
+     */
+    const repriced = game.ships.some((s) => s.pointValue !== s.form.pointValue)
+    const prize = repriced ? enemy.pointValue * 0.3 : 0
+    const score = (danger + prize) / (structureRemaining(enemy) + 4) + (carrier ? 100 : 0)
     if (score > bestScore || (score === bestScore && best !== null && enemy.id < best)) {
       bestScore = score
       best = enemy.id

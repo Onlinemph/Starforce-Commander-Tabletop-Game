@@ -843,6 +843,28 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                         <option value={0.75}>heavy (75%)</option>
                         <option value={0.9}>crippled (90%)</option>
                       </select>
+                      {/*
+                        The hull's worth on the victory ledger — the whole
+                        scoreboard, and through it the AI's priorities, reads
+                        this. Blank keeps the printed value.
+                      */}
+                      <input
+                        className="chip-value"
+                        type="number"
+                        min={0}
+                        placeholder={`${roster.find((f) => f.id === id)?.pointValue ?? ''} VP`}
+                        title="What this hull is worth in victory points. Empty uses the printed value; a re-priced hull is scored by the S2.8.4 damage fractions of its new worth."
+                        value={side.value?.[n] || ''}
+                        onChange={(e) =>
+                          edit((d) => {
+                            const s = d.sides[i]
+                            s.value ??= []
+                            while (s.value.length < s.force.length) s.value.push(0)
+                            s.value[n] = Math.max(0, Number(e.target.value) || 0)
+                            if (s.value.every((v) => v === 0)) delete s.value
+                          })
+                        }
+                      />
                       <button
                         type="button"
                         className="chip-x"
@@ -851,6 +873,7 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                           edit((d) => {
                             d.sides[i].force.splice(n, 1)
                             d.sides[i].damage?.splice(n, 1)
+                            d.sides[i].value?.splice(n, 1)
                           })
                         }
                       >

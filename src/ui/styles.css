@@ -3556,6 +3556,23 @@ button.chip:hover:not(:disabled) {
   opacity: 1;
 }
 
+/* Per-hull worth override beside it: a narrow number, quiet until filled. */
+.chip-value {
+  width: 3.6rem;
+  background: none;
+  border: none;
+  border-bottom: 1px dotted currentColor;
+  color: inherit;
+  font: inherit;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.chip-value:hover,
+.chip-value:focus {
+  opacity: 1;
+}
+
 .chip-x {
   background: none;
   border: none;

@@ -62,6 +62,14 @@ export interface ShipState {
    */
   flagship: boolean
   /**
+   * What this hull is worth on the victory ledger. Printed forms carry their
+   * book value, but a scenario may say otherwise — the freighter whose cargo
+   * is the whole point of the raid, the obsolete monitor nobody would cross
+   * the map for — and every consumer of worth (S2.8 scoring, and through it
+   * the AI's posture, retreat and priorities) reads this field, not the form.
+   */
+  pointValue: number
+  /**
    * A reinforcement's arrival round (S3.2). Until then the hull is off the map
    * entirely: not drawn, not targetable, not counted as active.
    */
@@ -170,6 +178,7 @@ export function createShip(args: {
   placement: Placement
   speed: number
   flagship?: boolean
+  pointValue?: number
   arrivesRound?: number
 }): ShipState {
   const { form } = args
@@ -203,6 +212,7 @@ export function createShip(args: {
     // Batteries begin a scenario fully charged (B2.4.1).
     crewArmedUntil: 0,
     flagship: args.flagship ?? false,
+    pointValue: args.pointValue ?? form.pointValue,
     arrivesRound: args.arrivesRound ?? 1,
     batteryDamaged: new Array(form.batteries).fill(false),
     batteryCharged: new Array(form.batteries).fill(true),

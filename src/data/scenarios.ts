@@ -338,6 +338,12 @@ interface SideSetup {
    */
   damage?: number[]
   /**
+   * Victory-ledger worth per hull, by force index — the freighter the raid is
+   * about, the obsolete monitor nobody would die for. Unset entries keep the
+   * printed value.
+   */
+  value?: number[]
+  /**
    * Reinforcements (S3.2): every ship from `fromIndex` onward is off the map
    * until `round`, then enters at its own anchor and facing. Expressed inside
    * the side rather than as a second side, so a player who composes their own
@@ -617,6 +623,7 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
         // The scenario names one hull as the flagship, and it is the first
         // one it lists (S3.6).
         flagship: setup.flagship === true && i === 0,
+        pointValue: setup.value?.[i] || undefined,
         arrivesRound: late ? late.round : undefined,
       })
       applyAlert(ship, setup.alert ?? 'yellow')
@@ -1074,6 +1081,8 @@ export interface CustomScenario {
     force: string[]
     /** Starting damage per hull, as a fraction of its structure track. */
     damage?: number[]
+    /** Victory-point worth per hull; unset entries keep the printed value. */
+    value?: number[]
   }>
 }
 
@@ -1104,6 +1113,7 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     names: NAME_POOLS[i % NAME_POOLS.length],
     defaults: () => s.force.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f)),
     damage: s.damage,
+    value: s.value,
   }))
   return { scenario, sides }
 }

@@ -1324,20 +1324,29 @@ export function pointsAgainst(ship: ShipState): number {
    * Written as a function of the count so it can be read twice: once at the
    * ship's current damage, once at the damage it *arrived* with.
    */
+  /**
+   * The hull's worth is the ship's, not the form's: a scenario may have
+   * priced this hull up or down (a freighter worth the raid, a monitor worth
+   * nothing). The printed victory table is a table of absolute point awards
+   * keyed to the book value, so it only applies while the book value stands —
+   * a re-priced hull falls back to the S2.8.4 fractions of its new worth.
+   */
+  const value = ship.pointValue ?? ship.form.pointValue
+  const printed = value === ship.form.pointValue
   const earnedAt = (damaged: number): number => {
-    if (total > 0 && damaged >= total) return ship.form.pointValue
-    if (table && table.length > 0) {
+    if (total > 0 && damaged >= total) return value
+    if (printed && table && table.length > 0) {
       // Highest band whose damage threshold has been reached; levels are not
       // cumulative (S2.8.2).
       return table.reduce((best, row) => (damaged >= row.damage ? row.points : best), 0)
     }
-    return ship.form.pointValue * VICTORY_FRACTION[damageLevelAt(damaged, total)]
+    return value * VICTORY_FRACTION[damageLevelAt(damaged, total)]
   }
 
   const damaged = total - structureRemaining(ship)
-  let earned = ship.destroyed ? ship.form.pointValue : earnedAt(damaged)
+  let earned = ship.destroyed ? value : earnedAt(damaged)
   if (ship.disengaged) {
-    earned = Math.max(earned, ship.form.pointValue * VICTORY_FRACTION.moderate)
+    earned = Math.max(earned, value * VICTORY_FRACTION.moderate)
   }
   /**
    * A ship fielded already hurt (a cripple under rescue, a campaign hull with
