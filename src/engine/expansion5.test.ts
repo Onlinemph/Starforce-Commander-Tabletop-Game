@@ -55,7 +55,7 @@ import {
   tractorHomingWeapon,
   type HomingWeapon,
 } from './homing'
-import { translate } from './geometry'
+import { canBearOn, translate } from './geometry'
 import { THE_DUEL } from '../data/scenarios'
 import { resolveVolley } from './combat'
 import { autoChoices, newDeck } from './damage'
@@ -66,11 +66,14 @@ import {
   cloudModifiers,
   createGame,
   displayPlacement,
+  fireAtSmallTarget,
   impactingHoming,
   launchHoming,
   PHASE_SEGMENTS,
   resolveHomingImpacts,
+  resolveUnansweredImpacts,
   shipIsCloaked,
+  smallTargetsFor,
   type GameState,
 } from './game'
 import { createShip, type ShipState } from './shipState'
@@ -896,6 +899,81 @@ describe('cloaks and homing weapons in play', () => {
     expect(struck).toHaveLength(1)
     resolveHomingImpacts(game, foe, { F: 30 })
     expect(game.log.some((e) => /worn down to nothing|reduced by 30 points/.test(e.message))).toBe(true)
+  })
+
+  /**
+   * Point defense at the moment of impact used to be the one attack in the
+   * game the table rolled for itself: the panel asked the defender for a
+   * number and trusted it. Everything needed to play it as a shot was already
+   * there — `fire-small-target` picks a mount, checks the arc, rolls the
+   * bracket and records the damage on the counter — it simply refused to aim
+   * at a counter that had arrived.
+   *
+   * So a counter that has arrived is now a target for the ship it arrived at,
+   * and nobody else: E5.4 Step 4 is that ship's defensive fire, and a
+   * bystander shooting a warhead already on someone else's hull is not a
+   * thing the sequence of play has a place for.
+   */
+  function underFire() {
+    const ghost = ship({ id: 'ghost', form: PASSER, y: 0, heading: 180 })
+    const foe = ship({ id: 'foe', side: 'Red', form: VALLARI_CRUISER, y: 3, heading: 0 })
+    const game = createGame({ scenario: THE_DUEL, ships: [ghost, foe], seed: 8 })
+    const torp = ghost.form.weapons.find((w) => w.weaponClass === 'plasma-torpedo')!
+    ghost.mounts[torp.id][0].armed = torp.mounts[0].armingCircles
+    launchHoming(game, ghost, torp, 0, foe)
+    ghost.speed = 0
+    foe.speed = 0
+    runTo(game, (g) => g.phase === 'combat-1' && g.segment === 'navigation')
+    advanceSegment(game)
+    return { game, ghost, foe, counter: impactingHoming(game, foe)[0] }
+  }
+
+  it('lets the ship being struck shoot the counter on its doorstep, and nobody else', () => {
+    const { game, ghost, foe, counter } = underFire()
+    expect(counter.impacted).toBe(true)
+    expect(smallTargetsFor(game, foe).map((t) => t.id)).toContain(counter.id)
+    // The launcher does not get to shoot its own torpedo off the target, and
+    // neither would an escort: it has arrived.
+    expect(smallTargetsFor(game, ghost).map((t) => t.id)).not.toContain(counter.id)
+  })
+
+  it('rolls the defensive fire instead of taking a number for it (E5.4 Step 4)', () => {
+    const { game, foe, counter } = underFire()
+    // Whichever point-defense mounts make up the struck shield's two arcs
+    // (E5.4 Step 2) — armed, because arming is not what is under test.
+    const answering = defendingArcs(counter, foe)
+    const bearing = foe.form.weapons.flatMap((weapon) =>
+      weapon.mounts.flatMap((mount, index) =>
+        canBearOn(mount.arcs, answering) ? [{ weapon, index }] : [],
+      ),
+    )
+    expect(bearing.length, 'no mount bears on the impact').toBeGreaterThan(0)
+    for (const { weapon, index } of bearing) {
+      foe.mounts[weapon.id][index].armed = weapon.mounts[index].armingCircles
+    }
+
+    const { weapon, index } = bearing[0]
+    const result = fireAtSmallTarget(game, foe, counter.id, weapon.id, index)
+    expect(result.refusal).toBeNull()
+    // The roll landed on the counter, which is where `resolveHomingVolley`
+    // reads it back off — the same place the typed-in number used to go.
+    expect(counter.damage).toBe(result.volley!.damage)
+    expect(foe.mounts[weapon.id][index].armed, 'firing discharges the mount').toBe(0)
+
+    const before = counter.damage
+    resolveHomingImpacts(game, foe)
+    expect(before, 'the shot has to have put something into it to be worth asserting on').toBeGreaterThan(0)
+    expect(
+      game.log.some((e) => /reduced by \d+ points of defensive fire|worn down to nothing/.test(e.message)),
+    ).toBe(true)
+  })
+
+  it('says so in the log when an unanswered impact was shot at anyway', () => {
+    const { game, counter } = underFire()
+    counter.damage = 6
+    resolveUnansweredImpacts(game)
+    expect(game.log.some((e) => /defensive fire already put into it/.test(e.message))).toBe(true)
+    expect(game.log.some((e) => /offers no point defense/.test(e.message))).toBe(false)
   })
 })
 

@@ -1505,8 +1505,13 @@ export function resolveHomingImpacts(
  * torpedoes frozen on the map, warheads unspent, forever (playtest report:
  * four plasma torpedoes parked against the Yorktown doing nothing). Run at
  * the moments the question expires: the Combat Segment closing, and the
- * round turning over. Zero point defense — declining to answer is a legal
- * answer, and the log says that is what happened.
+ * round turning over.
+ *
+ * Whatever defensive fire the ship actually got off is already on the
+ * counters — each shot is resolved when it is declared — so this adds none
+ * and takes none away. The log distinguishes the two cases, because "the
+ * warhead got through untouched" and "the gunners hit it and it came on
+ * anyway" are different stories.
  */
 export function resolveUnansweredImpacts(game: GameState): void {
   for (const ship of game.ships) {
@@ -1517,11 +1522,15 @@ export function resolveUnansweredImpacts(game: GameState): void {
       game.homing = game.homing.filter((hw) => !arrived.includes(hw))
       continue
     }
+    const count = `${arrived.length} unanswered impact${arrived.length === 1 ? '' : 's'}`
+    const verb = arrived.length === 1 ? 'resolves' : 'resolve'
     pushLog(
       game,
-      `${ship.name} offers no point defense — ${arrived.length} unanswered impact${arrived.length === 1 ? '' : 's'} resolve${arrived.length === 1 ? 's' : ''} (E5.4).`,
+      arrived.some((hw) => hw.damage > 0)
+        ? `${ship.name}: ${count} ${verb} with the defensive fire already put into ${arrived.length === 1 ? 'it' : 'them'} (E5.4).`
+        : `${ship.name} offers no point defense — ${count} ${verb} (E5.4).`,
     )
-    resolveHomingImpacts(game, ship, {})
+    resolveHomingImpacts(game, ship)
   }
 }
 
@@ -2797,7 +2806,18 @@ export function smallTargetsFor(game: GameState, attacker: ShipState): SmallTarg
   // E12.3.2 — a homing weapon may not be fired upon during the phase it was
   // launched, so only counters that have already flown are targets.
   for (const hw of game.homing) {
-    if (hw.destroyed || hw.impacted || hw.phasesFlown < 1) continue
+    if (hw.destroyed || hw.phasesFlown < 1) continue
+    /*
+     * A counter that has arrived is still a target, but only for the ship it
+     * has arrived at: E5.4 Step 4 is that ship's point defense fire, taken
+     * with the warhead on the doorstep. Everyone else may only engage a
+     * counter still in flight.
+     *
+     * This is what lets the defender answer an impact by declaring mounts and
+     * rolling, the same as any other shot, instead of totting up point
+     * defense damage by hand and typing in the number.
+     */
+    if (hw.impacted && hw.targetId !== attacker.id) continue
     targets.push({
       id: hw.id,
       name: hw.weaponName,

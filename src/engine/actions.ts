@@ -181,7 +181,18 @@ export type GameAction =
   | { type: 'catch-missile'; shipId: string; homingId: string; beams: number }
   | { type: 'launch-homing'; shipId: string; weaponId: string; mountIndex: number; targetId: string }
   | { type: 'launch-probe'; shipId: string; objectId: string; weaponId: string; mountIndex: number }
-  | { type: 'resolve-homing-impacts'; shipId: string; pointDefense: Partial<Record<ShieldSide, number>> }
+  /**
+   * `pointDefense` is a tally of defensive fire the table did itself, and it
+   * is retained only so battles journalled before the point defense became a
+   * declared, rolled shot still replay. Nothing emits it now: the defender
+   * fires `fire-small-target` at the counters on its doorstep and the engine
+   * rolls, which is where the damage is recorded.
+   */
+  | {
+      type: 'resolve-homing-impacts'
+      shipId: string
+      pointDefense?: Partial<Record<ShieldSide, number>>
+    }
   // Cloaking (H6)
   | { type: 'engage-cloak'; shipId: string }
   | { type: 'decloak'; shipId: string }

@@ -30,7 +30,7 @@ import {
   type GameState,
 } from '../engine/game'
 import { actualRange, arcTo, canBearOn, effectiveRange, shieldsFacing } from '../engine/geometry'
-import { endurance, impactShield, isHoming, speedInPhase } from '../engine/homing'
+import { defendingArcs, endurance, impactShield, isHoming, speedInPhase } from '../engine/homing'
 import { NO_SCOUT_SUPPORT } from '../engine/scouting'
 import { mountIsReady, type ShipState } from '../engine/shipState'
 import type { ShieldSide } from '../engine/types'
@@ -210,8 +210,9 @@ export function CombatPanel({ game, attacker }: Props) {
       {/*
         The playtest that demanded this line: torpedoes impacted a ship the
         player never re-selected, and nothing on screen said so. The engine
-        now resolves unanswered impacts when the segment closes — but with no
-        point defense, which is worth a warning while there is time to act.
+        now resolves unanswered impacts when the segment closes — but with
+        only the defensive fire that ship actually got off, which is worth a
+        warning while its guns can still be pointed at them.
       */}
       {(() => {
         const waiting = game.ships.filter(
@@ -225,8 +226,8 @@ export function CombatPanel({ game, attacker }: Props) {
         return (
           <p className="fire-error">
             Incoming homing weapons on {waiting.map((s) => s.name).join(' and ')} — select{' '}
-            {waiting.length === 1 ? 'it' : 'each'} to allocate point defense. Impacts left
-            unanswered resolve without any when the segment ends (E5.4).
+            {waiting.length === 1 ? 'it' : 'each'} to fire point defense. Impacts left unanswered
+            resolve when the segment ends, with whatever was fired at them (E5.4).
           </p>
         )
       })()}
@@ -812,50 +813,98 @@ function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipS
  * each shield is its own volley (E5.4 Step 3).
  */
 function HomingImpacts({ game, target }: { game: GameState; target: ShipState }) {
-  const [pd, setPd] = useState<Partial<Record<ShieldSide, number>>>({})
+  const [error, setError] = useState<string | null>(null)
   const arrived = impactingHoming(game, target)
 
-  const bySide = new Map<ShieldSide, number>()
+  const bySide = new Map<ShieldSide, typeof arrived>()
   for (const hw of arrived) {
-    const side = impactShield(hw, target)
-    bySide.set(side, (bySide.get(side) ?? 0) + 1)
+    const side = hw.forcedShield ?? impactShield(hw, target)
+    if (!bySide.has(side)) bySide.set(side, [])
+    bySide.get(side)!.push(hw)
   }
 
   return (
     <div className="homing-impacts">
       <h4>Incoming homing weapons (E5.4)</h4>
-      {[...bySide].map(([side, count]) => (
-        <label key={side} className="field inline">
-          <span>
-            {count} on the {side} shield — point defense damage
-          </span>
-          <input
-            type="number"
-            min={0}
-            value={pd[side] ?? 0}
-            onChange={(e) => setPd((prev) => ({ ...prev, [side]: Number(e.target.value) }))}
-          />
-        </label>
+      {[...bySide].map(([side, group]) => (
+        <div key={side} className="impact-group">
+          <h5>
+            {group.length} on the {side} shield
+          </h5>
+          {group.map((hw) => {
+            // E5.4 Step 2: the two 45° arcs that make up the struck shield are
+            // the ones that may answer.
+            const answering = defendingArcs(hw, target)
+            const mounts = target.form.weapons.flatMap((weapon) =>
+              weapon.mounts.flatMap((mount, index) => {
+                const state = target.mounts[weapon.id]?.[index]
+                if (!state || !mountIsReady(weapon, index, state)) return []
+                if (!canBearOn(mount.arcs, answering)) return []
+                return [{ weapon, index }]
+              }),
+            )
+            return (
+              <div key={hw.id} className="builder-row wrap">
+                <span className="pick-head">
+                  {hw.weaponName}
+                  {hw.damage > 0 ? ` · ${hw.damage} soaked` : ''}
+                </span>
+                {mounts.length === 0 ? (
+                  <em className="hint">nothing bears on it</em>
+                ) : (
+                  mounts.map(({ weapon, index }) => {
+                    const pd = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+                    return (
+                      <button
+                        key={`${weapon.id}-${index}`}
+                        type="button"
+                        className="chip"
+                        title={
+                          pd
+                            ? 'Point defense: full damage (E12.4.3)'
+                            : 'No point defense trait: degraded fire control halves the damage (E12.4.4)'
+                        }
+                        onClick={async () => {
+                          setError(
+                            (
+                              await dispatchWithChoices({
+                                type: 'fire-small-target',
+                                attackerId: target.id,
+                                targetId: hw.id,
+                                weaponId: weapon.id,
+                                mountIndex: index,
+                              })
+                            ).message,
+                          )
+                        }}
+                      >
+                        {weapon.name} #{index + 1}
+                        {pd ? ' · PD' : ' · degraded'}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            )
+          })}
+        </div>
       ))}
       <button
         type="button"
         className="primary"
         onClick={() => {
-          void dispatchWithChoices({
-            type: 'resolve-homing-impacts',
-            shipId: target.id,
-            pointDefense: pd,
-          })
-          setPd({})
+          void dispatchWithChoices({ type: 'resolve-homing-impacts', shipId: target.id })
         }}
       >
         Resolve impacts
       </button>
+      {error && <p className="fire-error">{error}</p>}
       <p className="hint">
-        Every three points of point defense damage takes one point off a particle weapon&apos;s
-        warhead; a missile is destroyed outright once it has taken its `MISL X` (F1.16.2, F13.2).
-        Impacts you do not resolve here go off by themselves — with no point defense — when the
-        segment ends (E5.4).
+        Fire the mounts that bear and the dice are rolled for you, the same as any other shot.
+        Every three points that land takes one point off a particle weapon&apos;s warhead; a missile
+        is destroyed outright once it has taken its <code>MISL X</code> (F1.16.2, F13.2). Impacts
+        you do not resolve here go off by themselves — with whatever point defense you did fire —
+        when the segment ends (E5.4).
       </p>
     </div>
   )
