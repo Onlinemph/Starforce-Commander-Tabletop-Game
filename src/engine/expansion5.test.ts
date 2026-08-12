@@ -1027,3 +1027,72 @@ describe('impacts nobody answered (E5.4)', () => {
     expect(marks(foe)).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Launchers bear like any other mount (E2.2, E5.2)
+// ---------------------------------------------------------------------------
+
+describe('a launcher obeys its firing arcs (E2.2, E5.2)', () => {
+  /**
+   * Reported from a live game: an Aurelian cruiser threw a plasma torpedo at
+   * a ship its tubes could not possibly point at. Nothing in the launch path
+   * consulted the mount's arcs — the engine checked arming, cloaks and line
+   * of sight and then fired regardless of where the target was.
+   */
+  const CORVUS = findShipForm('CORVUS I-class Destroyer')!
+  const LUPUS = findShipForm('LUPUS I-class Cruiser')!
+
+  /** A launcher facing north, and a target placed on some bearing from it. */
+  function setup(form: typeof PASSER, dx: number, dy: number) {
+    const launcher = ship({ id: 'aur', form, x: 20, y: 20, heading: 0 })
+    const foe = ship({ id: 'foe', side: 'Red', form: VALLARI_CRUISER, x: 20 + dx, y: 20 + dy })
+    const game = createGame({ scenario: THE_DUEL, ships: [launcher, foe], seed: 4 })
+    const torp = form.weapons.find((w) => w.weaponClass === 'plasma-torpedo')!
+    torp.mounts.forEach((m, i) => {
+      launcher.mounts[torp.id][i].armed = m.armingCircles
+    })
+    return { game, launcher, foe, torp }
+  }
+
+  it('refuses a target astern of a forward tube', () => {
+    // Heading north (0), so a target to the south sits in the aft arcs.
+    const { game, launcher, foe, torp } = setup(PASSER, 0, 12)
+    expect(torp.mounts[0].arcs).toEqual(['FS', 'FP'])
+    expect(launchHoming(game, launcher, torp, 0, foe)).toMatch(/cannot bear/)
+    expect(game.homing).toHaveLength(0)
+    // The mount keeps its charge: a refused launch spends nothing.
+    expect(launcher.mounts[torp.id][0].armed).toBe(torp.mounts[0].armingCircles)
+  })
+
+  it('allows the same shot from the mount that does bear', () => {
+    // The CORVUS carries a forward tube and an aft one.
+    const { game, launcher, foe, torp } = setup(CORVUS, 0, 12)
+    expect(launchHoming(game, launcher, torp, 0, foe)).toMatch(/cannot bear/)
+    expect(launchHoming(game, launcher, torp, 1, foe)).toBeNull()
+    expect(game.homing).toHaveLength(1)
+    // E5.2.8: placed against the side the firing arc covers — astern of a
+    // ship heading north is below it on the map.
+    expect(game.homing[0].position.y).toBeGreaterThan(launcher.placement.position.y)
+  })
+
+  it('launches through the arc the target is in, not the first one listed', () => {
+    // The LUPUS's second tube covers FS and SF; a target abeam to starboard
+    // is in SF, so the counter belongs on the starboard side. Taking the
+    // first listed arc would have put it out in front of the ship.
+    const { game, launcher, foe, torp } = setup(LUPUS, 12, 0)
+    expect(torp.mounts[1].arcs).toEqual(['FS', 'SF'])
+    expect(launchHoming(game, launcher, torp, 1, foe)).toBeNull()
+    const hw = game.homing[0]
+    expect(hw.position.x).toBeGreaterThan(launcher.placement.position.x)
+    expect(hw.position.y).toBeCloseTo(launcher.placement.position.y)
+  })
+
+  it('refuses a launch from a ship using evasive maneuvers (E5.2.3)', () => {
+    const { game, launcher, foe, torp } = setup(PASSER, 0, -12)
+    // In arc and armed: only the weaving stops it.
+    launcher.evasive = 2
+    expect(launchHoming(game, launcher, torp, 0, foe)).toMatch(/evasive/)
+    launcher.evasive = 0
+    expect(launchHoming(game, launcher, torp, 0, foe)).toBeNull()
+  })
+})

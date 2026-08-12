@@ -740,14 +740,30 @@ function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipS
   const launchers = attacker.form.weapons.filter(isHoming)
   if (launchers.length === 0) return null
 
+  // A launcher bears like any other mount (E2.2), and a ship weaving may not
+  // launch at all (E5.2.3) — both shown here rather than left to a refusal.
+  const targetArcs = arcTo(
+    attacker.placement.position,
+    attacker.placement.heading,
+    target.placement.position,
+  )
+  const weaving = attacker.evasive > 0
+
   return (
     <div className="homing-launch">
       <h4>Homing weapons (E5.2)</h4>
+      {weaving && (
+        <p className="hint">
+          {attacker.name} is weaving {attacker.evasive} point(s) and may not launch this phase
+          (E5.2.3).
+        </p>
+      )}
       <div className="weapon-picker">
         {launchers.map((weapon) =>
           weapon.mounts.map((mount, index) => {
             const state = attacker.mounts[weapon.id][index]
-            const ready = mountIsReady(weapon, index, state)
+            const bears = canBearOn(mount.arcs, targetArcs)
+            const ready = mountIsReady(weapon, index, state) && bears && !weaving
             return (
               <button
                 key={`${weapon.id}|${index}`}
@@ -755,9 +771,13 @@ function HomingLaunch({ attacker, target }: { attacker: ShipState; target: ShipS
                 className={`weapon-pick${ready ? '' : ' is-disabled'}`}
                 disabled={!ready}
                 title={
-                  ready
-                    ? `Endurance ${endurance(weapon)} phases, ${speedInPhase(weapon, 1)}" on the first leg`
-                    : 'Not fully armed (E4.2.3)'
+                  !mountIsReady(weapon, index, state)
+                    ? 'Not fully armed (E4.2.3)'
+                    : weaving
+                      ? 'A ship using evasive maneuvers may not launch (E5.2.3)'
+                      : !bears
+                        ? `Bears ${mount.arcs.join('/')}; the target is ${targetArcs.join('/')} (E2.2)`
+                        : `Endurance ${endurance(weapon)} phases, ${speedInPhase(weapon, 1)}" on the first leg`
                 }
                 onClick={() =>
                   setError(

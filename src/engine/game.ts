@@ -1368,6 +1368,10 @@ export function launchHoming(
   if (shipUnderCloakRestrictions(game, launcher)) {
     return `${launcher.name} is cloaked and may not launch homing weapons (H6.4.2).`
   }
+  // E5.2.3: a ship weaving cannot hold a launcher steady enough to use it.
+  if (launcher.evasive > 0) {
+    return `${launcher.name} is using evasive maneuvers and may not launch (E5.2.3).`
+  }
   // H6.2 / E5.2.2: you need at least a Track on a cloaked target.
   const targetCloak = game.cloaks[target.id]
   if (isCloaked(targetCloak) && bestDetection(targetCloak!) < 2) {
@@ -1384,7 +1388,27 @@ export function launchHoming(
     return 'A planet blocks the line of sight to the target (E5.2.1, K3.1.3).'
   }
 
-  const arc = mount.arcs[0]
+  /*
+   * A launcher is a weapon mount and obeys its firing arcs like any other
+   * (E2.2; E6.2 Step 3 has the attacker determine the arc before choosing
+   * weapons). Nothing here used to check it, so a torpedo would launch at a
+   * target dead astern of a forward tube — reported from a live game, and
+   * the reason the check reads exactly like direct fire's refusal.
+   */
+  const firingArcs = arcTo(launcher.placement.position, launcher.placement.heading, target.placement.position)
+  if (!canBearOn(mount.arcs, firingArcs)) {
+    return `${weapon.name} mount ${mountIndex + 1} cannot bear on the target.`
+  }
+
+  /*
+   * The counter is placed against the side of the ship the firing arc covers
+   * (E5.2.8), so the arc it launches through is the one the target is
+   * actually in — not simply the first the mount lists. A broadside tube
+   * covering SF and SA put every counter on the same side whichever way it
+   * shot; where the arcs cover more than one side and the target is on the
+   * boundary, the captain's choice is the first that bears (E5.2.8).
+   */
+  const arc = mount.arcs.find((a) => firingArcs.includes(a)) ?? mount.arcs[0]
   game.homing.push(launchHomingWeapon({ launcher, weapon, target, arc, maxSpeed }))
   state.armed = Math.max(0, state.armed - mount.armingCircles)
   if (mount.ammo !== undefined) state.ammoUsed += 1

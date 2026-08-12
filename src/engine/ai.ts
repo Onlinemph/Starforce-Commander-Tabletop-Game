@@ -4115,6 +4115,8 @@ function homingLaunches(
   difficulty: AiDifficulty,
 ): GameAction[] {
   const actions: GameAction[] = []
+  // E5.2.3: weaving and launching are mutually exclusive.
+  if (ship.evasive > 0) return actions
   const homing = ship.form.weapons.filter(isHoming)
 
   let ready = 0
@@ -4130,7 +4132,7 @@ function homingLaunches(
 
   for (const weapon of homing) {
     const reach = totalFlight(weapon)
-    weapon.mounts.forEach((_, mountIndex) => {
+    weapon.mounts.forEach((mount, mountIndex) => {
       const key = `hl:${game.round}:${game.phase}:${ship.id}:${weapon.id}:${mountIndex}`
       if (memo.done.has(key)) return
       if (!mountIsReady(weapon, mountIndex, ship.mounts[weapon.id][mountIndex])) return
@@ -4139,7 +4141,13 @@ function homingLaunches(
         enemiesOf(game, ship).filter(
           (e) =>
             !positionHidden(game, e) &&
-            actualRange(ship.placement.position, e.placement.position) <= reach,
+            actualRange(ship.placement.position, e.placement.position) <= reach &&
+            // A launcher bears like any other mount (E2.2): a forward tube
+            // does not fire at something astern, however close it is.
+            canBearOn(
+              mount.arcs,
+              arcTo(ship.placement.position, ship.placement.heading, e.placement.position),
+            ),
         ),
       )
       if (!target) return
