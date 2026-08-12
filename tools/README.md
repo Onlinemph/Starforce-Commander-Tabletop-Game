@@ -194,17 +194,22 @@ ids. The importer prints any title it cannot map.
 
 # Homing counter art
 
-`extract_plasma_art.py` lifts the plasma art off the Expansion 5 counter sheet (pages 29-32 of the
-Aurelian Ship Book) and writes `src/ui/plasmaArt.ts`:
+`extract_homing_art.py` lifts the warhead art off the Expansion 5 counter sheet (pages 29-32 of the
+Aurelian Ship Book) and writes `src/ui/homingArt.ts`:
 
 ```
-python3 tools/extract_plasma_art.py <AURELIAN_STARSHIP_BOOK.pdf>
+python3 tools/extract_homing_art.py <AURELIAN_STARSHIP_BOOK.pdf>
 ```
 
-The sheet prints two homing designs, unlabelled and x2 each: a fiery orange bolt and a magenta
-sphere ringed with containment bands. The bolt is the one the rules illustrate in flight, so it is
-what every plasma torpedo wears; the sphere is wired to the enveloping trait (ENVLP, F5.4), which
-no shipped design carries yet — add one and it appears by itself.
+The sheet prints two designs, unlabelled and x2 each, and they are two different weapons rather
+than two colourways. The fiery orange teardrop is the **A/MAT torpedo**: the base rulebook's own E5
+illustration shows a Union cruiser throwing exactly these, in a book published before the Aurelians
+existed and with no plasma in it at all. The magenta sphere wrapped in containment bands is the
+**Aurelian plasma torpedo**, which F5.1 describes as reactor plasma held together by a containment
+field on its way to the target — the art is that sentence.
+
+The map picks between them by weapon class, so every plasma torpedo in the roster wears the sphere
+today and the teardrop is waiting for the first homing A/MAT or missile.
 
 Each counter is a black square with a blue border, a yellow ID, a white position dot and six
 endurance pips down the left. The tool crops past all of that to the art alone and keys the black

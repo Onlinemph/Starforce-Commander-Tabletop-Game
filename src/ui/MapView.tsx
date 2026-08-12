@@ -19,7 +19,7 @@ import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
 import type { BattleFx } from './fx'
 import { OFFICIAL_SILHOUETTES, type OfficialFaction } from './officialSilhouettes'
-import { PLASMA_ART } from './plasmaArt'
+import { HOMING_ART } from './homingArt'
 import { labelHalfWidth, stackLabels } from './mapLabels'
 
 /**
@@ -1128,40 +1128,42 @@ function sideColorClass(side: string): 'blue' | 'aurelian' | 'red' {
 /**
  * A homing weapon in flight, wearing the counter's own art (E5.1.9).
  *
- * The printed counter is a black square with the plasma inside it and a white
- * dot at its centre for position; this draws the plasma on the starfield
- * directly, with the side's colour left to the frame. The bolt is turned onto
- * its bearing — a homing weapon always flies at its target (E5.3), so the
- * heading is simply the direction of the thing it is chasing, and a torpedo
- * pointing where it is going says more than a box ever did.
- *
- * An enveloping plasma (ENVLP, F5.4) is a ball rather than a bolt: it has no
- * nose to point, so it is drawn upright and simply glows.
+ * The printed counter is a black square with the warhead inside it and a
+ * white dot at its centre for position; this draws the warhead on the
+ * starfield directly, with the side's colour left to the frame. It is turned
+ * onto its bearing — a homing weapon always flies at its target (E5.3), so
+ * the heading is simply the direction of the thing it is chasing, and a
+ * torpedo pointing where it is going says more than a box ever did.
  */
 function HomingCounter({ game, hw }: { game: GameState; hw: HomingWeapon }) {
   const owner = game.ships.find((s) => s.id === hw.ownerId)
   const weapon = owner?.form.weapons.find((w) => w.id === hw.weaponId)
-  const enveloping = weapon?.traits.some((t) => t.toUpperCase().startsWith('ENVLP')) ?? false
-  const art = enveloping ? PLASMA_ART.sphere : PLASMA_ART.bolt
+  /*
+   * The sheet prints two designs because there are two weapons. Reactor
+   * plasma in a containment field is the Aurelian sphere (F5.1); everything
+   * else that homes — an A/MAT torpedo, a missile — is the fiery teardrop
+   * the base rulebook illustrates, in a book with no plasma in it at all.
+   */
+  const plasma = weapon?.weaponClass === 'plasma-torpedo'
+  const art = plasma ? HOMING_ART.plasma : HOMING_ART.amat
 
   // The counter is 3/4 inch (E5.1.9). Both designs are fitted by height, so
-  // the ball keeps its shape instead of squashing to the frame's width and
-  // the bolt stays inside the square as it swings round its bearing.
+  // the sphere keeps its shape instead of squashing to the frame's width and
+  // the teardrop stays inside the square as it swings round its bearing.
   const size = 0.75 * SCALE
-  const height = size * (enveloping ? 0.94 : 0.9)
-  const width = enveloping ? (height * art.width) / art.height : size * 0.46
+  const height = size * (plasma ? 0.94 : 0.9)
+  const width = plasma ? (height * art.width) / art.height : size * 0.46
 
   const target = game.ships.find((s) => s.id === hw.targetId)
   // Nose-up art, so a target due north is zero rotation.
-  const bearing =
-    target && !enveloping
-      ? (Math.atan2(
-          target.placement.position.x - hw.position.x,
-          hw.position.y - target.placement.position.y,
-        ) *
-          180) /
-        Math.PI
-      : 0
+  const bearing = target
+    ? (Math.atan2(
+        target.placement.position.x - hw.position.x,
+        hw.position.y - target.placement.position.y,
+      ) *
+        180) /
+      Math.PI
+    : 0
 
   return (
     <g
