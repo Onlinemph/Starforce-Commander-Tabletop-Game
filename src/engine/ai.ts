@@ -377,7 +377,23 @@ function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty
   return level === 'heavy' || postureOf(game, ship, difficulty) === 'press'
 }
 
-/** Cloak doctrine (H6): vanish to cross the gulf or to nurse wounds. */
+/**
+ * Cloak doctrine (H6): vanish to cross the gulf, to nurse wounds — and to
+ * reload.
+ *
+ * The reload is the half that was missing, and a playtester spotted it from
+ * the outside: the Aurelians cloaked once at the start, came out to shoot,
+ * and then stayed visible for the rest of the battle. The reason was that
+ * the only reasons to hide were "hurt" or "far", and a ship that has just
+ * emptied its tubes into someone is neither.
+ *
+ * But a plasma torpedo takes two or three rounds to arm (F5.1.3), and for
+ * every one of those rounds the ship has nothing to shoot with. H6.4.2
+ * costs a cloaked ship its weapons, which is no cost at all when the
+ * weapons are empty — so the reload is precisely when hiding is free. That
+ * is the Aurelian cycle: charge in the dark, surface for the volley,
+ * disappear again while the next one builds.
+ */
 function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty): boolean {
   if (difficulty === 'ensign' || !cloakOperational(ship)) return false
   // Never go dark on a phase we could be shooting: H6.4.2 locks the weapons of
@@ -387,7 +403,18 @@ function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty):
   const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
   const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
   const far = !enemy || actualRange(ship.placement.position, enemy.placement.position) > preferredRange(ship) + 8
-  return hurt || far
+  return hurt || far || reloading(ship)
+}
+
+/**
+ * Nothing aboard is ready to fire, so the phase is going to be spent waiting
+ * whatever happens. A mount part-way through its arming still counts as
+ * empty: a weapon fires when its circles are full and not before (E4.2.3).
+ */
+function reloading(ship: ShipState): boolean {
+  return !ship.form.weapons.some((weapon) =>
+    (ship.mounts[weapon.id] ?? []).some((state, i) => mountIsReady(weapon, i, state)),
+  )
 }
 
 /**
@@ -403,8 +430,17 @@ function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty):
  * either side scoring a single kill.
  */
 function firingSolution(game: GameState, ship: ShipState): boolean {
+  /*
+   * Ready, not merely started. A weapon fires when its circles are full and
+   * not before (E4.2.3), so a plasma tube four circles into a six-circle
+   * arming is not a firing solution — and reading it as one broke the cycle
+   * at both ends: the ship would not go dark to finish the reload, and it
+   * would surface for a shot it could not legally take. A LIGHT PLASMA TORP
+   * spends most of the battle part-charged, so for the Aurelians that was
+   * most of the battle.
+   */
   const loaded = ship.form.weapons.some((w) =>
-    (ship.mounts[w.id] ?? []).some((m) => m.armed > 0),
+    (ship.mounts[w.id] ?? []).some((m, i) => mountIsReady(w, i, m)),
   )
   if (!loaded) return false
   // A ghost we have detected counts as a target; one still hidden does not,
@@ -1219,15 +1255,19 @@ interface Candidate {
  * offers no such band. Admiral doctrine: the read takes the whole table.
  * Exported for tests.
  */
+/** How far a hull's direct-fire guns reach; homing weapons fly their own way. */
+function directReach(s: ShipState): number {
+  return Math.max(
+    0,
+    ...s.form.weapons.filter((w) => !isHoming(w)).flatMap((w) => w.brackets.map((b) => b.max)),
+  )
+}
+
 export function kiteBand(game: GameState, ship: ShipState, enemies: ShipState[]): number | null {
   if (enemies.length < 2) return null
   const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
   if (enemies.length < own.length * 2) return null
-  const reachOf = (s: ShipState) =>
-    Math.max(
-      0,
-      ...s.form.weapons.filter((w) => !isHoming(w)).flatMap((w) => w.brackets.map((b) => b.max)),
-    )
+  const reachOf = directReach
   const myReach = reachOf(ship)
   const theirReach = Math.max(0, ...enemies.map(reachOf))
   if (myReach < theirReach + 4) return null
@@ -2423,6 +2463,19 @@ function bestPlot(
   // middle — it is the band the swarm cannot answer from.
   const kite =
     difficulty === 'admiral' && !ablated('kite') ? kiteBand(game, ship, visibleEnemies) : null
+  /*
+   * Measured and rejected, recorded so it is not rediscovered: holding the
+   * ideal range just outside the enemy's guns *while the tubes are empty*
+   * is sound doctrine and reads well — a ship with nothing loaded has no
+   * business inside a broadside. It is also a net loss here. Given to
+   * everyone it is worth six wins in thirty to an AQUILA BELLUM, and costs
+   * a TONITRUS twenty-one, because the hull it most helps is whichever one
+   * is outweighed — and against an Aurelian heavy that is the Union
+   * cruiser, which promptly learned to kite it. Narrowing the rule to the
+   * outweighed hull does not save it: the Union ship is still the one being
+   * outweighed. Worth revisiting as general doctrine, with the whole season
+   * as the judge rather than three matchups.
+   */
   const ideal = kite ?? preferredRange(ship)
   /**
    * A ship that has resolved to leave stops flying like a ship that means

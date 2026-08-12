@@ -151,3 +151,74 @@ describe('a cloaked ship that has been found', () => {
     expect(second.message).toContain('H6.13.2')
   })
 })
+
+/**
+ * The other half of the cycle, and the half that was missing until a
+ * playtester watched an Aurelian squadron fight: they cloaked once at the
+ * start, came out to shoot, and then stayed visible for the rest of the
+ * battle. Hiding was only ever worth it when hurt or far away, and a ship
+ * that has just emptied its tubes is neither.
+ *
+ * A plasma torpedo takes two or three rounds to arm (F5.1.3), and H6.4.2
+ * costs a cloaked ship weapons it does not currently have. So the reload is
+ * exactly when the cloak is free — charge in the dark, surface for the
+ * volley, vanish while the next one builds.
+ */
+describe('the Aurelian cycle: reload in the dark', () => {
+  /** An Aurelian cruiser, uncloaked, with its cloak line fully powered. */
+  function raider(seed = 5) {
+    const game = startScenario('exp5-aurelian-raid', { seed })
+    const ship = game.ships.find((s) => s.side === 'Aurelian Empire')!
+    const foe = game.ships.find((s) => s.side !== 'Aurelian Empire')!
+    // Within reach of each other, so neither is simply "far".
+    foe.placement = {
+      position: { x: ship.placement.position.x + 10, y: ship.placement.position.y },
+      heading: 270,
+    }
+    const line = ship.form.functions.find((l) => l.label === 'CLOAK')!
+    ship.allocation[line.id] = line.steps.length
+    game.phase = 'combat-1'
+    game.segment = 'operations'
+    return { game, ship, foe, line }
+  }
+
+  /** Every mount either emptied, or filled to the brim. */
+  function setCharge(ship: (typeof startScenario extends never ? never : ReturnType<typeof raider>)['ship'], full: boolean) {
+    for (const weapon of ship.form.weapons) {
+      weapon.mounts.forEach((mount, i) => {
+        ship.mounts[weapon.id][i].armed = full ? mount.armingCircles : 0
+      })
+    }
+  }
+
+  const asks = (game: ReturnType<typeof raider>['game'], shipId: string, type: string) =>
+    aiNextActions(game, ['Aurelian Empire'], createAiMemo(), false, 'admiral').some(
+      (a) => a.type === type && 'shipId' in a && a.shipId === shipId,
+    )
+
+  it('goes dark to reload, because a cloak costs nothing it is not already missing', () => {
+    const { game, ship } = raider()
+    setCharge(ship, false)
+    expect(asks(game, ship.id, 'engage-cloak')).toBe(true)
+  })
+
+  it('stays visible with the tubes full and a target in reach (H6.4.2)', () => {
+    const { game, ship } = raider()
+    setCharge(ship, true)
+    expect(asks(game, ship.id, 'engage-cloak')).toBe(false)
+  })
+
+  it('counts a part-charged tube as empty, not as a shot (E4.2.3)', () => {
+    // The bug this pins: a plasma tube four circles into a six-circle arming
+    // read as a firing solution, so the ship neither hid to finish the
+    // reload nor could legally fire. Half-charge everything and it should
+    // still take the cloak.
+    const { game, ship } = raider()
+    for (const weapon of ship.form.weapons) {
+      weapon.mounts.forEach((mount, i) => {
+        ship.mounts[weapon.id][i].armed = Math.max(0, mount.armingCircles - 1)
+      })
+    }
+    expect(asks(game, ship.id, 'engage-cloak')).toBe(true)
+  })
+})
