@@ -485,7 +485,27 @@ function firingSolution(game: GameState, ship: ShipState): boolean {
  */
 function huntedGhost(game: GameState, ship: ShipState): ShipState | null {
   const ghosts = enemiesOf(game, ship).filter((e) => positionHidden(game, e))
-  return ghosts.length > 0 ? nearest(ship, ghosts) : null
+  if (ghosts.length === 0) return null
+  /*
+   * Rank them by the datum — the spot the ship was last seen (H6.2.2) — and
+   * not by where it actually is, which is the one thing a hunter cannot
+   * know. Using `nearest` here read the true position straight off the
+   * hidden hull: it never let the AI break a rule, because the engine
+   * resolves search range against the truth either way, but with two ghosts
+   * on the table it picked the genuinely closer one instead of guessing
+   * from the datums like a player has to.
+   */
+  let best: ShipState | null = null
+  let bestDist = Infinity
+  for (const ghost of ghosts) {
+    const datum = game.cloaks[ghost.id]?.datum.position ?? ghost.placement.position
+    const range = actualRange(ship.placement.position, datum)
+    if (range < bestDist || (range === bestDist && best && ghost.id < best.id)) {
+      best = ghost
+      bestDist = range
+    }
+  }
+  return best
 }
 
 // ---------------------------------------------------------------------------

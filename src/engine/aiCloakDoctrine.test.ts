@@ -222,3 +222,46 @@ describe('the Aurelian cycle: reload in the dark', () => {
     expect(asks(game, ship.id, 'engage-cloak')).toBe(true)
   })
 })
+
+/**
+ * What a hunter is allowed to know. A cloaked ship shows a datum — the spot
+ * it was last seen (H6.2.2) — and nothing else, so every choice the AI makes
+ * about a ghost has to be made from that spot rather than from the hull's
+ * real position, which is sitting right there in the game state.
+ */
+describe('the AI hunts by the datum, not by the truth', () => {
+  it('searches the ghost whose datum is nearest, even when the other is closer', () => {
+    const game = startScenario('exp5-aurelian-raid', { seed: 3 })
+    const hunter = game.ships.find((s) => s.side !== 'Aurelian Empire')!
+    const ghosts = game.ships.filter((s) => s.side === 'Aurelian Empire').slice(0, 2)
+    expect(ghosts).toHaveLength(2)
+
+    hunter.placement = { position: { x: 30, y: 30 }, heading: 0 }
+    for (const ghost of ghosts) {
+      const cloak = cloakOf(game, ghost)!
+      const line = ghost.form.functions.find((l) => l.label === 'CLOAK')!
+      ghost.allocation[line.id] = line.steps.length
+      cloak.engaged = true
+      cloak.detection = {}
+    }
+    // Ghost A left its datum far away but has crept in close; ghost B was
+    // last seen nearby and has slipped away. A player can only see the
+    // datums, so B is the one to search.
+    const [far, near] = ghosts
+    cloakOf(game, far)!.datum = { position: { x: 30, y: 65 }, heading: 0 }
+    far.placement = { position: { x: 31, y: 31 }, heading: 0 }
+    cloakOf(game, near)!.datum = { position: { x: 30, y: 36 }, heading: 0 }
+    near.placement = { position: { x: 30, y: 68 }, heading: 0 }
+
+    game.phase = 'combat-1'
+    game.segment = 'operations'
+    const searches = aiNextActions(game, [hunter.side], createAiMemo(), false, 'admiral').filter(
+      (a) => a.type === 'cloak-search',
+    )
+    expect(searches.length).toBeGreaterThan(0)
+    for (const search of searches) {
+      if (search.type !== 'cloak-search') continue
+      expect(search.ghostId).toBe(near.id)
+    }
+  })
+})
