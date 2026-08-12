@@ -112,6 +112,14 @@ export interface ShipState {
   structureHitsTaken: number
   /** Structure damage after every box is marked (E11.2.2). */
   excessStructureDamage: number
+  /**
+   * Structure boxes already marked when the battle began — a scenario fielding
+   * a cripple to be rescued, or a campaign hull carrying last week's scars.
+   * The victory ledger scores only damage inflicted *this* battle, so wounds
+   * the ship arrived with are nobody's points (S2.8.2 assumes every hull
+   * starts whole; this is the baseline that keeps that assumption honest).
+   */
+  preDamaged: number
 
   // ── Round state ────────────────────────────────────────────────────────
   stressMarkers: number
@@ -216,6 +224,7 @@ export function createShip(args: {
     structureDamaged: form.structure.filter((e) => e.kind === 'box').map(() => false),
     structureHitsTaken: 0,
     excessStructureDamage: 0,
+    preDamaged: 0,
     stressMarkers: 0,
     accelUsedThisRound: 0,
     evasive: 0,
@@ -620,6 +629,26 @@ export function markStructure(ship: ShipState): boolean {
   return true
 }
 
+/**
+ * Field a ship already carrying wounds: a cripple to be rescued, or a campaign
+ * hull that fought last week. `fraction` is how much of the structure track is
+ * gone at the opening bell, clamped shy of destruction — a scenario that wants
+ * a dead ship wants a derelict, which is a different thing.
+ *
+ * The boxes are marked through `markStructure`, so black boxes go first and
+ * `structureHitsTaken` rises with them — meaning the scars are real: damage
+ * control is degraded (B3.1.2) and stress checks remember (C3.3), exactly as
+ * if the hits had landed in play. Only the victory ledger is told otherwise:
+ * `preDamaged` records the baseline so nobody scores points for wounds they
+ * did not inflict.
+ */
+export function applyPreDamage(ship: ShipState, fraction: number): void {
+  const total = structureTotal(ship)
+  const boxes = Math.min(total - 1, Math.floor(total * Math.max(0, fraction)))
+  for (let i = 0; i < boxes; i++) markStructure(ship)
+  ship.preDamaged = boxes
+}
+
 /** Damage level for victory points (S2.8.4). */
 export type DamageLevel = 'none' | 'minor' | 'light' | 'moderate' | 'heavy' | 'crippled' | 'destroyed'
 
@@ -628,6 +657,12 @@ export function damageLevel(ship: ShipState): DamageLevel {
   if (total === 0) return 'none'
   const damaged = total - structureRemaining(ship)
   if (ship.destroyed || damaged >= total) return 'destroyed'
+  return damageLevelAt(damaged, total)
+}
+
+/** The S2.8.4 damage level a given box count amounts to on a given track. */
+export function damageLevelAt(damaged: number, total: number): DamageLevel {
+  if (total === 0 || damaged >= total) return total === 0 ? 'none' : 'destroyed'
   const pct = damaged / total
   if (pct === 0) return 'none'
   if (pct >= 0.9) return 'crippled'

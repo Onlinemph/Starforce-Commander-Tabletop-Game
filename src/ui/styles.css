@@ -3539,6 +3539,23 @@ button.chip:hover:not(:disabled) {
   gap: 0.35rem;
 }
 
+/* Starting-condition picker inside a force chip: quiet until it matters. */
+.chip-select {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  cursor: pointer;
+  max-width: 8.5rem;
+}
+
+.chip-select:hover,
+.chip-select:focus {
+  opacity: 1;
+}
+
 .chip-x {
   background: none;
   border: none;

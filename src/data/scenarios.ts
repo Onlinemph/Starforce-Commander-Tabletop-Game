@@ -3,7 +3,7 @@ import { createGame, type GameState, type Scenario, type Terrain } from '../engi
 import { DIE_FACES, Rng } from '../engine/dice'
 import { ASTEROID_COUNTERS, DENSITY_STATS } from './terrainCounters'
 import type { MapBounds } from '../engine/navigation'
-import { createShip, type ShipState } from '../engine/shipState'
+import { applyPreDamage, createShip, type ShipState } from '../engine/shipState'
 import type { Point, ShipForm } from '../engine/types'
 import { shipFormById, VALLARI_CRUISER, YORKTOWN } from './ships'
 
@@ -330,6 +330,13 @@ interface SideSetup {
   /** The force's flagship, if the scenario names one (S3.6). */
   flagship?: boolean
   /**
+   * Wounds the force arrives with: fraction of each hull's structure track
+   * already gone at setup, by force index. A rescue scenario fields the
+   * cripple at 0.9; a campaign fields last battle's survivors as they ended
+   * it. Scored as a baseline — see `pointsAgainst`.
+   */
+  damage?: number[]
+  /**
    * Reinforcements (S3.2): every ship from `fromIndex` onward is off the map
    * until `round`, then enters at its own anchor and facing. Expressed inside
    * the side rather than as a second side, so a player who composes their own
@@ -612,6 +619,10 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
         arrivesRound: late ? late.round : undefined,
       })
       applyAlert(ship, setup.alert ?? 'yellow')
+      // Wounds the scenario says the ship arrived with (campaign scars, a
+      // cripple under rescue). Applied at deploy so replays re-derive the
+      // same baseline from the scenario itself — saves never carry it.
+      if (setup.damage?.[i]) applyPreDamage(ship, setup.damage[i])
       ships.push(ship)
     })
   }
@@ -1058,6 +1069,8 @@ export interface CustomScenario {
     spread: Point
     /** The printed force, as form ids (S2.5.1). */
     force: string[]
+    /** Starting damage per hull, as a fraction of its structure track. */
+    damage?: number[]
   }>
 }
 
@@ -1086,6 +1099,7 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     spread: s.spread,
     names: NAME_POOLS[i % NAME_POOLS.length],
     defaults: () => s.force.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f)),
+    damage: s.damage,
   }))
   return { scenario, sides }
 }

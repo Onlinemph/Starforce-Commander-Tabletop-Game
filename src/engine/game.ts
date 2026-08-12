@@ -184,7 +184,7 @@ import {
   beginRound,
   clampSensors,
   crewIsArmed,
-  damageLevel,
+  damageLevelAt,
   mountIsReady,
   structureRemaining,
   structureTotal,
@@ -1302,24 +1302,37 @@ export function recordAttack(game: GameState, attacker: ShipState, target: ShipS
  * that is higher (S2.8.4 item 4).
  */
 export function pointsAgainst(ship: ShipState): number {
-  const damaged = structureTotal(ship) - structureRemaining(ship)
+  const total = structureTotal(ship)
   const table = ship.form.victoryTable
-
-  let earned: number
-  if (ship.destroyed || (structureTotal(ship) > 0 && damaged >= structureTotal(ship))) {
-    earned = ship.form.pointValue
-  } else if (table && table.length > 0) {
-    // Highest band whose damage threshold has been reached; levels are not
-    // cumulative (S2.8.2).
-    earned = table.reduce((best, row) => (damaged >= row.damage ? row.points : best), 0)
-  } else {
-    earned = ship.form.pointValue * VICTORY_FRACTION[damageLevel(ship)]
+  /**
+   * What the table (or the S2.8.4 fractions) awards for a given box count.
+   * Written as a function of the count so it can be read twice: once at the
+   * ship's current damage, once at the damage it *arrived* with.
+   */
+  const earnedAt = (damaged: number): number => {
+    if (total > 0 && damaged >= total) return ship.form.pointValue
+    if (table && table.length > 0) {
+      // Highest band whose damage threshold has been reached; levels are not
+      // cumulative (S2.8.2).
+      return table.reduce((best, row) => (damaged >= row.damage ? row.points : best), 0)
+    }
+    return ship.form.pointValue * VICTORY_FRACTION[damageLevelAt(damaged, total)]
   }
 
+  const damaged = total - structureRemaining(ship)
+  let earned = ship.destroyed ? ship.form.pointValue : earnedAt(damaged)
   if (ship.disengaged) {
     earned = Math.max(earned, ship.form.pointValue * VICTORY_FRACTION.moderate)
   }
-  return earned
+  /**
+   * A ship fielded already hurt (a cripple under rescue, a campaign hull with
+   * last week's scars) concedes points only for what this battle adds. The
+   * printed rule assumes every hull starts whole, so the baseline is
+   * subtracted rather than woven in: destroy the wreck and you earn the gap
+   * between its full value and what its wounds were already worth, not the
+   * whole prize.
+   */
+  return Math.max(0, earned - earnedAt(ship.preDamaged ?? 0))
 }
 
 /** Victory points earned by each side (S2.8.2 – S2.8.4). */

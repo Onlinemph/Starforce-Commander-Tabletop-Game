@@ -651,11 +651,43 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                   {side.force.map((id, n) => (
                     <span key={`${id}-${n}`} className="chip">
                       {roster.find((f) => f.id === id)?.name ?? id}
+                      {/*
+                        Condition at the opening bell: a rescue scenario fields
+                        the cripple already broken, a campaign fields last
+                        battle's survivors as they ended it. Stored as a
+                        fraction of the structure track; scored as a baseline,
+                        so wounds a ship arrives with are nobody's points.
+                      */}
+                      <select
+                        className="chip-select"
+                        title="Damage the ship starts the battle with — it concedes victory points only for damage taken beyond this."
+                        value={side.damage?.[n] ?? 0}
+                        onChange={(e) =>
+                          edit((d) => {
+                            const s = d.sides[i]
+                            s.damage ??= []
+                            while (s.damage.length < s.force.length) s.damage.push(0)
+                            s.damage[n] = Number(e.target.value)
+                            if (s.damage.every((v) => v === 0)) delete s.damage
+                          })
+                        }
+                      >
+                        <option value={0}>fresh</option>
+                        <option value={0.25}>light (25%)</option>
+                        <option value={0.5}>moderate (50%)</option>
+                        <option value={0.75}>heavy (75%)</option>
+                        <option value={0.9}>crippled (90%)</option>
+                      </select>
                       <button
                         type="button"
                         className="chip-x"
                         aria-label="Remove ship"
-                        onClick={() => edit((d) => void d.sides[i].force.splice(n, 1))}
+                        onClick={() =>
+                          edit((d) => {
+                            d.sides[i].force.splice(n, 1)
+                            d.sides[i].damage?.splice(n, 1)
+                          })
+                        }
                       >
                         ✕
                       </button>
