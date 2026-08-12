@@ -11,3 +11,10 @@ src/*-probe.test.ts
 # and no model ships (see src/engine/plotModel.ts)
 data/
 models/
+# Ship-book importer intermediates: regenerable from the PDFs in one command,
+# and ships.json is the only output that belongs in the repo (see tools/README.md)
+tools/msl.json
+tools/ships_raw.json
+tools/aurelian_raw.json
+tools/ships_final.json
+tools/__pycache__/
