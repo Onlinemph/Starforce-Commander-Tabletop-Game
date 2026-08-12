@@ -3,6 +3,7 @@ import type { EscapePod } from '../engine/abandonShip'
 import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
+import type { HomingWeapon } from '../engine/homing'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
 import { shipIsCloaked, type GameState, type TerrainKind } from '../engine/game'
 import { plannedMovement } from '../engine/navigation'
@@ -18,6 +19,7 @@ import type { Arc } from '../engine/types'
 import { DENSITY_STATS } from '../data/terrainCounters'
 import type { BattleFx } from './fx'
 import { OFFICIAL_SILHOUETTES, type OfficialFaction } from './officialSilhouettes'
+import { PLASMA_ART } from './plasmaArt'
 import { labelHalfWidth, stackLabels } from './mapLabels'
 
 /**
@@ -569,21 +571,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
 
       {/* Homing weapons in flight (E5.1.9) — 3/4-inch counters. */}
       {game.homing.map((hw) => (
-        <g
-          key={hw.id}
-          className={`homing map-mover homing-${hw.side === game.ships[0]?.side ? 'blue' : 'red'}`}
-          style={{ transform: `translate(${hw.position.x * SCALE}px, ${hw.position.y * SCALE}px)` }}
-        >
-          <rect
-            x={-0.375 * SCALE}
-            y={-0.375 * SCALE}
-            width={0.75 * SCALE}
-            height={0.75 * SCALE}
-            className="homing-counter"
-          />
-          {/* The white dot is the counter's position for range and movement. */}
-          <circle cx={0} cy={0} r={1.5} className="homing-dot" />
-        </g>
+        <HomingCounter key={hw.id} game={game} hw={hw} />
       ))}
 
       {/*
@@ -1125,6 +1113,95 @@ function armorOnly(ship: ShipState, side: 'F' | 'S' | 'A' | 'P'): boolean {
   return ship.form.shields.blue[side] + ship.form.shields.green[side] === 0 && ship.form.armor[side] > 0
 }
 
+/**
+ * The counter colour a side flies under. The third side of the Aurelian Raid
+ * keeps the purple the fleet picker already gives it, so map and picker agree
+ * on who is who — and a torpedo is framed in the colour of the ship that
+ * launched it.
+ */
+function sideColorClass(side: string): 'blue' | 'aurelian' | 'red' {
+  if (side.startsWith('Blue')) return 'blue'
+  if (side.startsWith('Aurelian')) return 'aurelian'
+  return 'red'
+}
+
+/**
+ * A homing weapon in flight, wearing the counter's own art (E5.1.9).
+ *
+ * The printed counter is a black square with the plasma inside it and a white
+ * dot at its centre for position; this draws the plasma on the starfield
+ * directly, with the side's colour left to the frame. The bolt is turned onto
+ * its bearing — a homing weapon always flies at its target (E5.3), so the
+ * heading is simply the direction of the thing it is chasing, and a torpedo
+ * pointing where it is going says more than a box ever did.
+ *
+ * An enveloping plasma (ENVLP, F5.4) is a ball rather than a bolt: it has no
+ * nose to point, so it is drawn upright and simply glows.
+ */
+function HomingCounter({ game, hw }: { game: GameState; hw: HomingWeapon }) {
+  const owner = game.ships.find((s) => s.id === hw.ownerId)
+  const weapon = owner?.form.weapons.find((w) => w.id === hw.weaponId)
+  const enveloping = weapon?.traits.some((t) => t.toUpperCase().startsWith('ENVLP')) ?? false
+  const art = enveloping ? PLASMA_ART.sphere : PLASMA_ART.bolt
+
+  // The counter is 3/4 inch (E5.1.9). Both designs are fitted by height, so
+  // the ball keeps its shape instead of squashing to the frame's width and
+  // the bolt stays inside the square as it swings round its bearing.
+  const size = 0.75 * SCALE
+  const height = size * (enveloping ? 0.94 : 0.9)
+  const width = enveloping ? (height * art.width) / art.height : size * 0.46
+
+  const target = game.ships.find((s) => s.id === hw.targetId)
+  // Nose-up art, so a target due north is zero rotation.
+  const bearing =
+    target && !enveloping
+      ? (Math.atan2(
+          target.placement.position.x - hw.position.x,
+          hw.position.y - target.placement.position.y,
+        ) *
+          180) /
+        Math.PI
+      : 0
+
+  return (
+    <g
+      className={`homing map-mover homing-${sideColorClass(hw.side)}${hw.tractored ? ' is-held' : ''}`}
+      style={{ transform: `translate(${hw.position.x * SCALE}px, ${hw.position.y * SCALE}px)` }}
+    >
+      <title>
+        {`${hw.weaponName}\n` +
+          `${hw.phasesFlown} phase${hw.phasesFlown === 1 ? '' : 's'} flown` +
+          (target ? ` · chasing ${target.name}` : '') +
+          (hw.tractored ? '\nheld in a tractor beam (E5.4 Step 6)' : '')}
+      </title>
+      {/* The counter's own outline, in the launching side's colour. */}
+      <rect
+        x={-size / 2}
+        y={-size / 2}
+        width={size}
+        height={size}
+        className="homing-counter"
+      />
+      <image
+        href={art.href}
+        x={-width / 2}
+        y={-height / 2}
+        width={width}
+        height={height}
+        transform={bearing ? `rotate(${bearing})` : undefined}
+        className="homing-art"
+        preserveAspectRatio="xMidYMid meet"
+      />
+      {/*
+        The white dot is the counter's position for range and movement, so it
+        stays dead centre — small, and ringed, because it sits on the
+        brightest part of the plasma and has to read against it.
+      */}
+      <circle cx={0} cy={0} r={1.2} className="homing-dot" />
+    </g>
+  )
+}
+
 function ShieldRing({
   ship,
   radius,
@@ -1202,11 +1279,7 @@ function ShipToken({
   const cy = ship.placement.position.y * SCALE
   // The third side of the Aurelian Raid keeps the purple the fleet picker
   // already gives it, so map and picker agree on who is who.
-  const sideClass = ship.side.startsWith('Blue')
-    ? 'blue'
-    : ship.side.startsWith('Aurelian')
-      ? 'aurelian'
-      : 'red'
+  const sideClass = sideColorClass(ship.side)
 
   // Engaged at all, detected or not — a cloak that has been found still has
   // the ship's shields switched off (H6.4.1).

@@ -2553,13 +2553,38 @@ input:focus-visible {
 
 /* ── Expansion 5: cloaking (H6) and homing weapons (E5) ──────────────────── */
 
+/*
+  A homing counter wears the printed art (tools/extract_plasma_art.py): the
+  plasma itself, glowing on the starfield, inside a thin frame in the
+  launching side's colour. The frame used to be the whole counter — a purple
+  box that said "something is coming" and nothing else.
+*/
 .homing-counter {
-  fill: #3a2233;
-  stroke: #ff8ad6;
-  stroke-width: 1.5;
+  fill: rgba(6, 9, 16, 0.55);
+  stroke: #7fb2ff;
+  stroke-width: 1.2;
+}
+.homing-red .homing-counter {
+  stroke: #ff6b6b;
+}
+.homing-aurelian .homing-counter {
+  stroke: #c78bff;
+}
+.homing-art {
+  /* Screen keeps the glow's edge from carrying a dark halo over the stars. */
+  mix-blend-mode: screen;
+}
+/* Held in a tractor beam and going nowhere (E5.4 Step 6). */
+.homing.is-held .homing-counter {
+  stroke-dasharray: 3 2;
+}
+.homing.is-held .homing-art {
+  opacity: 0.65;
 }
 .homing-dot {
   fill: #ffffff;
+  stroke: rgba(0, 0, 0, 0.65);
+  stroke-width: 0.6;
 }
 
 /* A datum is where a cloaked ship was last seen, not where it is (H6.2.2). */

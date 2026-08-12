@@ -192,6 +192,26 @@ black.
 Card titles are then mapped onto the engine's `DamageHit` identifiers and written out with stable
 ids. The importer prints any title it cannot map.
 
+# Homing counter art
+
+`extract_plasma_art.py` lifts the plasma art off the Expansion 5 counter sheet (pages 29-32 of the
+Aurelian Ship Book) and writes `src/ui/plasmaArt.ts`:
+
+```
+python3 tools/extract_plasma_art.py <AURELIAN_STARSHIP_BOOK.pdf>
+```
+
+The sheet prints two homing designs, unlabelled and x2 each: a fiery orange bolt and a magenta
+sphere ringed with containment bands. The bolt is the one the rules illustrate in flight, so it is
+what every plasma torpedo wears; the sphere is wired to the enveloping trait (ENVLP, F5.4), which
+no shipped design carries yet — add one and it appears by itself.
+
+Each counter is a black square with a blue border, a yellow ID, a white position dot and six
+endurance pips down the left. The tool crops past all of that to the art alone and keys the black
+background to alpha by luminance, so the glow fades into the map's starfield instead of sitting in
+a matte box. Output is quantised to 64 colours at a few times the size a 3/4-inch counter is
+actually drawn — 5 KB of bundle rather than 80 KB, with nothing visible lost on a soft glow.
+
 # Attack dice
 
 The die faces in `src/engine/dice.ts` are transcribed from the DIE ROLL CHART on the Captain's
