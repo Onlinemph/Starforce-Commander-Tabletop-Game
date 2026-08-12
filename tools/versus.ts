@@ -55,6 +55,43 @@ for (const id of [...forceA, ...forceB]) {
     process.exit(1)
   }
 }
+
+/**
+ * `--nocloak a|b|both` — the ablation that answers whether a cloak is worth
+ * carrying on a given hull.
+ *
+ * A cloak is not free even when it is fully powered: its FUNCTIONS line eats
+ * reactor power the same round the plasma line wants it, and the ship cannot
+ * fire while it is up (H6.4.2). Whether that trade pays is a per-hull
+ * question about slack — an ACIPTER I has one point left after cloak and
+ * tube, a LUPUS I has four — and the only honest way to ask it is to field
+ * the same hull twice, once with the cloak taken off the card, against the
+ * same opponent on the same seeds.
+ *
+ * The cloak is removed from the form rather than left unused, so the power it
+ * would have taken is genuinely available to everything else.
+ */
+const noCloak = arg('nocloak')
+if (noCloak) {
+  const strip = (form: ReturnType<typeof shipFormById>) => {
+    const bare = structuredClone(form!)
+    bare.id = `${bare.id}-nocloak`
+    bare.name = `${bare.name} (no cloak)`
+    bare.functions = bare.functions.filter((l) => l.label !== 'CLOAK')
+    bare.systems = bare.systems.filter((s) => s.kind !== 'CLOAK')
+    return bare
+  }
+  const extra: ReturnType<typeof strip>[] = []
+  const bareId = (ids: string[]) =>
+    ids.map((id) => {
+      const bare = strip(shipFormById(id))
+      if (!extra.some((f) => f.id === bare.id)) extra.push(bare)
+      return bare.id
+    })
+  if (noCloak === 'a' || noCloak === 'both') forceA.splice(0, forceA.length, ...bareId(forceA))
+  if (noCloak === 'b' || noCloak === 'both') forceB.splice(0, forceB.length, ...bareId(forceB))
+  registerCustomForms([...FILE_FORMS, ...extra])
+}
 const label = (ids: string[]) =>
   ids.map((id) => shipFormById(id)!.name.split('-class')[0]).join(' + ')
 const points = (ids: string[]) =>

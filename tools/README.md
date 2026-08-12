@@ -148,6 +148,33 @@ looks like when the clock is taken off.
 Both modes print hulls destroyed by each side, because a margin win and a kill are different
 claims and the default scoring cannot tell them apart.
 
+## Is the cloak worth carrying?
+
+```
+npx vite-node tools/versus.ts -- --a <ids> --b <ids> --games 20 --retreat off --kill --nocloak a
+```
+
+`--nocloak a|b|both` takes the cloak off that side's cards — the FUNCTIONS line and the system box
+both — and fields the hull otherwise unchanged. Run the pair with and without against the same
+opponent on the same seeds and the difference is the cloak and nothing else.
+
+It exists because a cloak is not free even when it is fully powered. Its line eats reactor power in
+the same Resource Allocation Segment the plasma line wants it, and H6.4.2 costs the ship its guns
+while it is up. Whether that trade pays is a per-hull question about **slack** — what the reactor
+has left after the cloak and a round of tube arming:
+
+| hull | reactor | cloak | tube/round | slack |
+|------|---------|-------|-----------|-------|
+| ACIPTER I | 5 | 2 | 2 | 1 |
+| AQUILA BELLUM I | 6 | 2 | 2 | 2 |
+| TONITRUS I | 8 | 3 | 2 | 3 |
+| LUPUS I | 8 | 2 | 2 | 4 |
+
+Every Aurelian hull *can* cloak and charge at once — an earlier note in this repository claimed the
+ACIPTER could not, which was a misreading of the LT PLAS line's total capacity (4) for what the
+slow-arming gates actually let it take in a round (2). The question was never affordability. It is
+what the ship gives up to afford it.
+
 # Ship Book importer
 
 Regenerates `src/data/ships.json` from the StarForce Commander **Master Ship Book** PDF.
