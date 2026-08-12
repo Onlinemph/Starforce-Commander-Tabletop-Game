@@ -129,6 +129,25 @@ OMEGA is written up in tools/fan_designs.ts. One trap it also found: a
 scenario's ship ids are prefixed with the side name's first word, so two sides
 whose names share it collide and the battle silently scrambles.
 
+## Fighting it out
+
+By default the versus machine asks who is *winning*: hulls may run for the board edge when the day
+is lost (J9), and a twelve-round clock stops the rest, with health margin deciding. Two flags ask
+the other question instead:
+
+```
+npx vite-node tools/versus.ts -- --a <ids> --b <ids> --games 20 --retreat off --kill
+```
+
+`--retreat off` nails everyone to the deck; `--kill` runs to sixty rounds and counts a result only
+when one side is actually gone. Anything else is reported as unsettled, which is a finding rather
+than a failure — measured on the Aurelians, an AQUILA BELLUM against a YORKTOWN leaves 18 of 20
+battles unsettled with no kills either way, which is what "the cloak buys survival, not lethality"
+looks like when the clock is taken off.
+
+Both modes print hulls destroyed by each side, because a margin win and a kill are different
+claims and the default scoring cannot tell them apart.
+
 # Ship Book importer
 
 Regenerates `src/data/ships.json` from the StarForce Commander **Master Ship Book** PDF.

@@ -36,6 +36,18 @@ const forceB = (arg('b') ?? 'fan-union-trafalgar-super-dreadnought').split(',')
 const games = Number(arg('games') ?? 40)
 const rank = (arg('rank') ?? 'captain') as AiDifficulty
 const rounds = Number(arg('rounds') ?? 12)
+/**
+ * Fight it out. By default a hull that decides the day is lost may run for
+ * the board edge (J9), and the twelve-round clock stops the rest — which
+ * measures who is *winning*, not who would eventually die. `--retreat off`
+ * nails everyone to the deck and `--kill` runs until one side is gone (or
+ * the round cap, raised well out of the way, admits the fight is a
+ * stalemate). The two answer a different question from the default, and both
+ * are worth asking of the same pair.
+ */
+const retreats = (arg('retreat') ?? 'on') !== 'off'
+const toTheDeath = process.argv.includes('--kill')
+const cap = toTheDeath ? Math.max(rounds, 60) : rounds
 
 for (const id of [...forceA, ...forceB]) {
   if (!shipFormById(id)) {
@@ -66,6 +78,9 @@ registerCustomScenarios([
 let wins = 0
 let losses = 0
 let draws = 0
+let stalemates = 0
+let aKilled = 0
+let bKilled = 0
 for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
   for (const rep of [0, 1]) {
     const game: GameState = startScenario('versus', { seed: seed * 7919 + rep, mapScale: 2 })
@@ -76,7 +91,15 @@ for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
         const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
         for (const side of sides) {
           for (let g = 0; g < 400; g++) {
-            const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g === 0, rank)
+            const batch = aiNextActions(
+              game,
+              [side],
+              memos.get(side)!,
+              closing && pass === 0 && g === 0,
+              rank,
+              'steady',
+              retreats,
+            )
             if (batch.length === 0) break
             for (const a of batch) applyAction(game, a as GameAction)
           }
@@ -85,11 +108,24 @@ for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
       }
     }
     drive(false)
-    for (let step = 0; step < 400; step++) {
-      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > rounds) break
+    for (let step = 0; step < 3000; step++) {
+      if (new Set(activeShips(game).map((s) => s.side)).size <= 1 || game.round > cap) break
       drive(true)
       applyAction(game, { type: 'advance-segment' })
       drive(false)
+    }
+    const left = (side: string) => game.ships.filter((s) => s.side === side && !s.destroyed).length
+    const aLeft = left('Alpha Fleet')
+    const bLeft = left('Beta Fleet')
+    aKilled += game.ships.filter((s) => s.side === 'Beta Fleet' && s.destroyed).length
+    bKilled += game.ships.filter((s) => s.side === 'Alpha Fleet' && s.destroyed).length
+    if (toTheDeath) {
+      // Somebody has to be gone for this to count as settled; anything else
+      // is a fight neither side could finish, and saying so is the result.
+      if (aLeft > 0 && bLeft === 0) wins++
+      else if (bLeft > 0 && aLeft === 0) losses++
+      else stalemates++
+      continue
     }
     const margin = health(game, 'Alpha Fleet') - health(game, 'Beta Fleet')
     if (margin > 0) wins++
@@ -98,7 +134,10 @@ for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
   }
 }
 
+const total = wins + losses + draws + stalemates
 console.log(
   `${label(forceA)} (${points(forceA)} pts)  vs  ${label(forceB)} (${points(forceB)} pts)` +
-    `  [${rank}]\n   ${wins}W-${losses}L${draws ? `-${draws}D` : ''} of ${wins + losses + draws}`,
+    `  [${rank}${retreats ? '' : ', no retreat'}${toTheDeath ? ', to the death' : ''}]\n` +
+    `   ${wins}W-${losses}L${draws ? `-${draws}D` : ''}${stalemates ? ` (${stalemates} unsettled)` : ''} of ${total}` +
+    `\n   hulls destroyed: by ${label(forceA)} ${aKilled}, by ${label(forceB)} ${bKilled}`,
 )
