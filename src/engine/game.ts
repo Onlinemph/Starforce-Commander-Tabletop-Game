@@ -181,6 +181,15 @@ import {
   type MapBounds,
 } from './navigation'
 import {
+  newMissionStates,
+  missionPoints,
+  runRescueMissions,
+  scoreHoldMissions,
+  updateCargoMissions,
+  type MissionDef,
+  type MissionState,
+} from './missions'
+import {
   beginRound,
   clampSensors,
   crewIsArmed,
@@ -330,6 +339,8 @@ export interface Scenario {
   recon?: { side: string; targetId: string }
   /** Terrain the scenario rolls for itself when the player picks none (S3.5). */
   defaultTerrain?: 'roll' | number
+  /** Objectives other than killing: hills to hold, flags to run, souls to lift. */
+  missions?: MissionDef[]
 }
 
 // ---------------------------------------------------------------------------
@@ -536,6 +547,9 @@ export interface GameState {
   cloaks: Record<string, CloakState>
   /** Homing weapons in flight (E5). */
   homing: HomingWeapon[]
+
+  /** Live objective state, one entry per scenario mission, in order. */
+  missions: MissionState[]
   /** E5.10 jamming against homing weapons is optional; off by default. */
   jammingVsHoming: boolean
   /** Section J operations: tractor beams, scans, transporters, flight ops. */
@@ -639,6 +653,7 @@ export function createGame(args: {
     formations: [],
     cloaks,
     homing: [],
+    missions: newMissionStates(args.scenario.missions ?? []),
     jammingVsHoming: args.jammingVsHoming ?? false,
     ops: newOperationsState(),
     smallCraft: [],
@@ -1336,9 +1351,33 @@ export function pointsAgainst(ship: ShipState): number {
 }
 
 /** Victory points earned by each side (S2.8.2 – S2.8.4). */
+/** The shared context every mission hook reads the battle through. */
+function missionHooks(game: GameState) {
+  return {
+    ships: game.ships,
+    round: game.round,
+    log: (message: string) => pushLog(game, message),
+    hidden: (ship: ShipState) => shipIsCloaked(game, ship),
+    reach: (ship: ShipState) => transporterRange(ship, maxSystemOf(game, ship)),
+    capacity: (ship: ShipState) => undamagedSystemBoxes(ship, 'TRAN'),
+  }
+}
+
+/**
+ * Bank any cargo delivery the board already shows — called from the disengage
+ * action as well as the sequence hooks, because a voluntary departure can end
+ * the battle before any sweep would run.
+ */
+export function settleCargoDeliveries(game: GameState): void {
+  updateCargoMissions(game.scenario.missions ?? [], game.missions, missionHooks(game))
+}
+
 export function victoryPoints(game: GameState): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const side of sides(game)) totals[side] = 0
+  // Objectives pay into the same ledger the guns do (S2.8), which is the whole
+  // trick: posture, retreat and the battle's verdict follow them unmodified.
+  for (const side of Object.keys(totals)) totals[side] += missionPoints(game.missions, side)
   for (const ship of game.ships) {
     // The flagship is worth double to whoever hurts it (S3.6): the scenario
     // is about command and control, so the scoring says so.
@@ -1676,6 +1715,10 @@ function runSegmentExit(game: GameState): void {
         }
         releaseHeldMissiles(game, report.broken)
       }
+      // The flag is picked up where the movement left everyone (missions.ts).
+      if (game.missions.length > 0) {
+        updateCargoMissions(game.scenario.missions ?? [], game.missions, missionHooks(game))
+      }
       break
     }
 
@@ -1703,6 +1746,10 @@ function runSegmentExit(game: GameState): void {
     }
 
     case 'operations':
+      // Souls come up with the segment that owns the transporters (J5).
+      if (game.missions.length > 0) {
+        runRescueMissions(game.scenario.missions ?? [], game.missions, missionHooks(game))
+      }
       // Transmitting probes report in during Step E (J7.3.3), and Steps A-E
       // start again from the top next phase (J1.2.1).
       gatherProbeInfo(game)
@@ -1758,6 +1805,12 @@ function runSegmentExit(game: GameState): void {
           ship.disengaged = true
           pushLog(game, `${ship.name} has left the map and is disengaged.`)
         }
+      }
+      // A departure can end the battle before the round turns over, so cargo
+      // deliveries are banked here as well as at the round-end sweep — a flag
+      // that left the map must be worth its points the moment it did.
+      if (game.missions.length > 0) {
+        updateCargoMissions(game.scenario.missions ?? [], game.missions, missionHooks(game))
       }
       break
     }
@@ -1905,6 +1958,13 @@ function startNewRound(game: GameState): void {
   // The catch-all half of the combat-exit sweep: nothing impacted may cross
   // a round boundary unresolved, whatever segment it arrived in.
   resolveUnansweredImpacts(game)
+  if (game.missions.length > 0) {
+    const hooks = missionHooks(game)
+    // A carrier that died or left this round settles its cargo first, so the
+    // hill is judged on the board as the round actually ended.
+    updateCargoMissions(game.scenario.missions ?? [], game.missions, hooks)
+    scoreHoldMissions(game.scenario.missions ?? [], game.missions, hooks)
+  }
   game.round += 1
   game.phase = 'engineering'
   game.segment = 'resource-allocation'

@@ -460,6 +460,59 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       <rect x={0} y={0} width={w} height={h} className="map-edge" />
       </g>
 
+      {/* Mission objectives (missions.ts): the hill, the flag, the souls. */}
+      {(game.scenario.missions ?? []).map((def, i) => {
+        const state = game.missions[i]
+        if (def.kind === 'hold') {
+          const c = def.center
+          return (
+            <g key={def.id} className="mission-marker">
+              <title>{`${def.name} — hold alone at round's end for ${def.pointsPerRound} VP/round`}</title>
+              <circle cx={c.x * SCALE} cy={c.y * SCALE} r={def.radius * SCALE} className="mission-zone" />
+              <text x={c.x * SCALE} y={c.y * SCALE} className="mission-label">
+                {def.name}
+              </text>
+            </g>
+          )
+        }
+        if (def.kind === 'cargo') {
+          // Aboard a ship the counter travels with it; delivered, it is gone.
+          if (state?.delivered) return null
+          const at = state?.position ?? game.ships.find((s) => s.id === state?.carrierId)?.placement.position
+          if (!at) return null
+          return (
+            <g key={def.id} className="mission-marker">
+              <title>{`${def.name} — carry it off the map for ${def.points} VP${state?.carrierId ? ` (aboard)` : ''}`}</title>
+              <rect
+                x={at.x * SCALE - 5}
+                y={at.y * SCALE - 5}
+                width={10}
+                height={10}
+                transform={`rotate(45 ${at.x * SCALE} ${at.y * SCALE})`}
+                className="mission-cargo"
+              />
+              <text x={at.x * SCALE} y={at.y * SCALE - 9} className="mission-label">
+                {def.name}
+              </text>
+            </g>
+          )
+        }
+        if (state && state.soulsLeft <= 0) return null
+        const at = def.position
+        return (
+          <g key={def.id} className="mission-marker">
+            <title>{`${def.name} — ${state?.soulsLeft ?? def.souls} souls, ${def.pointsPerSoul} VP each by transporter`}</title>
+            <path
+              d={`M ${at.x * SCALE - 6} ${at.y * SCALE} h 12 M ${at.x * SCALE} ${at.y * SCALE - 6} v 12`}
+              className="mission-rescue"
+            />
+            <text x={at.x * SCALE} y={at.y * SCALE - 9} className="mission-label">
+              {def.name} ({state?.soulsLeft ?? def.souls})
+            </text>
+          </g>
+        )
+      })}
+
       {/* Terrain (Section K) */}
       {game.scenario.terrain.map((feature) => (
         <g key={feature.id} className={`terrain-group terrain-group-${feature.kind}`}>

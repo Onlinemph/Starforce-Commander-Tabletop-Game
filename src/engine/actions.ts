@@ -72,6 +72,7 @@ import {
   sidesAwaited,
   flushPendingVolleys,
   recordShieldHit,
+  settleCargoDeliveries,
   tacticalScanOf,
   terrainObstacles,
   tractorIncomingHoming,
@@ -1058,6 +1059,12 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (!ship) return said('No such ship.')
       ship.disengaged = true
       pushLog(game, `${ship.name} disengages from the battle.`)
+      // A voluntary departure can end the battle on the spot, so a cargo
+      // aboard is delivered now rather than waiting for a round-end sweep
+      // that may never come (missions.ts).
+      if (game.missions.length > 0) {
+        settleCargoDeliveries(game)
+      }
       return ok
     }
   }

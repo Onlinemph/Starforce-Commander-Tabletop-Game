@@ -98,6 +98,7 @@ import {
   MAX_ATTACKERS_PER_SQUAD,
 } from './boarding'
 import { isHoming, speedInPhase, totalFlight } from './homing'
+import { carryingCargo, missionAnchor } from './missions'
 import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
@@ -349,6 +350,17 @@ function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty
    */
   const recon = reconProgress(game)
   if (recon && ship.side === recon.side && recon.gathered >= recon.required) return true
+  /**
+   * Same shape for a flag: capture-the-flag pays only when the carrier leaves
+   * the map with it (missions.ts), so the moment the cargo is aboard, going
+   * home IS the mission — this too outranks the retreat toggle.
+   */
+  if (
+    game.scenario.missions?.length &&
+    carryingCargo(game.scenario.missions, game.missions, ship.id)
+  ) {
+    return true
+  }
   if (!retreatsAllowed) return false
   const level = damageLevel(ship)
   if (level === 'crippled') return true
@@ -2535,6 +2547,34 @@ function bestPlot(
     if (!recon || ship.side !== recon.side || recon.gathered >= recon.required) return null
     return game.scenario.terrain.find((t) => t.id === recon.target)?.center ?? null
   })()
+  /**
+   * A mission on the map (missions.ts): the nearest hull of the side runs the
+   * errand — flag, hill or rescue site — and its helm answers to the errand
+   * the way the survey raider's answers to the planet. Everyone else fights
+   * normally, and the fight converges on the objective by itself, because the
+   * enemy's runner is steering at the same point.
+   */
+  const mission = (() => {
+    if (difficulty === 'ensign' || fleeing || survey) return null
+    const defs = game.scenario.missions
+    if (!defs || defs.length === 0) return null
+    const anchor = missionAnchor(
+      defs,
+      game.missions,
+      game.ships,
+      ship,
+      transporterRange(ship, maxSystemOf(game, ship)),
+      game.round,
+    )
+    if (!anchor) return null
+    /*
+     * The anchor steers only while the ship is short of its working
+     * distance; arrived, the scorer goes back to fighting — the hill is
+     * held with guns, not with a parking brake. Slip out and the anchor
+     * snaps back on.
+     */
+    return actualRange(ship.placement.position, anchor.point) > anchor.hold ? anchor : null
+  })()
   const losObstacles = terrainObstacles(game.scenario.terrain)
   /**
    * Lead the target — knowing the target is fighting back. The enemy's
@@ -2629,7 +2669,7 @@ function bestPlot(
    * shortlist is kept sorted, small, and only when someone will read it.
    */
   const shortlisting =
-    rolloutPlots && !inRollout && difficulty === 'admiral' && !fleeing && !survey && memo !== null
+    rolloutPlots && !inRollout && difficulty === 'admiral' && !fleeing && !survey && !mission && memo !== null
   const shortlist: Array<{ score: number; cand: Candidate }> = []
   /** Diverse nomination: the best candidate of each plan shape. */
   const buckets = new Map<string, { score: number; cand: Candidate }>()
@@ -2672,7 +2712,7 @@ function bestPlot(
    */
   const model = difficulty === 'admiral' ? activePlotModel() : null
   const watcher = difficulty === 'admiral' ? plotRecorder() : null
-  const learning = (model !== null || watcher !== null) && !fleeing && !survey
+  const learning = (model !== null || watcher !== null) && !fleeing && !survey && !mission
   let bestFeatures: number[] | null = null
   /*
    * Exploration, for data generation only (`plotExploration` returns 0 unless
@@ -2836,6 +2876,29 @@ function bestPlot(
         // Close to scanning range and hold there — the mission is the planet,
         // and the picket is only in the way (J4.2.1 wants eight inches).
         score = -Math.abs(actualRange(end.position, survey) - W.surveyHold)
+      } else if (mission) {
+        /*
+         * Every inch short of the errand's working distance is the price —
+         * and while the errand runs, the gunnery pulls below are gated off
+         * exactly as they are for a fleeing ship. Both were measured
+         * necessary: at 1x weight with the combat terms live, both runners
+         * in the first hill probe closed to fourteen inches, found the duel
+         * more interesting, and never arrived; at 6x weight the turn
+         * penalties and bearing bonus still outbid a one-inch gain and the
+         * runners drifted away all the same. An errand the scorer can be
+         * argued out of by an enemy merely existing is not an errand.
+         */
+        const errandDist = actualRange(end.position, mission.point)
+        score = -W.range * 6 * Math.max(0, errandDist - mission.hold)
+        /*
+         * Arrive like you mean to stay. A round is three phases of travel,
+         * and a plot still carrying more speed than the distance left will
+         * overshoot the errand — measured: a V-7C ran its hill down at full
+         * raider speed, could not come about inside the ten inches between
+         * the hill and the map's edge, and left the battle by accident
+         * (S2.2.1). Braking pressure scales with the excess.
+         */
+        score -= W.range * 3 * Math.max(0, Math.abs(candidate.speed) * 3 - Math.max(errandDist, 6))
       } else if (kite !== null && visibleEnemies.length > 0) {
         score = -(kite - nearestRange > 0 ? (kite - nearestRange) * W.kiteInside : (nearestRange - kite) * W.kiteOutside)
       } else {
@@ -2862,7 +2925,7 @@ function bestPlot(
        * skipped, which is the same thing the score does.
        */
       let offBow = 180
-      if (!fleeing) {
+      if (!fleeing && !mission) {
         const bearing = relativeBearing(end.position, end.heading, predicted)
         // Off the battery axis, not necessarily off the bow — a stern-tube
         // raider comes about the other way. See batteryAxis.
@@ -2870,6 +2933,19 @@ function bestPlot(
         offBow = Math.min(offset, 360 - offset) // 0 on-axis … 180 opposite
         score += ((180 - offBow) / 180) * W.bearing
         if (offBow < W.bowThreshold) score += W.bowBonus
+      } else if (mission) {
+        /*
+         * The errand's own bearing term, and it is not optional garnish: an
+         * easy or standard turn ends exactly where flying straight ends and
+         * only the heading differs (C2.2.3), so a position-only errand term
+         * literally cannot prefer turning. Without this a V-7C flew dead
+         * straight past its hill and off the far edge of the map, heading
+         * 270 the whole way. The nose is paid to point at the errand the
+         * same way a fighting bow is paid to point at the enemy.
+         */
+        const bearing = relativeBearing(end.position, end.heading, mission.point)
+        const offErrand = Math.min(bearing, 360 - bearing)
+        score += ((180 - offErrand) / 180) * W.bearing
       }
 
       // Rank is what the officer optimises. The ensign flies by feel —
@@ -2884,7 +2960,7 @@ function bestPlot(
       let incoming = 0
       let coverTaken = 0
       let hiddenHere = false
-      if (difficulty !== 'ensign' && !fleeing) {
+      if (difficulty !== 'ensign' && !fleeing && !mission) {
         fp = firepowerAt(ship, end, predicted, enemy.speed === 0)
         /**
          * Deep maneuver: the same guns are worth up to double pointed at a
@@ -4297,7 +4373,15 @@ function focusTargetFor(game: GameState, ship: ShipState, difficulty: AiDifficul
     const nearestOwn = nearest(enemy, own)
     if (!nearestOwn) continue
     const danger = estimatedVolleyDamage(enemy, nearestOwn.placement.position, 0)
-    const score = danger / (structureRemaining(enemy) + 4)
+    /**
+     * An enemy running our flag home outranks every gunnery argument: the
+     * moment it leaves the map the points are gone, so the fleet's shared
+     * kill priority is the carrier for as long as anyone carries.
+     */
+    const carrier =
+      game.scenario.missions?.length &&
+      carryingCargo(game.scenario.missions, game.missions, enemy.id)
+    const score = danger / (structureRemaining(enemy) + 4) + (carrier ? 100 : 0)
     if (score > bestScore || (score === bestScore && best !== null && enemy.id < best)) {
       bestScore = score
       best = enemy.id

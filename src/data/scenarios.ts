@@ -1,5 +1,6 @@
 import { MAX_SHIPS_PER_SIDE } from '../engine/fleet'
 import { createGame, type GameState, type Scenario, type Terrain } from '../engine/game'
+import type { MissionDef } from '../engine/missions'
 import { DIE_FACES, Rng } from '../engine/dice'
 import { ASTEROID_COUNTERS, DENSITY_STATS } from './terrainCounters'
 import type { MapBounds } from '../engine/navigation'
@@ -1057,6 +1058,8 @@ export interface CustomScenario {
   /** The whole play area is inside a nebula (K4.1.1). */
   nebula?: boolean
   terrain: Terrain[]
+  /** Objectives other than killing: hills, flags, rescue sites (missions.ts). */
+  missions?: MissionDef[]
   sides: Array<{
     side: string
     objective: string
@@ -1089,6 +1092,7 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     specialRules: custom.specialRules?.length ? custom.specialRules : undefined,
     victory: custom.victory,
     nebula: custom.nebula || undefined,
+    missions: custom.missions?.length ? custom.missions : undefined,
   }
   const sides: SideSetup[] = custom.sides.map((s, i) => ({
     side: s.side,
@@ -1176,6 +1180,13 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
       ...t,
       center: { x: t.center.x * scale, y: t.center.y * scale },
     })),
+    // Missions are places on the map, so they scale with it (radii are about
+    // ships and transporters, not the map, and hold still).
+    missions: entry.scenario.missions?.map((m) =>
+      'center' in m
+        ? { ...m, center: { x: m.center.x * scale, y: m.center.y * scale } }
+        : { ...m, position: { x: m.position.x * scale, y: m.position.y * scale } },
+    ),
   }
   const sides =
     scale === 1

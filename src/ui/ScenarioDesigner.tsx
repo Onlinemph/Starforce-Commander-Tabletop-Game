@@ -600,6 +600,171 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
               </label>
             </section>
 
+            <section className="builder-section">
+              <h3>
+                Objectives <em>beyond the guns</em>
+              </h3>
+              {(draft.missions ?? []).map((m, mi) => (
+                <div key={m.id} className="builder-row wrap">
+                  <span className="chip">
+                    {m.kind === 'hold' ? '⬤ hold' : m.kind === 'cargo' ? '◆ cargo' : '＋ rescue'}
+                  </span>
+                  <label className="field grow">
+                    <span>Name</span>
+                    <input
+                      value={m.name}
+                      onChange={(e) => edit((d) => void (d.missions![mi].name = e.target.value))}
+                    />
+                  </label>
+                  <label className="field tiny">
+                    <span>X ″</span>
+                    <input
+                      type="number"
+                      value={'center' in m ? m.center.x : m.position.x}
+                      onChange={(e) =>
+                        edit((d) => {
+                          const t = d.missions![mi]
+                          ;('center' in t ? t.center : t.position).x = Number(e.target.value) || 0
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="field tiny">
+                    <span>Y ″</span>
+                    <input
+                      type="number"
+                      value={'center' in m ? m.center.y : m.position.y}
+                      onChange={(e) =>
+                        edit((d) => {
+                          const t = d.missions![mi]
+                          ;('center' in t ? t.center : t.position).y = Number(e.target.value) || 0
+                        })
+                      }
+                    />
+                  </label>
+                  {m.kind === 'hold' && (
+                    <>
+                      <label className="field tiny">
+                        <span>Radius ″</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={m.radius}
+                          onChange={(e) =>
+                            edit((d) => {
+                              const t = d.missions![mi]
+                              if (t.kind === 'hold') t.radius = Math.max(1, Number(e.target.value) || 1)
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field tiny" title="Banked at the end of each round the zone is held alone">
+                        <span>VP/round</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={m.pointsPerRound}
+                          onChange={(e) =>
+                            edit((d) => {
+                              const t = d.missions![mi]
+                              if (t.kind === 'hold') t.pointsPerRound = Math.max(1, Number(e.target.value) || 1)
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                  {m.kind === 'cargo' && (
+                    <label className="field tiny" title="Paid when the carrier leaves the map with it">
+                      <span>VP</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={m.points}
+                        onChange={(e) =>
+                          edit((d) => {
+                            const t = d.missions![mi]
+                            if (t.kind === 'cargo') t.points = Math.max(1, Number(e.target.value) || 1)
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                  {m.kind === 'rescue' && (
+                    <>
+                      <label className="field tiny">
+                        <span>Souls</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={m.souls}
+                          onChange={(e) =>
+                            edit((d) => {
+                              const t = d.missions![mi]
+                              if (t.kind === 'rescue') t.souls = Math.max(1, Number(e.target.value) || 1)
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field tiny" title="Paid per soul the moment it is beamed aboard">
+                        <span>VP/soul</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={m.pointsPerSoul}
+                          onChange={(e) =>
+                            edit((d) => {
+                              const t = d.missions![mi]
+                              if (t.kind === 'rescue') t.pointsPerSoul = Math.max(1, Number(e.target.value) || 1)
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="chip-x"
+                    aria-label="Remove objective"
+                    onClick={() =>
+                      edit((d) => {
+                        d.missions!.splice(mi, 1)
+                        if (d.missions!.length === 0) delete d.missions
+                      })
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <div className="builder-row wrap">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const kind = e.target.value
+                    if (!kind) return
+                    edit((d) => {
+                      d.missions ??= []
+                      const at = { x: Math.round(d.bounds.width / 2), y: Math.round(d.bounds.height / 2) }
+                      const id = `mission-${Date.now().toString(36)}`
+                      if (kind === 'hold') d.missions.push({ kind: 'hold', id, name: 'The Hill', center: at, radius: 6, pointsPerRound: 2 })
+                      if (kind === 'cargo') d.missions.push({ kind: 'cargo', id, name: 'The Flag', position: at, radius: 2, points: 12 })
+                      if (kind === 'rescue') d.missions.push({ kind: 'rescue', id, name: 'Stricken Station', position: at, souls: 6, pointsPerSoul: 2 })
+                    })
+                  }}
+                >
+                  <option value="">+ add objective…</option>
+                  <option value="hold">Hold the zone — VP per round held alone</option>
+                  <option value="cargo">Cargo / flag — carry it off the map</option>
+                  <option value="rescue">Rescue — beam souls out by transporter</option>
+                </select>
+              </div>
+              <p className="hint">
+                Objectives pay victory points into the same ledger as damage, so the AI weighs them,
+                runs them, and defends them without being told.
+              </p>
+            </section>
+
             {draft.sides.map((side, i) => (
               <section className="builder-section" key={i}>
                 <h3 style={{ color: SIDE_COLOR[i % SIDE_COLOR.length] }}>
