@@ -58,6 +58,18 @@ export function speedInPhase(weapon: WeaponSystemDef, phase: number): number {
 }
 
 /**
+ * Total distance the weapon covers over its whole endurance (E5.3) — how far
+ * a launcher actually reaches, which is nothing like the widest range on its
+ * impact table. The AQUILA's heavy plasma resolves impacts inside nine inches
+ * and flies twenty-seven.
+ */
+export function totalFlight(weapon: WeaponSystemDef): number {
+  let total = 0
+  for (let phase = 1; phase <= endurance(weapon); phase++) total += speedInPhase(weapon, phase)
+  return total
+}
+
+/**
  * The bracket a hit is resolved on: within the current phase's red box, the one
  * whose range covers the distance to the target (E5.1.5).
  */

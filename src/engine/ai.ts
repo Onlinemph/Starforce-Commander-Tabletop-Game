@@ -97,7 +97,7 @@ import {
   isCaptured,
   MAX_ATTACKERS_PER_SQUAD,
 } from './boarding'
-import { endurance, isHoming, speedInPhase } from './homing'
+import { isHoming, speedInPhase, totalFlight } from './homing'
 import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
 import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
@@ -465,11 +465,27 @@ function firingSolution(game: GameState, ship: ShipState): boolean {
    * cloak covers the long crossing, and the ship fights the last stretch with
    * its eyes open and its guns live.
    */
+  /*
+   * A loaded launcher reaches as far as its torpedo flies, not as far as its
+   * widest impact bracket. The two numbers are wildly different — the AQUILA's
+   * heavy plasma resolves impacts inside nine inches but crosses twenty-seven
+   * over its four endurance phases (E5.3) — and reading the bracket here cost
+   * the Aurelians the whole weapon. Traced: the tube comes up full at
+   * twenty-four inches, the gate says eighteen, so the ship stays dark through
+   * a clean launch window; a round's closing is eleven inches, so the next
+   * time the gate is open the ship is at knife range, decloaks into a Union
+   * alpha strike, and loses the launcher — one hit box — before it ever fires.
+   * Six games, six full battles, zero torpedoes launched.
+   */
   const reach = Math.max(
     0,
     ...ship.form.weapons
       .filter((w) => (ship.mounts[w.id] ?? []).some((m) => m.armed > 0))
-      .map((w) => Math.max(...w.brackets.map((b) => b.max))),
+      .map((w) =>
+        isHoming(w) && (ship.mounts[w.id] ?? []).some((m, i) => mountIsReady(w, i, m))
+          ? totalFlight(w)
+          : Math.max(...w.brackets.map((b) => b.max)),
+      ),
   )
   return range <= reach + 6
 }
@@ -4163,13 +4179,6 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
     }
   }
   return actions
-}
-
-/** Total distance a homing weapon covers over its whole endurance (E5.3). */
-function totalFlight(weapon: Parameters<typeof endurance>[0]): number {
-  let total = 0
-  for (let phase = 1; phase <= endurance(weapon); phase++) total += speedInPhase(weapon, phase)
-  return total
 }
 
 /**

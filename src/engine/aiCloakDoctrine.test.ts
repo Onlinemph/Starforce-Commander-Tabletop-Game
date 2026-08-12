@@ -3,6 +3,7 @@ import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
 import { aiNextActions, createAiMemo } from './ai'
 import { cloakStrength, isCloaked } from './cloaking'
+import { isHoming, totalFlight } from './homing'
 import { activeShips, cloakOf, type GameState } from './game'
 
 /**
@@ -220,6 +221,48 @@ describe('the Aurelian cycle: reload in the dark', () => {
       })
     }
     expect(asks(game, ship.id, 'engage-cloak')).toBe(true)
+  })
+
+  /**
+   * The third leg of the cycle, and the one that cost the Aurelians the
+   * whole weapon: coming out in time to use it.
+   *
+   * A torpedo's reach is how far it *flies* — the sum of its speeds over
+   * every endurance phase (E5.3) — not the widest range its impact table
+   * resolves on. The AQUILA's heavy plasma resolves impacts inside nine
+   * inches and crosses twenty-seven, and the decloak gate was reading the
+   * nine. Traced through a full battle: the tube came up loaded at
+   * twenty-four inches, the gate opened at eighteen, so the raider held the
+   * dark through a clean launch window; a round of closing is eleven inches,
+   * so by the time the gate opened it was at knife range, decloaked into a
+   * Union alpha strike, and lost the one-hit-box launcher before firing it.
+   * Six battles, zero torpedoes launched.
+   */
+  it('surfaces at torpedo range, not at gun range (E5.3)', () => {
+    const { game, ship, foe } = raider()
+    const torp = ship.form.weapons.find(isHoming)
+    expect(torp, 'this raider carries no homing weapon').toBeDefined()
+    const flight = totalFlight(torp!)
+    const guns = Math.max(
+      ...ship.form.weapons.flatMap((w) => w.brackets.map((b) => b.max)),
+    )
+    // The band the bug lived in has to exist for the test to mean anything:
+    // out of reach of every gun, well inside the torpedo's flight.
+    expect(flight).toBeGreaterThan(guns + 6)
+
+    const gap = Math.floor((guns + 6 + flight) / 2)
+    foe.placement = {
+      position: { x: ship.placement.position.x + gap, y: ship.placement.position.y },
+      heading: 270,
+    }
+    setCharge(ship, true)
+    const cloak = cloakOf(game, ship)!
+    cloak.engaged = true
+    // H6.7 lets a ship drop the cloak a phase after raising it, and
+    // `mayDecloak` enforces the wait.
+    cloak.phasesCloaked = 1
+
+    expect(asks(game, ship.id, 'decloak')).toBe(true)
   })
 })
 
