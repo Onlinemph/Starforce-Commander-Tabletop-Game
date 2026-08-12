@@ -4141,11 +4141,32 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
      * whole battery on the incoming wave would win the interception and lose
      * the gunnery duel.
      */
+    /*
+     * Carried in the memo, not in this call. `planPointDefense` runs many
+     * times inside one phase — the drive loop keeps asking until the side
+     * settles — and a budget rebuilt from scratch each time is no budget at
+     * all: the per-mount-per-counter memo key stops a mount re-arguing the
+     * same counter, but the next counter arrives with the allowance full
+     * again. Measured on a three-mount hull whose share is one: it pulled two
+     * out of its volley in a single phase.
+     *
+     * Latent until the Aurelian launchers were corrected to their printed hit
+     * boxes. Tubes that survive longer put more counters in the air, more
+     * counters mean more passes through here, and the leak needed a second
+     * pass to show at all.
+     */
+    const spentKey = (shipId: string, n: number) =>
+      `pdbusy:${game.round}:${game.phase}:${shipId}:${n}`
+    const busySpent = (shipId: string) => {
+      let n = 0
+      while (memo.done.has(spentKey(shipId, n))) n += 1
+      return n
+    }
     const budget = new Map<string, number>()
     for (const { ship } of mounts) {
       if (budget.has(ship.id)) continue
       const ready = mounts.filter((m) => m.ship.id === ship.id).length
-      budget.set(ship.id, Math.max(1, Math.floor(ready / 2)))
+      budget.set(ship.id, Math.max(1, Math.floor(ready / 2)) - busySpent(ship.id))
     }
 
     const spent = new Set<string>()
@@ -4166,7 +4187,10 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
       })
       if (!shot) continue
       const key = `${shot.ship.id}|${shot.weapon.id}|${shot.mountIndex}`
-      if (shot.busy) budget.set(shot.ship.id, (budget.get(shot.ship.id) ?? 0) - 1)
+      if (shot.busy) {
+        budget.set(shot.ship.id, (budget.get(shot.ship.id) ?? 0) - 1)
+        memo.done.add(spentKey(shot.ship.id, busySpent(shot.ship.id)))
+      }
       spent.add(key)
       memo.done.add(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)
       actions.push({
