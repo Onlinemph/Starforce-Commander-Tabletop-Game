@@ -63,11 +63,39 @@ async function connect(): Promise<Client> {
   return client
 }
 
+/**
+ * The SQL file that defines each family of functions. The libraries are
+ * separate optional installs on the same project, so "the function does not
+ * exist" is not an outage — it is a file the operator has not pasted into
+ * the SQL Editor yet, and the error should say which one.
+ */
+function sqlFileFor(fn: string): string {
+  return /scenario/.test(fn) ? 'scenario-library.sql' : 'ship-library.sql'
+}
+
 /** One RPC against the configured library project — the scenario library shares it. */
 export async function libraryCall(fn: string, args: Record<string, unknown>): Promise<unknown> {
   const supabase = await connect()
   const { data, error } = await supabase.rpc(fn, args)
-  if (error) throw new Error(error.message)
+  if (error) {
+    /*
+     * PostgREST's "Could not find the function public.sfc_… in the schema
+     * cache" reached a playtester verbatim, right after the builder told
+     * them the design was ready to fly. It means the Supabase project has
+     * never run (or has an outdated copy of) the SQL file that defines the
+     * function — a setup step, not a bug — so say that, name the file, and
+     * say the design is safe: everything built locally stays in the roster
+     * whether or not the shared library exists.
+     */
+    if (/could not find the function/i.test(error.message)) {
+      throw new Error(
+        `This site's library is not fully set up: its Supabase project is missing ${fn}. ` +
+          `Whoever runs the site needs to paste supabase/${sqlFileFor(fn)} into the project's SQL Editor ` +
+          `(safe to re-run; see supabase/README.md). Nothing is lost — your work is saved in this browser's roster.`,
+      )
+    }
+    throw new Error(error.message)
+  }
   return data
 }
 const call = libraryCall
