@@ -100,6 +100,7 @@ import {
 import { isHoming, speedInPhase, totalFlight } from './homing'
 import { carryingCargo, missionAnchor } from './missions'
 import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
+import { isDestroyed as craftDestroyed, type SmallCraft } from './smallCraft'
 import { SHIELD_SIDES } from './shipState'
 import type { CommandCard, Maneuver, Placement, Point, ShieldSide, TurnDirection, WeaponSystemDef } from './types'
 import { health } from './battleScore'
@@ -4162,7 +4163,31 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
         const db = actualRange(b.position, tb.placement.position)
         return da - db || (a.id < b.id ? -1 : 1)
       })
-    if (incoming.length === 0) continue
+
+    /*
+     * Enemy small craft are small targets too (E12.1.3), and until now the AI
+     * could not see them at all: this list held homing counters and nothing
+     * else, so a fleet would sit and be jammed by a shuttle parked on its
+     * opponent's hull, or watch a probe read it at leisure, with a dozen
+     * point-defense mounts idle. `fire-small-target` already resolves craft
+     * and warheads through the same action, so the whole fix is putting them
+     * in front of the guns.
+     *
+     * They queue *behind* the warheads deliberately. A counter about to land
+     * is damage this phase; a shuttle is an inconvenience that compounds. The
+     * order within them is worst-first: a jamming shuttle is degrading every
+     * volley the side fires (J8.4.1), a probe dies to any single hit (J7.3.3)
+     * and is pure profit, and a plain shuttle is usually somebody's boarding
+     * party in transit (J8.2.6).
+     */
+    const nuisance = (craft: SmallCraft): number =>
+      craft.kind === 'jamming-shuttle' ? 0 : craft.kind === 'probe' ? 1 : 2
+    const craft = game.smallCraft
+      .filter((c) => !craftDestroyed(c) && c.side !== side && !c.dockedTo)
+      .sort((a, b) => nuisance(a) - nuisance(b) || (a.id < b.id ? -1 : 1))
+
+    const smallTargets: Array<{ id: string; position: Point }> = [...incoming, ...craft]
+    if (smallTargets.length === 0) continue
 
     /*
      * Every armed point-defense mount, with a note of whether it also has a
@@ -4246,7 +4271,7 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
     }
 
     const spent = new Set<string>()
-    for (const hw of incoming) {
+    for (const hw of smallTargets) {
       const shot = mounts.find(({ ship, weapon, mount, mountIndex, busy }) => {
         const key = `${ship.id}|${weapon.id}|${mountIndex}`
         if (spent.has(key)) return false
