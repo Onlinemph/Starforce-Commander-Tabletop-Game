@@ -7,6 +7,9 @@ Everything below is a question the digital tabletop cannot answer for itself. Wh
 the published rules, or the builder already imply an answer, that is noted as **our default** —
 if a default is right, "yes, do that" is a complete reply and costs you nothing.
 
+The stat cards embedded in this outline's own document are transcribed in `fighter-stats.md`, and
+they answer more than we expected — Q3 below is rewritten because of them.
+
 A note on what's *not* here: a large share of the outline turns out to be already published, and
 we don't need those confirmed. E12.3.4 already gives the ship its point-defense shot before the
 fighters attack, in the outline's own words. E11.3.5 already exempts small craft from starship
@@ -49,18 +52,28 @@ non-PD fire halved by E10.2.3 first.
 
 *Why it blocks:* it is the entire fighter-casualty model.
 
-### 3. What are the actual fighter numbers?
+### 3. Are the six card fighters the roster, or a calibration set?
 
-There is no fighter stat block anywhere — not in the outline, not in either ship book, not on the
-counter sheet. The DFR *scale* is set by your examples (Frazi 2, Starfury/Sentri 3, Nial 4,
-Shadow/Vorlon 5), but no craft has a Speed, Structure, Jamming, Sensor or Strike value.
+*(This question changed once we found the stat cards embedded in this outline's own .docx — the
+file is 1.4 MB against 9.8 KB of text, and the difference is eleven images a text extraction never
+sees. Sixteen cards are transcribed in `fighter-stats.md`; we no longer need the numbers.)*
 
-What we'd need to field even one: for a handful of representative craft — say a light
-interceptor, a standard multi-role fighter, and a bomber — **Speed (1–8), DFR (0–5), Dodge (1–4),
-Structure (2–5), Jamming, Sensor, and Strike (to-hit / damage-per-hit), in both loaded and
-expended states.**
+What we need instead: every card is a **Babylon 5** design — EA Starfury and Thunderbolt, Narn
+Frazi, Minbari Nial, Centauri Sentri. Not one of StarForce Commander's own factions has a fighter
+among them. Is this a calibration set — the same instinct as pricing the DFR ladder against known
+franchises — with Union/Vallari/Aurelian/Pirate craft still to come? Or are these meant to be
+fieldable, with the SFC factions borrowing from them?
 
-*Why it blocks:* rules with nothing to run on are not playable.
+**Our default:** treat them as a calibration set and ship them as fan designs, the way the
+cross-franchise hulls in `tools/fan_designs.ts` already work — clearly marked, playable, and kept
+out of the printed roster.
+
+**And the number that is still missing: point values.** Nothing on a card prices a flight, and the
+V41 builder explicitly excludes fighters from the hangar's cost. What does a flight of six
+Starfuries cost in a fleet list?
+
+*Why it blocks:* fighters can be flown without prices, but they cannot be balanced or fielded in a
+points-matched game.
 
 ---
 
@@ -75,6 +88,13 @@ loadout?
 **Our default:** one strike per load — the counter flips after its first anti-ship or anti-fighter
 missile attack. It matches "it will get a good initial strike and then take a reduction in
 capability."
+
+**A related reading we'd like confirmed or killed.** On the cards, BASIC is always the weakest
+Strike — `1/1` on the Starfury and Sentri, meaning it hits a starship only on a natural 1, for one
+point. Is **BASIC the expended side** of a STRIKE or SPACE SUPERIORITY card, or a genuinely
+separate third loadout chosen at launch? Both readings fit "There may be 2 sets of stats on each
+card." If it is the flip side, the double-sided counter is already solved and no separate expended
+block is needed.
 
 ### 5. Launch and landing rates
 
@@ -194,3 +214,35 @@ cards for Shuttle/Hangar Bay already resolve; E12/E10 small-target fire, degrade
 point-defense interception of homing weapons, and the J8 shuttle/probe model are all implemented
 and tested. What's genuinely absent is fighters themselves — no flight, no dogfight, no DFR, and
 no d6 anywhere in the engine.
+
+
+---
+
+## Raised by the stat cards themselves
+
+### 17. Four ID boxes per card — does that cap the squadron?
+
+Every card has exactly four `ID` boxes down its right edge. Is that "up to four flights may share
+this card", or just how many fit on the artwork? It would tie neatly to "a maximum of 4 flights".
+
+### 18. Jamming is doing an enormous amount of work — is that intended?
+
+Jamming runs 5 to 8 across the six airframes, and under **E10.2.2** a target's jamming is added to
+the actual range of any non-point-defense attack, which can push the volley into a worse bracket
+or off the chart entirely. A Nial at jamming 8 is close to untouchable by a starship's main
+battery — only point-defense weapons, which ignore the penalty under E12.4.3, can reliably answer
+it.
+
+That may be exactly the intent: it makes PD mounts *the* anti-fighter answer, which is thematic
+and matches F1.20. We flag it because it is the most consequential number on the cards and it is
+easy to under-read — it is not a to-hit modifier, it is a range-bracket shift.
+
+**Our default:** implement E10.2.2 exactly as published, then report what it actually does to
+fighter survivability once it can be measured.
+
+### 19. Does Structure divide per fighter or per flight?
+
+Structure is per fighter (Frazi 5, Sentri 3), and COA 1 divides pooled damage by "the structure of
+the fighter" — so six Frazis soak 30 points before the flight is gone and six Sentris soak 18.
+Confirming that is intended, since it makes the tough-but-clumsy airframe far more survivable
+against ships than its dogfight rating suggests.
