@@ -41,7 +41,14 @@ export function ShipLibraryPanel({ onClose }: Props) {
   const [configured, setConfigured] = useState(() => libraryConfig() !== null)
 
   return (
-    <div className="picker theater ship-library">
+    /*
+     * The backdrop is what makes this a modal at all: `.picker` styles the
+     * card but `.picker-backdrop` is the fixed overlay that centres it.
+     * Without it the panel flowed inline into the app grid and rendered as a
+     * one-word-per-line sliver down the sidebar — found by a playtester.
+     */
+    <div className="picker-backdrop" role="dialog" aria-label="Library">
+      <div className="picker theater ship-library">
       <header>
         <h2>Library</h2>
         <div className="library-tabs">
@@ -81,6 +88,7 @@ export function ShipLibraryPanel({ onClose }: Props) {
       ) : (
         <ScenarioList />
       )}
+      </div>
     </div>
   )
 }
