@@ -43,8 +43,20 @@ import {
 import { activeShips, isCombatPhase, flightsAirborne, victoryPoints } from '../src/engine/game'
 
 const GAMES = Number(process.argv[2] ?? 6)
-/** Optional substring filters, for re-running one finding at more games. */
-const ONLY_VARIANT = process.argv[3] ?? ''
+/**
+ * Optional filters, for re-running a finding at more games. Comma-separated
+ * substrings; `default` is always kept as the row to compare against.
+ *
+ * Worth the trouble because the first clean sweep produced a result that looked
+ * unmissable at four games a row — clear-the-sky-first halved the wing's losses
+ * and doubled its damage per fighter — and evaporated at twelve. Five columns
+ * agreeing is not five pieces of evidence when all five come off the same four
+ * games.
+ */
+const ONLY_VARIANT = (process.argv[3] ?? '')
+  .split(',')
+  .map((t) => t.trim())
+  .filter(Boolean)
 const ONLY_MATCHUP = process.argv[4] ?? ''
 const SIDE = 'Blue Force'
 const FOE = 'Red Force'
@@ -207,7 +219,11 @@ for (const matchup of MATCHUPS) {
 
   for (const variant of VARIANTS) {
     if (variant.needsEnemyWing && !matchup.contested) continue
-    if (ONLY_VARIANT && !variant.label.includes(ONLY_VARIANT) && variant.label !== 'default') {
+    if (
+      ONLY_VARIANT.length > 0 &&
+      variant.label !== 'default' &&
+      !ONLY_VARIANT.some((token) => variant.label.includes(token))
+    ) {
       continue
     }
     /*
