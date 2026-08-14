@@ -15,8 +15,7 @@ we don't need those confirmed. E12.3.4 already gives the ship its point-defense 
 fighters attack, in the outline's own words. E11.3.5 already exempts small craft from starship
 explosions. E12.4.4 and E10.2.3 already halve non-PD fire. E12.4.2 already targets *the flight*
 rather than individual craft, and already uses the word "flight". E7.1.2 already carries a
-forward reference to "Fighter Operations rules" for the one-volley-per-shield rule — **and that
-one we do need answered; see the note at the end.** J8.2.2 already
+forward reference to "Fighter Operations rules" for the one-volley-per-shield rule. J8.2.2 already
 has players alternating **two** small craft at a time, with priority by Tactical Scan and passing
 allowed. And J3.2.1 already answers the outline's "Tractor beams can possibly be used against
 fighters" with a firm **no** — "may not lock onto fighter craft due to their maneuverability
@@ -271,25 +270,21 @@ the fighter" — so six Frazis soak 30 points before the flight is gone and six 
 Confirming that is intended, since it makes the tough-but-clumsy airframe far more survivable
 against ships than its dogfight rating suggests.
 
+### 20. Does E7.1.2's pooling reach a fighter's strike run?
 
----
+**E7.1.2** says all homing weapons striking a single ship on a single shield in a single combat
+phase are one volley for damage purposes, "even if those homing weapons are from multiple ships",
+and it carries a forward reference — "(See Fighter Operations rules and Homing Weapon rules.)" —
+to rules that do not exist yet.
 
-## 20. E7.1.2's forward reference — does a flight's ordnance pool?
+Between flights the question mostly answers itself: the outline's "only 1 fighter flight (no matter
+how large) may attack a single starship shield per phase" means there is never a second flight's
+run on that shield to pool with. What it does not settle is the mixed case — a flight runs in on a
+cruiser's port shield in the same phase that somebody's torpedoes arrive on it. One volley or two?
 
-Raised by playing it rather than reading it. E7.1.2 says:
+It matters because a volley is what the damage deck is drawn against and reshuffled after
+(**E7.1.3**), and what the shield absorbs against. Two separate volleys are two hands of cards and
+two absorptions.
 
-> All homing weapons striking a single ship on a single shield during a single combat phase are a
-> single volley for damage purposes. This applies even if those homing weapons are from multiple
-> ships. *(See Fighter Operations rules and Homing Weapon rules.)*
-
-That parenthetical points at rules that do not exist yet. It matters because a volley is what the
-damage deck is drawn against and reshuffled after (E7.1.3) and what a shield absorbs against — so
-four flights striking one shield are either **one** volley or **four**, and the difference is four
-hands of damage cards against a shield that absorbs four times instead of once.
-
-**Our default:** fighter ordnance pools, exactly as written. The outline calls the load a missile
-attack, and four separate hands against one shield is the thing E7.1.2 exists to stop. Measured in
-play, about 2.7 strike runs pool into each volley, so it is not a small effect.
-
-*If the answer is that a fighter's strike is not a homing weapon for this purpose, say so and we
-will resolve each run on its own — it is a one-line change either way.*
+**Our default:** resolve them separately — the fighter's run lands in the Flight Operations
+Segment, the warheads in their own, and the engine does not reach across segments to pool them.

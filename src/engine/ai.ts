@@ -38,6 +38,8 @@ import {
   loadoutOf,
   recoveryRate,
   withinRecoveryRange,
+  withinWeaponRange,
+  FIGHTER_WEAPON_RANGE,
   MAX_FLIGHT_SIZE,
   MAX_FLIGHTS_PER_SHIP,
   type FighterConfigKind,
@@ -4893,6 +4895,12 @@ function planFlightOps(
 
   /** Enemy flights this batch has already sent somebody after. */
   const claimed = new Set<string>()
+  /**
+   * `shipId:side` shields already spoken for — the ones the engine has seen a
+   * run against this phase, plus the ones this batch has queued a run against.
+   * One flight a shield a phase (Apr 2026 outline, ATTACKING STARSHIPS).
+   */
+  const struck = new Set(game.ops.shieldsStruckThisPhase)
   /** Landings this ship may still take, counting what this batch has queued. */
   const queued = new Map<string, number>()
   const landings = (ship: ShipState): number => {
@@ -4991,28 +4999,53 @@ function planFlightOps(
     const rivals = unclaimed.length > 0 ? unclaimed : enemyFlights
     const targetFlight =
       loadout.dfr > 0 ? nearestBy(flight.position, rivals, (f) => f.position) : null
-    const targetShip =
-      loadout.strikeHit > 0
-        ? nearestBy(flight.position, enemyShips, (s) => s.placement.position)
-        : null
+    /*
+     * Which hull, and which of its shields.
+     *
+     * "Only 1 fighter flight (no matter how large) may attack a single starship
+     * shield per phase," so a wing sending four flights at one cruiser has to
+     * put them on four different facings. The planner picks the nearest free
+     * shield on the nearest ship that still has one, and flies the flight to a
+     * spot that bears on it — otherwise every flight after the first converges
+     * on the same shield, gets refused, and the phase is wasted.
+     */
+    const berth =
+      loadout.strikeHit > 0 ? nearestFreeShield(flight.position, enemyShips, struck) : null
     const asFlight = targetFlight
       ? { at: targetFlight.position, kind: 'flight' as const, id: targetFlight.id }
       : null
-    const asShip = targetShip
-      ? { at: targetShip.placement.position, kind: 'ship' as const, id: targetShip.id }
+    const asShip = berth
+      ? { at: berth.approach, kind: 'ship' as const, id: berth.ship.id }
       : null
     const aim = ordnance ? (asShip ?? asFlight) : (asFlight ?? asShip)
     if (!aim) continue
 
     let where = flight.position
-    if (!flight.activated && reach(flight.position, aim.at) > speed) {
+    if (!flight.activated && !withinWeaponRange(flight.position, aim.at)) {
       const step = stepToward(flight.position, aim.at, speed)
       offer(`move:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
       where = { x: step.x, y: step.y }
     }
     if (flight.attacked) continue
-    if (reach(where, aim.at) > speed) continue
+    if (!withinWeaponRange(where, aim.at)) continue
     if (aim.kind === 'flight') claimed.add(aim.id)
+    /*
+     * A ship run is aimed at an approach point, not at the hull, so the range
+     * the engine will measure is to the ship itself — and the shield it will
+     * read is the one the flight is standing off. Confirm both from where the
+     * flight actually finished before offering the run, or the planner spends
+     * the phase proposing strikes the engine turns down.
+     */
+    if (aim.kind === 'ship' && berth) {
+      if (!withinWeaponRange(where, berth.ship.placement.position)) continue
+      const bearing = shieldsFacing(
+        where,
+        berth.ship.placement.position,
+        berth.ship.placement.heading,
+      )[0]
+      if (struck.has(`${berth.ship.id}:${bearing}`)) continue
+      struck.add(`${berth.ship.id}:${bearing}`)
+    }
     offer(
       `attack:${flight.id}`,
       aim.kind === 'flight'
@@ -5040,6 +5073,47 @@ function planFlightOps(
  */
 function reach(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+/**
+ * The nearest shield a flight is still allowed to attack, and where to sit to
+ * attack it.
+ *
+ * Only one flight may run in on a given shield in a phase, so "the nearest
+ * enemy ship" is not a target on its own — a cruiser whose facing shield has
+ * already been hit is only worth approaching if one of its other three is free.
+ * Candidate berths are taken every 45° around the hull at weapon range and
+ * classified by asking `shieldsFacing` what each one actually bears on, which
+ * keeps the geometry honest without this function knowing which way a heading
+ * points.
+ */
+function nearestFreeShield(
+  from: Point,
+  ships: ShipState[],
+  struck: ReadonlySet<string>,
+): { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null {
+  let best: { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null = null
+  let bestRange = Infinity
+  for (const ship of ships) {
+    const at = ship.placement.position
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI) / 4
+      // Just inside weapon range, so a flight that stops here is in range even
+      // after the engine's own epsilon.
+      const approach = {
+        x: at.x + Math.cos(angle) * (FIGHTER_WEAPON_RANGE - 0.5),
+        y: at.y + Math.sin(angle) * (FIGHTER_WEAPON_RANGE - 0.5),
+      }
+      const side = shieldsFacing(approach, at, ship.placement.heading)[0]
+      const key = `${ship.id}:${side}`
+      if (struck.has(key)) continue
+      const range = reach(from, approach)
+      if (range >= bestRange) continue
+      bestRange = range
+      best = { ship, side, approach, key }
+    }
+  }
+  return best
 }
 
 /** Closest of a list, by whatever point the accessor pulls off each entry. */

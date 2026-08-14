@@ -44,7 +44,6 @@ import {
   launchFlight,
   moveFlight,
   recoverFlight,
-  resolveFlightStrikes,
   runHangarBay,
   smallTargetsFor,
   type GameState,
@@ -439,13 +438,17 @@ describe('dogfighting on the d6 (Q1-A)', () => {
     expect(flightDogfight(game, 'blue', 'red')).toMatch(/already attacked/)
   })
 
-  it('will not reach a flight further away than the airframe flies', () => {
+  it('will not reach a flight further away than a fighter shoots', () => {
     const game = battle([shipAt({ id: 'carrier', form: carrierForm() })])
     game.flights.push(
       flightAt({ id: 'blue', side: 'Blue', x: 0, y: 0 }),
-      flightAt({ id: 'red', side: 'Red', x: 20, y: 0 }),
+      // Well inside a Peregrine's 6" of movement, and well outside its guns:
+      // moving is a separate action, so speed is not reach.
+      flightAt({ id: 'red', side: 'Red', x: 5, y: 0 }),
     )
-    expect(flightDogfight(game, 'blue', 'red')).toMatch(/reaches 6"/)
+    expect(flightDogfight(game, 'blue', 'red')).toMatch(/fighter weapons reach 2"/)
+    game.flights[1].position = { x: 2, y: 0 }
+    expect(flightDogfight(game, 'blue', 'red')).toBeNull()
   })
 })
 
@@ -479,6 +482,7 @@ describe('striking a starship (Q4-A: one strike, then flip to BASIC)', () => {
 
     // Next phase, still spent: the BASIC face is guns and stays available.
     flight.attacked = false
+    game.ops.shieldsStruckThisPhase.clear()
     expect(flightStrike(game, 'blue', 'target')).toBeNull()
     expect(currentLoadout(flight, fighterCard('peregrine')!)!.strikeDamage).toBe(1)
   })
@@ -490,12 +494,10 @@ describe('striking a starship (Q4-A: one strike, then flip to BASIC)', () => {
       shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10, heading: 0 }),
     ])
     game.flights.push(
-      flightAt({ id: 'blue', side: 'Blue', x: 10, y: 4, config: 'strike', cardId: 'peregrine', members: 6 }),
+      flightAt({ id: 'blue', side: 'Blue', x: 10, y: 8, config: 'strike', cardId: 'peregrine', members: 6 }),
     )
     const before = game.ships[1].blueShieldDamage.F + game.ships[1].greenShieldDamage.F
     flightStrike(game, 'blue', 'target')
-    // The run is declared now and lands when the segment closes (E7.1.2).
-    resolveFlightStrikes(game)
     const after = game.ships[1].blueShieldDamage.F + game.ships[1].greenShieldDamage.F
     // Peregrine strike is 1-4 for 4 apiece across six fighters; the forward
     // shield takes it, and something lands on essentially every seed.
@@ -509,7 +511,69 @@ describe('striking a starship (Q4-A: one strike, then flip to BASIC)', () => {
     ])
     game.flights.push(flightAt({ id: 'blue', side: 'Blue', x: 10, y: 10, config: 'strike' }))
     expect(flightStrike(game, 'blue', 'carrier')).toMatch(/friendly/)
-    expect(flightStrike(game, 'blue', 'far')).toMatch(/reaches/)
+    expect(flightStrike(game, 'blue', 'far')).toMatch(/fighter weapons reach/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+/*
+ * "Only 1 fighter flight (no matter how large) may attack a single starship
+ * shield per phase." — Fighters and Small Craft outline, Apr 2026, under
+ * ATTACKING STARSHIPS.
+ */
+describe('one flight a shield a phase', () => {
+  /** Two flights nose-to-nose with a cruiser pointed up the board. */
+  function twoOnTheBow(): GameState {
+    const game = battle([
+      shipAt({ id: 'carrier', form: carrierForm() }),
+      shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10, heading: 0 }),
+    ])
+    game.flights.push(
+      flightAt({ id: 'one', side: 'Blue', x: 10, y: 8.5, config: 'strike', cardId: 'peregrine' }),
+      flightAt({ id: 'two', side: 'Blue', x: 10, y: 9, config: 'strike', cardId: 'peregrine' }),
+    )
+    return game
+  }
+
+  it('turns the second flight away from a shield already attacked', () => {
+    const game = twoOnTheBow()
+    expect(flightStrike(game, 'one', 'target')).toBeNull()
+    expect(flightStrike(game, 'two', 'target')).toMatch(/only one flight may attack a shield/)
+  })
+
+  it('costs the refused flight nothing — not its ordnance, not its attack', () => {
+    const game = twoOnTheBow()
+    flightStrike(game, 'one', 'target')
+    flightStrike(game, 'two', 'target')
+    const second = game.flights.find((f) => f.id === 'two')!
+    expect(second.spent, 'a refused run does not expend the load').toBe(false)
+    expect(second.attacked, 'nor does it use up the attack').toBe(false)
+  })
+
+  it('lets the second flight in on another facing', () => {
+    const game = twoOnTheBow()
+    expect(flightStrike(game, 'one', 'target')).toBeNull()
+    // Around to the beam, where nobody has been yet.
+    game.flights.find((f) => f.id === 'two')!.position = { x: 11.5, y: 10 }
+    expect(flightStrike(game, 'two', 'target')).toBeNull()
+  })
+
+  it('holds a shield even when the run scored nothing', () => {
+    const game = twoOnTheBow()
+    // Force the miss: a flight with no fighters left rolls no dice.
+    const first = game.flights.find((f) => f.id === 'one')!
+    first.members = 0
+    expect(flightStrike(game, 'one', 'target')).toBeNull()
+    expect(flightStrike(game, 'two', 'target')).toMatch(/only one flight may attack a shield/)
+  })
+
+  it('frees every shield again when the phase ends', () => {
+    const game = twoOnTheBow()
+    expect(flightStrike(game, 'one', 'target')).toBeNull()
+    game.ops.shieldsStruckThisPhase.clear()
+    game.flights.find((f) => f.id === 'two')!.attacked = false
+    expect(flightStrike(game, 'two', 'target')).toBeNull()
   })
 })
 
@@ -760,85 +824,6 @@ describe('flying a flight', () => {
 })
 
 // ---------------------------------------------------------------------------
-
-describe('one volley a shield, however many flights (E7.1.2)', () => {
-  /*
-   * "All homing weapons striking a single ship on a single shield during a
-   * single combat phase are a single volley for damage purposes. This applies
-   * even if those homing weapons are from multiple ships."
-   *
-   * That rule was not holding for fighters, and a real battle showed it: four
-   * SABRE flights each resolved a separate volley against the same forward
-   * shield, each drawing its own hand of damage cards. A volley is what the
-   * deck is drawn against and reshuffled after (E7.1.3) and what a shield
-   * absorbs against, so four runs resolved separately are four of each where
-   * the rule says one.
-   */
-  function twoFlightsOn(target: ShipState, game: GameState) {
-    game.flights.push(
-      flightAt({ id: 'a', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
-      flightAt({ id: 'b', side: 'Blue', x: 10, y: 6, config: 'strike', cardId: 'halberd' }),
-    )
-    expect(flightStrike(game, 'a', target.id)).toBeNull()
-    expect(flightStrike(game, 'b', target.id)).toBeNull()
-  }
-
-  it('holds the runs and lands them as one volley on the shield', () => {
-    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
-    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
-    twoFlightsOn(target, game)
-
-    // Declared, pooled, nothing applied yet.
-    expect(game.flightStrikes).toHaveLength(1)
-    expect(game.flightStrikes[0].runs).toBe(2)
-    expect(game.flightStrikes[0].side).toBe('F')
-    const before = target.blueShieldDamage.F + target.greenShieldDamage.F
-    expect(before).toBe(0)
-
-    advanceSegment(game)
-    expect(game.flightStrikes, 'the pool should be settled and cleared').toHaveLength(0)
-    expect(target.blueShieldDamage.F + target.greenShieldDamage.F).toBeGreaterThan(0)
-    expect(game.log.some((l) => /resolve as one volley/.test(l.message))).toBe(true)
-  })
-
-  it('keeps separate shields separate — the rule is per shield, not per ship', () => {
-    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
-    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
-    game.flights.push(
-      // Dead ahead and dead astern of a ship pointed up the board.
-      flightAt({ id: 'fore', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
-      flightAt({ id: 'aft', side: 'Blue', x: 10, y: 14, config: 'strike', cardId: 'halberd' }),
-    )
-    flightStrike(game, 'fore', 'target')
-    flightStrike(game, 'aft', 'target')
-    expect(game.flightStrikes).toHaveLength(2)
-    expect(new Set(game.flightStrikes.map((p) => p.side))).toEqual(new Set(['F', 'A']))
-  })
-
-  it('pools across sides too — the rule says "even from multiple ships"', () => {
-    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
-    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
-    game.flights.push(
-      flightAt({ id: 'a', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
-      flightAt({ id: 'b', side: 'Green', x: 10, y: 6, config: 'strike', cardId: 'halberd' }),
-    )
-    flightStrike(game, 'a', 'target')
-    flightStrike(game, 'b', 'target')
-    expect(game.flightStrikes).toHaveLength(1)
-    expect(game.flightStrikes[0].runs).toBe(2)
-  })
-
-  it('a ship destroyed before the volley lands takes nothing more', () => {
-    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
-    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
-    twoFlightsOn(target, game)
-    target.destroyed = true
-    const before = target.blueShieldDamage.F
-    resolveFlightStrikes(game)
-    expect(target.blueShieldDamage.F).toBe(before)
-    expect(game.flightStrikes).toHaveLength(0)
-  })
-})
 
 describe('the Hangar Bay Segment (A3.4.4, printed TBD)', () => {
   it('rearms a spent flight that is aboard, and leaves one in the air alone', () => {

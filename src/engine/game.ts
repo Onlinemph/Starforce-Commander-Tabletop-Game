@@ -161,7 +161,6 @@ import {
 } from './smallCraft'
 import {
   airframeJamming,
-  airframeSpeed,
   CONFIG_LABELS,
   currentConfig,
   currentLoadout,
@@ -178,6 +177,8 @@ import {
   MAX_FLIGHT_SIZE,
   strike,
   strikeExpendsLoad,
+  FIGHTER_WEAPON_RANGE,
+  withinWeaponRange,
   type FighterConfigKind,
   type Flight,
 } from './fighters'
@@ -367,18 +368,6 @@ export interface Scenario {
   missions?: MissionDef[]
 }
 
-/** Strike runs against one ship's one shield, pooled into a volley (E7.1.2). */
-export interface PendingStrike {
-  targetId: string
-  side: ShieldSide
-  /** Total damage from every run that struck this shield this phase. */
-  damage: number
-  /** How many flights contributed, for the log. */
-  runs: number
-  /** Names of the flights, for the log. */
-  by: string[]
-}
-
 // ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
@@ -477,6 +466,15 @@ export interface OperationsState {
    * closed, and took two rounds of casualties for one.
    */
   boardingFought: Set<string>
+  /**
+   * `shipId:side` shields a fighter flight has already run in on this phase.
+   *
+   * "Only 1 fighter flight (no matter how large) may attack a single starship
+   * shield per phase" — Fighters and Small Craft outline, Apr 2026, under
+   * ATTACKING STARSHIPS. A wing that wants to put four flights onto one target
+   * has to spread them across its four shields, or come back next phase.
+   */
+  shieldsStruckThisPhase: Set<string>
 }
 
 export function newOperationsState(): OperationsState {
@@ -498,6 +496,7 @@ export function newOperationsState(): OperationsState {
     brokenThisPhase: new Set(),
     contestedThisPhase: new Set(),
     boardingFought: new Set(),
+    shieldsStruckThisPhase: new Set(),
   }
 }
 
@@ -600,16 +599,6 @@ export interface GameState {
   smallCraft: SmallCraft[]
   /** Fighter flights on the map. Package A of the Apr 2026 outline. */
   flights: Flight[]
-  /**
-   * Strike runs waiting to be resolved together (E7.1.2).
-   *
-   * Everything striking one ship on one shield in one combat phase is a single
-   * volley for damage purposes, "even if those homing weapons are from multiple
-   * ships" — so four flights hitting the same shield are one volley, not four.
-   * The runs are pooled here as they are declared and settled when the Flight
-   * Operations Segment closes.
-   */
-  flightStrikes: PendingStrike[]
   /**
    * Serial numbers for the counters this battle puts on the map.
    *
@@ -724,7 +713,6 @@ export function createGame(args: {
     ops: newOperationsState(),
     smallCraft: [],
     flights: [],
-    flightStrikes: [],
     counters: { craft: 0, flight: 0 },
     escapePods: [],
     crewRescued: {},
@@ -1835,10 +1823,6 @@ function runSegmentExit(game: GameState): void {
       break
 
     case 'flight-operations':
-      // Every strike run of the phase lands together, one volley a shield
-      // (E7.1.2) — before the markers come off, so the segment's own damage is
-      // resolved inside the segment.
-      resolveFlightStrikes(game)
       // Activation markers come off once every craft has had its turn (J8.2.2).
       for (const craft of game.smallCraft) craft.activated = false
       for (const flight of game.flights) {
@@ -1854,6 +1838,7 @@ function runSegmentExit(game: GameState): void {
       game.ops.launchedThisPhase.clear()
       game.ops.flightsLaunchedThisPhase = {}
       game.ops.flightsRecoveredThisPhase = {}
+      game.ops.shieldsStruckThisPhase.clear()
       game.ops.recoveredThisPhase = {}
       game.ops.dockedThisPhase = {}
       game.ops.maxSystem = {}
@@ -3429,10 +3414,9 @@ export function flightDogfight(game: GameState, flightId: string, targetId: stri
   const targetLoadout = currentLoadout(target, targetCard)
   if (!loadout || !targetLoadout) return 'No such loadout.'
 
-  const reach = airframeSpeed(card, loadout)
   const range = distance(flight.position, target.position)
-  if (range > reach + 1e-9) {
-    return `${flightName(game, target)} is ${range.toFixed(1)}" away; a ${card.name} reaches ${reach}".`
+  if (!withinWeaponRange(flight.position, target.position)) {
+    return `${flightName(game, target)} is ${range.toFixed(1)}" away; fighter weapons reach ${FIGHTER_WEAPON_RANGE}".`
   }
 
   const result = dogfight(
@@ -3463,6 +3447,13 @@ export function flightDogfight(game: GameState, flightId: string, targetId: stri
  * the Combat Segment, which closes before flights act.
  *
  * The load is spent in the act, and the counter flips to its BASIC face (Q4‑A).
+ *
+ * One flight a shield a phase. A wing that wants to put its whole strength onto
+ * one hull in one phase has to spread the flights around the ship, which is the
+ * rule doing its job: the Apr 2026 playtest note has four flights attack a
+ * cruiser in a single round, "one flight penetrated the shields, the other did
+ * internal damage", and observes that attacking the *same* shield would have
+ * meant coming back over two rounds and taking more casualties for it.
  */
 export function flightStrike(game: GameState, flightId: string, shipId: string): string | null {
   const flight = game.flights.find((f) => f.id === flightId)
@@ -3478,100 +3469,67 @@ export function flightStrike(game: GameState, flightId: string, shipId: string):
   if (!loadout) return 'No such loadout.'
   if (loadout.strikeHit <= 0) return `${card.name} in this configuration is unarmed against ships.`
 
-  const reach = airframeSpeed(card, loadout)
   const range = distance(flight.position, ship.placement.position)
-  if (range > reach + 1e-9) {
-    return `${ship.name} is ${range.toFixed(1)}" away; a ${card.name} reaches ${reach}".`
+  if (!withinWeaponRange(flight.position, ship.placement.position)) {
+    return `${ship.name} is ${range.toFixed(1)}" away; fighter weapons reach ${FIGHTER_WEAPON_RANGE}".`
+  }
+
+  /*
+   * "Only 1 fighter flight (no matter how large) may attack a single starship
+   * shield per phase." — Apr 2026 outline, ATTACKING STARSHIPS.
+   *
+   * The shield is decided by where the flight is sitting when it runs in, so
+   * the check has to come after the range check and before the dice: a refused
+   * run costs the flight nothing, not even its ordnance.
+   */
+  const side = shieldsFacing(flight.position, ship.placement.position, ship.placement.heading)[0]
+  const shieldKey = `${ship.id}:${side}`
+  if (game.ops.shieldsStruckThisPhase.has(shieldKey)) {
+    return (
+      `${ship.name}'s ${side} shield has already been attacked this phase — ` +
+      `only one flight may attack a shield per phase. Come at another facing, or wait a phase.`
+    )
   }
 
   const result = strike(flight, loadout, game.rng)
   flight.attacked = true
+  // The shield is spoken for whether or not the run scored. A flight that
+  // rolled nothing still made the attack, and the next one still has to go
+  // somewhere else.
+  game.ops.shieldsStruckThisPhase.add(shieldKey)
   const config = currentConfig(flight)
   if (strikeExpendsLoad(config)) flight.spent = true
 
   if (result.damage === 0) {
     pushLog(
       game,
-      `${flightName(game, flight)} runs in on ${ship.name} and scores nothing` +
+      `${flightName(game, flight)} runs in on ${ship.name}'s ${side} shield and scores nothing` +
         (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
     )
     return null
   }
 
-  /*
-   * E7.1.2 — the run is *declared* now and *resolved* with every other run
-   * against the same shield when the segment closes. "All homing weapons
-   * striking a single ship on a single shield during a single combat phase are
-   * a single volley for damage purposes. This applies even if those homing
-   * weapons are from multiple ships."
-   *
-   * That rule carries a forward reference — "(See Fighter Operations rules and
-   * Homing Weapon rules.)" — and the fighter outline never picks it up, so
-   * whether a flight's ordnance is a homing weapon for this purpose is a
-   * question for Doyle (see docs/fighter-questions.md). We read it as yes: the
-   * outline calls the load a missile attack, and the alternative has four
-   * flights drawing four separate hands of damage cards against one shield,
-   * which is the thing E7.1.2 exists to stop.
-   */
-  const side = shieldsFacing(flight.position, ship.placement.position, ship.placement.heading)[0]
-  const pool = game.flightStrikes.find((p) => p.targetId === ship.id && p.side === side)
-  if (pool) {
-    pool.damage += result.damage
-    pool.runs += 1
-    pool.by.push(flightName(game, flight))
-  } else {
-    game.flightStrikes.push({
-      targetId: ship.id,
+  const outcome = applyVolley(
+    ship,
+    {
+      standard: result.damage,
+      leak: 0,
+      structurePenetration: 0,
       side,
-      damage: result.damage,
-      runs: 1,
-      by: [flightName(game, flight)],
-    })
-  }
+      shieldsInoperative:
+        shieldsInoperative(cloudConditions(game.scenario), ship) || shipIsCloaked(game, ship),
+    },
+    damageContext(game),
+  )
+  recordShieldHit(game, ship.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+  damageRevealsCloak(game, ship, result.damage)
   pushLog(
     game,
-    `${flightName(game, flight)} runs in on ${ship.name}'s ${side} shield: ` +
+    `${flightName(game, flight)} strikes ${ship.name}'s ${side} shield: ` +
       `${result.hits} hit(s) on 1‑${loadout.strikeHit} for ${result.damage} damage` +
-      ` — held for the shield's volley (E7.1.2)` +
-      (flight.spent ? ', ordnance expended' : ''),
+      (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
   )
   return null
-}
-
-/**
- * Settle every strike run of the phase, one volley per shield (E7.1.2).
- *
- * Pooling matters more than it looks. A volley is what the damage deck is
- * drawn against and reshuffled after (E7.1.3), and it is what shields absorb
- * against — so four runs resolved separately against one shield are four hands
- * of cards and four absorptions, where the rule says they are one of each.
- */
-export function resolveFlightStrikes(game: GameState): void {
-  const pending = game.flightStrikes
-  game.flightStrikes = []
-  for (const pool of pending) {
-    const ship = game.ships.find((s) => s.id === pool.targetId)
-    if (!ship || ship.destroyed || pool.damage <= 0) continue
-    const outcome = applyVolley(
-      ship,
-      {
-        standard: pool.damage,
-        leak: 0,
-        structurePenetration: 0,
-        side: pool.side,
-        shieldsInoperative:
-          shieldsInoperative(cloudConditions(game.scenario), ship) || shipIsCloaked(game, ship),
-      },
-      damageContext(game),
-    )
-    recordShieldHit(game, ship.id, pool.side, outcome.greenAbsorbed + outcome.blueAbsorbed)
-    damageRevealsCloak(game, ship, pool.damage)
-    pushLog(
-      game,
-      `${pool.runs} strike run(s) on ${ship.name}'s ${pool.side} shield resolve as one volley: ` +
-        `${pool.damage} damage (E7.1.2).`,
-    )
-  }
 }
 
 /**

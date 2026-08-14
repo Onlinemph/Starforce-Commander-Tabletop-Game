@@ -28,6 +28,8 @@ import {
   launchRate,
   loadoutOf,
   recoveryRate,
+  withinWeaponRange,
+  FIGHTER_WEAPON_RANGE,
   FLIGHT_RANGE,
   MAX_FLIGHT_SIZE,
   MAX_FLIGHTS_PER_SHIP,
@@ -224,8 +226,8 @@ function FighterSection({ game, ship }: { game: GameState; ship: ShipState }) {
           </div>
           {card && loadout && (
             <p className="hint">
-              {card.name} {CONFIG_LABELS[config]}: speed {airframeSpeed(card, loadout)}&quot;,
-              jamming {airframeJamming(card, loadout)}, structure {card.structure} each · DFR 1‑
+              {card.name} {CONFIG_LABELS[config]}: speed {airframeSpeed(card, loadout)}&quot;, guns{' '}
+              {FIGHTER_WEAPON_RANGE}&quot;, jamming {airframeJamming(card, loadout)}, structure {card.structure} each · DFR 1‑
               {loadout.dfr}, dodge 1‑{loadout.dodge}, strike 1‑{loadout.strikeHit} for{' '}
               {loadout.strikeDamage} · ~{flightPoints(card, config, members)} points provisional.
             </p>
@@ -253,8 +255,11 @@ function FighterSection({ game, ship }: { game: GameState; ship: ShipState }) {
       {error && <p className="fire-error">{error}</p>}
       <p className="hint">
         Fighters roll a plain d6 — DFR to hit, Dodge to save — while everything a starship&apos;s
-        guns do stays on the coloured dice. A flight counts as one launch for a cloak&apos;s
-        detection roll (H6.15.4), and a strike run expends the load and flips the counter to BASIC.
+        guns do stays on the coloured dice. Fighter weapons reach {FIGHTER_WEAPON_RANGE}&quot;, so
+        a flight moves first and shoots from where it stops, and only one flight may attack a given
+        starship shield in a phase — send the rest of the wing around to the other facings. A flight
+        counts as one launch for a cloak&apos;s detection roll (H6.15.4), and a strike run expends
+        the load and flips the counter to BASIC.
       </p>
     </>
   )
@@ -287,8 +292,9 @@ function FlightRow({
     )
   }
 
-  const within = (x: number, y: number) =>
-    Math.hypot(x - flight.position.x, y - flight.position.y) <= speed + 1e-9
+  // What the flight can shoot from where it is standing, which is not how far
+  // it can fly: movement is its own button, and the guns reach 2".
+  const within = (x: number, y: number) => withinWeaponRange(flight.position, { x, y })
 
   const enemyFlights = game.flights.filter(
     (f) => f.side !== flight.side && !f.dockedTo && f.members > 0 && within(f.position.x, f.position.y),

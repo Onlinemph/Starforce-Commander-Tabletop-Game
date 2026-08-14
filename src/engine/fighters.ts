@@ -119,6 +119,21 @@ export const FLIGHT_RANGE = 1
  */
 export const RECOVERY_RANGE = FLIGHT_RANGE + 1
 
+/**
+ * How far a fighter shoots, as distinct from how far it flies.
+ *
+ * "The standard range of a fighter's weapons is range 2" — Fighters and Small
+ * Craft outline, Apr 2026, under Dogfight Rating. A flight's threat is
+ * therefore its speed *plus* two: it moves, then it shoots from where it
+ * finished. This was speed for a while, which quietly gave every airframe twice
+ * the reach it should have had, because movement was already a separate action.
+ */
+export const FIGHTER_WEAPON_RANGE = 2
+
+export function withinWeaponRange(from: Point, target: Point): boolean {
+  return distance(from, target) <= FIGHTER_WEAPON_RANGE + 1e-9
+}
+
 export function withinRecoveryRange(from: Point, ship: Point): boolean {
   return distance(from, ship) <= RECOVERY_RANGE + 1e-9
 }

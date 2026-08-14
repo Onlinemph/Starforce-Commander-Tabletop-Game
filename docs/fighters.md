@@ -46,14 +46,23 @@ inside a single roll, which is what lets both live in the same engine without a 
    - **Dogfighting.** Every surviving fighter rolls a d6 and hits on its DFR or less; the target
      answers each hit with a Dodge roll. Unsaved hits kill outright — Structure is what a
      *starship's* guns have to chew through, not what another fighter's cannon does.
+   - **Shooting range.** Fighter weapons reach **two inches**, whatever the airframe's speed. The
+     outline says so under Dogfight Rating — "the standard range of a fighter's weapons is range
+     2" — and since flying is its own action, a flight's threat is its speed *plus* two: it moves,
+     then it shoots from where it stopped. This was the airframe's speed for a while, which
+     silently gave every fighter about twice the reach it should have had.
    - **Striking.** One d6 per fighter against the card's Strike range, each hit doing the card's
-     damage to the shield the flight is bearing on. The load is spent in the act. The run is
-     *declared* now and *lands* when the segment closes — see E7.1.2 below.
+     damage to the shield the flight is bearing on. The load is spent in the act.
+   - **One flight a shield a phase.** "Only 1 fighter flight (no matter how large) may attack a
+     single starship shield per phase." A wing that wants to put four flights onto one cruiser in
+     one phase has to spread them around its four facings; concentrating them on the bow means
+     coming back over several phases. The Apr 2026 playtest note is exactly this shape — four
+     flights hit a BONHOMME RICHARD in a single round, "one flight penetrated the shields, the
+     other did internal damage", and the note observes that attacking the *same* shield would have
+     meant stretching the strike over two rounds and taking more casualties for it. The refusal
+     costs the turned-away flight nothing: not its ordnance, not its attack. It may go round to
+     another facing in the same phase, which is what the AI does.
    - **Landing.** One flight per undamaged LNDG box, finishing within two inches of the carrier.
-   - **One volley a shield (E7.1.2).** Every strike run against the same ship's same shield in
-     the same combat phase resolves as **one volley**, not one each. Held as they are declared and
-     settled when the segment closes, the same way homing impacts and H2.4.2 simultaneous fire
-     already work.
 3. **Hangar Bay Segment (A3.4.4).** Printed "TBD" in the published sequence; this is what goes in
    it. A flight that is aboard rearms — the counter comes off its BASIC face. Fighters lost are
    lost; nothing here replaces them.
@@ -85,32 +94,6 @@ reproduce its own source's numbers is the wrong model.
 
 ---
 
-## E7.1.2, and the forward reference nobody picked up
-
-The rule is worth quoting, because it is easy to remember wrong — it is not a cap on how many
-flights may attack a shield, it is **pooling**:
-
-> **E7.1.2 Homing Weapon Volley Definition:** All homing weapons striking a single ship on a single
-> shield during a single combat phase are a single volley for damage purposes. This applies even if
-> those homing weapons are from multiple ships. *(See Fighter Operations rules and Homing Weapon
-> rules.)*
-
-That matters more than it looks. A volley is what the damage deck is drawn against and reshuffled
-after (E7.1.3), and what a shield absorbs against — so four runs resolved separately against one
-shield are four hands of cards and four absorptions where the rule says one of each. A real battle
-found it: four SABRE flights each resolved a separate volley into the same forward shield.
-
-Measured after the fix, eight games: **18.9 strike runs resolve as 7.0 volleys, 2.7 runs pooling
-into each.** Total damage is unchanged; what changed is how it lands.
-
-**The parenthetical is a question for Doyle.** "(See Fighter Operations rules…)" is a forward
-reference the April outline never picks up: the rulebook expects the fighter rules to say how
-fighters fold into E7.1.2, and they do not exist. We read it as *yes, fighter ordnance pools* —
-the outline calls the load a missile attack, and the alternative is precisely what E7.1.2 exists to
-stop — but that is our reading, not a ruling.
-
----
-
 ## What we filled in ourselves, and would rather not have
 
 Three things are ours, not Doyle's, and are marked as such in the code.
@@ -134,6 +117,14 @@ is clear — a flight that loses the dogfight never reaches the target. A loaded
 hull rather than a dogfight, because the ordnance is spent in one run. It spreads across the
 enemy's flights before doubling up on one, and takes a spent flight home to rearm rather than
 loitering as a free target for somebody's point defense.
+
+**It picks a shield, not a ship.** Because only one flight may attack a given shield in a phase,
+"the nearest enemy hull" is not a target on its own — a cruiser whose bow has already been hit this
+phase is only worth flying at if one of its other three facings is free. The planner takes berths
+every 45° around each candidate hull at weapon range, asks the same geometry the engine will ask
+which shield each one bears on, discards the ones already spoken for, and flies the flight to the
+nearest survivor. Without that, every flight after the first converges on the same facing, gets
+refused, and the phase is spent proposing runs the engine will not allow.
 
 It lands a spent flight to rearm and then **leaves it down until the Hangar Bay Segment has
 actually run**. Landing is only worth doing for the rearm, and the rearm is at the end of the
