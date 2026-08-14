@@ -1,0 +1,606 @@
+<title>Fighter Playtest Options</title>
+<style>
+  /* ── Tokens: light is the base, both dark paths redefine only these ── */
+  :root {
+    --paper:        #F2F5F8;
+    --panel:        #FFFFFF;
+    --panel-sunk:   #E7ECF2;
+    --rule:         #C9D4E0;
+    --rule-soft:    #DFE6EE;
+    --ink:          #0F1822;
+    --ink-soft:     #46586B;
+    --ink-faint:    #74879B;
+    --navy:         #1B3A5C;
+    --signal:       #B3232C;
+    --gold:         #A9741A;
+    --teal:         #12798F;
+    --chip-ink:     #FFFFFF;
+    --shadow:       0 1px 0 rgba(15,24,34,.04), 0 6px 20px -12px rgba(15,24,34,.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0C1219;
+      --panel:      #141D27;
+      --panel-sunk: #1B2733;
+      --rule:       #2C3B4B;
+      --rule-soft:  #223040;
+      --ink:        #E3EAF2;
+      --ink-soft:   #A6B6C7;
+      --ink-faint:  #7A8B9D;
+      --navy:       #7FB2E0;
+      --signal:     #F2707A;
+      --gold:       #E0AE4E;
+      --teal:       #4FC5DE;
+      --chip-ink:   #0C1219;
+      --shadow:     0 1px 0 rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #0C1219;
+    --panel:      #141D27;
+    --panel-sunk: #1B2733;
+    --rule:       #2C3B4B;
+    --rule-soft:  #223040;
+    --ink:        #E3EAF2;
+    --ink-soft:   #A6B6C7;
+    --ink-faint:  #7A8B9D;
+    --navy:       #7FB2E0;
+    --signal:     #F2707A;
+    --gold:       #E0AE4E;
+    --teal:       #4FC5DE;
+    --chip-ink:   #0C1219;
+    --shadow:     0 1px 0 rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.8);
+  }
+
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+  .col  { max-width: 67ch; }
+
+  /* ── Masthead ── */
+  header.top {
+    border-bottom: 2px solid var(--ink);
+    padding: 40px 0 20px;
+    margin-bottom: 34px;
+  }
+  .eyebrow {
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--signal); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+    font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -.022em;
+    line-height: 1.04; margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+  .meta {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 12.5px; color: var(--ink-faint); margin-top: 16px;
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+  }
+
+  h2 {
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+    font-size: 13px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink); margin: 56px 0 6px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  h2 + .lede { color: var(--ink-soft); margin: 12px 0 26px; max-width: 64ch; }
+
+  h3 {
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+    font-size: 20px; font-weight: 700; letter-spacing: -.01em;
+    margin: 38px 0 4px; text-wrap: balance;
+  }
+  p { margin: 0 0 14px; }
+  a { color: var(--teal); }
+
+  strong { font-weight: 700; }
+  em.q { font-style: normal; color: var(--ink-faint); }
+
+  /* ── Question block ── */
+  .qhead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 42px; }
+  .qnum {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px; font-weight: 700; color: var(--chip-ink);
+    background: var(--navy); padding: 3px 8px; border-radius: 2px; letter-spacing: .04em;
+  }
+  .qhead h3 { margin: 0; flex: 1 1 380px; }
+  .tag {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid currentColor; border-radius: 2px; white-space: nowrap;
+  }
+  .tag.block { color: var(--signal); }
+  .tag.num   { color: var(--gold); }
+  .tag.pub   { color: var(--teal); }
+
+  blockquote {
+    margin: 16px 0; padding: 2px 0 2px 18px;
+    border-left: 3px solid var(--rule);
+    color: var(--ink-soft); font-style: italic;
+  }
+
+  /* ── Option cards ── */
+  .opts { display: grid; gap: 14px; margin: 20px 0 8px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); }
+  .opt {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule); border-radius: 3px;
+    padding: 16px 18px 18px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .opt.pick { border-top-color: var(--signal); }
+  .opt-h { display: flex; align-items: center; gap: 9px; }
+  .opt-l {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px; font-weight: 700; color: var(--ink-faint);
+  }
+  .opt.pick .opt-l { color: var(--signal); }
+  .opt-t {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 15px; font-weight: 700; letter-spacing: -.005em; line-height: 1.25;
+  }
+  .opt p { font-size: 14.5px; line-height: 1.55; margin: 0; }
+  .opt .table-note {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 12.5px; color: var(--ink-soft);
+    border-top: 1px dashed var(--rule-soft); padding-top: 8px; margin-top: auto;
+  }
+  .opt .table-note b {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); display: block; margin-bottom: 2px;
+  }
+  .starter {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--chip-ink); background: var(--signal); padding: 2px 7px; border-radius: 2px;
+  }
+
+  /* ── Tables ── */
+  .tw { overflow-x: auto; margin: 18px 0 22px; }
+  table { border-collapse: collapse; width: 100%; font-family: ui-sans-serif, system-ui, Arial, sans-serif; font-size: 14px; }
+  caption {
+    caption-side: top; text-align: left; font-size: 11px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); padding-bottom: 8px;
+  }
+  th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--rule-soft); }
+  th {
+    font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700; border-bottom: 1px solid var(--rule);
+  }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums;
+               font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  tbody tr:hover { background: var(--panel-sunk); }
+  .hi { color: var(--signal); font-weight: 700; }
+
+  /* ── Callout ── */
+  .call {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-left: 4px solid var(--signal); border-radius: 3px;
+    padding: 18px 22px; margin: 24px 0; box-shadow: var(--shadow);
+  }
+  .call h4 {
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    margin: 0 0 8px; color: var(--signal);
+  }
+  .call p:last-child { margin-bottom: 0; }
+
+  /* ── Package panels ── */
+  .packs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin: 22px 0; }
+  .pack { background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; box-shadow: var(--shadow); overflow: hidden; }
+  .pack-h { background: var(--navy); color: var(--chip-ink); padding: 11px 18px;
+            font-family: ui-sans-serif, system-ui, Arial, sans-serif; font-weight: 800;
+            font-size: 13px; letter-spacing: .09em; text-transform: uppercase;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .pack-h span { font-weight: 600; letter-spacing: .02em; text-transform: none; font-size: 12px; opacity: .85; }
+  .pack ul { margin: 0; padding: 14px 20px 16px 34px; }
+  .pack li { font-size: 14.5px; margin-bottom: 7px; }
+  .pack li:last-child { margin-bottom: 0; }
+
+  ul.plain { padding-left: 22px; }
+  ul.plain li { margin-bottom: 9px; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .88em; background: var(--panel-sunk); padding: 1px 5px; border-radius: 2px;
+  }
+
+  footer {
+    margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-family: ui-sans-serif, system-ui, Arial, sans-serif;
+    font-size: 13px; color: var(--ink-faint);
+  }
+  a:focus-visible, td:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">StarForce Commander · Digital Tabletop</p>
+  <h1>Fighter Playtest Options</h1>
+  <p class="standfirst">Concrete ways to answer the open questions in the April fighter outline — enough
+  to start flying, and specific enough to argue with.</p>
+  <div class="meta">
+    <span>Against <b>FIGHTERS AND SMALL CRAFT</b>, notes and outline, Apr 2026</span>
+    <span>· with the 4‑25‑2026 playtest notes</span>
+    <span>· and the 16 stat cards embedded in that document</span>
+  </div>
+</header>
+
+<div class="col">
+  <p>Every option below is playable as written. Where the published v2.6 rules or the V41 builder
+  already settle something, that is said plainly rather than re-asked — about a third of the outline
+  turns out to be in print already.</p>
+  <p>One option in each set is marked <span class="starter">start here</span>. That is not a verdict,
+  it is where we would begin so that playtesting has a baseline to deviate from.</p>
+</div>
+
+<h2>First, the numbers hold up</h2>
+<p class="lede col">Before any of the open questions: the dogfight model in the outline was checked against
+the playtest samples recorded at the bottom of that same document. It predicts them.</p>
+
+<div class="call">
+  <h4>The pace you observed is the pace the maths predicts</h4>
+  <p>Six fighters at DFR 1‑3 against dodge 1‑2: each fighter hits on 50%, each hit kills through a
+  67% failed dodge, so a flight of six lands <b>2.0 kills per phase</b> and wipes six opposing
+  fighters in <b>3.0 phases</b>. The three sample dogfights ran 2, 4 and 5 phases — mean 3.7.</p>
+  <p>And three combat phases make a round, so “two flights in a dogfight will likely resolve their
+  combat in a round” is not a guess in the notes — it is what the rating scale actually produces.
+  The DFR and Dodge numbers are doing what you intended them to do.</p>
+</div>
+
+<div class="tw">
+  <table>
+    <caption>Dogfight pace, six against six, both sides on the same profile</caption>
+    <thead><tr><th>DFR</th><th>Dodge</th><th class="n">Kills per phase</th><th class="n">Phases to wipe six</th><th>Reads as</th></tr></thead>
+    <tbody>
+      <tr><td>1‑2</td><td>1‑4</td><td class="n">0.67</td><td class="n">9.0</td><td>a grind — nobody dies</td></tr>
+      <tr><td>1‑3</td><td>1‑3</td><td class="n">1.50</td><td class="n">4.0</td><td>a round and a half</td></tr>
+      <tr><td>1‑3</td><td>1‑2</td><td class="n hi">2.00</td><td class="n hi">3.0</td><td class="hi">exactly one round — the playtest case</td></tr>
+      <tr><td>1‑4</td><td>1‑3</td><td class="n">2.00</td><td class="n">3.0</td><td>one round</td></tr>
+      <tr><td>1‑5</td><td>1‑2</td><td class="n">3.33</td><td class="n">1.8</td><td>a massacre — Nial on a bad day</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="col">The card values cluster at DFR 2–4 against Dodge 2–4, which lands the whole roster between
+roughly two and six phases. That is a good spread: fights resolve, but not identically.</p>
+
+<div class="tw">
+  <table>
+    <caption>Anti-ship strike — one flight of six, expected damage before point defense</caption>
+    <thead><tr><th>Flight</th><th>Strike</th><th class="n">Expected damage</th></tr></thead>
+    <tbody>
+      <tr><td>PEREGRINE, strike</td><td>1‑4 × 4</td><td class="n hi">16.0</td></tr>
+      <tr><td>NIAL, strike</td><td>1‑4 × 3</td><td class="n">12.0</td></tr>
+      <tr><td>FRAZI, strike</td><td>1‑3 × 3</td><td class="n">9.0</td></tr>
+      <tr><td>THUNDERBOLT, strike</td><td>1‑4 × 2</td><td class="n">8.0</td></tr>
+      <tr><td>STARFURY, strike</td><td>1‑3 × 2</td><td class="n">6.0</td></tr>
+      <tr><td>STARFURY, basic</td><td>1 × 1</td><td class="n">1.0</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="col">Four flights striking together — the playtest case — puts 24 to 48 points into a cruiser
+in one round. That matches “the cruiser was badly damaged” without being lethal, which is the right
+place for it to sit.</p>
+
+<h2>The three that block everything</h2>
+
+<div class="qhead">
+  <span class="qnum">Q1</span>
+  <h3>d6 or the coloured dice?</h3>
+  <span class="tag block">Blocking</span>
+</div>
+
+<blockquote>“Standard 6-sided dice are used. The colored dice impose constraints and lack granularity.”</blockquote>
+
+<div class="col">
+  <p>You are right about the granularity, and it is worth seeing how right: the coloured dice offer
+  <b>two</b> hit probabilities — 83% for red, yellow and green, 67% for blue — because only the blank
+  faces differ. A d6 roll-under offers five, at 17/33/50/67/83%. The DFR ladder needs all five.</p>
+  <p>But the binary in the question may be false. When a ship shoots at a flight it rolls
+  <em>its own printed attack dice</em>, which are coloured, under E12.4.3 and E12.4.4. When fighters
+  shoot at each other they roll d6. <b>The two systems never meet inside a single roll</b> — the seam
+  already exists in the published rules, and neither die type has to be translated into the other.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">Keep them separate, as they already are</span><span class="starter">Start here</span></div>
+    <p>Fighter‑vs‑fighter and fighter survival roll d6. Anything a starship’s guns do stays coloured.
+    The end‑of‑battle casualty roll becomes a d6 too, resolving the one place the outline crosses over.</p>
+    <p class="table-note"><b>At the table</b> You never hold both die types for the same decision.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">Coloured dice throughout</span></div>
+    <p>Express DFR as a die colour and a face threshold. Costs you three of the five DFR steps, so the
+    Frazi, Starfury and Nial collapse toward each other.</p>
+    <p class="table-note"><b>At the table</b> One die type, a flatter roster.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">d6 everywhere, including ships shooting fighters</span></div>
+    <p>Replace the coloured attack dice with a d6 to‑hit whenever the target is a small craft. Uniform,
+    but it detaches a ship’s anti‑fighter fire from its own printed weapon chart.</p>
+    <p class="table-note"><b>At the table</b> Simplest to teach; loses the weapon’s character.</p>
+  </div>
+</div>
+
+<div class="qhead">
+  <span class="qnum">Q2</span>
+  <h3>How do ships kill fighters?</h3>
+  <span class="tag block">Blocking</span>
+</div>
+
+<div class="col">
+  <p>You wrote “use COA 1 for now since its an existing game mechanic.” Two things sharpen that.
+  <b>E12.4.2 already says</b> the firing player is “not required to assign specific weapon mounts to
+  a single small target; only the volley or flight is required” — COA 1’s pooling, already in print.
+  And <b>COA 2 cannot be run on the current cards</b>: it needs a light/medium/heavy weight class per
+  fighter, and the cards give a Structure number instead.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">COA 1, pooled</span><span class="starter">Start here</span></div>
+    <p>Total the damage, halve non‑PD fire first per E10.2.3, divide by the fighter’s Structure, remove
+    that many. Deterministic once the dice are down.</p>
+    <p class="table-note"><b>At the table</b> Fast, and already how E12.4.2 targets a flight.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">COA 1 with dodge, defender chooses</span></div>
+    <p>Fighters dodge the incoming dice and the owning player picks which are cancelled. Adds a decision
+    to the defender, and a roll per die.</p>
+    <p class="table-note"><b>At the table</b> More agency, noticeably slower on a big volley.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">COA 2, hit classes</span></div>
+    <p>Light/Medium/Heavy hits destroy fighters by weight class. Needs a weight class added to every
+    card before it can be played at all.</p>
+    <p class="table-note"><b>At the table</b> Lumpier and quicker — but blocked on new data.</p>
+  </div>
+</div>
+
+<div class="qhead">
+  <span class="qnum">Q3</span>
+  <h3>Are the six card fighters a roster, or a calibration set?</h3>
+  <span class="tag block">Blocking</span>
+</div>
+
+<div class="col">
+  <p>Every card is a Babylon 5 airframe — Starfury, Thunderbolt, Frazi, Nial, Sentri. Not one of
+  StarForce Commander’s own factions has a fighter among them. Separately, and regardless of the
+  answer: <b>nothing on a card prices a flight</b>, and the builder explicitly excludes fighters from
+  the hangar’s cost.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">Calibration set</span><span class="starter">Start here</span></div>
+    <p>Treat them the way the cross‑franchise hulls are already treated — clearly marked as fan designs,
+    fully playable, kept out of the printed roster. SFC‑native craft follow later.</p>
+    <p class="table-note"><b>Needs</b> Point values, so flights can be bought.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">Reskin them</span></div>
+    <p>Keep the numbers, give each airframe a Union / Vallari / Aurelian / Pirate identity. The
+    calibration survives; the setting stays its own.</p>
+    <p class="table-note"><b>Needs</b> Six names and a faction each.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">Generic classes</span></div>
+    <p>Publish them by role — interceptor, multi‑role, bomber, recon — and let any faction field them,
+    the way the outline’s own “SMALL CRAFT TYPES” list is written.</p>
+    <p class="table-note"><b>Needs</b> Nothing new; loses the flavour.</p>
+  </div>
+</div>
+
+<h2>Where a number is simply missing</h2>
+
+<div class="qhead">
+  <span class="qnum">Q4</span>
+  <h3>How many attacks does a load buy?</h3>
+  <span class="tag num">Number missing</span>
+</div>
+
+<div class="col">
+  <p>“When ordinance is expended, the counter is flipped” gives the trigger and no quantity. The cards
+  hint at the answer: <b>BASIC is always the weakest strike on every airframe</b> — <code>1×1</code> on
+  the Starfury and Sentri, meaning it hits a ship only on a natural 1, for a single point. That is
+  exactly what a fighter with its ordnance gone should look like.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">One strike, then flip to BASIC</span><span class="starter">Start here</span></div>
+    <p>The card’s configuration is the loaded side; BASIC is the reverse. Fits “a good initial strike and
+    then a reduction in capability,” and needs no new numbers at all.</p>
+    <p class="table-note"><b>At the table</b> The double‑sided counter is solved by the cards you have.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">Two strikes per load</span></div>
+    <p>Flip after the second attack. Keeps a strike flight relevant for two passes instead of one, at the
+    cost of a marker to track the first shot.</p>
+    <p class="table-note"><b>At the table</b> Carriers matter less; flights linger.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">Loadout‑specific counts</span></div>
+    <p>Long‑range anti‑ship torpedoes get one, short‑range anti‑fighter missiles get several. Truest to the
+    loadout list — and the one option that needs a new number on every card.</p>
+    <p class="table-note"><b>At the table</b> Most texture, most bookkeeping.</p>
+  </div>
+</div>
+
+<div class="qhead">
+  <span class="qnum">Q5</span>
+  <h3>Launch and landing rates</h3>
+  <span class="tag num">Answered by the builder</span>
+</div>
+
+<div class="col">
+  <p>Both lines in the outline are placeholders. The V41 builder already fills them: <b>LNCH</b> at
+  2 points — “one launch bay represents the ability to launch a fighter unit” — and <b>LAND</b> at
+  1 point for recovery, with <b>HNGR</b> at 1 point holding “a full fighter unit (generally 2‑12
+  craft).” We would take that as the rule: one flight out per launch bay per phase, one in per landing
+  bay, replacing J8.1.2’s single shuttle for carriers rather than adding to it.</p>
+  <p><em class="q">One conflict to settle: the builder calls the landing bay <b>LAND</b>; rulebook E8.4.6
+  calls it <b>LNDG</b>.</em></p>
+</div>
+
+<h2>Where the published rules force the question</h2>
+
+<div class="qhead">
+  <span class="qnum">Q12</span>
+  <h3>Does a flight launch as one craft, or as six?</h3>
+  <span class="tag pub">Rules conflict</span>
+</div>
+
+<div class="col">
+  <p>H6.15.4 gives every searching ship an extra detection roll <em>per small craft launched</em>, and
+  the Aurelian reference card prints it as “+1 Roll per Small Craft Launched.” If a six‑fighter flight
+  counts as six launches, <b>a cloaked carrier is effectively forbidden to launch</b> — six extra
+  detection dice to every hunter in range.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">A flight is one launch</span><span class="starter">Start here</span></div>
+    <p>One extra detection roll however many fighters go out. Consistent with the flight being the unit
+    everywhere else — movement, range, and targeting all measure the flight, not the fighter.</p>
+    <p class="table-note"><b>At the table</b> Cloaked carriers are viable.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">Every fighter counts</span></div>
+    <p>Six launches, six rolls. Cloak and carrier become mutually exclusive doctrines — which may be
+    exactly the intent, since a cloaked carrier is a strong thing to have.</p>
+    <p class="table-note"><b>At the table</b> Cloak is for raiders, not carriers.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">Launching breaks the cloak outright</span></div>
+    <p>No dice: the carrier decloaks to open the bay. Simplest to adjudicate and the most thematic —
+    the bay doors are the tell.</p>
+    <p class="table-note"><b>At the table</b> One clean decision instead of a dice pool.</p>
+  </div>
+</div>
+
+<div class="qhead">
+  <span class="qnum">Q18</span>
+  <h3>Jamming is doing an enormous amount of work</h3>
+  <span class="tag pub">Untested</span>
+</div>
+
+<div class="col">
+  <p>Jamming runs 5 to 8 across the six airframes, and under <b>E10.2.2</b> a target’s jamming is added
+  to the <em>actual range</em> of any non‑point‑defense attack — pushing the volley into a worse bracket
+  or off the chart entirely. It is not a to‑hit modifier; it is a range shift, and it is easy to
+  under‑read.</p>
+  <p>A Nial at jamming 8 is close to untouchable by a main battery. Only point‑defense weapons, which
+  ignore the penalty under E12.4.3, can answer it. That may be exactly right — it makes PD mounts
+  <em>the</em> anti‑fighter system, which matches F1.20 — but it is the single most consequential number
+  on the cards and nothing has tested it.</p>
+</div>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><span class="opt-l">A</span><span class="opt-t">Exactly as E10.2.2 is published</span><span class="starter">Start here</span></div>
+    <p>Full jamming added to range against non‑PD fire. Play it straight, measure what it does to fighter
+    survivability, and change it only with numbers in hand.</p>
+    <p class="table-note"><b>At the table</b> Main batteries stop bothering with fighters.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">B</span><span class="opt-t">Halve it against fighters</span></div>
+    <p>A Nial reads as jamming 4 to a non‑PD volley. Keeps the ranking between airframes while letting a
+    desperate cruiser still shoot back.</p>
+    <p class="table-note"><b>At the table</b> Fighters are hard to hit, not immune.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><span class="opt-l">C</span><span class="opt-t">Cap the shift at one bracket</span></div>
+    <p>Jamming can worsen the range band by one step and no more. Predictable, and keeps every weapon on
+    its own printed chart.</p>
+    <p class="table-note"><b>At the table</b> Easiest to reason about mid‑game.</p>
+  </div>
+</div>
+
+<h2>The contradictions — one word each</h2>
+<p class="lede col">Four places where the outline disagrees with itself. None needs discussion, only a ruling.</p>
+
+<div class="tw">
+  <table>
+    <thead><tr><th>Where</th><th>The conflict</th><th>What we would use</th></tr></thead>
+    <tbody>
+      <tr><td>Flight size</td><td>“groups of <b>1‑6</b>” vs “4 flights of <b>less than 6</b>”</td><td>1–6 per flight</td></tr>
+      <tr><td>DFR range</td><td>“<b>1‑5</b>” vs a table starting at <b>0: Unarmed</b></td><td>0–5, with 0 meaning unarmed</td></tr>
+      <tr><td>Dodge</td><td>“<b>1‑4</b>” vs the playtest’s “a dodge of <b>1‑2</b>”</td><td>1–4 as the design range</td></tr>
+      <tr><td>Dice</td><td>d6 throughout vs “roll a <b>red die</b>” for casualties</td><td>d6, per Q1</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Two packages to fly</h2>
+<p class="lede col">Rather than testing nineteen variables, two coherent rulesets. Both are complete
+enough to play a whole battle; they differ on the two axes we think are genuinely uncertain.</p>
+
+<div class="packs">
+  <div class="pack">
+    <div class="pack-h">Package A — Straight <span>as written, read literally</span></div>
+    <ul>
+      <li>d6 for fighters, coloured dice for ships (Q1‑A)</li>
+      <li>COA 1 pooled, non‑PD halved first (Q2‑A)</li>
+      <li>One strike, then flip to BASIC (Q4‑A)</li>
+      <li>A flight is one launch for cloak detection (Q12‑A)</li>
+      <li>Jamming exactly as E10.2.2 (Q18‑A)</li>
+      <li>One flight per LNCH box out, per LAND box in (Q5)</li>
+    </ul>
+  </div>
+  <div class="pack">
+    <div class="pack-h">Package B — Ships fight back <span>same core, two dials turned</span></div>
+    <ul>
+      <li>Everything in Package A, except:</li>
+      <li>Jamming halved against fighters (Q18‑B)</li>
+      <li>Two strikes per load before the flip (Q4‑B)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="col">
+  <p><b>What the pair is testing.</b> Package A is the outline read literally, and its likely failure mode
+  is that fighters become untouchable by anything but point defense while a strike flight is spent after
+  one pass. Package B loosens exactly those two things. If A plays well, B is unnecessary; if fighters
+  feel oppressive or disposable, B says which of the two is responsible.</p>
+</div>
+
+<h2>What we would ask you to rule on</h2>
+<div class="col">
+  <ul class="plain">
+    <li><b>Q1</b> — is the d6/coloured seam where we put it, or somewhere else?</li>
+    <li><b>Q2</b> — COA 1 pooled, confirmed? And is COA 2 worth adding weight classes for later?</li>
+    <li><b>Q3</b> — calibration set or roster, and <em>what does a flight cost</em>?</li>
+    <li><b>Q4</b> — is BASIC the expended side of the card, or a third loadout?</li>
+    <li><b>Q12</b> — one launch or six, for a cloaked carrier?</li>
+    <li><b>Q18</b> — is a jamming‑8 fighter meant to be that hard for a main battery to hit?</li>
+    <li>And the small one: <b>LAND</b> or <b>LNDG</b>?</li>
+  </ul>
+  <p>Everything else in the outline we can build from what is already published, or from a default that
+  costs nothing to change later.</p>
+</div>
+
+<footer>
+  Prepared against the April 2026 fighter outline, the v2.6 rulebooks and expansions 1–5, the V41 ship‑form
+  builder, and the sixteen stat cards embedded in the outline document. Probabilities computed on
+  roll‑under d6; dogfight pace assumes simultaneous resolution and equal flights.
+</footer>
+
+</div>
