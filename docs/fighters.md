@@ -99,10 +99,23 @@ Three things are ours, not Doyle's, and are marked as such in the code.
 ## What the AI does with them
 
 It loads for the dogfight while there are enemy fighters in the air and for the hull once the sky
-is clear — a flight that loses the dogfight never reaches the target. It closes on the nearest
-enemy flight in preference to a hull, engages, and takes a spent flight home to rearm rather than
-loitering as a free target for somebody's point defense. It keeps the wing in the hangar while the
-enemy is still a map away.
+is clear — a flight that loses the dogfight never reaches the target. A loaded counter goes for a
+hull rather than a dogfight, because the ordnance is spent in one run. It spreads across the
+enemy's flights before doubling up on one, and takes a spent flight home to rearm rather than
+loitering as a free target for somebody's point defense.
+
+It keeps the wing in the hangar while the enemy is still a map away, and **the horizon is measured
+in the fighters' own speed** — two rounds of flying, so the wing arrives about when the fleets do.
+That was a flat 24 inches at first, which is most of the printed 36" board and badly wrong on a
+72" one: the fleets deploy about fifty inches apart there, so the whole wing sat aboard through the
+approach and launched at sixteen inches, with the shooting already started.
+
+**And one bug worth recording, because it made carriers useless in exactly one configuration.**
+The store hands `aiNextActions` *every* side the computer commands in a single call, so in an
+AI-versus-AI game `sides` is both fleets. This planner asked "who is not in `sides`?" to find its
+enemies, got nobody, and its launch gate was vacuously satisfied — the wing never left the deck.
+It worked whenever a human held one of the fleets, which is the only way it had been tested. Enemies
+are now read off the asking ship's own side, the way every other planner in `ai.ts` does it.
 
 ---
 

@@ -34,6 +34,7 @@ import {
   currentLoadout,
   hangarCapacity,
   launchRate,
+  loadoutOf,
   recoveryRate,
   withinRecoveryRange,
   MAX_FLIGHT_SIZE,
@@ -4764,6 +4765,9 @@ function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameActio
 // Flight Operations (A3.3.5) — fighters
 // ---------------------------------------------------------------------------
 
+/** Combat phases in a round (A3.2) — how much flying a round actually buys. */
+const PHASES_PER_ROUND = 3
+
 /**
  * The AI flies its wing.
  *
@@ -4812,24 +4816,63 @@ function planFlightOps(
     actions.push(action)
   }
   const mine = (f: Flight) => sides.includes(f.side)
-  const enemyFlights = game.flights.filter((f) => !mine(f) && !f.dockedTo && f.members > 0)
-  const enemyShips = activeShips(game).filter((s) => !sides.includes(s.side))
+  /*
+   * Enemies are read off the side that is asking, NOT off `sides`.
+   *
+   * This is the bug that made a carrier useless in every AI-versus-AI battle,
+   * and it is a trap peculiar to this planner. The driver hands
+   * `aiNextActions` *every* side the computer commands in one call, so in a
+   * demo game `sides` is both fleets — and an "enemy is anyone not in `sides`"
+   * test then finds nobody at all. `enemyShips` came back empty, the
+   * launch-when-something-is-in-range gate was vacuously satisfied, and the
+   * wing sat on the deck for the whole battle. It worked when a human held one
+   * of the fleets, which is exactly the configuration it was written and
+   * tested in.
+   *
+   * Every other planner in this file is per-ship and asks `enemiesOf`, which
+   * is why none of them has this problem.
+   */
+  const hostileShips = (side: string) => activeShips(game).filter((s) => s.side !== side)
+  const hostileFlights = (side: string) =>
+    game.flights.filter((f) => f.side !== side && !f.dockedTo && f.members > 0)
 
   // 1. Get the wing off the deck. Space superiority while there is anything to
   //    dogfight; strike when the sky belongs to us.
   for (const ship of fleet) {
     if (hangarCapacity(ship) === 0 || flightsInHangar(game, ship) < 1) continue
+    const enemyShips = hostileShips(ship.side)
+    const enemyFlights = hostileFlights(ship.side)
     const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
     let room = Math.min(
       rate,
       MAX_FLIGHTS_PER_SHIP - flightsAirborne(game, ship).length,
       flightsInHangar(game, ship),
     )
-    // Nothing to fly at yet: keep them aboard rather than parking counters in
-    // open space where a point defense mount can pick them apart for free.
-    if (enemyFlights.length === 0 && enemyShips.every((s) =>
-      actualRange(s.placement.position, ship.placement.position) > 24,
-    )) {
+    /*
+     * When to open the doors.
+     *
+     * A flight parked in empty space is only a target, so the wing stays
+     * aboard until there is something to fly at — but "something to fly at"
+     * has to be measured in the *fighters'* speed, not in a flat number of
+     * inches. The first version of this held the wing until an enemy was
+     * within 24" of the carrier, which is fine on the printed 36" map and
+     * badly wrong on a 72" one: the sides deploy about fifty inches apart, so
+     * the whole wing sat in the hangar through the entire approach and only
+     * launched at sixteen inches, by which time the shooting had started and
+     * the fighters had no time to cross.
+     *
+     * A flight launched now needs `gap / speed` phases to reach the enemy, so
+     * the question is how many phases of flying are worth committing to. Two
+     * rounds — six combat phases — gets the wing there about when the fleets
+     * meet, whatever size the map is.
+     */
+    const card = fighterCard(wingCardFor(ship))
+    const cruise = card ? airframeSpeed(card, loadoutOf(card, 'strike')) : 5
+    const horizon = cruise * PHASES_PER_ROUND * 2
+    if (
+      enemyFlights.length === 0 &&
+      enemyShips.every((s) => actualRange(s.placement.position, ship.placement.position) > horizon)
+    ) {
       room = 0
     }
     const config: FighterConfigKind = enemyFlights.length > 0 ? 'space-superiority' : 'strike'
@@ -4858,6 +4901,8 @@ function planFlightOps(
   for (const flight of game.flights) {
     if (!mine(flight) || flight.dockedTo || flight.members <= 0) continue
     if (flight.activated && flight.attacked) continue
+    const enemyShips = hostileShips(flight.side)
+    const enemyFlights = hostileFlights(flight.side)
     const card = fighterCard(flight.cardId)
     if (!card) continue
     const loadout = currentLoadout(flight, card)

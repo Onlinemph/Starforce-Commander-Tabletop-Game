@@ -259,6 +259,68 @@ describe('the AI in the Flight Operations Segment', () => {
     expect(rounds, 'the AI never settled the segment').toBeGreaterThan(0)
   })
 
+  it('launches when BOTH fleets are the computer\'s — the demo-game bug', () => {
+    /*
+     * Reported from a real battle: an ARK ROYAL fought eight rounds, fired
+     * twelve volleys, and never put one of its twenty-four fighters into the
+     * air.
+     *
+     * The driver hands `aiNextActions` *every* side the computer commands in a
+     * single call, so in an AI-versus-AI game `sides` is both fleets. This
+     * planner asked "who is not in `sides`?" to find its enemies and got
+     * nobody, so the launch gate was vacuously satisfied and the wing stayed on
+     * the deck for the whole battle. It worked whenever a human held one of the
+     * fleets, which is the only configuration it had been tested in.
+     *
+     * Enemies are now read off the asking ship's own side, like every other
+     * planner in the file.
+     */
+    const game = flightOps([
+      shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 }),
+      shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 24, y: 20 }),
+    ])
+    const memo = createAiMemo()
+    // Both sides in one call, exactly as the store's driver does it.
+    const batch = aiNextActions(game, ['Blue', 'Red'], memo, false, 'captain')
+    expect(
+      batch.filter((a) => a.type === 'launch-flight').length,
+      'the carrier kept its wing in the hangar with nobody to fight',
+    ).toBe(2)
+  })
+
+  it('gets the wing up during the approach, not after contact', () => {
+    /*
+     * The hold used to be a flat 24 inches to the carrier. On the printed 36"
+     * map that is most of the board; on a 72" one the fleets deploy about fifty
+     * inches apart, so the whole wing sat aboard through the entire approach
+     * and only launched at sixteen inches — by which time the shooting had
+     * started and the fighters had no time to cross. The horizon is now
+     * measured in the fighters' own speed: two rounds of flying.
+     */
+    const far = flightOps([
+      shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 6, y: 36 }),
+      shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 60, y: 36 }),
+    ])
+    expect(
+      aiNextActions(far, ['Blue'], createAiMemo(), false, 'captain').filter(
+        (a) => a.type === 'launch-flight',
+      ),
+      'launched into empty space from across the map',
+    ).toHaveLength(0)
+
+    // Thirty inches: two rounds of flying for a speed-5 loaded SABRE.
+    const closing = flightOps([
+      shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 6, y: 36 }),
+      shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 34, y: 36 }),
+    ])
+    expect(
+      aiNextActions(closing, ['Blue'], createAiMemo(), false, 'captain').filter(
+        (a) => a.type === 'launch-flight',
+      ).length,
+      'still holding the wing with the enemy two rounds away',
+    ).toBeGreaterThan(0)
+  })
+
   it('does nothing at all, and costs nothing, in a battle with no fighters', () => {
     const game = flightOps([
       shipAt({ id: 'blue-1', side: 'Blue', x: 10, y: 20 }),

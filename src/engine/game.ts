@@ -173,6 +173,7 @@ import {
   flightRecoveryRefusal,
   hangarCapacity,
   launchPositionFor,
+  launchRate,
   loadoutOf,
   MAX_FLIGHT_SIZE,
   strike,
@@ -2016,6 +2017,38 @@ function runSegmentEnter(game: GameState): void {
     // Fresh command cards each combat phase (C1.1.1).
     game.orders = {}
     for (const ship of activeShips(game)) game.orders[ship.id] = defaultCommandCard(ship)
+  }
+  if (game.segment === 'flight-operations') announceHangars(game)
+}
+
+/**
+ * Tell the table it has a wing, once, the first time it could use one.
+ *
+ * A carrier is the only thing in this game that arrives with a whole second
+ * force aboard and no sign of it anywhere the player is looking. Reported from
+ * a real battle: eight rounds in an ARK ROYAL, twelve volleys fired, and not
+ * one of its twenty-four fighters ever left the deck — the panel to launch
+ * them exists, but it lives inside one segment of five, on the selected ship,
+ * and nothing said it was there.
+ *
+ * So the battle log says it, in the segment where it becomes true, and only
+ * while nothing has flown yet. The log is the one surface a player is
+ * certainly reading.
+ */
+function announceHangars(game: GameState): void {
+  // Once, at the first opportunity in the battle. Repeating it every phase
+  // until somebody launches turns a helpful line into eight rounds of nagging.
+  if (game.round !== 1 || game.phase !== 'combat-1') return
+  if (game.counters.flight > 0) return
+  for (const ship of activeShips(game)) {
+    const aboard = flightsInHangar(game, ship)
+    if (aboard < 1 || hangarCapacity(ship) === 0 || launchRate(ship) === 0) continue
+    const card = fighterCard(wingCardFor(ship))
+    pushLog(
+      game,
+      `${ship.name}: ${aboard} flight(s) of ${card?.name ?? 'fighters'} in the hangar, ` +
+        `${launchRate(ship)} launchable a phase — Flight Operations is where they go up.`,
+    )
   }
 }
 
