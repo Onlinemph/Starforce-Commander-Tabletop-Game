@@ -110,6 +110,62 @@ Three things are ours, not Doyle's, and are marked as such in the code.
 
 ---
 
+## How to run a wing, measured
+
+`tools/fighter_doctrine.ts` puts a doctrine through full battles under identical seeds, one knob
+moved at a time, with only Blue flying the variant so a row is an A/B and not self-play. Two
+matchups: an ARK ROYAL against two V-7C RAIDERs, which have no wing, and against an OMEGA, which
+flies Starfuries. The measure is damage delivered per fighter lost — raw damage rewards throwing the
+wing into a battleship's flak, raw casualties reward never fighting — with the scoreboard margin
+beside it, because a wing exists to win the battle rather than to look efficient losing it.
+
+**Two things survived twelve games a row.**
+
+**Keep flights at full strength.** Four flights of three instead of four of six is not half a wing,
+it is a fifth of one:
+
+| | damage | lost | dmg/fighter | runs | flights up | margin |
+| --- | --- | --- | --- | --- | --- | --- |
+| flights of six | 48 | 12.8 | **3.8** | 11.2 | 2.5 | **+4** |
+| flights of three | 14 | 11.6 | 1.2 | 5.3 | 1.6 | −41 |
+
+The collapse is superlinear because COA 1 divides pooled damage by *one fighter's* Structure: a
+flight of three dies to half the fire a flight of six absorbs, and a dead flight makes no more runs.
+Half the fighters make well under half the attacks and lose the battle by 45 points of margin.
+
+**Launch carrying the strike load, even when you expect a fight.** Going up rigged for the dogfight
+costs two thirds of the wing's damage — 15 a game against 48, at 1.2 damage a fighter against 3.8.
+The counter flips to its BASIC face after its run and is a perfectly good dogfighter from then on,
+so the space-superiority load is paying for a capability the wing gets free. Worth noting where this
+one stops: the *margin* barely moved (3 against 4). Against a fleet with no fighters the wing's
+damage is not what decides the battle — the carrier's own guns do about 105 a game to the wing's 48.
+
+**One thing looked unmissable at four games and was not there at twelve.** Clearing the sky before
+striking — dogfight first, hull second — halved the wing's losses, doubled its damage per fighter,
+scored the most kills, kept the most flights in the air, and had the best margin of the three
+target priorities. Five columns agreeing. At twelve games a row:
+
+| | damage | lost | dmg/fighter | kills | flights up | margin |
+| --- | --- | --- | --- | --- | --- | --- |
+| default (the load decides) | 23 | 16.3 | **1.4** | 22.7 | 2.4 | −32 |
+| clear the sky first | 15 | 12.9 | 1.1 | 24.8 | 2.8 | −32 |
+
+What is left is a doctrine that loses fewer fighters and keeps more of them flying while delivering
+a third less damage, for the same result. The default did not change.
+
+Five columns agreeing is not five pieces of evidence when all five are computed off the same four
+games. The one genuinely independent check was the second matchup, and it disagreed — which is the
+thing that should have been read first.
+
+**And two knobs are unmeasured rather than settled.** The launch horizon and massing both moved the
+four-game numbers by less than the finding that evaporated, so neither has been tested at a sample
+that would mean anything; the defaults there rest on reasoning, not on measurement. Massing is worse
+than untested against a single-hull enemy — concentrate and distribute both mean "pick a hull" when
+there is one hull, and the sweep printed two byte-identical rows before that combination was
+skipped.
+
+---
+
 ## What the AI does with them
 
 It loads for the dogfight while there are enemy fighters in the air and for the hull once the sky
