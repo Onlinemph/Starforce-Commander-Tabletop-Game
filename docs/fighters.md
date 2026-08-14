@@ -47,8 +47,13 @@ inside a single roll, which is what lets both live in the same engine without a 
      answers each hit with a Dodge roll. Unsaved hits kill outright — Structure is what a
      *starship's* guns have to chew through, not what another fighter's cannon does.
    - **Striking.** One d6 per fighter against the card's Strike range, each hit doing the card's
-     damage to the shield the flight is bearing on. The load is spent in the act.
+     damage to the shield the flight is bearing on. The load is spent in the act. The run is
+     *declared* now and *lands* when the segment closes — see E7.1.2 below.
    - **Landing.** One flight per undamaged LNDG box, finishing within two inches of the carrier.
+   - **One volley a shield (E7.1.2).** Every strike run against the same ship's same shield in
+     the same combat phase resolves as **one volley**, not one each. Held as they are declared and
+     settled when the segment closes, the same way homing impacts and H2.4.2 simultaneous fire
+     already work.
 3. **Hangar Bay Segment (A3.4.4).** Printed "TBD" in the published sequence; this is what goes in
    it. A flight that is aboard rearms — the counter comes off its BASIC face. Fighters lost are
    lost; nothing here replaces them.
@@ -77,6 +82,32 @@ average `6 × 3/6 × 4/6 = 2.0` kills a phase, so a flight of six is wiped in th
 one round. The 4‑25‑2026 notes recorded 2, 4 and 5 kills across three phases. That agreement is
 checked in `src/engine/fighters.test.ts` rather than assumed, because a model that cannot
 reproduce its own source's numbers is the wrong model.
+
+---
+
+## E7.1.2, and the forward reference nobody picked up
+
+The rule is worth quoting, because it is easy to remember wrong — it is not a cap on how many
+flights may attack a shield, it is **pooling**:
+
+> **E7.1.2 Homing Weapon Volley Definition:** All homing weapons striking a single ship on a single
+> shield during a single combat phase are a single volley for damage purposes. This applies even if
+> those homing weapons are from multiple ships. *(See Fighter Operations rules and Homing Weapon
+> rules.)*
+
+That matters more than it looks. A volley is what the damage deck is drawn against and reshuffled
+after (E7.1.3), and what a shield absorbs against — so four runs resolved separately against one
+shield are four hands of cards and four absorptions where the rule says one of each. A real battle
+found it: four SABRE flights each resolved a separate volley into the same forward shield.
+
+Measured after the fix, eight games: **18.9 strike runs resolve as 7.0 volleys, 2.7 runs pooling
+into each.** Total damage is unchanged; what changed is how it lands.
+
+**The parenthetical is a question for Doyle.** "(See Fighter Operations rules…)" is a forward
+reference the April outline never picks up: the rulebook expects the fighter rules to say how
+fighters fold into E7.1.2, and they do not exist. We read it as *yes, fighter ordnance pools* —
+the outline calls the load a missile attack, and the alternative is precisely what E7.1.2 exists to
+stop — but that is our reading, not a ruling.
 
 ---
 

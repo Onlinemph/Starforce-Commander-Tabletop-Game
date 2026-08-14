@@ -44,6 +44,7 @@ import {
   launchFlight,
   moveFlight,
   recoverFlight,
+  resolveFlightStrikes,
   runHangarBay,
   smallTargetsFor,
   type GameState,
@@ -493,6 +494,8 @@ describe('striking a starship (Q4-A: one strike, then flip to BASIC)', () => {
     )
     const before = game.ships[1].blueShieldDamage.F + game.ships[1].greenShieldDamage.F
     flightStrike(game, 'blue', 'target')
+    // The run is declared now and lands when the segment closes (E7.1.2).
+    resolveFlightStrikes(game)
     const after = game.ships[1].blueShieldDamage.F + game.ships[1].greenShieldDamage.F
     // Peregrine strike is 1-4 for 4 apiece across six fighters; the forward
     // shield takes it, and something lands on essentially every seed.
@@ -757,6 +760,85 @@ describe('flying a flight', () => {
 })
 
 // ---------------------------------------------------------------------------
+
+describe('one volley a shield, however many flights (E7.1.2)', () => {
+  /*
+   * "All homing weapons striking a single ship on a single shield during a
+   * single combat phase are a single volley for damage purposes. This applies
+   * even if those homing weapons are from multiple ships."
+   *
+   * That rule was not holding for fighters, and a real battle showed it: four
+   * SABRE flights each resolved a separate volley against the same forward
+   * shield, each drawing its own hand of damage cards. A volley is what the
+   * deck is drawn against and reshuffled after (E7.1.3) and what a shield
+   * absorbs against, so four runs resolved separately are four of each where
+   * the rule says one.
+   */
+  function twoFlightsOn(target: ShipState, game: GameState) {
+    game.flights.push(
+      flightAt({ id: 'a', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
+      flightAt({ id: 'b', side: 'Blue', x: 10, y: 6, config: 'strike', cardId: 'halberd' }),
+    )
+    expect(flightStrike(game, 'a', target.id)).toBeNull()
+    expect(flightStrike(game, 'b', target.id)).toBeNull()
+  }
+
+  it('holds the runs and lands them as one volley on the shield', () => {
+    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
+    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
+    twoFlightsOn(target, game)
+
+    // Declared, pooled, nothing applied yet.
+    expect(game.flightStrikes).toHaveLength(1)
+    expect(game.flightStrikes[0].runs).toBe(2)
+    expect(game.flightStrikes[0].side).toBe('F')
+    const before = target.blueShieldDamage.F + target.greenShieldDamage.F
+    expect(before).toBe(0)
+
+    advanceSegment(game)
+    expect(game.flightStrikes, 'the pool should be settled and cleared').toHaveLength(0)
+    expect(target.blueShieldDamage.F + target.greenShieldDamage.F).toBeGreaterThan(0)
+    expect(game.log.some((l) => /resolve as one volley/.test(l.message))).toBe(true)
+  })
+
+  it('keeps separate shields separate — the rule is per shield, not per ship', () => {
+    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
+    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
+    game.flights.push(
+      // Dead ahead and dead astern of a ship pointed up the board.
+      flightAt({ id: 'fore', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
+      flightAt({ id: 'aft', side: 'Blue', x: 10, y: 14, config: 'strike', cardId: 'halberd' }),
+    )
+    flightStrike(game, 'fore', 'target')
+    flightStrike(game, 'aft', 'target')
+    expect(game.flightStrikes).toHaveLength(2)
+    expect(new Set(game.flightStrikes.map((p) => p.side))).toEqual(new Set(['F', 'A']))
+  })
+
+  it('pools across sides too — the rule says "even from multiple ships"', () => {
+    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
+    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
+    game.flights.push(
+      flightAt({ id: 'a', side: 'Blue', x: 10, y: 5, config: 'strike', cardId: 'halberd' }),
+      flightAt({ id: 'b', side: 'Green', x: 10, y: 6, config: 'strike', cardId: 'halberd' }),
+    )
+    flightStrike(game, 'a', 'target')
+    flightStrike(game, 'b', 'target')
+    expect(game.flightStrikes).toHaveLength(1)
+    expect(game.flightStrikes[0].runs).toBe(2)
+  })
+
+  it('a ship destroyed before the volley lands takes nothing more', () => {
+    const target = shipAt({ id: 'target', side: 'Red', form: VALLARI_CRUISER, x: 10, y: 10 })
+    const game = battle([shipAt({ id: 'carrier', form: carrierForm() }), target])
+    twoFlightsOn(target, game)
+    target.destroyed = true
+    const before = target.blueShieldDamage.F
+    resolveFlightStrikes(game)
+    expect(target.blueShieldDamage.F).toBe(before)
+    expect(game.flightStrikes).toHaveLength(0)
+  })
+})
 
 describe('the Hangar Bay Segment (A3.4.4, printed TBD)', () => {
   it('rearms a spent flight that is aboard, and leaves one in the air alone', () => {

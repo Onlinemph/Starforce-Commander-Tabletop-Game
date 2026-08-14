@@ -101,6 +101,10 @@ export function stateHash(game: GameState): string {
           `x${f.members}/${f.damage}${f.spent ? '!' : ''}${f.dockedTo ? `>${f.dockedTo}` : ''}`,
       )
       .join(';'),
+    // Strike runs declared but not yet resolved (E7.1.2). They are real state
+    // between the Flight Operations Segment opening and closing, and a console
+    // that disagreed about them would disagree about the volley that lands.
+    game.flightStrikes.map((p) => `${p.targetId}:${p.side}:${p.damage}x${p.runs}`).join(';'),
   ].join('|')
   return fnv1a(shape)
 }

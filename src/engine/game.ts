@@ -367,6 +367,18 @@ export interface Scenario {
   missions?: MissionDef[]
 }
 
+/** Strike runs against one ship's one shield, pooled into a volley (E7.1.2). */
+export interface PendingStrike {
+  targetId: string
+  side: ShieldSide
+  /** Total damage from every run that struck this shield this phase. */
+  damage: number
+  /** How many flights contributed, for the log. */
+  runs: number
+  /** Names of the flights, for the log. */
+  by: string[]
+}
+
 // ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
@@ -589,6 +601,16 @@ export interface GameState {
   /** Fighter flights on the map. Package A of the Apr 2026 outline. */
   flights: Flight[]
   /**
+   * Strike runs waiting to be resolved together (E7.1.2).
+   *
+   * Everything striking one ship on one shield in one combat phase is a single
+   * volley for damage purposes, "even if those homing weapons are from multiple
+   * ships" — so four flights hitting the same shield are one volley, not four.
+   * The runs are pooled here as they are declared and settled when the Flight
+   * Operations Segment closes.
+   */
+  flightStrikes: PendingStrike[]
+  /**
    * Serial numbers for the counters this battle puts on the map.
    *
    * They live on the game rather than in a module counter because a journal
@@ -702,6 +724,7 @@ export function createGame(args: {
     ops: newOperationsState(),
     smallCraft: [],
     flights: [],
+    flightStrikes: [],
     counters: { craft: 0, flight: 0 },
     escapePods: [],
     crewRescued: {},
@@ -1812,6 +1835,10 @@ function runSegmentExit(game: GameState): void {
       break
 
     case 'flight-operations':
+      // Every strike run of the phase lands together, one volley a shield
+      // (E7.1.2) — before the markers come off, so the segment's own damage is
+      // resolved inside the segment.
+      resolveFlightStrikes(game)
       // Activation markers come off once every craft has had its turn (J8.2.2).
       for (const craft of game.smallCraft) craft.activated = false
       for (const flight of game.flights) {
@@ -3471,28 +3498,80 @@ export function flightStrike(game: GameState, flightId: string, shipId: string):
     return null
   }
 
+  /*
+   * E7.1.2 — the run is *declared* now and *resolved* with every other run
+   * against the same shield when the segment closes. "All homing weapons
+   * striking a single ship on a single shield during a single combat phase are
+   * a single volley for damage purposes. This applies even if those homing
+   * weapons are from multiple ships."
+   *
+   * That rule carries a forward reference — "(See Fighter Operations rules and
+   * Homing Weapon rules.)" — and the fighter outline never picks it up, so
+   * whether a flight's ordnance is a homing weapon for this purpose is a
+   * question for Doyle (see docs/fighter-questions.md). We read it as yes: the
+   * outline calls the load a missile attack, and the alternative has four
+   * flights drawing four separate hands of damage cards against one shield,
+   * which is the thing E7.1.2 exists to stop.
+   */
   const side = shieldsFacing(flight.position, ship.placement.position, ship.placement.heading)[0]
-  const outcome = applyVolley(
-    ship,
-    {
-      standard: result.damage,
-      leak: 0,
-      structurePenetration: 0,
+  const pool = game.flightStrikes.find((p) => p.targetId === ship.id && p.side === side)
+  if (pool) {
+    pool.damage += result.damage
+    pool.runs += 1
+    pool.by.push(flightName(game, flight))
+  } else {
+    game.flightStrikes.push({
+      targetId: ship.id,
       side,
-      shieldsInoperative:
-        shieldsInoperative(cloudConditions(game.scenario), ship) || shipIsCloaked(game, ship),
-    },
-    damageContext(game),
-  )
-  recordShieldHit(game, ship.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
-  damageRevealsCloak(game, ship, result.damage)
+      damage: result.damage,
+      runs: 1,
+      by: [flightName(game, flight)],
+    })
+  }
   pushLog(
     game,
-    `${flightName(game, flight)} strikes ${ship.name}'s ${side} shield: ` +
+    `${flightName(game, flight)} runs in on ${ship.name}'s ${side} shield: ` +
       `${result.hits} hit(s) on 1‑${loadout.strikeHit} for ${result.damage} damage` +
-      (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
+      ` — held for the shield's volley (E7.1.2)` +
+      (flight.spent ? ', ordnance expended' : ''),
   )
   return null
+}
+
+/**
+ * Settle every strike run of the phase, one volley per shield (E7.1.2).
+ *
+ * Pooling matters more than it looks. A volley is what the damage deck is
+ * drawn against and reshuffled after (E7.1.3), and it is what shields absorb
+ * against — so four runs resolved separately against one shield are four hands
+ * of cards and four absorptions, where the rule says they are one of each.
+ */
+export function resolveFlightStrikes(game: GameState): void {
+  const pending = game.flightStrikes
+  game.flightStrikes = []
+  for (const pool of pending) {
+    const ship = game.ships.find((s) => s.id === pool.targetId)
+    if (!ship || ship.destroyed || pool.damage <= 0) continue
+    const outcome = applyVolley(
+      ship,
+      {
+        standard: pool.damage,
+        leak: 0,
+        structurePenetration: 0,
+        side: pool.side,
+        shieldsInoperative:
+          shieldsInoperative(cloudConditions(game.scenario), ship) || shipIsCloaked(game, ship),
+      },
+      damageContext(game),
+    )
+    recordShieldHit(game, ship.id, pool.side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+    damageRevealsCloak(game, ship, pool.damage)
+    pushLog(
+      game,
+      `${pool.runs} strike run(s) on ${ship.name}'s ${pool.side} shield resolve as one volley: ` +
+        `${pool.damage} damage (E7.1.2).`,
+    )
+  }
 }
 
 /**
