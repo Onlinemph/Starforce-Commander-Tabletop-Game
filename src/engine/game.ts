@@ -3237,6 +3237,24 @@ export function flightsInHangar(game: GameState, ship: ShipState): number {
 }
 
 /**
+ * What is actually worth putting up: a fresh flight, or one on the deck that
+ * has its ordnance back.
+ *
+ * A flight that has just landed with its load spent is waiting for the Hangar
+ * Bay Segment, which is at the end of the round — launching it again in the
+ * same phase it landed achieves nothing at all. Measured in a real battle
+ * before this existed: the wing spent rounds four to six landing two flights
+ * and relaunching the same two flights every single phase, still on their
+ * BASIC face, never rearming, never fighting.
+ *
+ * The rule is the AI's, not the engine's — a player may launch a spent flight
+ * whenever they like, and a BASIC counter is a perfectly good dogfighter.
+ */
+export function flightsReadyToFly(game: GameState, ship: ShipState): number {
+  return ship.flightsAboard + flightsDocked(game, ship).filter((f) => !f.spent).length
+}
+
+/**
  * The card a carrier flies.
  *
  * A scenario may name one; otherwise it is the fighter that ship's own navy
@@ -3284,7 +3302,7 @@ export function launchFlight(
    * load the Hangar Bay Segment gave it back. The wing is a fixed number of
    * flights taking losses over a battle, not an infinite supply of six-packs.
    */
-  const docked = flightsDocked(game, ship)[0]
+  const docked = flightsDocked(game, ship).find((f) => !f.spent) ?? flightsDocked(game, ship)[0]
   if (docked) {
     delete docked.dockedTo
     docked.position = launchPositionFor(ship)
@@ -3294,7 +3312,7 @@ export function launchFlight(
       (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0) + 1
     pushLog(
       game,
-      `${ship.name}: puts ${flightName(game, docked)} back up — ${docked.members} aboard, ` +
+      `${ship.name}: puts ${flightName(game, docked)} back up — ${docked.members} strong, ` +
         `${CONFIG_LABELS[currentConfig(docked)]}.`,
     )
     launchRevealsCloak(game, ship, 1)

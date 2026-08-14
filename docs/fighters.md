@@ -104,6 +104,13 @@ hull rather than a dogfight, because the ordnance is spent in one run. It spread
 enemy's flights before doubling up on one, and takes a spent flight home to rearm rather than
 loitering as a free target for somebody's point defense.
 
+It lands a spent flight to rearm and then **leaves it down until the Hangar Bay Segment has
+actually run**. Landing is only worth doing for the rearm, and the rearm is at the end of the
+round — a flight that goes back up in the phase it landed has achieved nothing and stopped fighting
+to do it. Measured before that rule existed: a carrier spent rounds four to six landing two flights
+and relaunching the same two, every phase, still on their BASIC face. The engine still permits it,
+because a BASIC counter is a fine dogfighter and a player may launch one whenever they like.
+
 It keeps the wing in the hangar while the enemy is still a map away, and **the horizon is measured
 in the fighters' own speed** — two rounds of flying, so the wing arrives about when the fleets do.
 That was a flat 24 inches at first, which is most of the printed 36" board and badly wrong on a

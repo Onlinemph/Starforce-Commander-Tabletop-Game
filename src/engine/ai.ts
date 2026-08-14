@@ -25,6 +25,7 @@ import {
   activeShips,
   flightsAirborne,
   flightsInHangar,
+  flightsReadyToFly,
   wingCardFor,
   PHASE_ORDER,
   type GameState,
@@ -4839,14 +4840,17 @@ function planFlightOps(
   // 1. Get the wing off the deck. Space superiority while there is anything to
   //    dogfight; strike when the sky belongs to us.
   for (const ship of fleet) {
-    if (hangarCapacity(ship) === 0 || flightsInHangar(game, ship) < 1) continue
+    if (hangarCapacity(ship) === 0 || flightsReadyToFly(game, ship) < 1) continue
     const enemyShips = hostileShips(ship.side)
     const enemyFlights = hostileFlights(ship.side)
     const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
     let room = Math.min(
       rate,
       MAX_FLIGHTS_PER_SHIP - flightsAirborne(game, ship).length,
-      flightsInHangar(game, ship),
+      // A flight that landed with its load spent waits for the Hangar Bay
+      // Segment. Sending it straight back up is a touch-and-go that costs the
+      // wing its whole mid-game.
+      flightsReadyToFly(game, ship),
     )
     /*
      * When to open the doors.

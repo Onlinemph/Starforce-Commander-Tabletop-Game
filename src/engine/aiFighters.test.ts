@@ -3,7 +3,7 @@ import { THE_DUEL } from '../data/scenarios'
 import { VALLARI_CRUISER, YORKTOWN } from '../data/ships'
 import { applyAction } from './actions'
 import { aiNextActions, createAiMemo } from './ai'
-import { createGame, launchFlight, type GameState } from './game'
+import { createGame, launchFlight, recoverFlight, runHangarBay, type GameState } from './game'
 import { createShip, type ShipState } from './shipState'
 import type { ShipForm } from './types'
 
@@ -319,6 +319,58 @@ describe('the AI in the Flight Operations Segment', () => {
       ).length,
       'still holding the wing with the enemy two rounds away',
     ).toBeGreaterThan(0)
+  })
+
+  it('does not land a spent flight and put it straight back up', () => {
+    /*
+     * From a battle report where the wing otherwise worked: rounds four to six
+     * were nothing but the carrier landing two flights and relaunching the same
+     * two flights, every phase, still on their BASIC face. Landing is only
+     * worth doing for the rearm, and the rearm is the Hangar Bay Segment at the
+     * end of the round — so a flight that goes back up in the phase it landed
+     * has achieved precisely nothing and stopped fighting to do it.
+     *
+     * The engine still allows it: a BASIC counter is a fine dogfighter and a
+     * player may launch one whenever they like. It is the AI that should not.
+     */
+    const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+    const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 24, y: 20 })])
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    const flight = game.flights[0]
+    flight.spent = true
+    flight.activated = false
+    flight.position = { x: 10, y: 21 }
+    // The deck is otherwise empty, so the only thing it could launch is the
+    // flight it is about to recover.
+    ship.flightsAboard = 0
+
+    const taken = play(game, 'Blue')
+    expect(taken).toContain('recover-flight')
+    expect(taken, 'the flight went straight back up without rearming').not.toContain('launch-flight')
+    expect(game.flights[0].dockedTo).toBe(ship.id)
+    expect(game.flights[0].spent, 'still spent — the Hangar Bay Segment has not run').toBe(true)
+
+    // And once the segment has run, it flies again.
+    runHangarBay(game)
+    expect(game.flights[0].spent).toBe(false)
+    game.ops.flightsLaunchedThisPhase = {}
+    for (const f of game.flights) f.activated = false
+    expect(play(game, 'Blue')).toContain('launch-flight')
+  })
+
+  it('relaunches the flight that landed, with the fighters it has left', () => {
+    const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+    const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 24, y: 20 })])
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    const flight = game.flights[0]
+    flight.members = 3
+    flight.position = { x: 10, y: 21 }
+    recoverFlight(game, flight.id, ship)
+    game.ops.flightsLaunchedThisPhase = {}
+    // A rearmed flight on the deck goes up before a fresh one is broken out.
+    expect(launchFlight(game, ship)).toBeNull()
+    expect(game.flights.filter((f) => !f.dockedTo)).toHaveLength(1)
+    expect(game.flights.find((f) => !f.dockedTo)!.members).toBe(3)
   })
 
   it('does nothing at all, and costs nothing, in a battle with no fighters', () => {
