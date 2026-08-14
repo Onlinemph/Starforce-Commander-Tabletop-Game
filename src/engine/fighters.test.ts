@@ -17,7 +17,13 @@ import {
   dogfight,
   flightCasualties,
   fighterPoints,
+  flightDamagePerRound,
+  flightDurability,
   flightPoints,
+  soakEfficiency,
+  JAMMING_PENALTY,
+  PD_SHARE,
+  type FighterConfigKind,
   hangarCapacity,
   launchRate,
   loadoutOf,
@@ -281,12 +287,98 @@ describe('the calibration set', () => {
     const six = FIGHTER_CARDS.map((c) => flightPoints(c, 'space-superiority', 6))
     for (const p of six) {
       expect(p).toBeGreaterThan(10)
-      expect(p).toBeLessThan(40)
+      expect(p).toBeLessThan(50)
     }
     // The Nial is the premium airframe on every stat that matters.
     const nial = fighterPoints(fighterCard('nial')!, loadoutOf(fighterCard('nial')!, 'space-superiority')!)
     const sentri = fighterPoints(fighterCard('sentri')!, loadoutOf(fighterCard('sentri')!, 'space-superiority')!)
     expect(nial).toBeGreaterThan(sentri)
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+describe('what a flight costs (Q3, derived)', () => {
+  /*
+   * The working is `tools/fighter_points.ts`: price the 93 printed hulls in
+   * damage delivered per round and damage needed to remove them, fit their
+   * printed point values against the product, then price a flight in the same
+   * currencies. These pin the parts of that model that a change to the cards or
+   * to the Package A rules would silently move.
+   */
+  const sabre = fighterCard('sabre')!
+
+  it('reads the published rules into the soak, not a fudge factor', () => {
+    // Point defense lands whole (E12.4.3); a battery is halved (E10.2.3,
+    // E12.4.4) and then pushed down the chart by jamming (E10.2.2).
+    expect(PD_SHARE).toBeCloseTo(0.71, 2)
+    expect(soakEfficiency(0)).toBeCloseTo(PD_SHARE + (1 - PD_SHARE) * 0.5, 4)
+    // More jamming is always harder to shoot, and never free.
+    for (let j = 1; j <= 8; j++) {
+      expect(soakEfficiency(j)).toBeLessThan(soakEfficiency(j - 1))
+      expect(soakEfficiency(j)).toBeGreaterThan(PD_SHARE)
+    }
+    // A Nial at jamming 8 leaves a battery about a third of its chart.
+    expect(JAMMING_PENALTY[8]).toBeCloseTo(0.36, 2)
+  })
+
+  it('counts three attacks a round, and one loaded strike among them (Q4-A)', () => {
+    // SABRE strike: 1-3 for 2, then BASIC 1-2 for 1 twice.
+    const loaded = 6 * (3 / 6) * 2
+    const guns = 6 * (2 / 6) * 1
+    expect(flightDamagePerRound(sabre, 'strike', 6)).toBeCloseTo(loaded + guns * 2, 6)
+    // BASIC has nothing to expend, so it is guns three times.
+    expect(flightDamagePerRound(sabre, 'basic', 6)).toBeCloseTo(guns * 3, 6)
+  })
+
+  it('divides pooled damage by Structure, as COA 1 does', () => {
+    // Six SABREs at Structure 4 are a 24-point pool before the rules above.
+    const raw = 6 * sabre.structure
+    expect(flightDurability(sabre, 'space-superiority', 6)).toBeGreaterThan(raw)
+    // Half a flight is half the soak.
+    expect(flightDurability(sabre, 'space-superiority', 3)).toBeCloseTo(
+      flightDurability(sabre, 'space-superiority', 6) / 2,
+      6,
+    )
+  })
+
+  it('lands where the ARK ROYAL measurement put it', () => {
+    /*
+     * Measured before any of this existed: the ARK ROYAL's 47.3-point hull
+     * flying 24 fighters fought dead even with a 100-point EXETER II over 16
+     * games, so the wing was worth about 53 points — 13 a flight — against a
+     * fleet that brought no fighters. That is the `strike` role, not `all`.
+     */
+    const strikeOnly = SFC_FIGHTERS.map((c) => flightPoints(c, 'strike', 6, 'strike'))
+    const mean = strikeOnly.reduce((a, b) => a + b, 0) / strikeOnly.length
+    expect(mean, 'derived price drifted away from the measurement').toBeGreaterThan(5)
+    expect(mean).toBeLessThan(16)
+  })
+
+  it('ranks the roster the way the cards do', () => {
+    const price = (id: string, kind: FighterConfigKind) => flightPoints(fighterCard(id)!, kind, 6)
+    // The Nial is the premium airframe in the calibration set; the MAGPIE is
+    // the cheapest thing in the game, and is meant to be.
+    const all = [...SFC_FIGHTERS, ...FAN_FIGHTERS].flatMap((c) =>
+      c.loadouts.map((l) => ({ id: c.id, kind: l.kind, points: flightPoints(c, l.kind, 6) })),
+    )
+    const dearest = all.reduce((a, b) => (b.points > a.points ? b : a))
+    const cheapest = all.reduce((a, b) => (b.points < a.points ? b : a))
+    expect(dearest.id).toBe('nial')
+    expect(cheapest.id).toBe('magpie')
+    // Within an airframe, the dogfight loadout costs more than the bomb truck:
+    // it is the one that can do both jobs.
+    expect(price('sabre', 'space-superiority')).toBeGreaterThan(price('sabre', 'strike'))
+  })
+
+  it('prices the anti-ship role below the whole aircraft', () => {
+    for (const c of SFC_FIGHTERS) {
+      for (const kind of ['strike', 'space-superiority', 'basic'] as const) {
+        expect(flightPoints(c, kind, 6, 'strike'), `${c.name} ${kind}`).toBeLessThan(
+          flightPoints(c, kind, 6, 'all'),
+        )
+      }
+    }
   })
 })
 

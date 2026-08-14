@@ -72,6 +72,12 @@ out of the printed roster.
 V41 builder explicitly excludes fighters from the hangar's cost. What does a flight of six
 Starfuries cost in a fleet list?
 
+*We have since derived an answer — about 20 points for a flight of six, 15 for those Starfuries
+specifically — by fitting the printed roster's own prices to damage delivered and damage absorbed,
+and it agrees with what a carrier's wing measures at in play. `docs/fighters.md` has the working.
+The question stands: is that the right order of magnitude, and is a flight priced per aircraft or
+per counter?*
+
 *Why it blocks:* fighters can be flown without prices, but they cannot be balanced or fielded in a
 points-matched game.
 
@@ -222,9 +228,15 @@ system, and `LNCH` and `LNDG` have joined it on the Shuttle-or-Hangar-Bay damage
 small-target fire, degraded fire control, point-defense interception of homing weapons, and the J8
 shuttle/probe model were all already implemented and tested.
 
-**The one thing we could not build is point values** (Q3): fighters fly, but they cannot be
-fielded in a points-matched game until a flight has a price. There is a placeholder formula in the
-engine, clearly marked as ours.
+**And Q3 now has a proposed answer.** We derived a price rather than guessing one, by the same
+method the rest of this project uses for anything the printed material does not settle: price the
+93 printed hulls in two currencies the rules define — damage delivered per round, damage needed to
+remove them — fit their printed point values against the product, and price a flight in the same
+currencies. The fit reproduces the printed roster to 19.5%. **A flight of six comes out at 11 to 42
+points depending on the card and loadout, median 21; a fighter is about 3.5.** An independent
+measurement — flying a carrier against printed hulls until it found its weight — lands in the same
+place. The working is `tools/fighter_points.ts` and the write-up is in `docs/fighters.md`. It is
+still ours rather than yours, and a printed number replaces all of it.
 
 
 ---

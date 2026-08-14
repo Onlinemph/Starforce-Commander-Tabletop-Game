@@ -2871,11 +2871,15 @@ const DESIGNS: Design[] = [
      * to be the most efficient hull in the printed roster — so the package
      * fights at about 100 points, and ×2.1 is what puts it there.
      *
-     * Two independent estimates agree on the order: the provisional
-     * `fighterPoints` formula in the engine makes four six-Starfury strike
-     * flights about 77 points, which would put the package at 124. Measured
-     * play says 100, and the gap is the half of the wing that is always either
-     * in transit, rearming, or dead.
+     * The wing has since been priced properly — `tools/fighter_points.ts`
+     * fits the printed roster's own point values to damage delivered and
+     * damage absorbed, and `docs/fighters.md` has the working. It puts this
+     * carrier's hull and wing at 75 points counting the strike role alone and
+     * 115 counting everything the aircraft can do. Measured play sits between
+     * them at 100, nearer the reading that credits the wing for tying up an
+     * enemy's whole battery. The modifier stays measured rather than modelled,
+     * because for one specific hull a measurement beats a formula — but the
+     * two now bracket each other, which they did not before.
      *
      * **Delete this modifier the day flights are bought separately.** It is
      * standing in for their price, not for anything about the hull.

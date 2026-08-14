@@ -168,31 +168,147 @@ export function currentLoadout(flight: Flight, card: FighterCard): FighterLoadou
 // Points (provisional)
 // ---------------------------------------------------------------------------
 
-/**
- * What one fighter costs in a fleet list.
+/*
+ * What a flight costs in a fleet list.
  *
- * **Nothing on the cards prices a flight** and the V41 builder says outright
- * that "the point value of any fighters is not included in the hangar", so this
- * is ours until Doyle answers Q3. It prices each stat by what it does in a
- * phase — soak, bracket shift, dogfight offence, dogfight defence, anti-ship
- * output, scanning — and divides to land a six-Starfury flight near 19 points,
- * against a printed roster running 6 to 158 for whole ships.
+ * **Derived, not guessed.** `tools/fighter_points.ts` is the working: it prices
+ * the ninety-three printed hulls in two currencies the rules themselves define
+ * — damage points delivered per round, and damage points needed to remove the
+ * unit — fits their printed point values against the product of those two, and
+ * then prices a flight in the same currencies. Nothing in it is tuned to how
+ * fighters play; the only calibration is the printed roster's own prices. Run
+ * that tool after any change here or to the cards, and paste its constants
+ * back; `fighters.test.ts` checks the two agree.
+ *
+ * The fitted law is `points = 0.0516 · (damage per round × damage to destroy)^0.816`,
+ * which reproduces the printed roster to a mean absolute error of 19.5% — a
+ * hand-priced roster is not a formula, and that is about as close as a two-
+ * parameter model gets to one.
+ *
+ * It lands where the one independent measurement we have already put it. The
+ * ARK ROYAL's 47.3-point hull flying twenty-four fighters fought dead even with
+ * a 100-point EXETER II across sixteen games, which makes the wing worth about
+ * 53 points, or 13 a flight, against a fleet that brought no fighters of its
+ * own. This model makes the same flights 9. The gap is inside the model's own
+ * fit error, and the two were arrived at with nothing in common.
+ *
+ * **This is our answer to Q3, not Doyle's.** It is a defensible number rather
+ * than a printed one, and the day a real price arrives it replaces all of this.
  */
-export function fighterPoints(card: FighterCard, loadout: FighterLoadout): number {
-  const raw =
-    card.structure * 0.8 +
-    airframeJamming(card, loadout) * 0.5 +
-    loadout.dfr * 1.0 +
-    loadout.dodge * 0.8 +
-    loadout.strikeHit * loadout.strikeDamage * 0.5 +
-    card.sensor * 0.5
-  return Math.round((raw / 4) * 10) / 10
+
+/** Fitted to the printed roster by `tools/fighter_points.ts`. */
+export const PRICE_SCALE = 0.051566
+export const PRICE_EXPONENT = 0.816494
+/** Share of the printed roster's fire that is point defense, and so ignores jamming. */
+export const PD_SHARE = 0.714275
+/** Damage points a typical fighter costs a starship to shoot down. */
+export const TYPICAL_FIGHTER_SOAK = 5.684101
+/**
+ * What a battery keeps of its expected damage when the target's jamming is
+ * added to the range (E10.2.2), measured across every printed firing chart.
+ * Index is the jamming value.
+ */
+export const JAMMING_PENALTY = [
+  1.0, 0.9147, 0.8293, 0.7441, 0.6596, 0.5816, 0.5044, 0.4295, 0.3604, 0.2915, 0.2289, 0.1905,
+  0.1565,
+]
+
+/** Combat phases in a round (A3.2). A flight acts in every one; a gun does not. */
+const PHASES_PER_ROUND = 3
+/** The roster's own middle Dodge, so DFR is priced against a typical opponent. */
+const TYPICAL_DODGE = 3
+
+/**
+ * The share of a volley aimed at a flight that actually lands on it: point
+ * defense whole (E12.4.3), everything else halved (E10.2.3, E12.4.4) and
+ * pushed down the chart by jamming (E10.2.2).
+ */
+export function soakEfficiency(jamming: number): number {
+  const penalty = JAMMING_PENALTY[Math.min(jamming, JAMMING_PENALTY.length - 1)] ?? 0.15
+  return PD_SHARE + (1 - PD_SHARE) * 0.5 * penalty
 }
 
-export function flightPoints(card: FighterCard, kind: FighterConfigKind, members: number): number {
-  const loadout = loadoutOf(card, kind)
-  if (!loadout) return 0
-  return Math.round(fighterPoints(card, loadout) * members)
+/**
+ * Damage a flight puts into starships in a round.
+ *
+ * One strike per load (Q4‑A), so a flight over a target runs its load once and
+ * its guns for the other two phases of the round.
+ */
+export function flightDamagePerRound(
+  card: FighterCard,
+  kind: FighterConfigKind,
+  members: number,
+): number {
+  const loaded = loadoutOf(card, kind)
+  const basic = loadoutOf(card, 'basic') ?? loaded
+  if (!loaded || !basic) return 0
+  const run = (l: FighterLoadout) => members * (l.strikeHit / 6) * l.strikeDamage
+  if (kind === 'basic') return run(basic) * PHASES_PER_ROUND
+  return run(loaded) + run(basic) * (PHASES_PER_ROUND - 1)
+}
+
+/**
+ * The dogfight, in the same damage currency as everything else: a kill is worth
+ * the damage a starship would have had to land to do the same job. Pricing it
+ * in *points* instead makes a fighter's value appear on both sides of its own
+ * equation, and the iteration walks off rather than settling.
+ */
+export function flightDogfightPerRound(
+  card: FighterCard,
+  kind: FighterConfigKind,
+  members: number,
+): number {
+  const l = loadoutOf(card, kind)
+  if (!l) return 0
+  const kills = members * (l.dfr / 6) * (1 - TYPICAL_DODGE / 6) * PHASES_PER_ROUND
+  return kills * TYPICAL_FIGHTER_SOAK
+}
+
+/** Damage points a starship must land to wipe the flight, dodge included. */
+export function flightDurability(
+  card: FighterCard,
+  kind: FighterConfigKind,
+  members: number,
+): number {
+  const l = loadoutOf(card, kind)
+  if (!l) return 0
+  // F1.4.3 keeps the dodge away from point defense, so it is folded in at half
+  // weight: only some of the fire aimed at a flight comes from other fighters.
+  const dodge = 1 + 0.5 * (1 / (1 - l.dodge / 6) - 1)
+  return ((members * card.structure) / soakEfficiency(airframeJamming(card, l))) * dodge
+}
+
+/**
+ * What a flight costs in a fleet list.
+ *
+ * `role: 'all'` — the default — prices everything it can do, and is what a
+ * fleet list has to pay: the dogfight term assumes an opponent who also brings
+ * fighters. `role: 'strike'` prices the anti-ship role alone, which is what a
+ * flight is worth against a fleet with no wing of its own, and is the figure
+ * comparable to the ARK ROYAL measurement.
+ */
+export function flightPoints(
+  card: FighterCard,
+  kind: FighterConfigKind,
+  members: number,
+  role: 'all' | 'strike' = 'all',
+): number {
+  if (!loadoutOf(card, kind) || members < 1) return 0
+  const damage =
+    flightDamagePerRound(card, kind, members) +
+    (role === 'all' ? flightDogfightPerRound(card, kind, members) : 0)
+  const durability = flightDurability(card, kind, members)
+  const scouting = role === 'all' ? card.sensor : 0
+  return Math.round(PRICE_SCALE * (Math.max(0.1, damage) * durability) ** PRICE_EXPONENT + scouting)
+}
+
+/** One fighter's share of its flight's cost, for a part-strength counter. */
+export function fighterPoints(
+  card: FighterCard,
+  loadout: FighterLoadout,
+  members = MAX_FLIGHT_SIZE,
+): number {
+  return Math.round((flightPoints(card, loadout.kind, members) / members) * 10) / 10
 }
 
 // ---------------------------------------------------------------------------

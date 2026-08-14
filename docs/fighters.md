@@ -84,11 +84,9 @@ reproduce its own source's numbers is the wrong model.
 
 Three things are ours, not Doyle's, and are marked as such in the code.
 
-- **Point values.** Nothing on a card prices a flight and the V41 builder says outright that "the
-  point value of any fighters is not included in the hangar", so `fighterPoints` prices each stat
-  by what it does in a phase and divides to land a six-Starfury flight near 19 points, against a
-  printed roster running 6 to 158 for whole ships. It is a placeholder with a formula, not an
-  answer. **This is Q3, and it is the one that blocks points-matched play.**
+- **Point values.** Nothing on a card prices a flight, so we derived one — the working is
+  `tools/fighter_points.ts` and the answer is below. It is a defensible number rather than a
+  printed one. **This is Q3, and it is the one that blocks points-matched play.**
 - **The Peregrine's two missing loadouts.** Its sheet is watermarked MASTER COPY and carries only
   its STRIKE card. The other two are interpolated from the shape every other card holds to.
 - **Damage carried between volleys.** COA 1 says divide and remove; it does not say what happens to
@@ -214,6 +212,95 @@ Two independent estimates agree on the order: the provisional `fighterPoints` fo
 six-Starfury strike flights about 77 points, which would put the package at 124. Measured play says
 100, and the gap is the half of the wing that is always in transit, rearming, or dead.
 
-That is the concrete answer to give Doyle on Q3: **a flight of six is worth roughly 13 to 19
-points**, and until that number is printed, any points-matched game with a carrier in it is broken
-by about the cost of a second cruiser.
+That measurement is one of the two independent estimates that produced the price below.
+
+
+---
+
+## Q3, answered: what a flight costs
+
+`tools/fighter_points.ts` is the working. The method is the one the rest of this repository uses
+for anything the printed material does not answer — **derive it from the printed material**:
+
+1. Price the ninety-three printed hulls in two currencies the rules themselves define: **damage
+   points delivered per round**, and **damage points needed to remove the unit**. Both come off a
+   ship form with no free parameters.
+2. Fit their printed point values against those two.
+3. Price a flight in the same two currencies, with the Package A rules applied — E10.2.3's halving,
+   COA 1's division by Structure, E10.2.2's jamming, one strike per load, and the fact that a
+   flight attacks in all three combat phases where a gun mount fires once a round.
+
+Nothing in it is tuned to how fighters play. The only calibration is the printed roster's own
+prices, which is the point: where the answer agrees with measured play, that agreement is evidence
+rather than construction.
+
+### The fitted law
+
+```
+points = 0.0516 × (damage per round × damage to destroy) ^ 0.816
+```
+
+Mean absolute error against the 93 printed hulls: **19.5%**. A hand-priced roster is not a formula,
+and that is about as close as a two-parameter model gets to one.
+
+**Two shapes were tried first and both failed**, in ways worth recording because they are the two
+obvious things to reach for.
+
+- `points = a·damage + b·durability`. Firepower and durability are strongly collinear across the
+  roster — big ships have more of both — so with no intercept the fit handed **firepower a negative
+  price**. Every fighter in the table was being paid to shoot.
+- `points = k · damage^α · durability^β`, free exponents. Same collinearity, subtler failure: it
+  settled on α 0.067 and β 2.202, so firepower was worth almost nothing and price rose with the
+  *square* of durability. That prices every small unit near zero, which is exactly the mistake a
+  fighter model must not make.
+
+Constraining the shape to the product — Lanchester's square law, which makes fighting strength the
+product of how hard a unit hits and how long it survives to keep hitting — is identifiable where
+two free exponents are not. The V41 sheet reaches for the same shape when it prices offense "twice
+over", once against the target's outer defences and once against what is underneath.
+
+### What the published rules do to a flight's durability
+
+Point defense is **71%** of the printed roster's fire, and E12.4.3 exempts it from jamming.
+Everything else is halved by E10.2.3 and pushed down the chart by E10.2.2. Walking every printed
+weapon across every range on its own chart gives the real cost of that shift:
+
+| jamming | a battery keeps | a flight soaks |
+| --- | --- | --- |
+| 5 | 58% of its expected damage | 1.25× its printed Structure |
+| 6 | 50% | 1.27× |
+| 7 | 43% | 1.29× |
+| 8 | 36% | 1.31× |
+
+Jamming is worth much less than it looks, *for pricing*, precisely because most of the guns pointed
+at a flight ignore it. That is the same finding the STRIX measurement made from the other end.
+
+### The answer
+
+**A flight of six costs 11 to 42 points, median 21.** Against a fleet with no fighters of its own —
+where the dogfight is worth nothing — the same flights are worth 2 to 16, median 6.
+
+| | | flight of 6 | | | | flight of 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| SABRE | strike | 17 | | STARFURY | strike | 15 |
+| SABRE | space sup | 26 | | NIAL | space sup | **42** |
+| HALBERD | strike | 22 | | NIAL | strike | 28 |
+| V-1 TALON | space sup | 25 | | PEREGRINE | strike | 28 |
+| STRIX | space sup | 25 | | FRAZI | space sup | 30 |
+| MAGPIE | strike | **11** | | SENTRI | strike | 13 |
+
+The ranking is the one the cards imply: the NIAL is the most expensive thing in the sky and the
+MAGPIE the cheapest, and within an airframe the space-superiority loadout costs more than the bomb
+truck because it is the one that can do both jobs.
+
+### It agrees with the measurement
+
+The ARK ROYAL measurement was made before any of this existed and shares nothing with it. The
+model prices that carrier's hull and wing at **75 points** counting the strike role alone and
+**115** counting everything; measured play put it at **100**. The measurement sits between the two
+readings, nearer the one that credits the wing for tying up an enemy's whole battery — which is
+value the strike-only figure does not contain and the all-roles figure over-credits.
+
+**The number to give Doyle: a flight of six is worth about 20 points, and a fighter about 3.5.**
+The carrier keeps its measured ×2.1 modifier rather than the model's, because for one specific hull
+a measurement beats a formula — but the two now bracket each other, which they did not before.
