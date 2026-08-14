@@ -206,6 +206,59 @@ describe('the AI in the Flight Operations Segment', () => {
     )
   })
 
+  it('never proposes an action the engine will refuse — the loop that hung a battle', () => {
+    /*
+     * The failure this pins down was not a bad move, it was a hung game. The
+     * planner floored the tape to decide reach and the engine did not, so a
+     * flight 5.1" from its target read as "in reach, strike it" to one and
+     * "5.1 away, refused" to the other. Nothing changed, so the planner
+     * proposed it again: 11,906 identical strikes in one battle, and the same
+     * shape again for landings once the strike was fixed. The driver runs this
+     * until it returns nothing, so a refused action is an infinite loop.
+     *
+     * The measure is now shared, and every offer is remembered for the phase —
+     * so this asserts the invariant rather than any particular arithmetic:
+     * whatever the AI asks for, the engine accepts.
+     */
+    const game = flightOps([
+      shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 }),
+      shipAt({ id: 'red-1', side: 'Red', form: carrier(), x: 30, y: 20 }),
+    ])
+    launchFlight(game, game.ships[0], 'starfury', 'strike', 6)
+    launchFlight(game, game.ships[1], 'nial', 'space-superiority', 6)
+    const memo = createAiMemo()
+    const refusals: string[] = []
+    let rounds = 0
+    for (let i = 0; i < 400; i++) {
+      const batch = aiNextActions(game, ['Blue'], memo, false, 'captain')
+      if (batch.length === 0) {
+        // Settle the phase and go round again: the loop only shows up when a
+        // flight is left sitting a fraction of an inch outside its reach.
+        if (++rounds > 8) break
+        applyAction(game, { type: 'advance-segment' })
+        while (game.segment !== 'flight-operations') {
+          applyAction(game, { type: 'advance-segment' })
+        }
+        continue
+      }
+      for (const action of batch) {
+        const out = applyAction(game, action)
+        if (out.message) refusals.push(`${action.type}: ${out.message}`)
+      }
+    }
+    /*
+     * The invariant is that nothing repeats. One refusal can still happen
+     * honestly — the last enemy flight dies to the first attacker and the
+     * second addresses a counter that is no longer there — but a *repeated*
+     * refusal is the loop, because a refusal changes no state.
+     */
+    const seen = new Set<string>()
+    const repeated = refusals.filter((r) => !seen.add(r))
+    expect(repeated, 'the AI re-proposed a refused action — this is the hang').toEqual([])
+    for (const r of refusals) expect(r).toMatch(/No such flight/)
+    expect(rounds, 'the AI never settled the segment').toBeGreaterThan(0)
+  })
+
   it('does nothing at all, and costs nothing, in a battle with no fighters', () => {
     const game = flightOps([
       shipAt({ id: 'blue-1', side: 'Blue', x: 10, y: 20 }),

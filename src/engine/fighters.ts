@@ -98,8 +98,22 @@ export function airframeJamming(card: FighterCard, loadout: FighterLoadout | und
 export const MAX_FLIGHT_SIZE = 6
 /** Flights one carrier may put on the board at once (outline; four ID boxes per card). */
 export const MAX_FLIGHTS_PER_SHIP = 4
-/** Range a flight launches into and lands from, as J8.2.1 for shuttles. */
+/** Range a flight launches into, as J8.2.1 for shuttles. */
 export const FLIGHT_RANGE = 1
+/**
+ * How close a flight must finish to come aboard.
+ *
+ * Shared with the AI's planner on purpose. Every refusal loop this code has
+ * produced came from the planner and the engine measuring the same thing with
+ * slightly different arithmetic — a flight exactly 2.0" out read as "in reach"
+ * to one and "too far" to the other, so the AI offered the landing forever.
+ * One predicate, one epsilon, both callers.
+ */
+export const RECOVERY_RANGE = FLIGHT_RANGE + 1
+
+export function withinRecoveryRange(from: Point, ship: Point): boolean {
+  return distance(from, ship) <= RECOVERY_RANGE + 1e-9
+}
 
 export interface Flight {
   id: string
@@ -243,9 +257,9 @@ export function flightRecoveryRefusal(
   if (aboard >= hangarCapacity(ship)) {
     return `${ship.name}'s hangar holds ${hangarCapacity(ship)} flight(s).`
   }
-  const range = distance(flight.position, ship.placement.position)
-  if (range >= FLIGHT_RANGE + 1) {
-    return `The flight is ${range.toFixed(1)}" out; it must finish within ${FLIGHT_RANGE + 1}".`
+  if (!withinRecoveryRange(flight.position, ship.placement.position)) {
+    const range = distance(flight.position, ship.placement.position)
+    return `The flight is ${range.toFixed(1)}" out; it must finish within ${RECOVERY_RANGE}".`
   }
   return null
 }

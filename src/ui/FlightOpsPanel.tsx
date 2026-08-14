@@ -3,6 +3,7 @@ import {
   craftName,
   effectiveSpeed,
   flightsAirborne,
+  flightsInHangar,
   maxSystemOf,
   tractorBeamsFree,
   wingCardFor,
@@ -167,7 +168,7 @@ function FighterSection({ game, ship }: { game: GameState; ship: ShipState }) {
       ) : (
         <>
           <p className="hint">
-            {ship.flightsAboard} flight(s) in the hangar of {hangar} · {out.length}/
+            {flightsInHangar(game, ship)} flight(s) in the hangar of {hangar} · {out.length}/
             {MAX_FLIGHTS_PER_SHIP} out · {launched}/{launchRate(ship)} launched and {recovered}/
             {recoveryRate(ship)} recovered this phase.
           </p>

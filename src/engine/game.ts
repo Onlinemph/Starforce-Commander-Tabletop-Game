@@ -162,6 +162,7 @@ import {
 import {
   airframeJamming,
   airframeSpeed,
+  CONFIG_LABELS,
   currentConfig,
   currentLoadout,
   dogfight,
@@ -3179,6 +3180,30 @@ export function flightsAirborne(game: GameState, ship: ShipState): Flight[] {
 }
 
 /**
+ * Flights that have come home and are sitting on the deck, fullest first.
+ *
+ * These are counters with a history — casualties taken, ordnance spent — and
+ * they are what a carrier launches next, in preference to breaking out a fresh
+ * flight. Skipping that step was a real bug: a landed flight stayed in
+ * `game.flights` while the landing *also* credited a slot back to
+ * `flightsAboard`, so a four-box hangar put eight flights into the air over
+ * six rounds and each landing quietly conjured six new fighters.
+ */
+export function flightsDocked(game: GameState, ship: ShipState): Flight[] {
+  return flightsOf(game, ship)
+    .filter((f) => f.dockedTo === ship.id)
+    .sort((a, b) => b.members - a.members || (a.id < b.id ? -1 : 1))
+}
+
+/**
+ * Everything in the hangar: flights that have landed, plus the ones that have
+ * never been broken out. Both take up a bay, so both count against HNGR.
+ */
+export function flightsInHangar(game: GameState, ship: ShipState): number {
+  return ship.flightsAboard + flightsDocked(game, ship).length
+}
+
+/**
  * The card a carrier flies. A scenario may name one; otherwise the launching
  * player picks, and the first card is what the AI and the default button take.
  */
@@ -3211,9 +3236,32 @@ export function launchFlight(
     ship,
     flightsAirborne(game, ship).length,
     game.ops.flightsLaunchedThisPhase[ship.id] ?? 0,
-    ship.flightsAboard,
+    flightsInHangar(game, ship),
   )
   if (refusal) return refusal
+
+  /*
+   * A flight already on the deck goes back up before a fresh one is broken
+   * out, and it goes up as it came down — the fighters it has left, and the
+   * load the Hangar Bay Segment gave it back. The wing is a fixed number of
+   * flights taking losses over a battle, not an infinite supply of six-packs.
+   */
+  const docked = flightsDocked(game, ship)[0]
+  if (docked) {
+    delete docked.dockedTo
+    docked.position = launchPositionFor(ship)
+    docked.activated = true
+    docked.attacked = false
+    game.ops.flightsLaunchedThisPhase[ship.id] =
+      (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0) + 1
+    pushLog(
+      game,
+      `${ship.name}: puts ${flightName(game, docked)} back up — ${docked.members} aboard, ` +
+        `${CONFIG_LABELS[currentConfig(docked)]}.`,
+    )
+    launchRevealsCloak(game, ship, 1)
+    return null
+  }
 
   game.counters.flight += 1
   ship.flightsAboard -= 1
@@ -3261,15 +3309,16 @@ export function recoverFlight(game: GameState, flightId: string, ship: ShipState
     flight,
     ship,
     game.ops.flightsRecoveredThisPhase[ship.id] ?? 0,
-    ship.flightsAboard,
+    flightsInHangar(game, ship),
   )
   if (refusal) return refusal
 
   game.ops.flightsRecoveredThisPhase[ship.id] =
     (game.ops.flightsRecoveredThisPhase[ship.id] ?? 0) + 1
+  // The flight itself takes the bay. `flightsAboard` counts only the ones
+  // never broken out, so crediting it here would double the wing.
   flight.dockedTo = ship.id
   flight.activated = true
-  ship.flightsAboard += 1
   pushLog(game, `${ship.name}: recovers ${flightName(game, flight)} — ${flight.members} back aboard.`)
   return null
 }

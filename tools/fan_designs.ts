@@ -2315,6 +2315,242 @@ const YORKTOWN_XXX: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * ARK ROYAL I-class Fleet Carrier — the Union's first aviation ship, built to
+ * the YORKTOWN III's technology.
+ *
+ * **The empty rung.** The printed roster runs 1, 2, 3, 4, 5, then 7: there is
+ * not one size-6 hull in ninety-three ships. Size 5 is where the heavy cruiser
+ * and the battlecruiser live and size 7 is the dreadnought, and nothing sits
+ * between them. A carrier is exactly the shape that belongs in that gap — a
+ * hull bought for volume rather than for guns, too big to be a cruiser and
+ * nothing like a capital ship in a gunfight.
+ *
+ * **Same technology, on purpose.** Every weapon on this form is a system the
+ * YORKTOWN III already carries, unchanged: the LNC-500 phaser and the DGR-12A
+ * light phaser, on their printed charts. There is no new gun here, because a
+ * carrier contemporary with the III would not have one — what is new is the
+ * flight deck. The reactor ladder, the shield generator, the SIF and the FTL
+ * lines are all read off the III and the UNION I it sits between.
+ *
+ *     hull            year  sz   PV  struct  pwr  blue F/A/P/S  grn  gen  mounts
+ *     YORKTOWN III    3662   5   42    14     8   20/18/18/18    3    3     9
+ *     ARK ROYAL I     3663   6    ?    17     9   22/19/19/19    3    4     8
+ *     UNION I         3656   7   50    19     9   24/20/20/20    4    4    11
+ *
+ * **What it gives up: the tubes.** The III's punch is four MK-5 A/MAT tubes
+ * and this ship has none. That is the design, not an oversight — a carrier
+ * whose own guns can win a duel is a battlecruiser with a hangar, and the wing
+ * becomes decoration. Kill the wing and this hull has nothing left but its
+ * flak, which is what a carrier is *supposed* to feel like.
+ *
+ * **What it keeps: every mount is point defense.** Four LNC-500 turrets and
+ * four DGR-12A flak mounts, all of them carrying PD MODE, all of them laid out
+ * to bear whatever the bearing. That is doctrine rather than decoration, and
+ * the fighter rules are what make it so: under E10.2.2 a target's jamming is
+ * added to the actual range of every *non*-point-defense attack, and E12.4.3
+ * exempts point defense from it. A main battery shooting at a Nial is firing
+ * at a target eight inches further away than it is; a PD mount is firing at
+ * where it actually is, and does not halve its damage either (E12.4.4). So the
+ * ship that cannot hurt a cruiser is the best anti-fighter platform in the
+ * Union inventory, and screening the battle line from somebody else's wing is
+ * the second half of its job.
+ *
+ * **The deck.** Four HNGR boxes — four flights, which is exactly the four ID
+ * boxes printed down the edge of every fighter card and the cap the outline
+ * gives a carrier. Two LNCH and two LNDG, so the whole wing is in the air in
+ * two phases and back aboard in two more. The recovery rate is the half people
+ * underrate: a strike flight is spent after one run (Q4-A) and only the Hangar
+ * Bay Segment gives its ordnance back, so a carrier that cannot land its
+ * aircraft is flying twenty-four gun-armed BASIC fighters for the rest of the
+ * battle.
+ *
+ * **It handles like the barn it is.** Speed 6, because every Union hull from
+ * the NELSON to the UNION III is speed 6 and this line does not get to be the
+ * exception — but the turn table is the worst in the faction and it loses the
+ * third step of its acceleration line. It goes as fast as a cruiser and cannot
+ * change its mind.
+ *
+ * SENS 4 and a sensor line reading 3 free / 5 / 8, against the III's 2 / 4 / 6:
+ * the one thing this ship is better at than a cruiser is knowing where
+ * everything is, which is what a wing needs from the ship that sent it.
+ */
+const ARK_ROYAL: ShipForm = {
+  id: 'fan-union-ark-royal-fleet-carrier',
+  name: 'ARK ROYAL I-class Fleet Carrier',
+  faction: 'Union of Federated Systems',
+  // The rung the printed roster skips.
+  sizeClass: 6,
+  // The III's figures. A carrier is not stressed or repaired differently.
+  stressRating: 4,
+  damageControlRating: 4,
+
+  /*
+   * Nine power: one over the III, level with the UNION I. Size 6 carries two
+   * boxes a main reactor point on the builder's own table — the same as size
+   * 5, which is why this hull's reactors look like a cruiser's rather than a
+   * dreadnought's three-box points.
+   */
+  reactors: [
+    { id: 'l-main', label: 'L MAIN', hitKind: 'left-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'r-main', label: 'R MAIN', hitKind: 'right-main', points: [{ boxes: 2 }, { boxes: 2 }, { boxes: 2 }] },
+    { id: 'sl-reac', label: 'SL REAC', hitKind: 'sublight-reactor', points: [{ boxes: 2 }] },
+    { id: 'aux-pwr', label: 'AUX PWR', hitKind: 'aux', points: [{ boxes: 2 }, { boxes: 2 }] },
+  ],
+  batteries: 1,
+  ftlDriveBoxes: 3,
+
+  functions: [
+    // Two steps of acceleration where the III has three: the deck is heavy and
+    // it does not get to be nimble as well as big.
+    line('accel', 'ACC/DEC', 'accel', [2, 3], { freeValue: 1 }),
+    line('sif', 'SIF/IDF', 'sif', [1, 2, 3]),
+    line('emer', 'EMER', 'emergency-turn', [1], { sequential: false }),
+    line('bat-rech', 'BTY RECH', 'battery-recharge', [1], { sequential: false }),
+    line('ftl', 'FTL DRV', 'ftl-drive', [1, 2, 3]),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`rnfc-${side}`, `SHLD RNFC ${side}`, 'shield-reinforce', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    ...(['F', 'P', 'S', 'A'] as const).map((side) =>
+      line(`repr-${side}`, `SHLD REPR ${side}`, 'shield-repair', [1], {
+        sequential: false,
+        shieldSide: side,
+      }),
+    ),
+    // The one line better than the cruiser's: 3 free, 5 and 8 under power,
+    // against the III's 2 / 4 / 6. Air direction is this ship's contribution.
+    line('sensor', 'SENSOR', 'sensor', [5, 8], { freeValue: 3 }),
+    line('gensys', 'GEN SYS', 'gen-sys', [2], { freeValue: 1 }),
+    // No A/MAT line at all. There are no tubes to feed.
+    line('f-phaser', 'PHASER', 'weapon', [4, 6, 8], {
+      freeValue: 2,
+      weaponSystemId: 'lnc-500-phaser-carrier',
+    }),
+    line('f-lt-phaser', 'LT PHASER', 'weapon', [4], {
+      freeValue: 2,
+      weaponSystemId: 'dgr-12a-light-phaser-carrier',
+    }),
+  ],
+
+  weapons: [
+    /*
+     * The III's own secondary battery, on its printed chart, mounted in the
+     * four-quadrant layout every Union cruiser uses — four turrets rather than
+     * the III's three, because with no tubes there is deck space for a fourth.
+     */
+    weapon({
+      id: 'lnc-500-phaser-carrier',
+      name: 'LNC-500 PHASER',
+      weaponClass: 'phaser',
+      mounts: ALL_ROUND,
+      armingCircles: 2,
+      hitBoxes: 2,
+      traits: ['PREC 1', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 3, band: 'green', dice: ['yellow', 'green'] },
+        { min: 4, max: 5, band: 'green', dice: ['green', 'green'] },
+        { min: 6, max: 8, band: 'black', dice: ['green', 'green'] },
+        { min: 9, max: 11, band: 'black', dice: ['green', 'blue'] },
+        { min: 12, max: 13, band: 'red', dice: ['blue', 'blue'] },
+      ],
+    }),
+    /*
+     * The flak battery, and the reason to bring this ship to a fight it cannot
+     * win by itself: four all-arc DGR-12A mounts, charging in one round, every
+     * one of them able to answer a flight without E10.2.2's jamming being
+     * added to the range (E12.4.3).
+     */
+    weapon({
+      id: 'dgr-12a-light-phaser-carrier',
+      name: 'DGR-12A LIGHT PHASER',
+      weaponClass: 'phaser',
+      mounts: [ALL_ARCS, ALL_ARCS, ['FS', 'SF', 'SA', 'AS'], ['AP', 'PA', 'PF', 'FP']],
+      armingCircles: 1,
+      hitBoxes: 1,
+      traits: ['PREC 0', 'PD MODE'],
+      brackets: [
+        { min: 0, max: 2, band: 'green', dice: ['green', 'blue'] },
+        { min: 3, max: 5, band: 'black', dice: ['green', 'blue'] },
+        { min: 6, max: 8, band: 'black', dice: ['green'] },
+        { min: 9, max: 10, band: 'red', dice: ['blue'] },
+      ],
+    }),
+  ],
+
+  // Interpolated between the III and the UNION I, and the flat beam figure is
+  // deliberate: this hull was never meant to hold a line.
+  shields: {
+    generatorBoxes: 4,
+    blue: { F: 22, A: 19, P: 19, S: 19 },
+    green: { F: 3, S: 3, A: 3, P: 3 },
+  },
+  armor: { F: 0, S: 0, A: 0, P: 0 },
+
+  systems: [
+    { kind: 'SCNC', label: 'Sciences', boxes: 4 },
+    // One over the III. The wing is only as good as the plot it is given.
+    { kind: 'SENS', label: 'Sensors', boxes: 4 },
+    { kind: 'TRAC', label: 'Tractor Beams', boxes: 2 },
+    { kind: 'TRAN', label: 'Transporters', boxes: 2 },
+    { kind: 'SHTL', label: 'Shuttle Bay', boxes: 2 },
+    /*
+     * The deck. Four flights aboard — the four ID boxes printed down the edge
+     * of every fighter card, and the cap the outline puts on a carrier. Two
+     * launch bays and two landing bays: the wing is up in two phases and home
+     * in two more, which matters because a strike flight is spent after one
+     * run and only the Hangar Bay Segment gives its ordnance back.
+     */
+    { kind: 'HNGR', label: 'Hangar Bay', boxes: 4 },
+    { kind: 'LNCH', label: 'Launch Bays', boxes: 2 },
+    { kind: 'LNDG', label: 'Landing Bays', boxes: 2 },
+    { kind: 'QTRS', label: 'Quarters', boxes: 6 },
+    { kind: 'CRGO', label: 'Cargo', boxes: 4 },
+  ],
+
+  // Seventeen boxes, between the III's fourteen and the UNION I's nineteen.
+  structure: [
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'black' as const })),
+    { kind: 'dc' as const, rating: 4 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 3 },
+    ...Array.from({ length: 5 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 2 },
+    ...Array.from({ length: 4 }, () => ({ kind: 'box' as const, color: 'red' as const })),
+    { kind: 'dc' as const, rating: 1 },
+  ],
+
+  /*
+   * Speed 6, because every Union hull in the printed roster is speed 6 and a
+   * carrier does not get to be the exception. The turn table is where it pays:
+   * the worst in the faction at every speed, and the same zero at full burn
+   * that the whole Union line carries.
+   */
+  sublight: {
+    maxSpeed: 6,
+    turnBySpeed: [30, 30, 25, 25, 20, 10, 0],
+    maxAccelPerPhase: 1,
+    safeAccelPerRound: 2,
+    stressAccelPerRound: 2,
+    driveBoxes: 7,
+    dmgTopSpeed: [5, 4, 3, 2, 1, 0, 0],
+  },
+
+  // A big crew and a small landing party: the marines aboard are the ship's
+  // own security detachment, not an assault force.
+  marineSquads: 8,
+  shuttles: 4,
+
+  pointValue: 0,
+  // A year after the III, the way the IIIc follows the III.
+  year: 3663,
+  availability: 'common',
+}
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -2612,6 +2848,41 @@ const DESIGNS: Design[] = [
   // The first design with its own face (ShipForm.art). No modifier: repairing
   // Union-style screens are exactly what the model assumes.
   { form: STAR_DESTROYER },
+  {
+    form: ARK_ROYAL,
+    /*
+     * **The modifier is the wing.**
+     *
+     * The point model prices this hull at 47.3 — four HNGR boxes, two LNCH,
+     * two LNDG and a light battery — and it is right about every part it can
+     * see. What it cannot see is that those boxes arrive carrying twenty-four
+     * fighters that cost nothing, because nothing prices a flight yet (Q3 in
+     * docs/fighter-questions.md; the V41 builder says outright that "the point
+     * value of any fighters is not included in the hangar").
+     *
+     * So it is priced where it fights, the way the Hyperion is. Mirrored
+     * duels at captain, retreat off, 16 games against each printed hull:
+     *
+     *     YORKTOWN III    42   16W- 0L        YORKTOWN V     78   11W- 5L
+     *     YORKTOWN IV     48   15W- 1L        EXETER II     100    8W- 8L
+     *     KURSK I         50   12W- 4L        UNION I        50   12W- 3L
+     *
+     * Dead even against the EXETER II — which this file has repeatedly found
+     * to be the most efficient hull in the printed roster — so the package
+     * fights at about 100 points, and ×2.1 is what puts it there.
+     *
+     * Two independent estimates agree on the order: the provisional
+     * `fighterPoints` formula in the engine makes four six-Starfury strike
+     * flights about 77 points, which would put the package at 124. Measured
+     * play says 100, and the gap is the half of the wing that is always either
+     * in transit, rearming, or dead.
+     *
+     * **Delete this modifier the day flights are bought separately.** It is
+     * standing in for their price, not for anything about the hull.
+     */
+    costModifier: 2.1,
+    costNote: 'the modifier IS the wing: 24 fighters that no rule prices yet (Q3)',
+  },
 ]
 
 /**

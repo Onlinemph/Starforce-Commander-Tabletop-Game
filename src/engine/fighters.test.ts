@@ -28,6 +28,7 @@ import {
   flightDogfight,
   flightStrike,
   flightsAirborne,
+  flightsInHangar,
   launchFlight,
   moveFlight,
   recoverFlight,
@@ -563,6 +564,58 @@ describe('the Hangar Bay Segment (A3.4.4, printed TBD)', () => {
 })
 
 // ---------------------------------------------------------------------------
+
+describe('the wing is a fixed number of flights', () => {
+  /*
+   * A landed flight stays on the deck as itself. It used to also credit a slot
+   * back to `flightsAboard`, so a four-box hangar put eight flights into the
+   * air across six rounds and every landing quietly conjured six new fighters.
+   */
+  it('puts a landed flight back up with the losses it came home with', () => {
+    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 4, LNCH: 2, LNDG: 2 }) })
+    const game = battle([ship])
+    launchFlight(game, ship, 'frazi', 'strike', 6)
+    const flight = game.flights[0]
+    flight.members = 3
+    flight.spent = true
+    expect(recoverFlight(game, flight.id, ship)).toBeNull()
+
+    game.ops.flightsLaunchedThisPhase = {}
+    expect(launchFlight(game, ship, 'starfury', 'space-superiority', 6)).toBeNull()
+    // The same counter, not a fresh six — and still on its BASIC face until
+    // the Hangar Bay Segment gives the load back.
+    expect(game.flights).toHaveLength(1)
+    expect(game.flights[0].id).toBe(flight.id)
+    expect(game.flights[0].members).toBe(3)
+    expect(game.flights[0].cardId).toBe('frazi')
+    expect(game.flights[0].dockedTo).toBeUndefined()
+  })
+
+  it('counts what is on the deck against the hangar, not just what never flew', () => {
+    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 2, LNCH: 2, LNDG: 2 }) })
+    const game = battle([ship])
+    expect(launchFlight(game, ship)).toBeNull()
+    expect(launchFlight(game, ship)).toBeNull()
+    expect(flightsInHangar(game, ship)).toBe(0)
+    expect(recoverFlight(game, game.flights[0].id, ship)).toBeNull()
+    expect(flightsInHangar(game, ship)).toBe(1)
+    expect(ship.flightsAboard, 'a landed flight is not a fresh one').toBe(0)
+  })
+
+  it('rearms on the deck and flies again at full load', () => {
+    const ship = shipAt({ id: 'c', form: carrierForm() })
+    const game = battle([ship])
+    launchFlight(game, ship, 'peregrine', 'strike', 6)
+    const flight = game.flights[0]
+    flight.spent = true
+    recoverFlight(game, flight.id, ship)
+    runHangarBay(game)
+    expect(flight.spent).toBe(false)
+    game.ops.flightsLaunchedThisPhase = {}
+    expect(launchFlight(game, ship)).toBeNull()
+    expect(currentConfig(game.flights[0])).toBe('strike')
+  })
+})
 
 describe('counter ids are per battle, not per browser tab', () => {
   /*

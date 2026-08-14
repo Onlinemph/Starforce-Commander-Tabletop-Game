@@ -128,3 +128,41 @@ rulebook wins until Doyle says otherwise (Q5).
 Nothing in the printed roster has a hangar, so fighters reach the table through the ship builder,
 the fan designs, or a scenario that fields a carrier. A scenario may name each carrier's wing in
 the designer; left unset, whoever launches picks the card at the bay door.
+
+---
+
+## The carrier, and what it proved about Q3
+
+`tools/fan_designs.ts` now carries the **ARK ROYAL I-class Fleet Carrier**: a Union hull built to
+the YORKTOWN III's own technology — the same LNC-500 phasers and DGR-12A light phasers, on their
+printed charts — with a flight deck instead of torpedo tubes. It fills the rung the printed roster
+skips: there is not one size-6 hull in ninety-three ships, and a carrier is exactly the shape that
+belongs between the size-5 cruiser and the size-7 dreadnought.
+
+Its defining choice is that **it has no torpedoes and every mount it does have is point defense**.
+That is doctrine rather than flavour: E10.2.2 adds a flight's jamming to the range of every
+non-PD volley and E12.4.3 exempts point defense, so the ship that cannot hurt a cruiser is the best
+anti-fighter platform in the Union inventory. Kill its wing and it has nothing left but flak, which
+is what a carrier should feel like.
+
+**And flying it measured Q3 for us.** The point model prices the hull at 47.3 and is right about
+every part it can see. Mirrored duels at captain, retreat off, 16 games against each printed hull:
+
+| opponent | points | result | | opponent | points | result |
+| --- | --- | --- | --- | --- | --- | --- |
+| YORKTOWN III | 42 | 16W‑0L | | YORKTOWN V | 78 | 11W‑5L |
+| YORKTOWN IV | 48 | 15W‑1L | | EXETER II | 100 | 8W‑8L |
+| KURSK I | 50 | 12W‑4L | | UNION I | 50 | 12W‑3L |
+
+A 47-point hull is **dead even with a 100-point EXETER II** — the most efficient hull in the
+printed roster. The missing 53 points are twenty-four fighters that no rule prices. So the design
+carries a ×2.1 cost modifier and ships at 99.2, priced where it fights the way the armour-only
+hulls in that file are, with a note to delete the modifier the day flights are bought separately.
+
+Two independent estimates agree on the order: the provisional `fighterPoints` formula makes four
+six-Starfury strike flights about 77 points, which would put the package at 124. Measured play says
+100, and the gap is the half of the wing that is always in transit, rearming, or dead.
+
+That is the concrete answer to give Doyle on Q3: **a flight of six is worth roughly 13 to 19
+points**, and until that number is printed, any points-matched game with a carrier in it is broken
+by about the cost of a second cruiser.

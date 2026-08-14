@@ -24,6 +24,7 @@ import {
   cloneGame,
   activeShips,
   flightsAirborne,
+  flightsInHangar,
   wingCardFor,
   PHASE_ORDER,
   type GameState,
@@ -33,7 +34,8 @@ import {
   currentLoadout,
   hangarCapacity,
   launchRate,
-  FLIGHT_RANGE,
+  recoveryRate,
+  withinRecoveryRange,
   MAX_FLIGHT_SIZE,
   MAX_FLIGHTS_PER_SHIP,
   type FighterConfigKind,
@@ -335,7 +337,7 @@ export function aiNextActions(
       // this engine is the far side of the Navigation Segment.
       return difficulty === 'admiral' ? planDisplacement(game, fleet, memo) : []
     case 'flight-operations':
-      return planFlightOps(game, fleet, sides)
+      return planFlightOps(game, fleet, sides, memo)
     case 'boarding-combat':
       return planBoarding(game, sides, memo)
     case 'disengagement':
@@ -4781,9 +4783,34 @@ function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameActio
  * attack. The activation flags carry the termination — a flight that has moved
  * and attacked produces nothing on the next call.
  */
-function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): GameAction[] {
+function planFlightOps(
+  game: GameState,
+  fleet: ShipState[],
+  sides: string[],
+  memo: AiMemo,
+): GameAction[] {
   if (game.flights.length === 0 && fleet.every((s) => s.flightsAboard === 0)) return []
+
   const actions: GameAction[] = []
+  /*
+   * The backstop against a refusal loop.
+   *
+   * The driver calls this until it returns nothing, and a refused action
+   * changes no state — so any action the planner thinks is legal and the
+   * engine does not is proposed forever. It has happened twice already, both
+   * times from the planner and the engine measuring the same thing
+   * differently, and both times it pinned a battle: 11,906 identical strikes
+   * in one, 11,682 identical landings in the other. Every action below is one
+   * a flight should take at most once in a phase anyway, so remembering that
+   * it has been offered turns any future mismatch into one wasted action
+   * instead of a hung game.
+   */
+  const offer = (key: string, action: GameAction): void => {
+    const stamp = `flightop:${game.round}:${game.phase}:${key}`
+    if (memo.done.has(stamp)) return
+    memo.done.add(stamp)
+    actions.push(action)
+  }
   const mine = (f: Flight) => sides.includes(f.side)
   const enemyFlights = game.flights.filter((f) => !mine(f) && !f.dockedTo && f.members > 0)
   const enemyShips = activeShips(game).filter((s) => !sides.includes(s.side))
@@ -4791,12 +4818,12 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
   // 1. Get the wing off the deck. Space superiority while there is anything to
   //    dogfight; strike when the sky belongs to us.
   for (const ship of fleet) {
-    if (ship.flightsAboard < 1 || hangarCapacity(ship) === 0) continue
+    if (hangarCapacity(ship) === 0 || flightsInHangar(game, ship) < 1) continue
     const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
     let room = Math.min(
       rate,
       MAX_FLIGHTS_PER_SHIP - flightsAirborne(game, ship).length,
-      ship.flightsAboard,
+      flightsInHangar(game, ship),
     )
     // Nothing to fly at yet: keep them aboard rather than parking counters in
     // open space where a point defense mount can pick them apart for free.
@@ -4807,7 +4834,7 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
     }
     const config: FighterConfigKind = enemyFlights.length > 0 ? 'space-superiority' : 'strike'
     for (let i = 0; i < room; i++) {
-      actions.push({
+      offer(`launch:${ship.id}:${i}`, {
         type: 'launch-flight',
         shipId: ship.id,
         cardId: wingCardFor(ship),
@@ -4815,6 +4842,16 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
         members: MAX_FLIGHT_SIZE,
       })
     }
+  }
+
+  /** Enemy flights this batch has already sent somebody after. */
+  const claimed = new Set<string>()
+  /** Landings this ship may still take, counting what this batch has queued. */
+  const queued = new Map<string, number>()
+  const landings = (ship: ShipState): number => {
+    const mine = queued.get(ship.id) ?? 0
+    const spent = (game.ops.flightsRecoveredThisPhase[ship.id] ?? 0) + mine
+    return Math.min(recoveryRate(ship) - spent, hangarCapacity(ship) - flightsInHangar(game, ship) - mine)
   }
 
   // 2. Fly and fight what is already up.
@@ -4828,27 +4865,53 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
     const speed = airframeSpeed(card, loadout)
 
     /*
-     * A spent flight with nothing worth shooting at goes home: the Hangar Bay
-     * Segment gives it its load back, and a loitering counter is only a target.
+     * When to go home.
+     *
+     * A flight that has spent its ordnance and has no enemy fighters to fight
+     * is worth more in the hangar than over the target. Its BASIC face is guns
+     * — a Starfury's is 1 in 6 for a single point — so loitering trades one
+     * point a phase for standing in somebody's point defense, and the Hangar
+     * Bay Segment will give the whole load back. Measured before this rule
+     * existed: four Starfury flights parked on a Yorktown and plinked at it
+     * for six rounds, losing five fighters to its flak and never once going
+     * back for a second strike.
+     *
+     * A dogfight always outranks the trip, whatever the loadout. The BASIC
+     * face is a perfectly good dogfighter, which is the whole point of it, and
+     * a flight that leaves the sky to the enemy's fighters has lost the sky.
      */
-    const useful =
-      loadout.dfr > 0 && enemyFlights.length > 0
-        ? true
-        : loadout.strikeHit > 0 && enemyShips.length > 0
     const mother = game.ships.find((s) => s.id === flight.motherId && !s.destroyed && !s.derelict)
-    if (!useful && mother) {
-      const home = actualRange(flight.position, mother.placement.position)
-      if (home <= FLIGHT_RANGE + 1) {
-        if (!flight.activated) {
-          actions.push({ type: 'recover-flight', flightId: flight.id, shipId: mother.id })
+    const canDogfight = loadout.dfr > 0 && enemyFlights.length > 0
+    const canStrike = loadout.strikeHit > 0 && enemyShips.length > 0
+    const rearmable = Boolean(flight.spent && mother && hangarCapacity(mother) > 0)
+    if (mother && !canDogfight && (rearmable || !canStrike)) {
+      if (withinRecoveryRange(flight.position, mother.placement.position)) {
+        /*
+         * Only as many as the deck can take: one per undamaged LNDG box a
+         * phase, and no more than the hangar holds. The rest hold off — which
+         * is what a real deck cycle looks like, and what stops the planner
+         * offering a landing the engine will refuse.
+         */
+        if (!flight.activated && landings(mother) > 0) {
+          queued.set(mother.id, (queued.get(mother.id) ?? 0) + 1)
+          offer(`land:${flight.id}`, {
+            type: 'recover-flight',
+            flightId: flight.id,
+            shipId: mother.id,
+          })
         }
         continue
       }
       if (!flight.activated) {
-        actions.push({ type: 'move-flight', flightId: flight.id, ...stepToward(flight.position, mother.placement.position, speed) })
+        offer(`home:${flight.id}`, {
+          type: 'move-flight',
+          flightId: flight.id,
+          ...stepToward(flight.position, mother.placement.position, speed),
+        })
       }
       continue
     }
+    if (!canDogfight && !canStrike) continue
 
     /*
      * What to hit. The load decides, because the load is what the flight was
@@ -4867,8 +4930,18 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
      *    use of a phase by comparison.
      */
     const ordnance = !flight.spent && loadout.strikeHit > 0 && loadout.strikeDamage >= 2
+    /*
+     * Spread across the enemy's flights before doubling up on one. Four of
+     * ours all engaging the same two-fighter remnant wastes three attacks, and
+     * it is also where the one benign refusal in this plan comes from: the
+     * first attack wipes the target and the rest address a counter that is no
+     * longer there. When there is only one enemy flight left, everyone piles
+     * onto it — which is correct, and the occasional stale refusal with it.
+     */
+    const unclaimed = enemyFlights.filter((f) => !claimed.has(f.id))
+    const rivals = unclaimed.length > 0 ? unclaimed : enemyFlights
     const targetFlight =
-      loadout.dfr > 0 ? nearestBy(flight.position, enemyFlights, (f) => f.position) : null
+      loadout.dfr > 0 ? nearestBy(flight.position, rivals, (f) => f.position) : null
     const targetShip =
       loadout.strikeHit > 0
         ? nearestBy(flight.position, enemyShips, (s) => s.placement.position)
@@ -4883,14 +4956,16 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
     if (!aim) continue
 
     let where = flight.position
-    if (!flight.activated && actualRange(flight.position, aim.at) > speed) {
+    if (!flight.activated && reach(flight.position, aim.at) > speed) {
       const step = stepToward(flight.position, aim.at, speed)
-      actions.push({ type: 'move-flight', flightId: flight.id, ...step })
+      offer(`move:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
       where = { x: step.x, y: step.y }
     }
     if (flight.attacked) continue
-    if (actualRange(where, aim.at) > speed) continue
-    actions.push(
+    if (reach(where, aim.at) > speed) continue
+    if (aim.kind === 'flight') claimed.add(aim.id)
+    offer(
+      `attack:${flight.id}`,
       aim.kind === 'flight'
         ? { type: 'dogfight', flightId: flight.id, targetId: aim.id }
         : { type: 'flight-strike', flightId: flight.id, shipId: aim.id },
@@ -4900,12 +4975,30 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
   return actions
 }
 
+/**
+ * Untruncated distance, which is what a flight's reach is measured in.
+ *
+ * Deliberately NOT `actualRange`. Gunnery floors the tape to pick a bracket
+ * (E3.2), but a fighter's reach is its movement allowance, and `flightStrike`
+ * and `flightDogfight` compare against the raw figure. Measuring one way here
+ * and another way there put the AI into an infinite loop the first time a
+ * carrier fought: a flight 5.1" from its target read as "5, in reach" to the
+ * planner and "5.1, too far" to the engine, so the AI proposed a strike, the
+ * engine refused it, nothing changed, and it proposed the same strike again —
+ * 11,906 times in one battle. Nothing was ever going to break the tie, because
+ * the same floor also told the planner it had no reason to close the last tenth
+ * of an inch.
+ */
+function reach(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
 /** Closest of a list, by whatever point the accessor pulls off each entry. */
 function nearestBy<T>(from: Point, items: T[], at: (item: T) => Point): T | null {
   let best: T | null = null
   let bestRange = Infinity
   for (const item of items) {
-    const range = actualRange(from, at(item))
+    const range = reach(from, at(item))
     if (range < bestRange) {
       bestRange = range
       best = item
