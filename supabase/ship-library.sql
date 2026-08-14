@@ -67,6 +67,22 @@ alter table sfc_ship_designs enable row level security;
 -- Publish a design. Idempotent by fingerprint: the same ship published twice,
 -- by the same person or by two people who happened to build it identically,
 -- is one entry and keeps the first publisher's credit.
+--
+-- It returns *whether it inserted*, not just the fingerprint, and that matters
+-- more than it sounds. A re-publish of an unchanged design is a no-op that
+-- succeeds, and for a while the dialog said the same cheerful "Published." to
+-- both cases — so somebody who republished a design and then failed to find it
+-- at the top of the library had no way to tell whether it had gone in, been
+-- deduplicated, or silently failed. Browsing sorts on `published_at`, which a
+-- re-publish deliberately does not bump, so a deduplicated entry does not
+-- resurface. The client can now say which happened, and when the original went
+-- up.
+--
+-- `drop` first: `create or replace` cannot change a function's return type, and
+-- this one used to return `text`. Running this file over an older install is
+-- still safe.
+drop function if exists sfc_publish_design(text, jsonb, text, text, int, numeric, text, text);
+
 create or replace function sfc_publish_design(
   p_fingerprint text,
   p_form        jsonb,
@@ -76,13 +92,13 @@ create or replace function sfc_publish_design(
   p_points      numeric,
   p_author      text,
   p_notes       text
-) returns text
+) returns jsonb
 language plpgsql
 security definer
 set search_path = public, extensions
 as $$
 declare
-  v_existing text;
+  v_row sfc_ship_designs%rowtype;
 begin
   -- Size is checked here as well as in the client: the client's copy is a
   -- courtesy to the person publishing, this one is the actual limit.
@@ -99,19 +115,45 @@ begin
     raise exception 'Malformed fingerprint.';
   end if;
 
-  select fingerprint into v_existing from sfc_ship_designs where fingerprint = p_fingerprint;
-  if v_existing is not null then
-    return v_existing;
-  end if;
-
+  /*
+   * Insert first and let the primary key arbitrate, rather than looking before
+   * leaping. Two people publishing the same design in the same instant — or one
+   * person double-clicking Publish — both find nothing on a prior `select` and
+   * both then insert, and one of them gets a unique-violation instead of the
+   * "already in the library" it should have got.
+   */
   insert into sfc_ship_designs
     (fingerprint, form, name, faction, size_class, points, author, notes)
   values
     (p_fingerprint, p_form, trim(p_name), coalesce(nullif(trim(p_faction), ''), 'Custom'),
      greatest(1, coalesce(p_size_class, 1)), coalesce(p_points, 0),
-     coalesce(trim(p_author), ''), coalesce(trim(p_notes), ''));
+     coalesce(trim(p_author), ''), coalesce(trim(p_notes), ''))
+  on conflict (fingerprint) do nothing
+  returning * into v_row;
 
-  return p_fingerprint;
+  if found then
+    return jsonb_build_object(
+      'fingerprint', v_row.fingerprint,
+      'created', true,
+      'published_at', v_row.published_at,
+      'author', v_row.author,
+      'name', v_row.name
+    );
+  end if;
+
+  -- The library already held this exact design. Report the entry that is
+  -- actually there, which keeps the first publisher's date and credit.
+  select * into v_row from sfc_ship_designs where fingerprint = p_fingerprint;
+  if not found then
+    raise exception 'That design could not be published.';
+  end if;
+  return jsonb_build_object(
+    'fingerprint', v_row.fingerprint,
+    'created', false,
+    'published_at', v_row.published_at,
+    'author', v_row.author,
+    'name', v_row.name
+  );
 end;
 $$;
 

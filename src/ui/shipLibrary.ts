@@ -144,6 +144,23 @@ export async function browseLibrary(
  * ship is not an error and not a duplicate — it simply returns the entry that
  * is already there.
  */
+/**
+ * What publishing did, as against merely that it did not throw.
+ *
+ * `created` false means the library already held this exact design and nothing
+ * was written — which is a success, but a different one, and the person who
+ * just pressed Publish deserves to be told which they got.
+ */
+export interface PublishResult {
+  fingerprint: string
+  /** `null` when the library is too old a copy to say. Not a guess. */
+  created: boolean | null
+  /** When the entry actually went up. Not bumped by a re-publish. */
+  publishedAt: string | null
+  /** Who got the credit — the *first* publisher, which may not be this one. */
+  author: string
+}
+
 export async function publishDesign(args: {
   fingerprint: string
   form: ShipForm
@@ -151,8 +168,8 @@ export async function publishDesign(args: {
   points: number
   author: string
   notes: string
-}): Promise<string> {
-  return (await call('sfc_publish_design', {
+}): Promise<PublishResult> {
+  const raw = await call('sfc_publish_design', {
     p_fingerprint: args.fingerprint,
     p_form: args.form,
     p_name: args.form.name,
@@ -161,7 +178,25 @@ export async function publishDesign(args: {
     p_points: args.points,
     p_author: args.author,
     p_notes: args.notes,
-  })) as string
+  })
+  /*
+   * An older install of `ship-library.sql` returns the bare fingerprint. The
+   * library is a separate optional install that the operator pastes in by
+   * hand, so a client newer than the SQL is the normal state of the world for
+   * a while after any change here — and a publish that worked must not read as
+   * a failure because the project has not been updated yet. Unknown provenance
+   * is reported honestly rather than guessed at.
+   */
+  if (typeof raw === 'string') {
+    return { fingerprint: raw, created: null, publishedAt: null, author: args.author }
+  }
+  const row = (raw ?? {}) as Record<string, unknown>
+  return {
+    fingerprint: String(row.fingerprint ?? args.fingerprint),
+    created: typeof row.created === 'boolean' ? row.created : null,
+    publishedAt: typeof row.published_at === 'string' ? row.published_at : null,
+    author: typeof row.author === 'string' ? row.author : args.author,
+  }
 }
 
 /** Count an import — "somebody put this in a fleet", not "somebody scrolled past". */

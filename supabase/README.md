@@ -210,6 +210,54 @@ one is a new entry. There is no update path and no delete path for clients.
 Taking a copy is literal — the whole design is written into that browser's
 roster, so it keeps working if the library goes away entirely.
 
+**"I republished it and it never showed up."** Almost always this: the design
+was already there. Publishing is keyed by a hash of the design, so publishing an
+unchanged ship again writes nothing and keeps the original entry's date and
+credit — and browsing is sorted newest-first, so a re-publish does not resurface
+at the top. The design is in the library; it is just where it was before. Search
+for it by name to confirm.
+
+The dialog used to say the same "Published." to that case as to a real insert,
+which left the person who did it with no way to tell whether it had worked. It
+now says which happened, and when the original went up. That needs a current
+copy of `ship-library.sql` — an older install cannot report it, and the dialog
+says so rather than guessing. **Re-run the file if you installed it before
+August 2026**; it drops and recreates `sfc_publish_design`, because the function
+changed its return type from `text` to `jsonb` and `create or replace` cannot do
+that on its own. Re-running the whole file is still safe.
+
+**Checking what is actually in the library.** In the game, open the ship
+library and search by name — that is the same call the browser makes and the
+fastest answer to "did my publish land". From outside the game, paste this into
+a browser devtools console (F12) with your own URL and key:
+
+```js
+fetch('https://<project-ref>.supabase.co/rest/v1/rpc/sfc_browse_designs', {
+  method: 'POST',
+  headers: {
+    apikey: '<your key>',
+    Authorization: 'Bearer <your key>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ p_search: '', p_limit: 100 }),
+})
+  .then((r) => r.json())
+  .then((rows) =>
+    console.table(
+      rows.map((d) => ({
+        name: d.name,
+        author: d.author,
+        faction: d.faction,
+        points: d.points,
+        published: d.published_at.slice(0, 10),
+      })),
+    ),
+  )
+```
+
+Pass `p_search: 'maersk'` to look for one design. If it is in that list it
+published, whatever the dialog said and however long ago it went up.
+
 **What you are on the hook for.** Anyone with the publishable key can publish,
 so this is a public write surface. The guard rails in the SQL are:
 
@@ -228,7 +276,7 @@ not anything dangerous. Read the table occasionally.
 
 | Function | What it does |
 | --- | --- |
-| `sfc_publish_design` | Insert an entry, keyed by fingerprint; a repeat is a no-op |
+| `sfc_publish_design` | Insert an entry, keyed by fingerprint; a repeat is a no-op, and it says which it did |
 | `sfc_browse_designs` | Search by name or author, filter by faction tag, newest first |
 | `sfc_record_download` | Count an import — "somebody fielded this" |
 | `sfc_report_design` | Flag an entry for you to look at |

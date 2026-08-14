@@ -116,6 +116,24 @@ function fnv1a64(text: string): string {
   return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0')
 }
 
+/**
+ * How big a design is on the wire, in the units the server counts.
+ *
+ * `TextEncoder` where it exists — every browser and Node this runs on — and a
+ * UTF-8 byte count by hand otherwise, so a headless build cannot fall back to
+ * a laxer limit than the one that will actually be enforced.
+ */
+export function designBytes(form: ShipForm): number {
+  const json = JSON.stringify(form)
+  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(json).length
+  let bytes = 0
+  for (const ch of json) {
+    const code = ch.codePointAt(0) ?? 0
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4
+  }
+  return bytes
+}
+
 export interface PublishCheck {
   ok: boolean
   /** Why it cannot be published, if it cannot. */
@@ -161,7 +179,16 @@ export function checkPublishable(
   if (notes.length > MAX_NOTES_CHARS) {
     return fail(`Notes are limited to ${MAX_NOTES_CHARS} characters.`)
   }
-  if (JSON.stringify(form).length > MAX_DESIGN_BYTES) {
+  /*
+   * Bytes, not characters. The server's guard is `octet_length`, and this
+   * check used to be `.length` — UTF-16 code units — so the two agreed only
+   * for pure ASCII. A design whose name or notes carry an em dash, a `×`, or
+   * an accent is bigger on the wire than it looks here, and one sitting just
+   * under the limit passed the friendly local check and came back as a raw
+   * Postgres exception from the other side. Custom counter art is what gets a
+   * form anywhere near 64KB: it rides inside the design as a data URL.
+   */
+  if (designBytes(form) > MAX_DESIGN_BYTES) {
     return fail('That design is far larger than any ship form; it will not be accepted.')
   }
   const errors = problems.filter((p) => p.severity === 'error')

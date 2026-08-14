@@ -6,7 +6,7 @@ import {
   MAX_NOTES_CHARS,
   type LibraryFaction,
 } from '../engine/shipLibrary'
-import { publishDesign } from './shipLibrary'
+import { publishDesign, type PublishResult } from './shipLibrary'
 import { useMemo, useRef, useState } from 'react'
 import { ArcRose } from './ArcRose'
 import { BLUE, RED } from '../data/scenarios'
@@ -1637,7 +1637,7 @@ function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void 
   const [faction, setFaction] = useState<LibraryFaction>(() => libraryFaction(form))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState<PublishResult | null>(null)
 
   const check = checkPublishable(form, author, notes)
   const warnings = check.problems.filter((p) => p.severity === 'warning')
@@ -1646,15 +1646,16 @@ function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void 
     setBusy(true)
     setError(null)
     try {
-      await publishDesign({
-        fingerprint: check.fingerprint,
-        form,
-        faction,
-        points: check.points,
-        author,
-        notes,
-      })
-      setDone(true)
+      setDone(
+        await publishDesign({
+          fingerprint: check.fingerprint,
+          form,
+          faction,
+          points: check.points,
+          author,
+          notes,
+        }),
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -1668,9 +1669,34 @@ function PublishDialog({ form, onClose }: { form: ShipForm; onClose: () => void 
 
       {done ? (
         <>
-          <p className="hint">
-            Published. Anyone pointed at this library can now find and take a copy of it.
-          </p>
+          {/*
+            Three outcomes, not one. Publishing an unchanged design again is a
+            no-op that succeeds, and saying "Published." to that case sent a
+            playtester looking for his ship at the top of a list it was never
+            going to reach: browsing sorts on the publication date, and a
+            re-publish deliberately does not bump it. Say which happened.
+          */}
+          {done.created === false ? (
+            <p className="hint">
+              <strong>Already in the library.</strong> This exact design was published
+              {done.publishedAt ? ` on ${new Date(done.publishedAt).toLocaleDateString()}` : ' earlier'}
+              {done.author ? ` by ${done.author}` : ''}, so nothing was written and the entry keeps
+              its original date and credit. It is there — search the library for{' '}
+              <strong>{form.name}</strong> to see it. Entries are immutable, so if you meant to
+              change something, change the design first and publish that; it becomes a new entry.
+            </p>
+          ) : done.created ? (
+            <p className="hint">
+              Published. Anyone pointed at this library can now find and take a copy of it.
+            </p>
+          ) : (
+            <p className="hint">
+              Sent, and the library accepted it — but this project is running an older copy of{' '}
+              <code>ship-library.sql</code>, which cannot say whether it added a new entry or
+              already had this design. Search the library for <strong>{form.name}</strong> to see
+              which. Re-running that file in the Supabase SQL Editor fixes the reporting.
+            </p>
+          )}
           <button type="button" onClick={onClose}>
             Close
           </button>

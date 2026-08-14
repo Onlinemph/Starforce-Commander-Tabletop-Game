@@ -9,6 +9,8 @@ import {
   LIBRARY_FACTIONS,
   MAX_AUTHOR_CHARS,
   MAX_NOTES_CHARS,
+  MAX_DESIGN_BYTES,
+  designBytes,
   type LibraryEntry,
 } from './shipLibrary'
 import type { ShipForm } from './types'
@@ -106,6 +108,33 @@ describe('what may be published', () => {
     expect(checkPublishable(YORKTOWN, '', 'x'.repeat(MAX_NOTES_CHARS + 1)).refusal).toMatch(
       /Notes are limited/,
     )
+  })
+
+  /*
+   * The server's guard is `octet_length`, which counts bytes. This check used
+   * to count UTF-16 code units, so the two agreed only for pure ASCII — and a
+   * design carrying an em dash or a `×` in its name was bigger on the wire
+   * than the local check believed, passed it, and came back as a raw Postgres
+   * exception. Counter art is what gets a form near the limit at all: it rides
+   * inside the design as a data URL.
+   */
+  it('measures a design in bytes, the way the server will', () => {
+    const ascii: ShipForm = { ...YORKTOWN, name: 'Maersk' }
+    expect(designBytes(ascii)).toBe(JSON.stringify(ascii).length)
+
+    // Three bytes each, one UTF-16 unit each: the two counts diverge.
+    const fancy: ShipForm = { ...YORKTOWN, name: 'MAERSK — Medium Freighter ×3' }
+    expect(designBytes(fancy)).toBeGreaterThan(JSON.stringify(fancy).length)
+  })
+
+  it('refuses a design that is over the limit in bytes but under it in characters', () => {
+    // Every `—` is one UTF-16 unit and three bytes, so this sits under the cap
+    // by the old measure and over it by the real one.
+    const padding = '—'.repeat(MAX_DESIGN_BYTES / 2)
+    const arty: ShipForm = { ...YORKTOWN, art: padding }
+    expect(JSON.stringify(arty).length).toBeLessThan(MAX_DESIGN_BYTES)
+    expect(designBytes(arty)).toBeGreaterThan(MAX_DESIGN_BYTES)
+    expect(checkPublishable(arty, '', '').refusal).toMatch(/far larger than any ship form/)
   })
 
   it('never refuses a design for being expensive', () => {
