@@ -52,6 +52,8 @@ interface Matchup {
   red: string[]
   /** Blue's fighter card, as the log names it. The enemy's must differ. */
   ours: string
+  /** Whether the enemy brings a wing, so there is a sky to fight over. */
+  contested: boolean
 }
 
 const MATCHUPS: Matchup[] = [
@@ -60,18 +62,27 @@ const MATCHUPS: Matchup[] = [
     blue: ['fan-union-ark-royal-fleet-carrier'],
     red: ['vallari-v-7c-raider-class-battlecruiser', 'vallari-v-7c-raider-class-battlecruiser'],
     ours: 'SABRE',
+    contested: false,
   },
   {
     label: 'contested (OMEGA flies Starfuries)',
     blue: ['fan-union-ark-royal-fleet-carrier'],
     red: ['fan-b5-omega-destroyer'],
     ours: 'SABRE',
+    contested: true,
   },
 ]
 
 interface Variant {
   label: string
   doctrine: Partial<WingDoctrine>
+  /**
+   * Only worth running where the enemy has fighters. `priority` decides what a
+   * flight goes after when it could go after either, so with nothing in the sky
+   * to dogfight it is provably a no-op — and running it anyway prints three
+   * identical rows that read like three findings and cost a quarter of an hour.
+   */
+  needsEnemyWing?: boolean
 }
 
 /*
@@ -81,8 +92,8 @@ interface Variant {
  */
 const VARIANTS: Variant[] = [
   { label: 'default', doctrine: {} },
-  { label: 'hull first (ignore fighters)', doctrine: { priority: 'hull' } },
-  { label: 'clear the sky first', doctrine: { priority: 'fighters' } },
+  { label: 'hull first (ignore fighters)', doctrine: { priority: 'hull' }, needsEnemyWing: true },
+  { label: 'clear the sky first', doctrine: { priority: 'fighters' }, needsEnemyWing: true },
   { label: 'a hull each (distribute)', doctrine: { massing: 'distribute' } },
   { label: 'stay up, never rearm', doctrine: { spent: 'loiter' } },
   { label: 'launch early (4 rounds out)', doctrine: { launchHorizonRounds: 4 } },
@@ -191,6 +202,7 @@ for (const matchup of MATCHUPS) {
   const rows: (Tally & { label: string })[] = []
 
   for (const variant of VARIANTS) {
+    if (variant.needsEnemyWing && !matchup.contested) continue
     // Blue only: the enemy's wing keeps flying the default, so the row is an
     // A/B and not two copies of the same idea agreeing with each other.
     setWingDoctrine()
