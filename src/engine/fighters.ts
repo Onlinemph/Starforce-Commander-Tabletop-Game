@@ -64,7 +64,15 @@ export interface FighterLoadout {
 export interface FighterCard {
   id: string
   name: string
-  /** Where the design comes from. Every card in the outline is a Babylon 5 craft. */
+  /** Whose air force flies it — a StarForce faction, or the setting it came from. */
+  faction: string
+  /**
+   * Not a StarForce design: the Apr 2026 outline's cards are all Babylon 5
+   * craft, carried as a calibration set the way the cross-franchise hulls in
+   * `tools/fan_designs.ts` are. Kept out of the default wing.
+   */
+  fan?: boolean
+  /** Where the design comes from, in one line. */
   origin: string
   /** Inches per combat phase. */
   speed: number

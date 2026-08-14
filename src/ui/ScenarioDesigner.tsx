@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { allShipForms } from '../data/ships'
-import { FIGHTER_CARDS } from '../data/fighters'
+import { FAN_FIGHTERS, SFC_FIGHTERS } from '../data/fighters'
 import { allScenarioEntries, facingToHeading, type CustomScenario } from '../data/scenarios'
 import { ASTEROID_COUNTERS, DENSITY_STATS, type AsteroidDensity } from '../data/terrainCounters'
 import type { Terrain } from '../engine/game'
@@ -888,12 +888,21 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                             })
                           }
                         >
-                          <option value="">wing: pick at launch</option>
-                          {FIGHTER_CARDS.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
+                          <option value="">wing: the ship's own navy</option>
+                          <optgroup label="StarForce">
+                            {SFC_FIGHTERS.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Calibration set">
+                            {FAN_FIGHTERS.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
                       )}
                       <button

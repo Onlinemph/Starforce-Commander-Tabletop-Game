@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { FIGHTER_CARDS, fighterCard } from '../data/fighters'
+import {
+  defaultWingFor,
+  FAN_FIGHTERS,
+  FIGHTER_CARDS,
+  fighterCard,
+  SFC_FIGHTERS,
+} from '../data/fighters'
 import { THE_DUEL } from '../data/scenarios'
 import { VALLARI_CRUISER, YORKTOWN } from '../data/ships'
 import { Rng } from './dice'
@@ -107,9 +113,131 @@ function flightAt(args: Partial<Flight> & { id: string; side: string; x: number;
 
 // ---------------------------------------------------------------------------
 
-describe('the cards', () => {
+describe('the StarForce roster', () => {
+  /*
+   * Five airframes built out of the printed factions' own technology. The
+   * discipline is the one `tools/fan_designs.ts` uses for original hulls: a
+   * fighter may only express what its faction already fields, or it is another
+   * faction's craft wearing the wrong flag. A card carries seven numbers, so
+   * these assert that each faction's identity actually arrives through them.
+   */
+  const card = (id: string) => SFC_FIGHTERS.find((c) => c.id === id)!
+
+  it('gives every StarForce faction an airframe, and none of them is a fan design', () => {
+    expect(SFC_FIGHTERS.map((c) => c.id)).toEqual([
+      'sabre',
+      'halberd',
+      'v-1-talon',
+      'strix',
+      'magpie',
+    ])
+    expect(SFC_FIGHTERS.every((c) => !c.fan)).toBe(true)
+    expect(new Set(SFC_FIGHTERS.map((c) => c.faction))).toEqual(
+      new Set(['Union of Federated Systems', 'Vallari Imperium', 'Aurelian Empire', 'Pirate']),
+    )
+  })
+
+  it('Vallari armour: the TALON soaks the most and evades the least', () => {
+    // The only faction with armour, and G2.2.2 says armour never repairs — on a
+    // fighter there is no repair to lose, so the trade is all upside.
+    const talon = card('v-1-talon')
+    expect(talon.structure).toBe(Math.max(...SFC_FIGHTERS.map((c) => c.structure)))
+    const dodges = SFC_FIGHTERS.flatMap((c) => c.loadouts.map((l) => l.dodge))
+    expect(Math.max(...talon.loadouts.map((l) => l.dodge))).toBe(Math.min(...dodges) + 1)
+    // Six TALONs soak 30 points of point defense; six STRIX soak 18.
+    expect(talon.structure * 6).toBe(30)
+    expect(card('strix').structure * 6).toBe(18)
+  })
+
+  it('Aurelian cloak: the STRIX has the most jamming and the least hull', () => {
+    // 21 of 21 printed Aurelian hulls carry a cloak. A cloak does not fit on a
+    // fighter, but what a cloak does is what E10.2.2 jamming does.
+    const strix = card('strix')
+    expect(strix.jamming).toBe(Math.max(...SFC_FIGHTERS.map((c) => c.jamming)))
+    expect(strix.structure).toBe(Math.min(...SFC_FIGHTERS.map((c) => c.structure)))
+    // Plasma: the worst to-hit on the roster, for the most damage.
+    const strike = loadoutOf(strix, 'strike')!
+    expect(strike.strikeDamage).toBe(
+      Math.max(...SFC_FIGHTERS.flatMap((c) => c.loadouts.map((l) => l.strikeDamage))),
+    )
+    expect(strike.strikeHit).toBeLessThan(loadoutOf(card('halberd'), 'strike')!.strikeHit)
+  })
+
+  it('Union sensors: the best on the roster, on both Union airframes', () => {
+    // SENS 3.4 across 37 printed hulls, the highest of the three factions.
+    const best = Math.max(...SFC_FIGHTERS.map((c) => c.sensor))
+    expect(card('sabre').sensor).toBe(best)
+    expect(card('halberd').sensor).toBe(best)
+    expect(card('v-1-talon').sensor).toBeLessThan(best)
+    expect(card('strix').sensor).toBeLessThan(best)
+  })
+
+  it('the MAGPIE is a SABRE with the good parts sold', () => {
+    const sabre = card('sabre')
+    const magpie = card('magpie')
+    expect(magpie.speed).toBe(sabre.speed)
+    expect(magpie.structure).toBe(sabre.structure)
+    expect(magpie.jamming).toBeLessThan(sabre.jamming)
+    expect(magpie.sensor).toBeLessThan(sabre.sensor)
+    for (const kind of ['strike', 'space-superiority', 'basic'] as const) {
+      expect(loadoutOf(magpie, kind)!.dfr, kind).toBeLessThan(loadoutOf(sabre, kind)!.dfr)
+    }
+  })
+
+  it('stays inside the calibration set\'s envelope', () => {
+    // The same discipline as the fan-hull "fits-in" pass: a roster whose own
+    // designs sit outside the reference set cannot be compared to it.
+    const range = (pick: (c: (typeof FAN_FIGHTERS)[number]) => number) => ({
+      min: Math.min(...FAN_FIGHTERS.map(pick)),
+      max: Math.max(...FAN_FIGHTERS.map(pick)),
+    })
+    for (const key of ['speed', 'jamming', 'structure', 'sensor'] as const) {
+      const { min, max } = range((c) => c[key])
+      for (const c of SFC_FIGHTERS) {
+        expect(c[key], `${c.name} ${key}`).toBeGreaterThanOrEqual(min)
+        expect(c[key], `${c.name} ${key}`).toBeLessThanOrEqual(max)
+      }
+    }
+    const fanBest = Math.max(
+      ...FAN_FIGHTERS.flatMap((c) => c.loadouts.map((l) => l.strikeHit * l.strikeDamage)),
+    )
+    for (const c of SFC_FIGHTERS) {
+      for (const l of c.loadouts) {
+        expect(l.strikeHit * l.strikeDamage, `${c.name} ${l.kind}`).toBeLessThanOrEqual(fanBest)
+      }
+    }
+  })
+
+  it('holds the loadout triangle on every card', () => {
+    // Space superiority buys DFR and gives up anti-ship damage; strike is the
+    // worst dogfighter on its own airframe. True of all sixteen printed cards.
+    for (const c of [...SFC_FIGHTERS, ...FAN_FIGHTERS]) {
+      const strike = loadoutOf(c, 'strike')!
+      const sup = loadoutOf(c, 'space-superiority')!
+      expect(sup.dfr, `${c.name}: space superiority should out-dogfight strike`).toBeGreaterThan(
+        strike.dfr,
+      )
+      expect(strike.strikeDamage, `${c.name}: strike should hit harder`).toBeGreaterThanOrEqual(
+        sup.strikeDamage,
+      )
+    }
+  })
+
+  it('a carrier flies its own navy\'s fighter', () => {
+    expect(defaultWingFor('Union of Federated Systems')).toBe('sabre')
+    expect(defaultWingFor('Vallari Imperium')).toBe('v-1-talon')
+    expect(defaultWingFor('Aurelian Empire')).toBe('strix')
+    expect(defaultWingFor('Pirate')).toBe('magpie')
+    // A guest hull flies its own navy's craft if the calibration set has one.
+    expect(defaultWingFor('Earth Alliance')).toBe('starfury')
+    // Anything else gets the roster's centre of mass, never a fan design.
+    expect(defaultWingFor('Galactic Empire')).toBe('sabre')
+  })
+})
+
+describe('the calibration set', () => {
   it('carries all six airframes with their loadouts', () => {
-    expect(FIGHTER_CARDS.map((c) => c.id)).toEqual([
+    expect(FAN_FIGHTERS.map((c) => c.id)).toEqual([
       'starfury',
       'thunderbolt',
       'frazi',
@@ -117,6 +245,7 @@ describe('the cards', () => {
       'sentri',
       'peregrine',
     ])
+    expect(FAN_FIGHTERS.every((c) => c.fan)).toBe(true)
     for (const card of FIGHTER_CARDS) {
       expect(card.loadouts.map((l) => l.kind)).toEqual(['strike', 'space-superiority', 'basic'])
     }

@@ -34,7 +34,7 @@ import {
   type FighterConfigKind,
   type Flight,
 } from '../engine/fighters'
-import { fighterCard, FIGHTER_CARDS } from '../data/fighters'
+import { fighterCard, FAN_FIGHTERS, SFC_FIGHTERS } from '../data/fighters'
 import { dispatch, dispatchWithChoices } from './store'
 
 /**
@@ -174,11 +174,21 @@ function FighterSection({ game, ship }: { game: GameState; ship: ShipState }) {
           </p>
           <div className="builder-row wrap">
             <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-              {FIGHTER_CARDS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <optgroup label="StarForce">
+                {SFC_FIGHTERS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {c.faction}
+                  </option>
+                ))}
+              </optgroup>
+              {/* The outline's own cards: a calibration set, never a default. */}
+              <optgroup label="Calibration set (fan designs)">
+                {FAN_FIGHTERS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {c.faction}
+                  </option>
+                ))}
+              </optgroup>
             </select>
             <select
               value={config}

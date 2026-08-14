@@ -180,7 +180,7 @@ import {
   type FighterConfigKind,
   type Flight,
 } from './fighters'
-import { fighterCard, FIGHTER_CARDS } from '../data/fighters'
+import { defaultWingFor, fighterCard } from '../data/fighters'
 import {
   adjustedSpeed,
   beamsAvailable,
@@ -3204,11 +3204,16 @@ export function flightsInHangar(game: GameState, ship: ShipState): number {
 }
 
 /**
- * The card a carrier flies. A scenario may name one; otherwise the launching
- * player picks, and the first card is what the AI and the default button take.
+ * The card a carrier flies.
+ *
+ * A scenario may name one; otherwise it is the fighter that ship's own navy
+ * builds — a Union hull launches SABREs, an Aurelian one launches STRIX. The
+ * Babylon 5 cards in the outline are a calibration set and are never a default,
+ * which is why this goes through the faction rather than taking the first card
+ * in the list.
  */
 export function wingCardFor(ship: ShipState): string {
-  return ship.wingCardId ?? FIGHTER_CARDS[0].id
+  return ship.wingCardId ?? defaultWingFor(ship.form.faction)
 }
 
 /**

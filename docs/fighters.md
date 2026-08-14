@@ -113,7 +113,7 @@ enemy is still a map away.
 | | |
 | --- | --- |
 | `src/engine/fighters.ts` | The cards, the flight, the dice, COA 1, launch and recovery rules |
-| `src/data/fighters.ts` | The sixteen transcribed stat cards |
+| `src/data/fighters.ts` | The StarForce roster, and the transcribed calibration set |
 | `src/engine/game.ts` | Flight lifecycle, the Hangar Bay Segment, flights as E12.4 small targets |
 | `src/engine/ai.ts` | `planFlightOps` |
 | `src/ui/FlightOpsPanel.tsx` | Launching, flying and fighting from the console |
@@ -128,6 +128,57 @@ rulebook wins until Doyle says otherwise (Q5).
 Nothing in the printed roster has a hangar, so fighters reach the table through the ship builder,
 the fan designs, or a scenario that fields a carrier. A scenario may name each carrier's wing in
 the designer; left unset, whoever launches picks the card at the bay door.
+
+---
+
+## The StarForce roster
+
+`src/data/fighters.ts` carries two sets. **`SFC_FIGHTERS` is the roster** — five airframes built
+out of the printed factions' own technology, and what a carrier flies unless somebody picks
+otherwise. `FAN_FIGHTERS` is the Babylon 5 calibration set from the outline, kept the way the
+cross-franchise hulls in `tools/fan_designs.ts` are: clearly marked, playable, never a default.
+
+The design rule is that file's rule for original hulls — **a fighter may only express what its
+faction already fields, or it is another faction's craft wearing the wrong flag.** A card carries
+seven numbers, so the whole of a faction's identity has to arrive through them.
+
+| fighter | faction | Spd | Jam | Str | Sen | what the printed hulls made it |
+| --- | --- | --- | --- | --- | --- | --- |
+| **SABRE** | Union | 6 | 6 | 4 | 2 | No armour, no cloak, the best sensors in the game — so no extreme, and the only card whose three loadouts are all worth flying |
+| **HALBERD** | Union | 5 | 6 | 5 | 2 | The A/MAT doctrine in a small airframe: strike 1‑4 for 3, and the worst dogfighter on the roster |
+| **V-1 TALON** | Vallari | 5 | 5 | 5 | 1 | The only faction with armour: Structure 5, and **Dodge 1‑1 loaded** — it does not evade, it takes the hit |
+| **STRIX** | Aurelian | 6 | **8** | **3** | 1 | 21 of 21 Aurelian hulls carry a cloak, and what a cloak does is what E10.2.2 jamming does. Plasma strike: 1‑2 to hit, for 4 |
+| **MAGPIE** | Pirate | 6 | 5 | 4 | 1 | Nothing printed to read a doctrine off, so: a SABRE with the good parts sold |
+
+Every card stays inside the calibration set's envelope — Speed 5‑6, Jamming 5‑8, Structure 3‑5,
+Sensor 1‑2 — for the same reason the fan hulls were weakened into the printed envelope, and that is
+asserted in `fighters.test.ts` rather than eyeballed.
+
+### The STRIX is the one worth watching
+
+Its two numbers are opposites, and measurement says both of them bite. Twenty-four fighters flown
+off an ARK ROYAL, ten games each:
+
+| wing | | against a **YORKTOWN III** (gunship) | against an **ARK ROYAL** (all point defense) |
+| --- | --- | --- | --- |
+| SABRE | jam 6, str 4 | 17.4/24 alive, 10.1 structure delivered | — |
+| HALBERD | jam 6, str 5 | 20.7/24 alive, 12.4 delivered | — |
+| V-1 TALON | jam 5, str 5 | 20.2/24 alive, 9.6 delivered | beat the STRIX **8W‑1L‑3D** |
+| STRIX | jam 8, str 3 | 17.7/24 alive, 10.2 delivered | wiped every game |
+| MAGPIE | jam 5, str 4 | 17.4/24 alive, 10.1 delivered | — |
+
+Against a gunship the STRIX survives as well as a Structure‑4 fighter *while being Structure 3* —
+jamming 8 pushes the main battery's volleys off the chart, and it is worth about a point of hull.
+Against a carrier whose every mount is point defense, E12.4.3 removes the jamming entirely and
+Structure 3 is fully exposed: it lost all twenty-four fighters in every game and the match 1‑8‑3.
+
+That is the Aurelian bargain everywhere else in this game, on a card, and it means **the counter to
+an Aurelian wing is flak, not guns** — which is the same answer F1.20 gives for fighters generally,
+sharpened to a faction.
+
+The Union pair is coherent for the same reason in reverse: flown against each other the SABRE beats
+the HALBERD 7‑5 on the dogfight, and the HALBERD delivers a quarter more damage to a hull. Neither
+is the better fighter; they are the two halves of a wing.
 
 ---
 
