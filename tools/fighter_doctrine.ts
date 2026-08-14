@@ -43,6 +43,9 @@ import {
 import { activeShips, isCombatPhase, flightsAirborne, victoryPoints } from '../src/engine/game'
 
 const GAMES = Number(process.argv[2] ?? 6)
+/** Optional substring filters, for re-running one finding at more games. */
+const ONLY_VARIANT = process.argv[3] ?? ''
+const ONLY_MATCHUP = process.argv[4] ?? ''
 const SIDE = 'Blue Force'
 const FOE = 'Red Force'
 
@@ -196,6 +199,7 @@ const SEEDS = Array.from({ length: GAMES }, (_, i) => 0x5f04ce + i * 7919)
 console.log(`${GAMES} games a row · 72" map · same seeds every row · Blue flies the variant\n`)
 
 for (const matchup of MATCHUPS) {
+  if (ONLY_MATCHUP && !matchup.label.includes(ONLY_MATCHUP)) continue
   console.log(`  ${matchup.label}`)
   console.log('    doctrine                       dmg  lost  dmg/loss  kills  runs   up  margin')
   console.log('    ' + '-'.repeat(76))
@@ -203,6 +207,15 @@ for (const matchup of MATCHUPS) {
 
   for (const variant of VARIANTS) {
     if (variant.needsEnemyWing && !matchup.contested) continue
+    if (ONLY_VARIANT && !variant.label.includes(ONLY_VARIANT) && variant.label !== 'default') {
+      continue
+    }
+    /*
+     * Massing needs somewhere to mass. Against a single enemy hull there is
+     * only one ship to pick, so concentrate and distribute are the same
+     * doctrine — and the sweep printed two byte-identical rows to prove it.
+     */
+    if (variant.doctrine.massing && matchup.red.length < 2) continue
     // Blue only: the enemy's wing keeps flying the default, so the row is an
     // A/B and not two copies of the same idea agreeing with each other.
     setWingDoctrine()
