@@ -50,8 +50,8 @@ interface Matchup {
   label: string
   blue: string[]
   red: string[]
-  /** Blue's fighter card name, as it appears in the log. */
-  ours: RegExp
+  /** Blue's fighter card, as the log names it. The enemy's must differ. */
+  ours: string
 }
 
 const MATCHUPS: Matchup[] = [
@@ -59,13 +59,13 @@ const MATCHUPS: Matchup[] = [
     label: 'strike (no enemy wing)',
     blue: ['fan-union-ark-royal-fleet-carrier'],
     red: ['vallari-v-7c-raider-class-battlecruiser', 'vallari-v-7c-raider-class-battlecruiser'],
-    ours: /^SABRE flight/,
+    ours: 'SABRE',
   },
   {
     label: 'contested (OMEGA flies Starfuries)',
     blue: ['fan-union-ark-royal-fleet-carrier'],
     red: ['fan-b5-omega-destroyer'],
-    ours: /^SABRE flight/,
+    ours: 'SABRE',
   },
 ]
 
@@ -141,27 +141,38 @@ function play(matchup: Matchup, seed: number): Tally {
     if (activeShips(game).length < 2) break
   }
 
+  /*
+   * Log attribution. Who a line belongs to depends on who *writes* it, and the
+   * three lines that matter are written by three different actors:
+   *
+   *  - a strike run is written by the attacking flight, so it leads the line;
+   *  - a gunnery casualty is written by the firing *ship* and names the flight
+   *    it hit halfway through, so "ours" is `into SABRE flight`, not a prefix;
+   *  - a dogfight is written by the attacker and names the defender after
+   *    `engages`, so the same line is a kill for one side and a loss for the
+   *    other depending on which end our card is at.
+   *
+   * Getting the second one wrong is not a small error — it read every wing as
+   * having taken zero casualties, which made damage-per-fighter-lost infinite
+   * and the whole comparison meaningless.
+   */
+  const leads = new RegExp(`^${matchup.ours} flight`)
+  const struck = new RegExp(`into ${matchup.ours} flight`)
+  const engaged = new RegExp(`engages ${matchup.ours} flight`)
+
   tally.rounds = game.round
   for (const { message } of game.log) {
-    const mine = matchup.ours.test(message)
-    // Strike runs and their damage: only ours count.
     const hit = /strikes .*? for (\d+) damage/.exec(message)
-    if (hit && mine) {
+    if (hit && leads.test(message)) {
       tally.runs += 1
       tally.damage += Number(hit[1])
     }
-    // Point defense and gunnery casualties. The line names the flight that took
-    // them, so "ours" is the same test.
     const down = /— (\d+) fighter\(s\) down/.exec(message)
-    if (down && mine) tally.lost += Number(down[1])
-    // Dogfights: the attacker leads the line, so a line we start is a kill we
-    // scored, and a line we do not start that names us is a loss we took.
+    if (down && struck.test(message)) tally.lost += Number(down[1])
     const dogfight = /engages .*?, (\d+) destroyed/.exec(message)
     if (dogfight) {
-      if (mine) tally.kills += Number(dogfight[1])
-      else if (matchup.ours.test(message.split('engages ')[1] ?? '')) {
-        tally.lost += Number(dogfight[1])
-      }
+      if (leads.test(message)) tally.kills += Number(dogfight[1])
+      else if (engaged.test(message)) tally.lost += Number(dogfight[1])
     }
   }
   const score = victoryPoints(game)
