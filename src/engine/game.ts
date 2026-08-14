@@ -66,6 +66,7 @@ import {
   distance,
   distanceToSegment,
   hasLineOfSight,
+  shieldsFacing,
   type CircleObstacle,
 } from './geometry'
 import {
@@ -158,6 +159,27 @@ import {
   type SmallCraft,
   type SmallCraftKind,
 } from './smallCraft'
+import {
+  airframeJamming,
+  airframeSpeed,
+  currentConfig,
+  currentLoadout,
+  dogfight,
+  flightCasualties,
+  flightDestroyed,
+  flightLaunchRefusal,
+  flightMoveRefusal,
+  flightRecoveryRefusal,
+  hangarCapacity,
+  launchPositionFor,
+  loadoutOf,
+  MAX_FLIGHT_SIZE,
+  strike,
+  strikeExpendsLoad,
+  type FighterConfigKind,
+  type Flight,
+} from './fighters'
+import { fighterCard, FIGHTER_CARDS } from '../data/fighters'
 import {
   adjustedSpeed,
   beamsAvailable,
@@ -408,6 +430,10 @@ export interface OperationsState {
   transportedThisPhase: Record<string, number>
   /** Ships that launched a shuttle this phase (J8.1.2). */
   launchedThisPhase: Set<string>
+  /** Fighter flights launched this phase, per ship — one per LNCH box. */
+  flightsLaunchedThisPhase: Record<string, number>
+  /** Fighter flights recovered this phase, per ship — one per LNDG box. */
+  flightsRecoveredThisPhase: Record<string, number>
   /** Shuttles recovered this phase, per ship (J8.1.2, J8.1.3). */
   recoveredThisPhase: Record<string, number>
   /** Shuttles that docked onto each ship this phase (J8.2.6). */
@@ -448,6 +474,8 @@ export function newOperationsState(): OperationsState {
     scannedThisPhase: new Set(),
     transportedThisPhase: {},
     launchedThisPhase: new Set(),
+    flightsLaunchedThisPhase: {},
+    flightsRecoveredThisPhase: {},
     recoveredThisPhase: {},
     dockedThisPhase: {},
     probesThisRound: {},
@@ -556,6 +584,8 @@ export interface GameState {
   ops: OperationsState
   /** Shuttles and probes on the map (E12, J7, J8). */
   smallCraft: SmallCraft[]
+  /** Fighter flights on the map. Package A of the Apr 2026 outline. */
+  flights: Flight[]
   /** Escape pods adrift, waiting for somebody to pick them up (E11.6). */
   escapePods: EscapePod[]
   /** Crew units in safe hands, credited to the side holding them (E11.4.2). */
@@ -657,6 +687,7 @@ export function createGame(args: {
     jammingVsHoming: args.jammingVsHoming ?? false,
     ops: newOperationsState(),
     smallCraft: [],
+    flights: [],
     escapePods: [],
     crewRescued: {},
     options,
@@ -1768,6 +1799,10 @@ function runSegmentExit(game: GameState): void {
     case 'flight-operations':
       // Activation markers come off once every craft has had its turn (J8.2.2).
       for (const craft of game.smallCraft) craft.activated = false
+      for (const flight of game.flights) {
+        flight.activated = false
+        flight.attacked = false
+      }
       break
 
     case 'delayed-action':
@@ -1775,6 +1810,8 @@ function runSegmentExit(game: GameState): void {
       game.ops.scannedThisPhase.clear()
       game.ops.transportedThisPhase = {}
       game.ops.launchedThisPhase.clear()
+      game.ops.flightsLaunchedThisPhase = {}
+      game.ops.flightsRecoveredThisPhase = {}
       game.ops.recoveredThisPhase = {}
       game.ops.dockedThisPhase = {}
       game.ops.maxSystem = {}
@@ -1823,6 +1860,11 @@ function runSegmentExit(game: GameState): void {
       }
       break
     }
+
+    case 'hangar-bay':
+      // A3.4.4 is printed "TBD"; this is what the outline puts in it.
+      runHangarBay(game)
+      break
 
     default:
       break
@@ -2866,9 +2908,15 @@ export interface SmallTarget {
   id: string
   name: string
   position: Point
-  kind: 'craft' | 'homing'
+  kind: 'craft' | 'homing' | 'flight'
   /** Held in the attacker's own tractor beam, so its dice are automatic (J3.2.5). */
   held: boolean
+  /**
+   * Jamming this target adds to the actual range of non-point-defense fire
+   * (E10.2.2). Fighters carry 5 to 8 of it; nothing else on this list carries
+   * any.
+   */
+  jamming?: number
 }
 
 export function smallTargetsFor(game: GameState, attacker: ShipState): SmallTarget[] {
@@ -2908,6 +2956,27 @@ export function smallTargetsFor(game: GameState, attacker: ShipState): SmallTarg
       held: heldByMe(hw.id),
     })
   }
+
+  /*
+   * E12.4.2 — a flight is one small target. "The firing player is not required
+   * to assign specific weapon mounts to a single small target; only the volley
+   * or flight is required." Fighters in the hangar are aboard, not on the
+   * board, and J3.2.1 already keeps tractor beams off them entirely, so a
+   * flight is never `held`.
+   */
+  for (const flight of game.flights) {
+    if (flightDestroyed(flight) || flight.dockedTo) continue
+    const card = fighterCard(flight.cardId)
+    if (!card) continue
+    targets.push({
+      id: flight.id,
+      name: flightName(game, flight),
+      position: flight.position,
+      kind: 'flight' as const,
+      held: false,
+      jamming: airframeJamming(card, currentLoadout(flight, card)),
+    })
+  }
   return targets
 }
 
@@ -2940,9 +3009,26 @@ export function fireAtSmallTarget(
   if (!weapon || !state) return { refusal: 'No such weapon mount.' }
   if (!mountIsReady(weapon, mountIndex, state)) return { refusal: `${weapon.name} is not armed.` }
 
-  const range = Math.floor(distance(attacker.placement.position, target.position))
+  const pointDefense = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
+  const actual = Math.floor(distance(attacker.placement.position, target.position))
+  /*
+   * E10.2.2 — the target's jamming is added to the actual range. It is a
+   * bracket shift, not a to-hit modifier, so a Nial at jamming 8 pushes a main
+   * battery's volley two or three brackets out or off the chart entirely.
+   * E12.4.3 exempts point defense, which is what makes PD mounts the
+   * anti-fighter answer rather than the guns (F1.20).
+   */
+  const jamming = pointDefense ? 0 : (target.jamming ?? 0)
+  const range = actual + jamming
   const bracket = weapon.brackets.find((b) => range >= b.min && range <= b.max)
-  if (!bracket) return { refusal: `${target.name} is at ${range}", outside ${weapon.name}'s chart.` }
+  if (!bracket) {
+    return {
+      refusal:
+        jamming > 0
+          ? `${target.name} is at ${actual}" +${jamming} jamming = ${range}", off ${weapon.name}'s chart (E10.2.2).`
+          : `${target.name} is at ${range}", outside ${weapon.name}'s chart.`,
+    }
+  }
   // A target held in your own beam is simply shifted into a convenient arc, so
   // only a free-flying one has to be borne on (J3.2.5, E2.2.2).
   if (
@@ -2955,19 +3041,56 @@ export function fireAtSmallTarget(
     return { refusal: `${target.name} is not in an arc ${weapon.name} can bear on (E2.2.2).` }
   }
 
-  const pointDefense = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
   const faces = target.held
     ? bracket.dice.map((die) => HELD_TARGET_FACE[die])
     : rollDice(bracket.dice, game.rng).map((r) => r.face)
+
+  state.armed = 0
+  state.ammoUsed += 1
+
+  /*
+   * COA 1 (E12.4.2) — the volley is pooled against the flight and divided by
+   * one fighter's Structure. That division is the whole casualty model: six
+   * Frazis at Structure 5 soak thirty points, six Sentris at 3 soak eighteen.
+   */
+  if (target.kind === 'flight') {
+    const flight = game.flights.find((f) => f.id === targetId)!
+    const card = fighterCard(flight.cardId)!
+    const result = flightCasualties(
+      faces,
+      weapon.special?.damage ?? 0,
+      pointDefense,
+      flight,
+      card,
+    )
+    flight.members -= result.killed
+    flight.damage = flightDestroyed(flight) ? 0 : result.carried
+    const dead = flightDestroyed(flight)
+    pushLog(
+      game,
+      `${attacker.name}: ${weapon.name} puts ${result.volley.damage} into ${target.name}` +
+        (jamming > 0 ? ` at ${actual}"+${jamming} jamming` : '') +
+        (result.volley.degraded
+          ? ` (halved by degraded fire control, ${result.volley.raw} raw)`
+          : '') +
+        ` — ${result.killed} fighter(s) down` +
+        (dead ? ', the flight is wiped out' : `, ${flight.members} left`),
+    )
+    if (dead) game.flights = game.flights.filter((f) => f.id !== flight.id)
+    return {
+      refusal: null,
+      volley: result.volley,
+      destroyed: dead,
+      remaining: dead ? 0 : flight.members,
+    }
+  }
+
   const volley = smallTargetDamage(
     faces,
     weapon.special?.damage ?? 0,
     pointDefense,
     target.held,
   )
-
-  state.armed = 0
-  state.ammoUsed += 1
 
   if (target.kind === 'craft') {
     const craft = game.smallCraft.find((c) => c.id === targetId)!
@@ -3021,6 +3144,260 @@ export function shuttleJamming(game: GameState, ship: ShipState): number {
 /** Shuttles and probes belonging to a ship that are still flying. */
 export function craftLaunchedBy(game: GameState, ship: ShipState): SmallCraft[] {
   return craftOf(game.smallCraft, ship.id)
+}
+
+// ---------------------------------------------------------------------------
+// Fighter flights (Apr 2026 outline, Package A)
+// ---------------------------------------------------------------------------
+
+let flightCounter = 0
+
+/** What the log and the pickers call a flight. */
+export function flightName(game: GameState, flight: Flight): string {
+  const card = fighterCard(flight.cardId)
+  const mother = game.ships.find((s) => s.id === flight.motherId)
+  const tail = mother ? ` (${mother.name.split(' ').pop()})` : ''
+  return `${card?.name ?? flight.cardId} flight${tail}`
+}
+
+export function flightsOf(game: GameState, ship: ShipState): Flight[] {
+  return game.flights.filter((f) => f.motherId === ship.id && !flightDestroyed(f))
+}
+
+/** Flights this ship has out on the board — the ones that count against its four. */
+export function flightsAirborne(game: GameState, ship: ShipState): Flight[] {
+  return flightsOf(game, ship).filter((f) => !f.dockedTo)
+}
+
+/**
+ * The card a carrier flies. A scenario may name one; otherwise the launching
+ * player picks, and the first card is what the AI and the default button take.
+ */
+export function wingCardFor(ship: ShipState): string {
+  return ship.wingCardId ?? FIGHTER_CARDS[0].id
+}
+
+/**
+ * Put a flight on the board during Flight Operations.
+ *
+ * One flight per undamaged LNCH box per phase (Q5), and **one cloak-detection
+ * roll however many fighters go out** (Q12‑A): H6.15.4 gives every searching
+ * ship "+1 Roll per Small Craft Launched", and counting a six-fighter flight as
+ * six launches would forbid a cloaked carrier to operate at all.
+ */
+export function launchFlight(
+  game: GameState,
+  ship: ShipState,
+  cardId: string = wingCardFor(ship),
+  config: FighterConfigKind = 'space-superiority',
+  members = MAX_FLIGHT_SIZE,
+): string | null {
+  const card = fighterCard(cardId)
+  if (!card) return `No such fighter card: ${cardId}.`
+  if (!loadoutOf(card, config)) return `The ${card.name} has no ${config} loadout.`
+  if (members < 1 || members > MAX_FLIGHT_SIZE) {
+    return `A flight is 1 to ${MAX_FLIGHT_SIZE} fighters.`
+  }
+  const refusal = flightLaunchRefusal(
+    ship,
+    flightsAirborne(game, ship).length,
+    game.ops.flightsLaunchedThisPhase[ship.id] ?? 0,
+    ship.flightsAboard,
+  )
+  if (refusal) return refusal
+
+  flightCounter += 1
+  ship.flightsAboard -= 1
+  game.flights.push({
+    id: `flight-${flightCounter}`,
+    side: ship.side,
+    motherId: ship.id,
+    cardId,
+    config,
+    spent: false,
+    members,
+    position: launchPositionFor(ship),
+    damage: 0,
+    // Forming up is this phase's activation, as a launched shuttle's is (J8.2.1).
+    activated: true,
+    attacked: false,
+  })
+  game.ops.flightsLaunchedThisPhase[ship.id] =
+    (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0) + 1
+  pushLog(game, `${ship.name}: launches ${members} ${card.name} in ${config} configuration.`)
+  // One launch, however many fighters are in it (Q12-A).
+  launchRevealsCloak(game, ship, 1)
+  return null
+}
+
+/** Fly a flight. No facing, no plot — a bearing and a distance (J8.2.3). */
+export function moveFlight(game: GameState, flightId: string, to: Point): string | null {
+  const flight = game.flights.find((f) => f.id === flightId)
+  if (!flight) return 'No such flight.'
+  const card = fighterCard(flight.cardId)
+  if (!card) return 'No such fighter card.'
+  const refusal = flightMoveRefusal(flight, card, to)
+  if (refusal) return refusal
+  flight.position = to
+  flight.activated = true
+  return null
+}
+
+/** Land a flight back aboard — one per undamaged LNDG box per phase (Q5). */
+export function recoverFlight(game: GameState, flightId: string, ship: ShipState): string | null {
+  const flight = game.flights.find((f) => f.id === flightId)
+  if (!flight) return 'No such flight.'
+  if (flight.dockedTo) return 'That flight is already aboard.'
+  const refusal = flightRecoveryRefusal(
+    flight,
+    ship,
+    game.ops.flightsRecoveredThisPhase[ship.id] ?? 0,
+    ship.flightsAboard,
+  )
+  if (refusal) return refusal
+
+  game.ops.flightsRecoveredThisPhase[ship.id] =
+    (game.ops.flightsRecoveredThisPhase[ship.id] ?? 0) + 1
+  flight.dockedTo = ship.id
+  flight.activated = true
+  ship.flightsAboard += 1
+  pushLog(game, `${ship.name}: recovers ${flightName(game, flight)} — ${flight.members} back aboard.`)
+  return null
+}
+
+/**
+ * One flight shoots at another, in Flight Operations.
+ *
+ * Fighter-versus-fighter is the d6 subsystem in full: DFR to hit, Dodge to
+ * save, and every unsaved hit takes a fighter. Range is the attacker's own
+ * movement allowance — a dogfight is a merge, not a gunnery duel — and jamming
+ * does nothing here, since E10.2.2 is a range-bracket rule for *starship*
+ * gunnery and a fighter has no brackets.
+ */
+export function flightDogfight(game: GameState, flightId: string, targetId: string): string | null {
+  const flight = game.flights.find((f) => f.id === flightId)
+  const target = game.flights.find((f) => f.id === targetId)
+  if (!flight || !target) return 'No such flight.'
+  if (flight.side === target.side) return 'That flight is friendly.'
+  if (flight.dockedTo || target.dockedTo) return 'A flight in the hangar is out of the fight.'
+  if (flight.attacked) return 'That flight has already attacked this phase.'
+  const card = fighterCard(flight.cardId)
+  const targetCard = fighterCard(target.cardId)
+  if (!card || !targetCard) return 'No such fighter card.'
+  const loadout = currentLoadout(flight, card)
+  const targetLoadout = currentLoadout(target, targetCard)
+  if (!loadout || !targetLoadout) return 'No such loadout.'
+
+  const reach = airframeSpeed(card, loadout)
+  const range = distance(flight.position, target.position)
+  if (range > reach + 1e-9) {
+    return `${flightName(game, target)} is ${range.toFixed(1)}" away; a ${card.name} reaches ${reach}".`
+  }
+
+  const result = dogfight(
+    { members: flight.members, dfr: loadout.dfr },
+    { members: target.members, dodge: targetLoadout.dodge },
+    game.rng,
+  )
+  flight.attacked = true
+  target.members -= result.kills
+  pushLog(
+    game,
+    `${flightName(game, flight)} engages ${flightName(game, target)}: ` +
+      `${result.hits} hit(s) on DFR 1‑${loadout.dfr}, ${result.dodged} dodged on 1‑${targetLoadout.dodge}, ` +
+      `${result.kills} destroyed` +
+      (flightDestroyed(target) ? ' — the flight is wiped out' : `, ${target.members} left`),
+  )
+  if (flightDestroyed(target)) game.flights = game.flights.filter((f) => f.id !== target.id)
+  return null
+}
+
+/**
+ * A flight strikes a starship, in Flight Operations.
+ *
+ * One d6 per fighter against the card's Strike range, each hit doing the card's
+ * damage to the shield the flight is bearing on. The ship has already had its
+ * point-defense answer: E12.3.4 gives it that shot before the small craft
+ * attack, and the sequence of play gives it too — offensive fire is resolved in
+ * the Combat Segment, which closes before flights act.
+ *
+ * The load is spent in the act, and the counter flips to its BASIC face (Q4‑A).
+ */
+export function flightStrike(game: GameState, flightId: string, shipId: string): string | null {
+  const flight = game.flights.find((f) => f.id === flightId)
+  const ship = game.ships.find((s) => s.id === shipId)
+  if (!flight || !ship) return 'No such flight or ship.'
+  if (flight.side === ship.side) return 'That ship is friendly.'
+  if (flight.dockedTo) return 'That flight is in the hangar.'
+  if (flight.attacked) return 'That flight has already attacked this phase.'
+  if (ship.destroyed || ship.disengaged) return `${ship.name} is out of the battle.`
+  const card = fighterCard(flight.cardId)
+  if (!card) return 'No such fighter card.'
+  const loadout = currentLoadout(flight, card)
+  if (!loadout) return 'No such loadout.'
+  if (loadout.strikeHit <= 0) return `${card.name} in this configuration is unarmed against ships.`
+
+  const reach = airframeSpeed(card, loadout)
+  const range = distance(flight.position, ship.placement.position)
+  if (range > reach + 1e-9) {
+    return `${ship.name} is ${range.toFixed(1)}" away; a ${card.name} reaches ${reach}".`
+  }
+
+  const result = strike(flight, loadout, game.rng)
+  flight.attacked = true
+  const config = currentConfig(flight)
+  if (strikeExpendsLoad(config)) flight.spent = true
+
+  if (result.damage === 0) {
+    pushLog(
+      game,
+      `${flightName(game, flight)} runs in on ${ship.name} and scores nothing` +
+        (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
+    )
+    return null
+  }
+
+  const side = shieldsFacing(flight.position, ship.placement.position, ship.placement.heading)[0]
+  const outcome = applyVolley(
+    ship,
+    {
+      standard: result.damage,
+      leak: 0,
+      structurePenetration: 0,
+      side,
+      shieldsInoperative:
+        shieldsInoperative(cloudConditions(game.scenario), ship) || shipIsCloaked(game, ship),
+    },
+    damageContext(game),
+  )
+  recordShieldHit(game, ship.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+  damageRevealsCloak(game, ship, result.damage)
+  pushLog(
+    game,
+    `${flightName(game, flight)} strikes ${ship.name}'s ${side} shield: ` +
+      `${result.hits} hit(s) on 1‑${loadout.strikeHit} for ${result.damage} damage` +
+      (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
+  )
+  return null
+}
+
+/**
+ * The Hangar Bay Segment (A3.4.4), which the published sequence of play prints
+ * as "TBD".
+ *
+ * A flight that is aboard rearms: the counter comes back off its BASIC face
+ * with a full load. That is the whole of "Repair and Rearm" as the outline has
+ * it — fighters lost are lost, and nothing here replaces them.
+ */
+export function runHangarBay(game: GameState): void {
+  for (const flight of game.flights) {
+    if (!flight.dockedTo || !flight.spent) continue
+    const ship = game.ships.find((s) => s.id === flight.dockedTo)
+    if (!ship || ship.destroyed || ship.derelict) continue
+    if (hangarCapacity(ship) === 0) continue
+    flight.spent = false
+    pushLog(game, `${ship.name}: rearms ${flightName(game, flight)} in the hangar.`)
+  }
 }
 
 function positionOfObject(game: GameState, id: string): { x: number; y: number } | undefined {

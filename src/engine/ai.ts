@@ -23,9 +23,23 @@ import {
   victoryPoints,
   cloneGame,
   activeShips,
+  flightsAirborne,
+  wingCardFor,
   PHASE_ORDER,
   type GameState,
 } from './game'
+import {
+  airframeSpeed,
+  currentLoadout,
+  hangarCapacity,
+  launchRate,
+  FLIGHT_RANGE,
+  MAX_FLIGHT_SIZE,
+  MAX_FLIGHTS_PER_SHIP,
+  type FighterConfigKind,
+  type Flight,
+} from './fighters'
+import { fighterCard } from '../data/fighters'
 import {
   displaceRefusal,
   displacedPosition,
@@ -320,6 +334,8 @@ export function aiNextActions(
       // The tractor shove waits until everyone has moved (J3.5.2), which in
       // this engine is the far side of the Navigation Segment.
       return difficulty === 'admiral' ? planDisplacement(game, fleet, memo) : []
+    case 'flight-operations':
+      return planFlightOps(game, fleet, sides)
     case 'boarding-combat':
       return planBoarding(game, sides, memo)
     case 'disengagement':
@@ -4718,6 +4734,152 @@ function planBoarding(game: GameState, sides: string[], memo: AiMemo): GameActio
     }
   }
   return actions
+}
+
+// ---------------------------------------------------------------------------
+// Flight Operations (A3.3.5) — fighters
+// ---------------------------------------------------------------------------
+
+/**
+ * The AI flies its wing.
+ *
+ * The doctrine is short because a fighter's decision is short: get the flight
+ * off the deck, close on something, and hit it. What judgement there is lives
+ * in two places —
+ *
+ *  - **What to load.** Space superiority while the enemy still has fighters in
+ *    the air, because a flight that loses the dogfight never reaches the hull;
+ *    strike once the sky is clear, because that is where the damage is.
+ *  - **What to hit.** An enemy flight in reach before a hull, for the same
+ *    reason. A strike load with its ordnance spent goes home to rearm rather
+ *    than loitering as a target — the Hangar Bay Segment is what makes that
+ *    trip worth making.
+ *
+ * Everything is emitted in one batch, in a legal order: launch, then move, then
+ * attack. The activation flags carry the termination — a flight that has moved
+ * and attacked produces nothing on the next call.
+ */
+function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): GameAction[] {
+  if (game.flights.length === 0 && fleet.every((s) => s.flightsAboard === 0)) return []
+  const actions: GameAction[] = []
+  const mine = (f: Flight) => sides.includes(f.side)
+  const enemyFlights = game.flights.filter((f) => !mine(f) && !f.dockedTo && f.members > 0)
+  const enemyShips = activeShips(game).filter((s) => !sides.includes(s.side))
+
+  // 1. Get the wing off the deck. Space superiority while there is anything to
+  //    dogfight; strike when the sky belongs to us.
+  for (const ship of fleet) {
+    if (ship.flightsAboard < 1 || hangarCapacity(ship) === 0) continue
+    const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
+    let room = Math.min(
+      rate,
+      MAX_FLIGHTS_PER_SHIP - flightsAirborne(game, ship).length,
+      ship.flightsAboard,
+    )
+    // Nothing to fly at yet: keep them aboard rather than parking counters in
+    // open space where a point defense mount can pick them apart for free.
+    if (enemyFlights.length === 0 && enemyShips.every((s) =>
+      actualRange(s.placement.position, ship.placement.position) > 24,
+    )) {
+      room = 0
+    }
+    const config: FighterConfigKind = enemyFlights.length > 0 ? 'space-superiority' : 'strike'
+    for (let i = 0; i < room; i++) {
+      actions.push({
+        type: 'launch-flight',
+        shipId: ship.id,
+        cardId: wingCardFor(ship),
+        config,
+        members: MAX_FLIGHT_SIZE,
+      })
+    }
+  }
+
+  // 2. Fly and fight what is already up.
+  for (const flight of game.flights) {
+    if (!mine(flight) || flight.dockedTo || flight.members <= 0) continue
+    if (flight.activated && flight.attacked) continue
+    const card = fighterCard(flight.cardId)
+    if (!card) continue
+    const loadout = currentLoadout(flight, card)
+    if (!loadout) continue
+    const speed = airframeSpeed(card, loadout)
+
+    /*
+     * A spent flight with nothing worth shooting at goes home: the Hangar Bay
+     * Segment gives it its load back, and a loitering counter is only a target.
+     */
+    const useful =
+      loadout.dfr > 0 && enemyFlights.length > 0
+        ? true
+        : loadout.strikeHit > 0 && enemyShips.length > 0
+    const mother = game.ships.find((s) => s.id === flight.motherId && !s.destroyed && !s.derelict)
+    if (!useful && mother) {
+      const home = actualRange(flight.position, mother.placement.position)
+      if (home <= FLIGHT_RANGE + 1) {
+        if (!flight.activated) {
+          actions.push({ type: 'recover-flight', flightId: flight.id, shipId: mother.id })
+        }
+        continue
+      }
+      if (!flight.activated) {
+        actions.push({ type: 'move-flight', flightId: flight.id, ...stepToward(flight.position, mother.placement.position, speed) })
+      }
+      continue
+    }
+
+    // An enemy flight first: it is the thing that can stop this one, and DFR
+    // beats a hull's point defense as a use of the phase.
+    const rivals = loadout.dfr > 0 ? enemyFlights : []
+    const targetFlight = nearestBy(flight.position, rivals, (f) => f.position)
+    const targetShip =
+      loadout.strikeHit > 0 ? nearestBy(flight.position, enemyShips, (s) => s.placement.position) : null
+    const aim = targetFlight
+      ? { at: targetFlight.position, kind: 'flight' as const, id: targetFlight.id }
+      : targetShip
+        ? { at: targetShip.placement.position, kind: 'ship' as const, id: targetShip.id }
+        : null
+    if (!aim) continue
+
+    let where = flight.position
+    if (!flight.activated && actualRange(flight.position, aim.at) > speed) {
+      const step = stepToward(flight.position, aim.at, speed)
+      actions.push({ type: 'move-flight', flightId: flight.id, ...step })
+      where = { x: step.x, y: step.y }
+    }
+    if (flight.attacked) continue
+    if (actualRange(where, aim.at) > speed) continue
+    actions.push(
+      aim.kind === 'flight'
+        ? { type: 'dogfight', flightId: flight.id, targetId: aim.id }
+        : { type: 'flight-strike', flightId: flight.id, shipId: aim.id },
+    )
+  }
+
+  return actions
+}
+
+/** Closest of a list, by whatever point the accessor pulls off each entry. */
+function nearestBy<T>(from: Point, items: T[], at: (item: T) => Point): T | null {
+  let best: T | null = null
+  let bestRange = Infinity
+  for (const item of items) {
+    const range = actualRange(from, at(item))
+    if (range < bestRange) {
+      bestRange = range
+      best = item
+    }
+  }
+  return best
+}
+
+/** One phase of movement toward a point, stopping on it rather than past it. */
+function stepToward(from: Point, to: Point, speed: number): { x: number; y: number } {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const gap = Math.hypot(dx, dy)
+  if (gap <= speed || gap === 0) return { x: to.x, y: to.y }
+  return { x: from.x + (dx / gap) * speed, y: from.y + (dy / gap) * speed }
 }
 
 function planDisengagement(

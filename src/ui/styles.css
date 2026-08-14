@@ -3275,6 +3275,21 @@ button.chip:hover:not(:disabled) {
   stroke: var(--green);
 }
 
+/* A fighter flight: a delta, so it never reads as a shuttle at a glance. */
+.flight-counter {
+  fill: var(--panel-2);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.flight-blue .flight-counter {
+  stroke: var(--blue, #6aa8ff);
+}
+
+.flight-red .flight-counter {
+  stroke: var(--red, #ff6a6a);
+}
+
 .craft-label {
   fill: var(--ink-dim);
   font-size: 8px;

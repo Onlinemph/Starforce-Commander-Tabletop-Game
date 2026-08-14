@@ -698,6 +698,37 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         </g>
       ))}
 
+      {/*
+        Fighter flights. One counter for the whole flight — the leader's
+        position is what everything is measured from, and E12.4.2 makes the
+        flight the target rather than the fighters in it. The strength is on
+        the counter because both players can count it.
+      */}
+      {game.flights
+        .filter((f) => !f.dockedTo && f.members > 0)
+        .map((flight) => (
+          <g
+            key={flight.id}
+            className={`fighter-flight map-mover flight-${flight.side.startsWith('Blue') ? 'blue' : 'red'}`}
+            style={{
+              transform: `translate(${flight.position.x * SCALE}px, ${flight.position.y * SCALE}px)`,
+            }}
+          >
+            <title>
+              {`${flight.cardId.toUpperCase()} — ${flight.members} fighter(s)\n` +
+                `${flight.spent ? 'BASIC (ordnance expended)' : flight.config}`}
+            </title>
+            {/* A delta, so a flight never reads as a shuttle at a glance. */}
+            <polygon
+              points={`0,${-0.35 * SCALE} ${0.3 * SCALE},${0.25 * SCALE} ${-0.3 * SCALE},${0.25 * SCALE}`}
+              className="flight-counter"
+            />
+            <text x={0} y={0.25 * SCALE + 9} className="craft-label" textAnchor="middle">
+              {`${flight.cardId.slice(0, 4).toUpperCase()} ×${flight.members}`}
+            </text>
+          </g>
+        ))}
+
       {drawn.map(({ ship, formationSize }) => (
         <ShipToken
           key={ship.id}

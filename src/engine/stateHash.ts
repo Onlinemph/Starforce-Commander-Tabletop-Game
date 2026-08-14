@@ -92,6 +92,15 @@ export function stateHash(game: GameState): string {
     shipDigest(game),
     game.homing.map((h) => `${h.id}@${round(h.position.x)}:${round(h.position.y)}`).join(';'),
     game.smallCraft.map((c) => `${c.id}@${round(c.position.x)}:${round(c.position.y)}`).join(';'),
+    // A flight's strength is as visible as its position — a counter with four
+    // fighters left on it is on the table for both players to count.
+    game.flights
+      .map(
+        (f) =>
+          `${f.id}@${round(f.position.x)}:${round(f.position.y)}` +
+          `x${f.members}/${f.damage}${f.spent ? '!' : ''}${f.dockedTo ? `>${f.dockedTo}` : ''}`,
+      )
+      .join(';'),
   ].join('|')
   return fnv1a(shape)
 }

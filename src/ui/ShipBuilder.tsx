@@ -68,6 +68,8 @@ const SYSTEM_KINDS: SystemKind[] = [
   'TRAN',
   'SHTL',
   'HNGR',
+  'LNCH',
+  'LNDG',
   'QTRS',
   'CRGO',
   'PROB',

@@ -344,6 +344,12 @@ interface SideSetup {
    */
   value?: number[]
   /**
+   * The fighter card each hull's wing flies, by force index. Unset leaves the
+   * carrier's choice to whoever launches — a scenario that fields a specific
+   * wing names it here.
+   */
+  wing?: string[]
+  /**
    * Reinforcements (S3.2): every ship from `fromIndex` onward is off the map
    * until `round`, then enters at its own anchor and facing. Expressed inside
    * the side rather than as a second side, so a player who composes their own
@@ -631,6 +637,7 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
       // cripple under rescue). Applied at deploy so replays re-derive the
       // same baseline from the scenario itself — saves never carry it.
       if (setup.damage?.[i]) applyPreDamage(ship, setup.damage[i])
+      if (setup.wing?.[i]) ship.wingCardId = setup.wing[i]
       ships.push(ship)
     })
   }
@@ -1083,6 +1090,8 @@ export interface CustomScenario {
     damage?: number[]
     /** Victory-point worth per hull; unset entries keep the printed value. */
     value?: number[]
+    /** The fighter card each carrier's wing flies. */
+    wing?: string[]
   }>
 }
 

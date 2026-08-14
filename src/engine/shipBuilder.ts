@@ -181,6 +181,11 @@ const SYSTEM_MODIFIER: Partial<Record<SystemKind, number>> = {
   TRAN: 1,
   SHTL: 1,
   HNGR: 1,
+  // The V41 sheet's own prices: a launch bay is 2 points a box, a landing
+  // bay 1. It calls the latter LAND; E8.4.6 calls it LNDG, and the printed
+  // rulebook wins.
+  LNCH: 2,
+  LNDG: 1,
   QTRS: 0,
   CRGO: 0,
   SPCL: 0,

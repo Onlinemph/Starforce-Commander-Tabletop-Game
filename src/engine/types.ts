@@ -209,6 +209,8 @@ export type SystemKind =
   | 'TRAN' // transporters (J5)
   | 'SHTL' // shuttle bay (J8)
   | 'HNGR' // hangar bay
+  | 'LNCH' // launch bay — one fighter flight out per box per phase (E8.4.6)
+  | 'LNDG' // landing bay — one fighter flight recovered per box per phase (E8.4.6)
   | 'QTRS' // quarters (J2)
   | 'CRGO' // cargo (J11)
   | 'PROB' // probe launcher (J7)

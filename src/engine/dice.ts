@@ -123,6 +123,33 @@ export function expectedValue(color: DieColor, specialDamage: number, bonus: num
   return faces.reduce((sum, face) => sum + faceValue(face, specialDamage, bonus), 0) / faces.length
 }
 
+// ---------------------------------------------------------------------------
+// Plain d6 (fighters)
+// ---------------------------------------------------------------------------
+
+/**
+ * A plain six-sided die, for the fighter subsystem only.
+ *
+ * "Standard 6-sided dice are used. The colored dice impose constraints and lack
+ * granularity." — Fighters and Small Craft outline, Apr 2026, confirmed by the
+ * 4‑25‑2026 playtest. The boundary is exact: fighter-vs-fighter combat and a
+ * fighter's own survival rolls are d6; anything a *starship's* guns do stays on
+ * the coloured dice, because a starship firing at a flight is E12.4 small-target
+ * fire and has never been a fighter roll. The two systems never meet inside one
+ * roll, so both can live in the same engine without a conversion table.
+ */
+export function rollD6(rng: Rng): number {
+  return rng.int(6) + 1
+}
+
+/**
+ * Roll under a range printed as `1‑n` on a fighter card: DFR, Dodge and Strike
+ * are all "hits on a d6 of n or less". `n` of 0 is Unarmed and never hits.
+ */
+export function rollsUnder(range: number, rng: Rng): boolean {
+  return range > 0 && rollD6(rng) <= range
+}
+
 /** Damage control and explosion checks succeed on an `S` (B3.2, E11.3.1). */
 export function rollForSpecial(count: number, rng: Rng): { rolls: DieRoll[]; success: boolean } {
   const rolls = rollDice(new Array(count).fill('red') as DieColor[], rng)

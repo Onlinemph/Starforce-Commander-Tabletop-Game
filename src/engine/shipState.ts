@@ -153,6 +153,17 @@ export interface ShipState {
   /** Enemy marine squads currently aboard, keyed by their owner. */
   boarders: Record<string, number>
   shuttlesAboard: number
+  /**
+   * Fighter flights still in the hangar. One per HNGR box at the start of a
+   * battle, from the V41 builder's "one hangar bay may contain a full fighter
+   * unit". A hull with no hangar starts at zero and never flies anything.
+   */
+  flightsAboard: number
+  /**
+   * The card this ship's wing flies, if the scenario named one. Left unset, a
+   * carrier picks at launch.
+   */
+  wingCardId?: string
 
   derelict: boolean
   destroyed: boolean
@@ -244,6 +255,9 @@ export function createShip(args: {
     crewUnits: form.sizeClass * 2,
     boarders: {},
     shuttlesAboard: form.shuttles,
+    flightsAboard: form.systems
+      .filter((g) => g.kind === 'HNGR')
+      .reduce((n, g) => n + g.boxes, 0),
     derelict: false,
     destroyed: false,
     disengaged: false,

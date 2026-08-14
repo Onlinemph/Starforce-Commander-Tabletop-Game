@@ -52,8 +52,13 @@ import {
   isCombatPhase,
   launchHoming,
   launchProbe,
+  flightDogfight,
+  flightStrike,
+  launchFlight,
   launchShuttle,
+  moveFlight,
   moveSmallCraft,
+  recoverFlight,
   performScan,
   performTransport,
   pushLog,
@@ -85,6 +90,7 @@ import { sensorFunctionCap, sensorPointsAvailable, type ShipState } from './ship
 import type { Maneuver, ShieldSide, SystemKind, TurnDirection } from './types'
 import type { ScoutFunction } from './types'
 import type { SmallCraftKind } from './smallCraft'
+import type { FighterConfigKind } from './fighters'
 
 /**
  * Every mutation the game accepts, as a named, serializable record.
@@ -233,6 +239,20 @@ export type GameAction =
   /** J3.5 — shove a tractored ship an inch, once everyone has moved. */
   | { type: 'displace-tractored'; shipId: string; targetId: string; direction: 'F' | 'A' | 'P' | 'S' }
   | { type: 'dock-shuttle'; craftId: string; shipId: string }
+  // Fighter flights (Apr 2026 outline, Package A)
+  | {
+      type: 'launch-flight'
+      shipId: string
+      cardId?: string
+      config?: FighterConfigKind
+      members?: number
+    }
+  | { type: 'move-flight'; flightId: string; x: number; y: number }
+  | { type: 'recover-flight'; flightId: string; shipId: string }
+  /** One flight shoots at another: DFR to hit, Dodge to save, d6 throughout. */
+  | { type: 'dogfight'; flightId: string; targetId: string }
+  /** A flight runs in on a starship and expends its load (Q4‑A). */
+  | { type: 'flight-strike'; flightId: string; shipId: string }
   // Abandoning ship (E11.4–E11.6, optional)
   /** E11.5 — emergency beam-out to a nearby ship, one green die per crew unit. */
   | { type: 'evacuate-crew'; shipId: string; toShipId: string }
@@ -1014,6 +1034,24 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     }
     case 'move-craft':
       return said(moveSmallCraft(game, action.craftId, { x: action.x, y: action.y }))
+    case 'launch-flight': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(
+        launchFlight(game, ship, action.cardId, action.config, action.members),
+      )
+    }
+    case 'move-flight':
+      return said(moveFlight(game, action.flightId, { x: action.x, y: action.y }))
+    case 'recover-flight': {
+      const ship = shipById(game, action.shipId)
+      if (!ship) return said('No such ship.')
+      return said(recoverFlight(game, action.flightId, ship))
+    }
+    case 'dogfight':
+      return said(flightDogfight(game, action.flightId, action.targetId))
+    case 'flight-strike':
+      return said(flightStrike(game, action.flightId, action.shipId))
     case 'capture-craft': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
@@ -1100,6 +1138,18 @@ export function actionSide(game: GameState, action: GameAction): string | null {
       return of(action.shipIds[0])
     case 'fire-small-target':
       return of(action.attackerId)
+    /*
+     * A flight's side is read off the flight, not off a ship id — the ship in
+     * `flight-strike` is the *target*, and crediting the action to its owner
+     * would hand the enemy's console the move.
+     */
+    case 'move-flight':
+    case 'dogfight':
+    case 'flight-strike':
+      return game.flights.find((f) => f.id === action.flightId)?.side ?? null
+    case 'launch-flight':
+    case 'recover-flight':
+      return of(action.shipId)
     case 'move-craft':
     case 'recover-shuttle':
     case 'dock-shuttle':

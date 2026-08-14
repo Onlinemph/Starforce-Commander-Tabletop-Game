@@ -95,6 +95,11 @@ export const autoChoices: DamageChoices = {
       // Same card, and a hangar is no more use in a gunfight than a shuttle
       // bay — so it goes early, with the other things worth losing (E8.4.6).
       ['HNGR', 'shuttle-bay'],
+      // E8.4.6 names the launch and landing bays on the same card. Landing
+      // goes before launching: a carrier that cannot recover still gets its
+      // wing into the air, and a wing in the air is the one doing the work.
+      ['LNDG', 'shuttle-bay'],
+      ['LNCH', 'shuttle-bay'],
       ['PROB', 'special-system'],
       ['SPCL', 'special-system'],
       ['TRAN', 'transporter'],
@@ -585,7 +590,7 @@ const ALTERNATE_SYSTEMS: Partial<Record<DamageHit, SystemKind[]>> = {
    * hangar was the one system on the form no damage card could ever reach, and
    * a hull with a hangar and no shuttle bay treated its own card as an ALT HIT.
    */
-  'shuttle-bay': ['HNGR'],
+  'shuttle-bay': ['HNGR', 'LNCH', 'LNDG'],
 }
 
 /**
