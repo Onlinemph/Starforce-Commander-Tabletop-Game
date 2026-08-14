@@ -8,9 +8,17 @@ tsconfig.tsbuildinfo
 # Measurement probes: throwaway season/tournament harnesses, never committed
 src/*-probe.test.ts
 # Self-play training sets and fitted models: regenerable, tens of megabytes,
-# and no model ships (see src/engine/plotModel.ts)
-data/
-models/
+# and no model ships (see src/engine/plotModel.ts).
+#
+# Anchored to the repository root, and that leading slash is load-bearing: a
+# bare `data/` matches a directory of that name at ANY depth, which silently
+# swallowed `src/data/` — the game's own ship, scenario and fighter data. The
+# files already tracked there kept working, so nothing complained locally; a
+# NEW one was ignored by `git add -A` without a word, and the first anyone knew
+# was CI failing to resolve `../data/fighters` on a file that existed on every
+# developer's disk.
+/data/
+/models/
 # Ship-book importer intermediates: regenerable from the PDFs in one command,
 # and ships.json is the only output that belongs in the repo (see tools/README.md)
 tools/msl.json
