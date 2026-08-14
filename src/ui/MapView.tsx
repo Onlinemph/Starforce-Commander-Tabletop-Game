@@ -3,6 +3,7 @@ import type { EscapePod } from '../engine/abandonShip'
 import { positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
+import type { Flight } from '../engine/fighters'
 import type { HomingWeapon } from '../engine/homing'
 import { ARC_ORDER, ARC_START, actualRange, headingVector } from '../engine/geometry'
 import { shipIsCloaked, type GameState, type TerrainKind } from '../engine/game'
@@ -127,6 +128,35 @@ function useStarfield(w: number, h: number): { dust: Star[]; bright: Star[] } {
 }
 
 /** Planets and moons are both solid lit bodies, and are drawn the same way. */
+/**
+ * Nudge overlapping flight counters apart so a player can count them.
+ *
+ * The planner already sends flights to distinct points, but nothing stops a
+ * human stacking their whole wing on one spot, and two counters at the same
+ * coordinates are one counter to anybody looking at the map — a stack of four
+ * reads as a single flight, which is a worse lie than a nudged position. So
+ * this is a drawing decision only: the flight's real position is what every
+ * range in the engine is measured from and is untouched. The offset is a
+ * third of an inch, well inside the half-inch the tape ever cares about.
+ */
+function fannedFlights(flights: Flight[]): { flight: Flight; at: { x: number; y: number } }[] {
+  const seen = new Map<string, number>()
+  return flights.map((flight) => {
+    const cell = `${Math.round(flight.position.x * 2)}:${Math.round(flight.position.y * 2)}`
+    const nth = seen.get(cell) ?? 0
+    seen.set(cell, nth + 1)
+    if (nth === 0) return { flight, at: flight.position }
+    const angle = ((nth - 1) % 6) * (Math.PI / 3)
+    return {
+      flight,
+      at: {
+        x: flight.position.x + Math.cos(angle) * 0.34,
+        y: flight.position.y + Math.sin(angle) * 0.34,
+      },
+    }
+  })
+}
+
 function isWorld(kind: TerrainKind): boolean {
   return kind === 'planet' || kind === 'moon'
 }
@@ -704,14 +734,13 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         flight the target rather than the fighters in it. The strength is on
         the counter because both players can count it.
       */}
-      {game.flights
-        .filter((f) => !f.dockedTo && f.members > 0)
-        .map((flight) => (
+      {fannedFlights(game.flights.filter((f) => !f.dockedTo && f.members > 0)).map(
+        ({ flight, at }) => (
           <g
             key={flight.id}
             className={`fighter-flight map-mover flight-${flight.side.startsWith('Blue') ? 'blue' : 'red'}`}
             style={{
-              transform: `translate(${flight.position.x * SCALE}px, ${flight.position.y * SCALE}px)`,
+              transform: `translate(${at.x * SCALE}px, ${at.y * SCALE}px)`,
             }}
           >
             <title>
@@ -727,7 +756,8 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
               {`${flight.cardId.slice(0, 4).toUpperCase()} ×${flight.members}`}
             </text>
           </g>
-        ))}
+        ),
+      )}
 
       {drawn.map(({ ship, formationSize }) => (
         <ShipToken

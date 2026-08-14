@@ -118,6 +118,16 @@ hull rather than a dogfight, because the ordnance is spent in one run. It spread
 enemy's flights before doubling up on one, and takes a spent flight home to rearm rather than
 loitering as a free target for somebody's point defense.
 
+**It keeps the counters apart.** Four flights at the same coordinates are one flight as far as a
+player looking at the map is concerned, and the planner used to produce exactly that: every flight
+launched onto the same point off the stern, everybody converging on a dogfight stepped onto the
+target's own point, and a wing going home all landed on the carrier's. Now flights launch fanned
+across the stern, and anywhere several are sent to the same place they are sent to neighbouring
+points on a small ring — close enough that every one of them is still in range of what it came for.
+The map draws a nudge under any counters that end up coincident anyway, since nothing stops a human
+stacking their own wing; that is a drawing offset only, and every range the engine measures uses the
+flight's real position.
+
 **It picks a shield, not a ship.** Because only one flight may attack a given shield in a phase,
 "the nearest enemy hull" is not a target on its own — a cruiser whose bow has already been hit this
 phase is only worth flying at if one of its other three facings is free. The planner takes berths
@@ -319,30 +329,45 @@ at a flight ignore it. That is the same finding the STRIX measurement made from 
 
 ### The answer
 
-**A flight of six costs 11 to 42 points, median 21.** Against a fleet with no fighters of its own —
-where the dogfight is worth nothing — the same flights are worth 2 to 16, median 6.
+**A flight of six costs 5 to 21 points, median 11.** Against a fleet with no fighters of its own —
+where the dogfight is worth nothing — the same flights are worth 2 to 8, median 3.
 
 | | | flight of 6 | | | | flight of 6 |
 | --- | --- | --- | --- | --- | --- | --- |
-| SABRE | strike | 17 | | STARFURY | strike | 15 |
-| SABRE | space sup | 26 | | NIAL | space sup | **42** |
-| HALBERD | strike | 22 | | NIAL | strike | 28 |
-| V-1 TALON | space sup | 25 | | PEREGRINE | strike | 28 |
-| STRIX | space sup | 25 | | FRAZI | space sup | 30 |
-| MAGPIE | strike | **11** | | SENTRI | strike | 13 |
+| SABRE | strike | 8 | | STARFURY | strike | 7 |
+| SABRE | space sup | 13 | | NIAL | space sup | **21** |
+| HALBERD | strike | 11 | | NIAL | strike | 14 |
+| V-1 TALON | space sup | 13 | | PEREGRINE | strike | 14 |
+| STRIX | space sup | 13 | | FRAZI | space sup | 16 |
+| MAGPIE | strike | **5** | | SENTRI | strike | 7 |
 
 The ranking is the one the cards imply: the NIAL is the most expensive thing in the sky and the
 MAGPIE the cheapest, and within an airframe the space-superiority loadout costs more than the bomb
 truck because it is the one that can do both jobs.
 
+### The shield-cap discount
+
+Every figure above is the derived price **halved** (`SHIELD_CAP_DISCOUNT`). The damage model behind
+it assumes a flight can put its load wherever that load is worth the most, and the outline says it
+cannot: only one flight may attack a given starship shield in a phase, so a wing cannot mass on the
+one facing it has already opened and has to spend its runs on shields that are still up.
+
+Measured, the cap costs a wing about a quarter of its output — 44 damage a game against a pair of
+raiders where the uncapped engine delivered ~60. Half is the number Mike called, and it is the
+conservative direction on purpose: a rule this new gets playtested by people who brought fighters,
+and a flight priced generously to its owner is the one that gets brought.
+
 ### It agrees with the measurement
 
 The ARK ROYAL measurement was made before any of this existed and shares nothing with it. The
-model prices that carrier's hull and wing at **75 points** counting the strike role alone and
-**115** counting everything; measured play put it at **100**. The measurement sits between the two
-readings, nearer the one that credits the wing for tying up an enemy's whole battery — which is
-value the strike-only figure does not contain and the all-roles figure over-credits.
+model priced that carrier's hull and wing at **75 points** counting the strike role alone and
+**115** counting everything, before the shield cap and its discount; measured play put it at
+**100**. The measurement sat between the two readings, nearer the one that credits the wing for
+tying up an enemy's whole battery — value the strike-only figure does not contain and the all-roles
+figure over-credits. The cap has since taken about a quarter of the wing's real output away and the
+discount halves the price, so the wing's share of that bracket has come down with it.
 
-**The number to give Doyle: a flight of six is worth about 20 points, and a fighter about 3.5.**
-The carrier keeps its measured ×2.1 modifier rather than the model's, because for one specific hull
-a measurement beats a formula — but the two now bracket each other, which they did not before.
+**The number to give Doyle: a flight of six is worth about 11 points, and a fighter about 1.8** —
+that is the derived figure with the shield cap charged at half. The carrier keeps its measured
+×2.1 hull modifier rather than the model's, because for one specific hull a measurement beats a
+formula.

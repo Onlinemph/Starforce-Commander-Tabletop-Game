@@ -40,6 +40,7 @@ import {
   withinRecoveryRange,
   withinWeaponRange,
   FIGHTER_WEAPON_RANGE,
+  RECOVERY_RANGE,
   MAX_FLIGHT_SIZE,
   MAX_FLIGHTS_PER_SHIP,
   type FighterConfigKind,
@@ -234,6 +235,67 @@ let personality: AiPersonality = 'steady'
 
 /** Setup switch: when false the AI never voluntarily disengages. */
 let retreatsAllowed = true
+
+/**
+ * How the AI runs a carrier's wing.
+ *
+ * Split out from the planner so the doctrine can be *measured* rather than
+ * argued about. Fighters are new enough that none of these choices had a number
+ * behind it — whether to mass the wing on one hull or give it a hull each,
+ * whether a spent flight is worth flying home, when to open the doors — and
+ * `tools/fighter_doctrine.ts` plays each variant out and reports. The default
+ * is what the sweep found; the knobs stay so the next rules change can be
+ * re-measured against them instead of guessed at.
+ */
+export interface WingDoctrine {
+  /** Rounds of flying the wing will commit to before it launches. */
+  launchHorizonRounds: number
+  /** What a flight goes after: its load decides, or always one or the other. */
+  priority: 'ordnance' | 'hull' | 'fighters'
+  /** Whether the wing piles onto one hull or takes a hull each. */
+  massing: 'concentrate' | 'distribute'
+  /** Whether a flight that has spent its load flies home to rearm. */
+  spent: 'rearm' | 'loiter'
+  /** Fighters in a flight at launch. */
+  flightSize: number
+  /** The load to go up with when there is nothing to dogfight. */
+  strikeLoad: FighterConfigKind
+}
+
+export const DEFAULT_WING_DOCTRINE: WingDoctrine = {
+  launchHorizonRounds: 2,
+  priority: 'ordnance',
+  massing: 'concentrate',
+  spent: 'rearm',
+  flightSize: MAX_FLIGHT_SIZE,
+  strikeLoad: 'strike',
+}
+
+let wingDoctrine: WingDoctrine = DEFAULT_WING_DOCTRINE
+/** Per-side overrides, so a sweep can put one doctrine against another. */
+const sideDoctrine = new Map<string, WingDoctrine>()
+
+/**
+ * Measurement hook: override some or all of the wing doctrine.
+ *
+ * With a `side`, only that side's carriers fly it and everyone else keeps the
+ * default — which is what makes an A/B between two doctrines in the same battle
+ * possible. Without one, it becomes the doctrine everybody flies, and clears
+ * any per-side overrides.
+ */
+export function setWingDoctrine(doctrine: Partial<WingDoctrine> = {}, side?: string): void {
+  if (side) {
+    sideDoctrine.set(side, { ...DEFAULT_WING_DOCTRINE, ...doctrine })
+    return
+  }
+  sideDoctrine.clear()
+  wingDoctrine = { ...DEFAULT_WING_DOCTRINE, ...doctrine }
+}
+
+/** The doctrine a given side's wing flies. */
+function doctrineFor(side: string): WingDoctrine {
+  return sideDoctrine.get(side) ?? wingDoctrine
+}
 
 /** How far the temperament shifts the scoreboard margin the posture reads. */
 const PERSONALITY_BIAS: Record<AiPersonality, number> = {
@@ -4874,21 +4936,23 @@ function planFlightOps(
      */
     const card = fighterCard(wingCardFor(ship))
     const cruise = card ? airframeSpeed(card, loadoutOf(card, 'strike')) : 5
-    const horizon = cruise * PHASES_PER_ROUND * 2
+    const doctrine = doctrineFor(ship.side)
+    const horizon = cruise * PHASES_PER_ROUND * doctrine.launchHorizonRounds
     if (
       enemyFlights.length === 0 &&
       enemyShips.every((s) => actualRange(s.placement.position, ship.placement.position) > horizon)
     ) {
       room = 0
     }
-    const config: FighterConfigKind = enemyFlights.length > 0 ? 'space-superiority' : 'strike'
+    const config: FighterConfigKind =
+      enemyFlights.length > 0 ? 'space-superiority' : doctrine.strikeLoad
     for (let i = 0; i < room; i++) {
       offer(`launch:${ship.id}:${i}`, {
         type: 'launch-flight',
         shipId: ship.id,
         cardId: wingCardFor(ship),
         config,
-        members: MAX_FLIGHT_SIZE,
+        members: doctrine.flightSize,
       })
     }
   }
@@ -4901,6 +4965,13 @@ function planFlightOps(
    * One flight a shield a phase (Apr 2026 outline, ATTACKING STARSHIPS).
    */
   const struck = new Set(game.ops.shieldsStruckThisPhase)
+  /**
+   * `side:shipId` hulls this batch has already sent a flight at. Whether that
+   * makes a hull more attractive or less is the `massing` knob: concentrating
+   * finishes one enemy before starting the next, distributing spreads the
+   * damage so every hull is carrying something.
+   */
+  const engaged = new Set<string>()
   /** Landings this ship may still take, counting what this batch has queued. */
   const queued = new Map<string, number>()
   const landings = (ship: ShipState): number => {
@@ -4919,6 +4990,7 @@ function planFlightOps(
     if (!card) continue
     const loadout = currentLoadout(flight, card)
     if (!loadout) continue
+    const doctrine = doctrineFor(flight.side)
     const speed = airframeSpeed(card, loadout)
 
     /*
@@ -4940,7 +5012,8 @@ function planFlightOps(
     const mother = game.ships.find((s) => s.id === flight.motherId && !s.destroyed && !s.derelict)
     const canDogfight = loadout.dfr > 0 && enemyFlights.length > 0
     const canStrike = loadout.strikeHit > 0 && enemyShips.length > 0
-    const rearmable = Boolean(flight.spent && mother && hangarCapacity(mother) > 0)
+    const rearmable =
+      doctrine.spent === 'rearm' && Boolean(flight.spent && mother && hangarCapacity(mother) > 0)
     if (mother && !canDogfight && (rearmable || !canStrike)) {
       if (withinRecoveryRange(flight.position, mother.placement.position)) {
         /*
@@ -4963,7 +5036,13 @@ function planFlightOps(
         offer(`home:${flight.id}`, {
           type: 'move-flight',
           flightId: flight.id,
-          ...stepToward(flight.position, mother.placement.position, speed),
+          // Onto the recovery ring rather than onto the carrier's own point, so
+          // a wing coming home together arrives as four readable counters.
+          ...stepToward(
+            flight.position,
+            fanOut(mother.placement.position, slotOf(game, flight), RECOVERY_RANGE - 0.8),
+            speed,
+          ),
         })
       }
       continue
@@ -4986,7 +5065,12 @@ function planFlightOps(
      *    stop this one, and a gun run at a warship's point defense is a poor
      *    use of a phase by comparison.
      */
-    const ordnance = !flight.spent && loadout.strikeHit > 0 && loadout.strikeDamage >= 2
+    const ordnance =
+      doctrine.priority === 'hull'
+        ? true
+        : doctrine.priority === 'fighters'
+          ? false
+          : !flight.spent && loadout.strikeHit > 0 && loadout.strikeDamage >= 2
     /*
      * Spread across the enemy's flights before doubling up on one. Four of
      * ours all engaging the same two-fighter remnant wastes three attacks, and
@@ -5009,42 +5093,93 @@ function planFlightOps(
      * spot that bears on it — otherwise every flight after the first converges
      * on the same shield, gets refused, and the phase is wasted.
      */
+    /*
+     * Which hulls this flight looks at first. Concentrating, it is the ones the
+     * wing is already working on; distributing, the ones nobody has taken. Both
+     * fall back to the whole enemy line, so a flight is never left with nothing
+     * to do because its preferred pool happened to be empty.
+     */
+    const busy = (s: ShipState) => engaged.has(`${flight.side}:${s.id}`)
+    const preferred =
+      doctrine.massing === 'concentrate'
+        ? enemyShips.filter(busy)
+        : enemyShips.filter((s) => !busy(s))
     const berth =
-      loadout.strikeHit > 0 ? nearestFreeShield(flight.position, enemyShips, struck) : null
+      loadout.strikeHit > 0
+        ? (nearestFreeShield(flight.position, preferred, struck) ??
+          nearestFreeShield(flight.position, enemyShips, struck))
+        : null
+    /*
+     * `go` is where the flight is sent; `hit` is what the engine will measure
+     * the attack against. They differ on purpose. A flight sent to a shield
+     * stands off the hull at a bearing, and flights converging on the same
+     * enemy fighter fan out around it rather than landing on its exact point —
+     * four counters at identical coordinates read as one counter, and a player
+     * cannot see what is over the table.
+     */
     const asFlight = targetFlight
-      ? { at: targetFlight.position, kind: 'flight' as const, id: targetFlight.id }
+      ? {
+          go: fanOut(targetFlight.position, slotOf(game, flight), FIGHTER_WEAPON_RANGE - 0.8),
+          hit: targetFlight.position,
+          kind: 'flight' as const,
+          id: targetFlight.id,
+        }
       : null
     const asShip = berth
-      ? { at: berth.approach, kind: 'ship' as const, id: berth.ship.id }
+      ? {
+          go: berth.approach,
+          hit: berth.ship.placement.position,
+          kind: 'ship' as const,
+          id: berth.ship.id,
+        }
       : null
     const aim = ordnance ? (asShip ?? asFlight) : (asFlight ?? asShip)
     if (!aim) continue
 
+    /*
+     * A flight that sets off for a shield owns it for the rest of the plan,
+     * even when it will not arrive this phase. Without that, every flight in
+     * the wing reads the same facing as free, they all fly at it, and only the
+     * first one to arrive is allowed to attack — with the rest stacked on its
+     * counter having wasted the trip.
+     */
+    const owned = aim.kind === 'ship' && berth ? berth.key : null
+    if (owned && berth) {
+      struck.add(owned)
+      engaged.add(`${flight.side}:${berth.ship.id}`)
+    }
+
+    /*
+     * Fly to the berth even when the target is already in range. A fighter
+     * pays nothing to move — no facing, no plot, no arming — so there is never
+     * a reason to hold station on top of a squadron-mate, and holding station
+     * is exactly what leaves the wing stacked on one square inch of map.
+     */
     let where = flight.position
-    if (!flight.activated && !withinWeaponRange(flight.position, aim.at)) {
-      const step = stepToward(flight.position, aim.at, speed)
+    if (!flight.activated && reach(flight.position, aim.go) > 0.5) {
+      const step = stepToward(flight.position, aim.go, speed)
       offer(`move:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
       where = { x: step.x, y: step.y }
     }
     if (flight.attacked) continue
-    if (!withinWeaponRange(where, aim.at)) continue
+    // Measured to the target itself, not to the spot the flight was sent to.
+    if (!withinWeaponRange(where, aim.hit)) continue
     if (aim.kind === 'flight') claimed.add(aim.id)
     /*
-     * A ship run is aimed at an approach point, not at the hull, so the range
-     * the engine will measure is to the ship itself — and the shield it will
-     * read is the one the flight is standing off. Confirm both from where the
-     * flight actually finished before offering the run, or the planner spends
-     * the phase proposing strikes the engine turns down.
+     * The shield the engine will read is the one the flight is standing off
+     * when it runs in, which is only known once the move is decided. Check it
+     * from there, or the planner spends the phase proposing runs the engine
+     * turns down.
      */
     if (aim.kind === 'ship' && berth) {
-      if (!withinWeaponRange(where, berth.ship.placement.position)) continue
       const bearing = shieldsFacing(
         where,
         berth.ship.placement.position,
         berth.ship.placement.heading,
       )[0]
-      if (struck.has(`${berth.ship.id}:${bearing}`)) continue
-      struck.add(`${berth.ship.id}:${bearing}`)
+      const key = `${berth.ship.id}:${bearing}`
+      if (key !== owned && struck.has(key)) continue
+      struck.add(key)
     }
     offer(
       `attack:${flight.id}`,
@@ -5114,6 +5249,26 @@ function nearestFreeShield(
     }
   }
   return best
+}
+
+/**
+ * A point on a small ring around `center`, one slot per flight.
+ *
+ * Counters are physical objects on a table, and two of them at the same
+ * coordinates are one counter to a player looking at the map. Anywhere the
+ * planner sends several flights to the same place — a dogfight everybody is
+ * piling into, a wing coming home to the same carrier — it sends them to
+ * neighbouring points on a ring instead, close enough that every one of them
+ * is still in range of what it came for.
+ */
+function fanOut(center: Point, slot: number, radius: number): Point {
+  const angle = (slot % 8) * (Math.PI / 4)
+  return { x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius }
+}
+
+/** A flight's stable place in the fan: its index on the map, not its id. */
+function slotOf(game: GameState, flight: Flight): number {
+  return game.flights.findIndex((f) => f.id === flight.id)
 }
 
 /** Closest of a list, by whatever point the accessor pulls off each entry. */

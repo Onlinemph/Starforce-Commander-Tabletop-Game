@@ -294,6 +294,20 @@ export function flightDurability(
 }
 
 /**
+ * What the shield cap takes off a flight's price.
+ *
+ * The damage model behind `flightDamagePerRound` assumes a flight can put its
+ * whole load wherever it is worth the most. It cannot: only one flight may
+ * attack a given starship shield in a phase, so a wing cannot mass on the one
+ * facing it has already opened, and has to spend its runs on shields that are
+ * still up. Measured, that is worth about a quarter of a wing's damage output.
+ * Half is the number Mike called, and it is the conservative direction — a
+ * flight that is priced generously to its owner is the one that gets brought,
+ * which is how a rule this new gets playtested.
+ */
+export const SHIELD_CAP_DISCOUNT = 0.5
+
+/**
  * What a flight costs in a fleet list.
  *
  * `role: 'all'` — the default — prices everything it can do, and is what a
@@ -314,7 +328,8 @@ export function flightPoints(
     (role === 'all' ? flightDogfightPerRound(card, kind, members) : 0)
   const durability = flightDurability(card, kind, members)
   const scouting = role === 'all' ? card.sensor : 0
-  return Math.round(PRICE_SCALE * (Math.max(0.1, damage) * durability) ** PRICE_EXPONENT + scouting)
+  const raw = PRICE_SCALE * (Math.max(0.1, damage) * durability) ** PRICE_EXPONENT + scouting
+  return Math.round(raw * SHIELD_CAP_DISCOUNT)
 }
 
 /** One fighter's share of its flight's cost, for a part-strength counter. */
@@ -375,9 +390,19 @@ export function flightLaunchRefusal(
   return null
 }
 
-/** Where a flight forms up: the aft arc, an inch out, as J8.2.1. */
-export function launchPositionFor(ship: ShipState): Point {
-  return translate(ship.placement.position, (ship.placement.heading + 180) % 360, FLIGHT_RANGE)
+/**
+ * Where a flight forms up: the aft arc, an inch out, as J8.2.1.
+ *
+ * `slot` fans successive flights across the stern instead of stacking them all
+ * on one point. Four counters at the same coordinates are one counter as far as
+ * the eye is concerned, and a player cannot see what they have got — a carrier
+ * that puts its whole wing up in a round used to leave a single delta on the
+ * map with three more hidden underneath.
+ */
+export function launchPositionFor(ship: ShipState, slot = 0): Point {
+  const fan = [0, -35, 35, -70, 70, -105, 105][slot % 7]
+  const bearing = (ship.placement.heading + 180 + fan + 360) % 360
+  return translate(ship.placement.position, bearing, FLIGHT_RANGE)
 }
 
 /** Why a flight may not land aboard, or `null` if it may. */

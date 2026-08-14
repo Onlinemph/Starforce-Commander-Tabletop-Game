@@ -232,11 +232,16 @@ shuttle/probe model were all already implemented and tested.
 method the rest of this project uses for anything the printed material does not settle: price the
 93 printed hulls in two currencies the rules define — damage delivered per round, damage needed to
 remove them — fit their printed point values against the product, and price a flight in the same
-currencies. The fit reproduces the printed roster to 19.5%. **A flight of six comes out at 11 to 42
-points depending on the card and loadout, median 21; a fighter is about 3.5.** An independent
-measurement — flying a carrier against printed hulls until it found its weight — lands in the same
-place. The working is `tools/fighter_points.ts` and the write-up is in `docs/fighters.md`. It is
-still ours rather than yours, and a printed number replaces all of it.
+currencies. The fit reproduces the printed roster to 19.5%, and the result is then **halved**,
+because the outline's one-flight-a-shield rule stops a wing from putting its load where that load is
+worth the most and the damage model assumes it can. **A flight of six comes out at 5 to 21 points
+depending on the card and loadout, median 11; a fighter is about 1.8.** An independent measurement
+— flying a carrier against printed hulls until it found its weight — brackets the same place. The
+working is `tools/fighter_points.ts` and the write-up is in `docs/fighters.md`. It is still ours
+rather than yours, and a printed number replaces all of it.
+
+The halving is deliberately generous: measured, the shield cap costs a wing about a quarter of its
+output, not half. Erring towards cheap is how a brand-new rule gets played enough to be judged.
 
 
 ---

@@ -3314,10 +3314,13 @@ export function launchFlight(
    * load the Hangar Bay Segment gave it back. The wing is a fixed number of
    * flights taking losses over a battle, not an infinite supply of six-packs.
    */
+  // Each flight already out has taken a slot across the stern; the next one
+  // forms up beside them rather than on top of them.
+  const slot = flightsAirborne(game, ship).length
   const docked = flightsDocked(game, ship).find((f) => !f.spent) ?? flightsDocked(game, ship)[0]
   if (docked) {
     delete docked.dockedTo
-    docked.position = launchPositionFor(ship)
+    docked.position = launchPositionFor(ship, slot)
     docked.activated = true
     docked.attacked = false
     game.ops.flightsLaunchedThisPhase[ship.id] =
@@ -3341,7 +3344,7 @@ export function launchFlight(
     config,
     spent: false,
     members,
-    position: launchPositionFor(ship),
+    position: launchPositionFor(ship, slot),
     damage: 0,
     // Forming up is this phase's activation, as a launched shuttle's is (J8.2.1).
     activated: true,

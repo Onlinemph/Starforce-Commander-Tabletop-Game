@@ -31,6 +31,7 @@ import {
   strike,
   strikeExpendsLoad,
   MAX_FLIGHT_SIZE,
+  FLIGHT_RANGE,
   type Flight,
 } from './fighters'
 import {
@@ -284,10 +285,11 @@ describe('the calibration set', () => {
   })
 
   it('prices a flight in the same neighbourhood as a light hull', () => {
+    // Post-discount: the shield cap halves the derived figure (SHIELD_CAP_DISCOUNT).
     const six = FIGHTER_CARDS.map((c) => flightPoints(c, 'space-superiority', 6))
     for (const p of six) {
-      expect(p).toBeGreaterThan(10)
-      expect(p).toBeLessThan(50)
+      expect(p).toBeGreaterThan(5)
+      expect(p).toBeLessThan(25)
     }
     // The Nial is the premium airframe on every stat that matters.
     const nial = fighterPoints(fighterCard('nial')!, loadoutOf(fighterCard('nial')!, 'space-superiority')!)
@@ -348,11 +350,15 @@ describe('what a flight costs (Q3, derived)', () => {
      * flying 24 fighters fought dead even with a 100-point EXETER II over 16
      * games, so the wing was worth about 53 points — 13 a flight — against a
      * fleet that brought no fighters. That is the `strike` role, not `all`.
+     *
+     * That measurement predates the shield cap, which is worth about a quarter
+     * of a wing's output and is charged at half (SHIELD_CAP_DISCOUNT) — so the
+     * band a flight has to land in is the old one halved, 2.5 to 8.
      */
     const strikeOnly = SFC_FIGHTERS.map((c) => flightPoints(c, 'strike', 6, 'strike'))
     const mean = strikeOnly.reduce((a, b) => a + b, 0) / strikeOnly.length
-    expect(mean, 'derived price drifted away from the measurement').toBeGreaterThan(5)
-    expect(mean).toBeLessThan(16)
+    expect(mean, 'derived price drifted away from the measurement').toBeGreaterThan(2.5)
+    expect(mean).toBeLessThan(8)
   })
 
   it('ranks the roster the way the cards do', () => {
@@ -733,6 +739,33 @@ describe('launching and recovering (Q5, Q12-A)', () => {
     expect(launchFlight(game, ship)).toMatch(/2 flight\(s\) a phase/)
     expect(flightsAirborne(game, ship)).toHaveLength(2)
     expect(ship.flightsAboard).toBe(2)
+  })
+
+  it('fans successive flights across the stern instead of stacking them', () => {
+    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 4, LNCH: 4, LNDG: 1 }) })
+    const game = battle([ship])
+    for (let i = 0; i < 4; i++) expect(launchFlight(game, ship)).toBeNull()
+    const out = flightsAirborne(game, ship)
+    expect(out).toHaveLength(4)
+    // Every pair far enough apart to read as two counters on the table, and
+    // every one of them still inside the range-1 launch envelope (J8.2.1).
+    for (const flight of out) {
+      expect(
+        Math.hypot(
+          flight.position.x - ship.placement.position.x,
+          flight.position.y - ship.placement.position.y,
+        ),
+      ).toBeCloseTo(FLIGHT_RANGE, 6)
+    }
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const gap = Math.hypot(
+          out[i].position.x - out[j].position.x,
+          out[i].position.y - out[j].position.y,
+        )
+        expect(gap, `${out[i].id} vs ${out[j].id}`).toBeGreaterThan(0.5)
+      }
+    }
   })
 
   it('a hull with no launch bay cannot put a wing up at all', () => {
