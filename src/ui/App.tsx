@@ -14,7 +14,7 @@ import {
   type GameState,
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
-import { damageLevel, type ShipState } from '../engine/shipState'
+import { damageLevel, undamagedSystemBoxes, type ShipState } from '../engine/shipState'
 import { battleSummary } from '../engine/battleSummary'
 import { AbandonShipPanel } from './AbandonShipPanel'
 import { BattleSummaryPanel } from './BattleSummary'
@@ -1003,6 +1003,8 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
           <DisengagementPanel game={game} ship={ship} />
         </>
       )
+    case 'hangar-bay':
+      return <HangarBayPanel game={game} ship={ship} />
     case 'final-activity':
       return <ScorePanel game={game} />
     default:
@@ -1013,6 +1015,32 @@ function SegmentControls({ game, ship }: { game: GameState; ship: ShipState }) {
         </div>
       )
   }
+}
+
+/**
+ * The Hangar Bay Segment (A3.4.4), which the published sequence of play prints
+ * as "TBD". Rearming is what the fighter outline puts in it, and it happens
+ * when the segment closes — this panel is the notice, not a button.
+ */
+function HangarBayPanel({ game, ship }: { game: GameState; ship: ShipState }) {
+  const aboard = game.flights.filter((f) => f.dockedTo === ship.id)
+  const spent = aboard.filter((f) => f.spent)
+  return (
+    <div className="segment-help">
+      <h3>Hangar Bay (A3.4.4)</h3>
+      {undamagedSystemBoxes(ship, 'HNGR') === 0 ? (
+        <p>{ship.name} has no working hangar bay.</p>
+      ) : aboard.length === 0 ? (
+        <p>Nothing is aboard {ship.name} to repair or rearm.</p>
+      ) : (
+        <p>
+          {aboard.length} flight(s) aboard, {spent.length} of them expended. Completing this segment
+          rearms them — a rearmed counter comes back off its BASIC face. Fighters lost are lost;
+          the bay replaces ordnance, not aircrew.
+        </p>
+      )}
+    </div>
+  )
 }
 
 /** Operations Segment steps A–E (A3.3.2). */

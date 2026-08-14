@@ -208,12 +208,23 @@ by Tactical Scan.
 
 ## What we've already built that this lands on
 
-So you know what's waiting: the Flight Operations Segment and the (currently empty) Hangar Bay
-Segment both already exist in our sequence of play; `HNGR` is already a recognised system; damage
-cards for Shuttle/Hangar Bay already resolve; E12/E10 small-target fire, degraded fire control,
-point-defense interception of homing weapons, and the J8 shuttle/probe model are all implemented
-and tested. What's genuinely absent is fighters themselves — no flight, no dogfight, no DFR, and
-no d6 anywhere in the engine.
+**Update, since this list was written: fighters are now flyable.** We took the defaults marked
+above — d6 for fighters and coloured dice for ships, COA 1 pooled with non-PD halved first, one
+strike per load, a flight as one launch for H6.15.4, E10.2.2 jamming exactly as published, and one
+flight out per LNCH box and in per LNDG box — and built them, so the open questions can be answered
+against something you can actually play rather than in the abstract. Every one of them is a switch
+we can throw the other way; `docs/fighters.md` records which decision each line of code is standing
+in for. The AI flies its wing too, so a solo game has fighters on both sides.
+
+Underneath, the Flight Operations Segment and the Hangar Bay Segment both already existed in our
+sequence of play — the latter printed "TBD", and now holding rearm; `HNGR` was already a recognised
+system, and `LNCH` and `LNDG` have joined it on the Shuttle-or-Hangar-Bay damage card; E12/E10
+small-target fire, degraded fire control, point-defense interception of homing weapons, and the J8
+shuttle/probe model were all already implemented and tested.
+
+**The one thing we could not build is point values** (Q3): fighters fly, but they cannot be
+fielded in a points-matched game until a flight has a price. There is a placeholder formula in the
+engine, clearly marked as ours.
 
 
 ---

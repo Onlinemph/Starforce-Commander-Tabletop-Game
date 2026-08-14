@@ -564,6 +564,29 @@ describe('the Hangar Bay Segment (A3.4.4, printed TBD)', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('counter ids are per battle, not per browser tab', () => {
+  /*
+   * A journal names a flight by id. If the serial number lived in a module
+   * counter it would keep climbing across battles, so replaying yesterday's
+   * journal in a tab that has since played another game would hand the same
+   * launch a different id and every `move-flight` after it would address a
+   * counter that does not exist. Two fresh games must number identically.
+   */
+  it('two fresh games number their flights the same way', () => {
+    const ids = () => {
+      const ship = shipAt({ id: 'c', form: carrierForm() })
+      const game = battle([ship])
+      launchFlight(game, ship)
+      launchFlight(game, ship)
+      return game.flights.map((f) => f.id)
+    }
+    const first = ids()
+    const second = ids()
+    expect(first).toEqual(['flight-1', 'flight-2'])
+    expect(second).toEqual(first)
+  })
+})
+
 describe('a hull with no hangar', () => {
   it('starts with nothing aboard and is refused a launch', () => {
     const ship = shipAt({ id: 'plain' })

@@ -4202,7 +4202,29 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
       .filter((c) => !craftDestroyed(c) && c.side !== side && !c.dockedTo)
       .sort((a, b) => nuisance(a) - nuisance(b) || (a.id < b.id ? -1 : 1))
 
-    const smallTargets: Array<{ id: string; position: Point }> = [...incoming, ...craft]
+    /*
+     * Enemy fighter flights, ahead of the shuttles and behind the warheads.
+     *
+     * They belong at the front of that group because point defense is the only
+     * thing that answers them properly: E10.2.2 adds a flight's jamming to the
+     * actual range of every non-PD volley, and E12.4.3 exempts point defense
+     * from it. A main battery firing at a Nial is shooting at a target eight
+     * inches further away than it is; a PD mount is shooting at where it
+     * actually is, and does not halve its damage either. That is what F1.20
+     * means by point defense being the anti-fighter weapon, and it makes an
+     * idle PD mount with a flight in reach the most wasteful thing on the
+     * board. Biggest flight first — it is doing the most damage and soaking
+     * the most under COA 1.
+     */
+    const flights = game.flights
+      .filter((f) => f.side !== side && !f.dockedTo && f.members > 0)
+      .sort((a, b) => b.members - a.members || (a.id < b.id ? -1 : 1))
+
+    const smallTargets: Array<{ id: string; position: Point }> = [
+      ...incoming,
+      ...flights,
+      ...craft,
+    ]
     if (smallTargets.length === 0) continue
 
     /*
@@ -4828,17 +4850,36 @@ function planFlightOps(game: GameState, fleet: ShipState[], sides: string[]): Ga
       continue
     }
 
-    // An enemy flight first: it is the thing that can stop this one, and DFR
-    // beats a hull's point defense as a use of the phase.
-    const rivals = loadout.dfr > 0 ? enemyFlights : []
-    const targetFlight = nearestBy(flight.position, rivals, (f) => f.position)
+    /*
+     * What to hit. The load decides, because the load is what the flight was
+     * sent up carrying:
+     *
+     *  - A flight with **live ordnance** — a loaded counter whose Strike is
+     *    worth more than a gun's single point — goes for a hull. That is what
+     *    the ordnance is for, it is spent in one run, and afterwards the
+     *    counter flips to BASIC and is a dogfighter for the rest of the
+     *    battle. Holding it back to dogfight throws the whole reason for the
+     *    sortie away, and an early version of this doctrine did exactly that:
+     *    two carriers traded eighty fighters over eight rounds without a
+     *    single one touching a hull.
+     *  - Everything else takes an enemy flight first. It is the thing that can
+     *    stop this one, and a gun run at a warship's point defense is a poor
+     *    use of a phase by comparison.
+     */
+    const ordnance = !flight.spent && loadout.strikeHit > 0 && loadout.strikeDamage >= 2
+    const targetFlight =
+      loadout.dfr > 0 ? nearestBy(flight.position, enemyFlights, (f) => f.position) : null
     const targetShip =
-      loadout.strikeHit > 0 ? nearestBy(flight.position, enemyShips, (s) => s.placement.position) : null
-    const aim = targetFlight
-      ? { at: targetFlight.position, kind: 'flight' as const, id: targetFlight.id }
-      : targetShip
-        ? { at: targetShip.placement.position, kind: 'ship' as const, id: targetShip.id }
+      loadout.strikeHit > 0
+        ? nearestBy(flight.position, enemyShips, (s) => s.placement.position)
         : null
+    const asFlight = targetFlight
+      ? { at: targetFlight.position, kind: 'flight' as const, id: targetFlight.id }
+      : null
+    const asShip = targetShip
+      ? { at: targetShip.placement.position, kind: 'ship' as const, id: targetShip.id }
+      : null
+    const aim = ordnance ? (asShip ?? asFlight) : (asFlight ?? asShip)
     if (!aim) continue
 
     let where = flight.position

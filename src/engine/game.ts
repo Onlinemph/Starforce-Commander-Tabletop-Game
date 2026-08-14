@@ -586,6 +586,18 @@ export interface GameState {
   smallCraft: SmallCraft[]
   /** Fighter flights on the map. Package A of the Apr 2026 outline. */
   flights: Flight[]
+  /**
+   * Serial numbers for the counters this battle puts on the map.
+   *
+   * They live on the game rather than in a module counter because a journal
+   * names craft and flights by id: a module counter keeps climbing across
+   * battles, so replaying an old journal in a tab that has since played
+   * another game hands the same launch a different id, and every `move-craft`
+   * after it addresses a counter that does not exist. Counting per game makes
+   * (setup + journal) reproduce the same ids every time, which is the whole
+   * contract replay, undo and online sync are built on.
+   */
+  counters: { craft: number; flight: number }
   /** Escape pods adrift, waiting for somebody to pick them up (E11.6). */
   escapePods: EscapePod[]
   /** Crew units in safe hands, credited to the side holding them (E11.4.2). */
@@ -688,6 +700,7 @@ export function createGame(args: {
     ops: newOperationsState(),
     smallCraft: [],
     flights: [],
+    counters: { craft: 0, flight: 0 },
     escapePods: [],
     crewRescued: {},
     options,
@@ -2717,8 +2730,6 @@ export function crewLostWithShip(game: GameState, ship: ShipState): void {
   ship.crewUnits = 0
 }
 
-let craftCounter = 0
-
 /** Launch a shuttle during Step A of Flight Operations (J8.2.1). */
 export function launchShuttle(
   game: GameState,
@@ -2732,11 +2743,11 @@ export function launchShuttle(
   if (refusal) return refusal
   if (marines > ship.marineSquads) return `${ship.name} has only ${ship.marineSquads} marine squad(s).`
 
-  craftCounter += 1
+  game.counters.craft += 1
   ship.shuttlesAboard -= 1
   ship.marineSquads -= marines
   game.smallCraft.push({
-    id: `craft-${craftCounter}`,
+    id: `craft-${game.counters.craft}`,
     kind,
     side: ship.side,
     motherId: ship.id,
@@ -2886,9 +2897,9 @@ export function launchProbe(
   const target = scanTargets(game, ship).find((t) => t.id === targetId)
   if (!target) return 'No such object to probe.'
 
-  craftCounter += 1
+  game.counters.craft += 1
   game.smallCraft.push({
-    id: `craft-${craftCounter}`,
+    id: `craft-${game.counters.craft}`,
     kind: 'probe',
     side: ship.side,
     motherId: ship.id,
@@ -3150,8 +3161,6 @@ export function craftLaunchedBy(game: GameState, ship: ShipState): SmallCraft[] 
 // Fighter flights (Apr 2026 outline, Package A)
 // ---------------------------------------------------------------------------
 
-let flightCounter = 0
-
 /** What the log and the pickers call a flight. */
 export function flightName(game: GameState, flight: Flight): string {
   const card = fighterCard(flight.cardId)
@@ -3206,10 +3215,10 @@ export function launchFlight(
   )
   if (refusal) return refusal
 
-  flightCounter += 1
+  game.counters.flight += 1
   ship.flightsAboard -= 1
   game.flights.push({
-    id: `flight-${flightCounter}`,
+    id: `flight-${game.counters.flight}`,
     side: ship.side,
     motherId: ship.id,
     cardId,

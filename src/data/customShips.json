@@ -1335,6 +1335,16 @@
         "boxes": 6
       },
       {
+        "kind": "LNCH",
+        "label": "Cobra Bays",
+        "boxes": 2
+      },
+      {
+        "kind": "LNDG",
+        "label": "Landing Bay",
+        "boxes": 1
+      },
+      {
         "kind": "SHTL",
         "label": "Shuttle Bay",
         "boxes": 2
@@ -1474,7 +1484,7 @@
     },
     "marineSquads": 14,
     "shuttles": 4,
-    "pointValue": 39.7,
+    "pointValue": 40.4,
     "year": 2258,
     "availability": "common"
   },
@@ -2969,6 +2979,16 @@
         "boxes": 6
       },
       {
+        "kind": "LNCH",
+        "label": "Launch Bay",
+        "boxes": 1
+      },
+      {
+        "kind": "LNDG",
+        "label": "Landing Bay",
+        "boxes": 1
+      },
+      {
         "kind": "QTRS",
         "label": "Quarters",
         "boxes": 9
@@ -3139,7 +3159,7 @@
     },
     "marineSquads": 26,
     "shuttles": 8,
-    "pointValue": 225.1,
+    "pointValue": 225.9,
     "year": 3680,
     "availability": "rare"
   },
@@ -7534,6 +7554,11 @@
         "boxes": 2
       },
       {
+        "kind": "LNDG",
+        "label": "Landing Bay",
+        "boxes": 2
+      },
+      {
         "kind": "QTRS",
         "label": "Quarters",
         "boxes": 10
@@ -7680,7 +7705,7 @@
     },
     "marineSquads": 14,
     "shuttles": 8,
-    "pointValue": 217.3,
+    "pointValue": 218.5,
     "year": 3600,
     "availability": "rare",
     "art": "https://i.redd.it/r2qmrmipsxf61.png"

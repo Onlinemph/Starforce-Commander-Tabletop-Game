@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { allShipForms } from '../data/ships'
+import { FIGHTER_CARDS } from '../data/fighters'
 import { allScenarioEntries, facingToHeading, type CustomScenario } from '../data/scenarios'
 import { ASTEROID_COUNTERS, DENSITY_STATS, type AsteroidDensity } from '../data/terrainCounters'
 import type { Terrain } from '../engine/game'
@@ -865,6 +866,36 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                           })
                         }
                       />
+                      {/*
+                        Only a hull with a hangar can field a wing, so the
+                        picker only appears on one. Left unset, whoever
+                        launches picks the card at the bay door.
+                      */}
+                      {(roster.find((f) => f.id === id)?.systems ?? []).some(
+                        (g) => g.kind === 'HNGR',
+                      ) && (
+                        <select
+                          className="chip-select"
+                          title="The fighter card this carrier's wing flies. Fighters are the Apr 2026 outline's Babylon 5 calibration set; point values for them are still open."
+                          value={side.wing?.[n] ?? ''}
+                          onChange={(e) =>
+                            edit((d) => {
+                              const s = d.sides[i]
+                              s.wing ??= []
+                              while (s.wing.length < s.force.length) s.wing.push('')
+                              s.wing[n] = e.target.value
+                              if (s.wing.every((v) => !v)) delete s.wing
+                            })
+                          }
+                        >
+                          <option value="">wing: pick at launch</option>
+                          {FIGHTER_CARDS.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <button
                         type="button"
                         className="chip-x"
@@ -874,6 +905,7 @@ export function ScenarioDesigner({ onClose }: { onClose: () => void }) {
                             d.sides[i].force.splice(n, 1)
                             d.sides[i].damage?.splice(n, 1)
                             d.sides[i].value?.splice(n, 1)
+                            d.sides[i].wing?.splice(n, 1)
                           })
                         }
                       >

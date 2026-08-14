@@ -637,6 +637,11 @@ const OMEGA: ShipForm = {
     // The hangar the Hyperion never had. Starfury capacity lives here rather
     // than in SHTL, so it is fighter capacity when fighters exist (E8.4.6).
     { kind: 'HNGR', label: 'Starfury Hangar', boxes: 6 },
+    // The cobra bays: two of them, either side of the rotating section, and
+    // the Omega's whole reason for being a carrier. LNCH is what sets the
+    // launch rate and LNDG the recovery rate (E8.4.6, V41 builder).
+    { kind: 'LNCH', label: 'Cobra Bays', boxes: 2 },
+    { kind: 'LNDG', label: 'Landing Bay', boxes: 1 },
     { kind: 'SHTL', label: 'Shuttle Bay', boxes: 2 },
     // The rotating section: the whole visible difference from a Hyperion.
     { kind: 'QTRS', label: 'Rotating Section', boxes: 6 },
@@ -1205,6 +1210,8 @@ const TRAFALGAR: ShipForm = {
     // Fighter capacity with a real home on the form (E8.4.6), waiting on the
     // fighter rules — not a shuttle complement wearing a fighter's name.
     { kind: 'HNGR', label: 'Hangar Bay', boxes: 6 },
+    { kind: 'LNCH', label: 'Launch Bay', boxes: 1 },
+    { kind: 'LNDG', label: 'Landing Bay', boxes: 1 },
     { kind: 'QTRS', label: 'Quarters', boxes: 9 },
     // The flag bridge, and the reason a fleet brings this rather than two
     // cruisers: H5 lets it lend tactical scan to everything around it.
@@ -2508,6 +2515,7 @@ const STAR_DESTROYER: ShipForm = {
     { kind: 'SHTL', label: 'Shuttle Bay', boxes: 4 },
     { kind: 'HNGR', label: 'Hangar Bay', boxes: 8 },
     { kind: 'LNCH', label: 'Launch Tubes', boxes: 2 },
+    { kind: 'LNDG', label: 'Landing Bay', boxes: 2 },
     { kind: 'QTRS', label: 'Quarters', boxes: 10 },
     { kind: 'CMND', label: 'Command Systems', boxes: 4 },
     { kind: 'CRGO', label: 'Cargo', boxes: 4 },
