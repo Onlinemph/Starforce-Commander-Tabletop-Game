@@ -12,6 +12,7 @@ import {
   sidesAwaited,
   victoryPoints,
   type GameState,
+  logEntryVisible,
 } from '../engine/game'
 import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, undamagedSystemBoxes, type ShipState } from '../engine/shipState'
@@ -325,6 +326,7 @@ export function App() {
         </button>
         <BattleMenu
         game={game}
+        viewSide={viewSide}
         locked={enrolledInMatch}
         onReplay={() => setReplaying(true)}
         onSummary={() => setSummaryOpen(true)}
@@ -543,7 +545,7 @@ export function App() {
             </div>
 
             <ScenarioBrief game={game} />
-            <LogPanel game={game} />
+            <LogPanel game={game} viewSide={viewSide} />
           </section>
 
           <section className="control-column">
@@ -644,7 +646,7 @@ const PHASE_CODES: Record<GameState['phase'], string> = {
  * engine has been keeping all along — grouped by round, ready to paste into
  * a forum thread or keep as the campaign record.
  */
-function battleReport(game: GameState): string {
+function battleReport(game: GameState, viewSide: string | null): string {
   const lines: string[] = []
   lines.push(`# ${game.scenario.name} — battle report`)
   lines.push('')
@@ -713,7 +715,10 @@ function battleReport(game: GameState): string {
 
   lines.push('## Log')
   let round = 0
-  for (const entry of game.log) {
+  // The report is the log made portable, so it keeps the log's secrets: a
+  // player exporting mid-match does not get the enemy's current-round
+  // allocation in a file their screen would not show them (B1.9).
+  for (const entry of game.log.filter((e) => logEntryVisible(e, viewSide, game.round))) {
     if (entry.round !== round) {
       round = entry.round
       lines.push('')
@@ -773,11 +778,14 @@ function SoundControl() {
 
 function BattleMenu({
   game,
+  viewSide,
   locked,
   onReplay,
   onSummary,
 }: {
   game: GameState
+  /** The side this console sees as, for the report's log secrecy (B1.9). */
+  viewSide: string | null
   /** In a match: saving and reading stay, loading a different battle does not. */
   locked: boolean
   onReplay: () => void
@@ -808,7 +816,7 @@ function BattleMenu({
       </button>
       <button
         type="button"
-        onClick={() => download(battleReport(game), 'starforce-report.md', 'text/markdown')}
+        onClick={() => download(battleReport(game, viewSide), 'starforce-report.md', 'text/markdown')}
         title="The battle so far as a readable report — forces, score, and the full log"
       >
         Report
@@ -1167,7 +1175,7 @@ function MissionStatus({ game }: { game: GameState }) {
  */
 const LOG_COMPACT_KEY = 'sfc.log-compact.v1'
 
-function LogPanel({ game }: { game: GameState }) {
+function LogPanel({ game, viewSide }: { game: GameState; viewSide: string | null }) {
   const [compact, setCompact] = useState(() => {
     try {
       return localStorage.getItem(LOG_COMPACT_KEY) === '1'
@@ -1186,7 +1194,10 @@ function LogPanel({ game }: { game: GameState }) {
       return next
     })
   }
-  const recent = game.log.slice(-60).reverse()
+  // The same secrecy rule the engine states: a private line shows to its own
+  // side now and to everyone once its round is over (B1.9, B1.9.2).
+  const visible = game.log.filter((e) => logEntryVisible(e, viewSide, game.round))
+  const recent = visible.slice(-60).reverse()
   const latest = recent[0]
   return (
     <div className={`log${compact ? ' is-compact' : ''}`}>

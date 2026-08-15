@@ -411,6 +411,41 @@ export interface LogEntry {
   phase: Phase
   segment: Segment
   message: string
+  /**
+   * The side this line is private to, while its round is still running.
+   *
+   * Resource Allocation and the Command Segment are secret — B1.9 spells out
+   * that allocation is written down precisely "so that they do not
+   * accidentally reveal their plan", with the forms shown only at the end of
+   * the round (B1.9.2) — and yet the shared log announced every arming, every
+   * shield reinforcement and every battery plot the moment it was made.
+   * Playtest report 1 opens with both fleets' allocations interleaved:
+   * "V.I.S. Karnath: TYPE-31 GRAVITIC DISRUPTOR armed in full (3 circles)"
+   * was on the Yorktown player's screen before they had finished their own.
+   *
+   * The log itself is engine state and identical on every console — replays
+   * depend on that — so secrecy is a *rendering* rule, applied where the log
+   * is shown: `logEntryVisible`. An untagged line is public.
+   */
+  side?: string
+}
+
+/**
+ * Whether a console viewing as `viewSide` may see this line yet.
+ *
+ * Public lines always; a private line to its own side always; and any line
+ * once its round is over, which is B1.9.2's end-of-round reveal — the forms
+ * are opened for the other player to check the math, and the log follows.
+ * A null `viewSide` is a console with no secrets to keep from itself: solo,
+ * hot-seat, the replay theater.
+ */
+export function logEntryVisible(
+  entry: LogEntry,
+  viewSide: string | null,
+  currentRound: number,
+): boolean {
+  if (!entry.side || viewSide === null) return true
+  return entry.side === viewSide || currentRound > entry.round
 }
 
 /**
@@ -723,8 +758,14 @@ export function createGame(args: {
   return game
 }
 
-export function pushLog(game: GameState, message: string): void {
-  game.log.push({ round: game.round, phase: game.phase, segment: game.segment, message })
+export function pushLog(game: GameState, message: string, side?: string): void {
+  game.log.push({
+    round: game.round,
+    phase: game.phase,
+    segment: game.segment,
+    message,
+    ...(side ? { side } : {}),
+  })
 }
 
 /**
@@ -1733,7 +1774,9 @@ function runSegmentExit(game: GameState): void {
       for (const ship of activeShips(game)) {
         if (ship.derelict) continue // E11.2.4
         const result = commitAllocation(ship)
-        for (const line of result.log) pushLog(game, line)
+        // Allocation is the plan itself; the lines stay this side's until the
+        // round-end reveal (B1.9, B1.9.2).
+        for (const line of result.log) pushLog(game, line, ship.side)
         forfeitUnspentArming(ship)
       }
       cutUnpoweredCloaks(game)

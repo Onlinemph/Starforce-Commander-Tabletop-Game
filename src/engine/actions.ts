@@ -506,7 +506,9 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (ship.derelict) return said('A derelict allocates nothing (E11.2.4).')
       const refused = batterySpendError(ship, action.lineId)
       if (refused) return said(refused)
-      pushLog(game, spendBattery(ship, action.lineId))
+      // A battery plot is Command Segment plotting — secret until Navigation
+      // reveals the card (B1.9.1), and the round-end reveal covers the rest.
+      pushLog(game, spendBattery(ship, action.lineId), ship.side)
       // The same courtesy the allocation panel gets: when the fresh points
       // cover every circle that may legally be filled, fill them (E4.2.2).
       const line = ship.form.functions.find((l) => l.id === action.lineId)
@@ -529,7 +531,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
         const armed = autoArmIfChoiceFree(ship, line.weaponSystemId)
         if (armed > 0) {
           const weapon = ship.form.weapons.find((w) => w.id === line.weaponSystemId)
-          pushLog(game, `${ship.name}: ${weapon?.name ?? line.label} armed in full (${armed} circles).`)
+          // What is loaded is the plan (B1.9); the line stays this side's
+          // until the round-end reveal. (Firing publishes the weapon anyway,
+          // through the fire line — this only keeps the *allocation* quiet.)
+          pushLog(game, `${ship.name}: ${weapon?.name ?? line.label} armed in full (${armed} circles).`, ship.side)
         }
       }
       return said(null)
@@ -561,7 +566,9 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const messages: string[] = []
       const outcomes = resolveDamageControl(ship, action.assignments, game.rng, (m) => {
         messages.push(m)
-        pushLog(game, m)
+        // What got repaired lives on the hidden form until the round-end
+        // reveal opens it for the math check (B1.9.2).
+        pushLog(game, m, ship.side)
       })
       for (const outcome of outcomes) {
         if (!outcome.success) messages.push(`${outcome.category}: no success on ${outcome.dice} dice.`)
