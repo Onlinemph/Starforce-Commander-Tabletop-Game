@@ -15,6 +15,7 @@ import {
   getGame,
   newGame,
   pendingDamageDecision,
+  setCoverGraceMs,
   setMatchPresence,
   setMatchSide,
   undoRefusal,
@@ -272,6 +273,8 @@ describe('the relay between consoles', () => {
   beforeEach(() => {
     setMatchSide(null)
     setMatchPresence([], false)
+    // Tests that zero the cover grace restore it here even when they fail.
+    setCoverGraceMs(20_000)
   })
 
   it('stages the volley instead of answering for the other player, then asks them', async () => {
@@ -378,7 +381,8 @@ describe('the relay between consoles', () => {
     expect(marks(host.blue)).toBeGreaterThan(0)
   })
 
-  it('lets the creator cover a chooser whose chair is empty', async () => {
+  it('lets the creator cover a chooser whose chair is empty — after the grace', async () => {
+    setCoverGraceMs(0)
     const { blue, red } = stageableDuel(12)
     // Blue is connected when the volley fires, so it stages…
     setMatchPresence(['Blue Force', 'Red Force'], true)
@@ -388,9 +392,38 @@ describe('the relay between consoles', () => {
 
     // …and then Blue's tab closes. The creator's console answers by doctrine
     // rather than freezing the battle forever — the same cover it gives the
-    // ready gate's empty chairs.
+    // ready gate's empty chairs. (Grace zeroed for the test; live it waits.)
     setMatchPresence(['Red Force'], true)
     for (let guard = 0; guard < 10 && getGame().stagedAction; guard++) await tick()
+    expect(getGame().stagedAction).toBeNull()
+    expect(marks(blue)).toBeGreaterThan(0)
+    setMatchSide(null)
+    setCoverGraceMs(20_000)
+  })
+
+  it('a presence flicker does not doctrine away a connected player\u2019s choice', async () => {
+    const { blue, red } = stageableDuel(12)
+    setMatchPresence(['Blue Force', 'Red Force'], true)
+    setMatchSide('Red Force')
+    await fireOn(red, blue)
+    expect(getGame().stagedAction?.awaiting).toBe('Blue Force')
+
+    // Blue's presence blinks — the realtime channel resyncing, not a player
+    // leaving. Under the default grace the cover must NOT fire: the stage
+    // stands, waiting for Blue's console.
+    setMatchPresence(['Red Force'], true)
+    for (let guard = 0; guard < 10; guard++) await tick()
+    expect(getGame().stagedAction?.awaiting).toBe('Blue Force')
+
+    // The blink passes; Blue is back and answers on their own console. (This
+    // test stands in for Blue's console answering by claiming their side.)
+    setMatchPresence(['Blue Force', 'Red Force'], true)
+    setMatchSide('Blue Force')
+    for (let guard = 0; guard < 40 && getGame().stagedAction; guard++) {
+      await tick()
+      const decision = pendingDamageDecision()
+      if (decision) answerDamageDecision(decision.options[0].choice)
+    }
     expect(getGame().stagedAction).toBeNull()
     expect(marks(blue)).toBeGreaterThan(0)
     setMatchSide(null)
@@ -418,16 +451,25 @@ describe('the relay between consoles', () => {
     expect(marks(blue)).toBeGreaterThan(0)
   })
 
-  it('answers by doctrine outright when the defender was never connected', async () => {
+  it('stages even for a defender presence has never listed, and covers after the grace', async () => {
+    setCoverGraceMs(0)
     const { blue, red } = stageableDuel(12)
-    // Only the attacker is present — hot-seat testing a match alone, or the
-    // opponent yet to join. Staging would wait on nobody; doctrine answers.
+    /*
+     * Only the attacker is present. This used to resolve by doctrine on the
+     * spot — "staging would wait on nobody" — which assumed presence is
+     * truthful. It is a realtime channel doing its best, and when it had
+     * simply not synced the joiner yet, the joiner's choices were silently
+     * made by enemy doctrine: the reported "only the host can select damage
+     * options." Now the volley stages regardless, and the creator's cover —
+     * grace zeroed here — is what settles a chair that stays empty.
+     */
     setMatchPresence(['Red Force'], true)
     setMatchSide('Red Force')
-    const outcome = await fireOn(red, blue)
+    await fireOn(red, blue)
+    for (let guard = 0; guard < 10 && getGame().stagedAction; guard++) await tick()
     expect(getGame().stagedAction).toBeNull()
-    expect(outcome.volley).toBeDefined()
     expect(marks(blue)).toBeGreaterThan(0)
+    setCoverGraceMs(20_000)
     setMatchSide(null)
   })
 })

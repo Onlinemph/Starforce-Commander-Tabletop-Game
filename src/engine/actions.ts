@@ -79,6 +79,7 @@ import {
   recordShieldHit,
   settleCargoDeliveries,
   tacticalScanOf,
+  firingOrderRefusal,
   terrainObstacles,
   tractorIncomingHoming,
   workingSystemBoxes,
@@ -414,6 +415,24 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
         ? [...game.readySides, action.side]
         : game.readySides.filter((side) => side !== action.side)
       if (action.ready) pushLog(game, `${action.side} is ready.`)
+      /*
+       * Readying out of a combat segment is declining to fire with the ships
+       * that have not fired: the firing sequence blocks every lower-scan ship
+       * until the ones above it decide, so a side that walked away from the
+       * segment without deciding would lock its opponent's guns shut. The
+       * pass is binding, exactly as a spoken pass is — un-readying does not
+       * hand the option back, because "a ship that chooses to pass may not
+       * fire until the next combat phase" (H2.4.1).
+       */
+      if (action.ready && game.segment === 'combat' && !game.coordinatedFire) {
+        for (const ship of game.ships) {
+          if (ship.side !== action.side || ship.destroyed || ship.disengaged || ship.derelict) continue
+          if (game.firedThisSegment.has(ship.id)) continue
+          game.firedThisSegment.add(ship.id)
+          pushLog(game, `${ship.name} declines to fire this phase (E6.2 Step 1).`)
+        }
+        maybeFlushTieGroup(game)
+      }
       // The last one to be ready closes the segment. Both ends work that out
       // from the same journal, so neither has to be told.
       if (everyoneReady(game)) advanceSegment(game)
@@ -701,6 +720,15 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const target = shipById(game, action.targetId)
       if (!attacker || !target) return said('No such ship.')
 
+      /*
+       * The firing sequence is enforced here, not just drawn on the panel.
+       * Refusing in the engine is what makes it hold in an online match: a
+       * replayed journal refuses the same volley identically on both
+       * consoles, and no client build can quietly fire out of turn.
+       */
+      const outOfTurn = firingOrderRefusal(game, attacker)
+      if (outOfTurn) return said(outOfTurn)
+
       // Context is re-derived here, never trusted from the panel, so a replay
       // sees exactly the modifiers the original resolution saw.
       const inGroup = game.coordinatedGroup?.shipIds.includes(attacker.id) ?? false
@@ -785,6 +813,7 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'pass-fire': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      if (game.firedThisSegment.has(ship.id)) return ok
       game.firedThisSegment.add(ship.id)
       pushLog(game, `${ship.name} declines to fire this phase (E6.2 Step 1).`)
       const flushed = maybeFlushTieGroup(game)

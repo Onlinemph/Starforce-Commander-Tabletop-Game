@@ -17,6 +17,7 @@ import {
   asteroidFieldsAt,
   attackAllowed,
   cloakModifiers,
+  firingOrderRefusal,
   cloudModifiers,
   impactingHoming,
   probeLaunchers,
@@ -69,16 +70,17 @@ export function CombatPanel({ game, attacker }: Props) {
   const target = enemies.find((s) => s.id === (forcedTargetId ?? targetId)) ?? null
 
   const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
-  const currentTacScanGroup = groups.find((g) => g.some((s) => !game.firedThisSegment.has(s.id)))
 
   const alreadyFired = game.firedThisSegment.has(attacker.id)
+  // The engine's own gate, so the button and the refusal can never disagree.
+  const orderRefusal = firingOrderRefusal(game, attacker)
   const mayFire = game.coordinatedFire
     ? !alreadyFired &&
       (inGroup
         ? group!.step === step.index
         : mayFireAlone(step, tacticalScanOf(game, attacker)) &&
           !(group !== null && group.side === attacker.side))
-    : (currentTacScanGroup?.some((s) => s.id === attacker.id) ?? false)
+    : orderRefusal === null
 
   // H4.3.1: one attack per faction per target per phase. A group member is
   // covered by the attack its group already recorded.
@@ -163,7 +165,11 @@ export function CombatPanel({ game, attacker }: Props) {
             : groups
                 .map((g) => `${tacticalScanOf(game, g[0])}: ${g.map((s) => s.name).join(' + ')}`)
                 .join(' → ')}
-          {!mayFire && <span className="chip chip-warn">Not this ship&apos;s turn to fire</span>}
+          {!mayFire && (
+            <span className="chip chip-warn">
+              {alreadyFired ? 'Already fired or passed this phase' : 'Not this ship\u2019s turn to fire'}
+            </span>
+          )}
         </div>
       )}
 
@@ -374,13 +380,16 @@ export function CombatPanel({ game, attacker }: Props) {
           className="primary"
           // H4.1.3 makes the step order binding ("NO EXCEPTIONS"); the base
           // game's Tactical Scan order is advisory here and only warns.
+          // The sequence is binding in both modes now: the engine refuses an
+          // out-of-turn or repeat volley, so an enabled button would only be
+          // a button that errors.
           disabled={
             !target ||
             selected.size === 0 ||
             attackBlocked !== null ||
             cloak.attackerCloaked ||
             cloak.targetUnshootable !== undefined ||
-            (game.coordinatedFire && !mayFire)
+            !mayFire
           }
           onClick={() => void fire()}
         >
@@ -389,7 +398,9 @@ export function CombatPanel({ game, attacker }: Props) {
         <button
           type="button"
           // Passing can land another ship's held volley (H2.4.2), which is
-          // damage, which may be a question for its captain.
+          // damage, which may be a question for its captain. An early pass is
+          // allowed — it only gives up the right to see higher volleys first.
+          disabled={alreadyFired}
           onClick={() => void dispatchWithChoices({ type: 'pass-fire', shipId: attacker.id })}
         >
           Pass

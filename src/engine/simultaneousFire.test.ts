@@ -197,3 +197,82 @@ describe('defensive jamming doctrine', () => {
     expect(jam).toBeUndefined()
   })
 })
+
+/*
+ * The firing sequence itself (E6.2 Step 1, H2.4.1): highest Tactical Scan has
+ * the option first, each ship down the ladder decides fire-or-pass in turn,
+ * one opportunity a phase. For a long time this was a warning chip on the
+ * panel and nothing in the engine — so in an online match the effective order
+ * was whoever clicked first, and the points a player put into Tactical Scan
+ * bought nothing. A playtest report said it exactly: "the more power you put
+ * into those scanners the last you fire."
+ */
+describe('the firing sequence is binding (E6.2 Step 1, H2.4.1)', () => {
+  /** Same duel, but the scans differ: blue invested, red did not. */
+  function unequalDuel(): GameState {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    blue.sensors = { targeting: 0, jamming: 0, tacticalScan: 4 }
+    red.sensors = { targeting: 0, jamming: 0, tacticalScan: 1 }
+    return game
+  }
+
+  it('refuses the low-scan ship while the high-scan ship is undecided', () => {
+    const game = unequalDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    const out = fire(game, red, blue)
+    expect(out.message).toMatch(/must fire or pass/)
+    // A refusal costs nothing: no roll, no damage, and red may fire later.
+    expect(game.firedThisSegment.has(red.id)).toBe(false)
+    expect(structureRemaining(blue)).toBe(structureRemaining(blue))
+  })
+
+  it('lets the high-scan ship fire first, then the low-scan ship', () => {
+    const game = unequalDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    expect(fire(game, blue, red).volley?.ok).toBe(true)
+    expect(fire(game, red, blue).volley?.ok).toBe(true)
+  })
+
+  it('a pass hands the option down the ladder', () => {
+    const game = unequalDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    expect(applyAction(game, { type: 'pass-fire', shipId: blue.id }).message).toBeNull()
+    expect(fire(game, red, blue).volley?.ok).toBe(true)
+  })
+
+  it('one opportunity a phase: a ship that fired may not fire again', () => {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    expect(fire(game, blue, red).volley?.ok).toBe(true)
+    expect(fire(game, blue, red).message).toMatch(/already fired or passed/)
+  })
+
+  it('readying a side out of a combat segment passes its undecided ships', () => {
+    const game = unequalDuel()
+    game.readyGate = true
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    // Blue walks away from the segment without deciding. Without the pass,
+    // red's guns would be locked shut behind an empty chair.
+    applyAction(game, { type: 'signal-ready', side: 'Blue Force', ready: true })
+    expect(game.firedThisSegment.has(blue.id)).toBe(true)
+    expect(fire(game, red, blue).volley?.ok).toBe(true)
+    // And the pass is binding: un-readying does not hand the option back.
+    applyAction(game, { type: 'signal-ready', side: 'Blue Force', ready: false })
+    expect(fire(game, blue, red).message).toMatch(/already fired or passed/)
+  })
+
+  it('tie-mates fire in either order, as before', () => {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    expect(fire(game, red, blue).volley?.ok).toBe(true)
+    expect(fire(game, blue, red).volley?.ok).toBe(true)
+  })
+})

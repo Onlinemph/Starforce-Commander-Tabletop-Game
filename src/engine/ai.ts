@@ -12,6 +12,7 @@ import {
   shipsUnderBoarding,
   tractorableHoming,
   tacticalScanOf,
+  firingOrderRefusal,
   isCombatPhase,
   reconProgress,
   commandStateFor,
@@ -3905,7 +3906,16 @@ function planFiring(
 
   let due: ShipState[]
   if (closing) {
-    due = unfired
+    /*
+     * The closing sweep fires everything still holding a volley — but the
+     * engine now enforces the firing sequence, so "everything" is offered in
+     * sequence: only the ships whose turn it is this tick. The driver loop
+     * calls back after each batch lands, which walks the ladder down group by
+     * group. A ship the sequence never unblocks (an undecided human above it)
+     * simply keeps its volley, rather than burning the attempt on a refusal
+     * and converting to a pass through the memo backstop.
+     */
+    due = unfired.filter((s) => firingOrderRefusal(game, s) === null)
   } else {
     // The first group with anyone left to fire is up (E6.2). AI ships in that
     // group fire now; if the slot belongs to the human, wait for them.

@@ -158,6 +158,31 @@ function applyJournaled(action: GameAction): ActionOutcome {
   return outcome
 }
 
+
+/**
+ * The human closing a combat segment is the human declining to fire with the
+ * ships they never fired. Said out loud — as journaled passes — because the
+ * engine enforces the firing sequence now, and an undecided high-scan ship
+ * blocks every gun below it: the AI's closing sweep would find its whole
+ * fleet out of turn behind a ship whose captain had simply moved on.
+ *
+ * Only the ships this console commands. The AI's are the sweep's to fire, and
+ * in an online match the opponent's are not ours to decline — there the ready
+ * gate does this same job on their console when they signal ready.
+ */
+function declineRemainingFire(): void {
+  if (game.segment !== 'combat' || game.coordinatedFire) return
+  for (const ship of game.ships) {
+    if (ship.destroyed || ship.disengaged || ship.derelict) continue
+    if (game.firedThisSegment.has(ship.id)) continue
+    if ((setup.aiSides ?? []).includes(ship.side)) continue
+    if (matchSide !== null && ship.side !== matchSide) continue
+    const pass: GameAction = { type: 'pass-fire', shipId: ship.id }
+    applyJournaled(pass)
+    net?.onAction(pass, journal.length)
+  }
+}
+
 /** Apply an action, journal it, autosave, notify. The only way state changes. */
 export function dispatch(action: GameAction): ActionOutcome {
   /*
@@ -179,8 +204,12 @@ export function dispatch(action: GameAction): ActionOutcome {
   }
   // Before the human closes a segment, the AI settles anything it was still
   // waiting on — a firing slot later in the Tactical Scan order, above all —
-  // so a segment never ends with its guns silent.
-  if (action.type === 'advance-segment') void driveAi(true)
+  // so a segment never ends with its guns silent. The human's own undecided
+  // ships pass first, or the sequence holds the AI's guns shut behind them.
+  if (action.type === 'advance-segment') {
+    declineRemainingFire()
+    void driveAi(true)
+  }
   const outcome = applyJournaled(action)
   autosave()
   emit()
@@ -261,7 +290,21 @@ function remoteChooser(shipId: string): string | null {
   if (!ship) return null
   if (matchSide === null || ship.side === matchSide) return null
   if ((setup.aiSides ?? []).includes(ship.side)) return null
-  if (!matchPresent.includes(ship.side)) return null
+  /*
+   * Deliberately NOT consulting presence here. It used to: a side missing
+   * from `matchPresent` was answered by doctrine on the attacker's console,
+   * straight away and silently. But presence is a realtime channel doing its
+   * best, and when it blinked — or simply had not synced the joiner yet —
+   * the joiner's damage choices were quietly made for them by enemy
+   * doctrine, which a playtest reported as "only the host can select damage
+   * options." A player's decisions must never hinge on a heartbeat.
+   *
+   * So in a match, a non-AI enemy ship's choice is always that side's to
+   * answer: stage it. A chair that is genuinely empty is the creator cover's
+   * problem (settleStagedAction), which now waits out a grace period first —
+   * long enough for a flicker to pass, short enough that a closed tab does
+   * not freeze the battle.
+   */
   return ship.side
 }
 
@@ -274,6 +317,12 @@ function remoteChooser(shipId: string): string | null {
 async function askAbout(
   action: GameAction,
   base: DamageChoice[] = [],
+  /**
+   * A side this console is answering for by doctrine — the creator covering
+   * an empty chair. Its decisions are settled here instead of handed back,
+   * or the cover would re-stage to the very side it exists to stand in for.
+   */
+  coverSide: string | null = null,
 ): Promise<{ script: DamageChoice[]; handoff: string | null }> {
   const script = [...base]
   for (let guard = 0; guard < 64; guard++) {
@@ -282,7 +331,7 @@ async function askAbout(
     })
     if (!decision || decision.options.length === 0) break
     const handoff = remoteChooser(decision.shipId)
-    if (handoff) return { script, handoff }
+    if (handoff && handoff !== coverSide) return { script, handoff }
     const fallback = decision.options.find((o) => o.recommended) ?? decision.options[0]
     script.push(
       playerCommands(decision.shipId)
@@ -300,7 +349,10 @@ export async function dispatchWithChoices(action: GameAction): Promise<ActionOut
   // The same settling `dispatch` does, done before the probe rather than after
   // it: the AI's closing volleys move the deck, and a script written against
   // the state before them would be answering different cards.
-  if (action.type === 'advance-segment') await driveAi(true)
+  if (action.type === 'advance-segment') {
+    declineRemainingFire()
+    await driveAi(true)
+  }
   const { script, handoff } = await askAbout(action)
   if (handoff) {
     // Some of the cards are the other player's to answer. The action goes
@@ -325,6 +377,22 @@ export async function dispatchWithChoices(action: GameAction): Promise<ActionOut
  */
 let settling = false
 
+/**
+ * How long the creator leaves an empty chair before covering its stage by
+ * doctrine. Presence flickers — a phone locking, a tab backgrounded, the
+ * realtime channel re-syncing — and a flicker must not cost a connected
+ * player their damage choices. A genuinely closed tab still gets covered,
+ * just this much later. Overridable so tests are not half a minute long.
+ */
+let coverGraceMs = 20_000
+/** The stage the cover clock is running against, and when it may act. */
+let coverStage: unknown = null
+let coverAt = 0
+
+export function setCoverGraceMs(ms: number): void {
+  coverGraceMs = ms
+}
+
 async function settleStagedAction(): Promise<void> {
   const staged = game.stagedAction
   if (!staged || settling || pending) return
@@ -340,9 +408,28 @@ async function settleStagedAction(): Promise<void> {
     if (aiSuppressed) return
   } else {
     const mine = staged.awaiting === matchSide
-    const covering = !mine && matchCreator && !matchPresent.includes(staged.awaiting)
-    if (!mine && !covering) return
+    if (!mine) {
+      if (!matchCreator) return
+      if (matchPresent.includes(staged.awaiting)) {
+        // The chooser is at their console; their prompt is theirs to answer.
+        coverStage = null
+        return
+      }
+      // The chair looks empty. Start (or continue) the grace clock, and only
+      // cover once it has run out with the chair still empty — presence
+      // coming back in between resets it, so a blink costs nothing.
+      if (coverStage !== staged) {
+        coverStage = staged
+        coverAt = Date.now() + coverGraceMs
+        setTimeout(() => void settleStagedAction(), coverGraceMs)
+        return
+      }
+      if (Date.now() < coverAt) return
+    } else {
+      coverStage = null
+    }
   }
+  const mineToAnswer = matchSide === null || staged.awaiting === matchSide
   settling = true
   try {
     // Probing the *resolve* rather than the inner action matters: the clone
@@ -350,7 +437,11 @@ async function settleStagedAction(): Promise<void> {
     // does. The probe's provider intercepts every choice, so the empty script
     // here is never actually consulted.
     const probe: GameAction = { type: 'resolve-staged-action', choices: [] }
-    const { script, handoff } = await askAbout(probe, staged.choices)
+    const { script, handoff } = await askAbout(
+      probe,
+      staged.choices,
+      mineToAnswer ? null : staged.awaiting,
+    )
     // The world may have moved while the player was thinking — a corrective
     // sync, another console covering. Only act on the stage still standing.
     if (game.stagedAction !== staged) return
@@ -587,6 +678,12 @@ export function unattendedSides(): string[] {
   const spoke = new Set<string>()
   for (const action of journal) {
     if (action.type === 'advance-segment') continue
+    // A pass is the absence of an order, and not only philosophically: the
+    // store journals passes *for* an idle side when a segment closes, so the
+    // firing sequence cannot be held shut by an empty chair. Counting those
+    // as the side speaking would hide exactly the walkover this exists to
+    // catch.
+    if (action.type === 'pass-fire') continue
     const side = actionSide(game, action)
     if (side) spoke.add(side)
   }

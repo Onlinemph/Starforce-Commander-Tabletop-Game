@@ -15,7 +15,7 @@ import {
 // Type-only, and deliberately so: actions.ts imports this module at runtime,
 // and a value import back the other way would be a genuine cycle.
 import type { GameAction } from './actions'
-import { applyHeldVolley, type HeldVolley } from './combat'
+import { applyHeldVolley, firingOrder, type HeldVolley } from './combat'
 import {
   commandSystemBoxes,
   hasCommandSystems,
@@ -1272,6 +1272,43 @@ export function tacticalScanOf(game: GameState, ship: ShipState): number {
   // A ship fought by its own crew fires last, whatever its scan says (J6.3.4).
   if (crewIsArmed(ship)) return -1
   return ship.sensors.tacticalScan + (lentScanPoints(game)[ship.id] ?? 0)
+}
+
+/**
+ * Why this ship may not fire right now, or `null` when it may.
+ *
+ * The firing sequence is a rule, not a suggestion: the ship with the highest
+ * Tactical Scan has the option to fire first, each ship down the ladder decides
+ * fire-or-pass in turn, and every ship gets one opportunity a phase (E6.2
+ * Step 1, H2.4.1, H4.1.1). For a long time the engine never checked any of
+ * that — the panel showed a warning chip and left the button live — which on a
+ * table between friends is fine and in an online match is a loophole: the
+ * *effective* order was whoever clicked first, an out-of-turn volley's damage
+ * landed immediately, and the sensor points a player put into Tactical Scan
+ * bought nothing. A playtest report said it exactly: "the more power you put
+ * into those scanners the last you fire."
+ *
+ * One predicate, three callers — the engine refuses with it, the AI plans with
+ * it, the panel disables with it — because every planner/engine disagreement in
+ * this project has come from two callers measuring the same rule differently.
+ *
+ * Under the optional H4 rules the step machine owns the sequence instead, so
+ * only the one-opportunity check applies here.
+ */
+export function firingOrderRefusal(game: GameState, attacker: ShipState): string | null {
+  if (game.firedThisSegment.has(attacker.id)) {
+    return `${attacker.name} has already fired or passed this phase — one opportunity per combat phase (E6.2 Step 1).`
+  }
+  if (game.coordinatedFire) return null
+  const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
+  const up = groups.find((g) => g.some((s) => !game.firedThisSegment.has(s.id)))
+  if (!up || up.some((s) => s.id === attacker.id)) return null
+  const waiting = up.filter((s) => !game.firedThisSegment.has(s.id)).map((s) => s.name)
+  return (
+    `${waiting.join(' and ')} (Tactical Scan ${tacticalScanOf(game, up[0])}) ` +
+    `must fire or pass before ${attacker.name} (Tactical Scan ${tacticalScanOf(game, attacker)}) ` +
+    `may fire (E6.2 Step 1, H2.4.1).`
+  )
 }
 
 /**
