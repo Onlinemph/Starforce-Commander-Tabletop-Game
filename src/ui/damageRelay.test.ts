@@ -42,7 +42,13 @@ import {
 // ---------------------------------------------------------------------------
 
 function duel(seed = 5): GameState {
-  return startScenario('s3.1-the-duel', { seed })
+  const game = startScenario('s3.1-the-duel', { seed })
+  // Staged actions are combat-borne — a volley or a pass landing a held one —
+  // and the engine now refuses combat actions outside the Combat Segment, so
+  // the fixture stands where its staged pass-fire could actually arise.
+  game.phase = 'combat-1'
+  game.segment = 'combat'
+  return game
 }
 
 /**

@@ -207,6 +207,11 @@ export interface HeldVolley {
   attackerArcs: Arc[]
   /** Precision hand drawn at roll time, kept private until it lands (E9.2.2). */
   precision?: DamageContext['precision']
+  /**
+   * The fire line for the shared log, composed at roll time and printed at
+   * the reveal — H2.4.2's secrecy applied to the battle log itself.
+   */
+  announcement?: string
 }
 
 /** Land a held volley: the deferred half of `resolveVolley`. */

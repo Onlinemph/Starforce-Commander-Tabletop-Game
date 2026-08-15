@@ -276,3 +276,54 @@ describe('the firing sequence is binding (E6.2 Step 1, H2.4.1)', () => {
     expect(fire(game, blue, red).volley?.ok).toBe(true)
   })
 })
+
+describe('actions stay in their segment', () => {
+  it('refuses a volley outside the Combat Segment — it would be a second volley', () => {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    // The exploit this closes: `firedThisSegment` clears when combat ends, so
+    // a volley journalled into the next segment was a second volley that
+    // phase the accounting never saw.
+    game.segment = 'navigation'
+    const out = fire(game, blue, red)
+    expect(out.message).toMatch(/belongs to the combat segment/)
+    expect(out.volley).toBeUndefined()
+  })
+
+  it('refuses a shield change during Offensive Fire', () => {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    // Raising a shield mid-combat is raising it after seeing where the
+    // enemy's fire went; the Operations Segment owns the decision (A3.3.2).
+    const out = applyAction(game, {
+      type: 'set-shield-down',
+      shipId: blue.id,
+      side: 'F',
+      down: true,
+    })
+    expect(out.message).toMatch(/belongs to the operations segment/)
+  })
+})
+
+describe('tied volleys stay secret until the reveal (H2.4.2)', () => {
+  it('logs no dice, damage or target while the volley is held', () => {
+    const game = tiedDuel()
+    const blue = game.ships.find((s) => s.side === 'Blue Force')!
+    const red = game.ships.find((s) => s.side === 'Red Force')!
+    fire(game, blue, red)
+    // The log is shared between consoles. Until the tie group completes, the
+    // second tie-mate must not be able to read the first's roll off it —
+    // playtest report 1 printed "Dice: H S H L ... damage held" verbatim.
+    const sinceFire = game.log.map((l) => l.message).filter((m) => m.includes(blue.name))
+    expect(sinceFire.at(-1)).toMatch(/plots its volley — held for simultaneous reveal/)
+    expect(sinceFire.at(-1)).not.toMatch(/Dice:/)
+    expect(game.log.some((l) => /Dice:/.test(l.message))).toBe(false)
+
+    // The reveal: the tie-mate answers, and both fire lines come out with
+    // their dice alongside the damage landing.
+    fire(game, red, blue)
+    const dice = game.log.filter((l) => /Dice:/.test(l.message))
+    expect(dice).toHaveLength(2)
+  })
+})

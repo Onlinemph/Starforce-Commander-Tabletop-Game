@@ -88,7 +88,7 @@ import {
 } from './game'
 import { setScoutAssignment, setScoutSensorActive } from './scouting'
 import { sensorFunctionCap, sensorPointsAvailable, type ShipState } from './shipState'
-import type { Maneuver, ShieldSide, SystemKind, TurnDirection } from './types'
+import type { Maneuver, Segment, ShieldSide, SystemKind, TurnDirection } from './types'
 import type { ScoutFunction } from './types'
 import type { SmallCraftKind } from './smallCraft'
 import type { FighterConfigKind } from './fighters'
@@ -280,6 +280,25 @@ export interface ActionOutcome {
 
 const ok: ActionOutcome = { message: null }
 const said = (message: string | null): ActionOutcome => ({ message })
+
+/**
+ * Refuse an action outside the segment that owns it.
+ *
+ * The panels only *render* in the right segment, which protected nothing: the
+ * engine accepted a volley in the Navigation Segment, a shield change in the
+ * middle of Offensive Fire, a scan whenever. On a table those are not moves a
+ * player can physically make out of turn; online they were one stale click —
+ * or one modified client — away, and some of them are worth real advantage: a
+ * volley journalled after the Combat Segment closed is a second volley that
+ * phase, because `firedThisSegment` has already been cleared, and a shield
+ * raised mid-combat is a shield raised after seeing where the enemy's fire
+ * went. Same shape as the firing-sequence hole, same cure: the engine is the
+ * rulebook, not the panels.
+ */
+function inSegment(game: GameState, segment: Segment, what: string): ActionOutcome | null {
+  if (game.segment === segment) return null
+  return said(`${what} belongs to the ${segment} segment, not ${game.segment}.`)
+}
 
 function shipById(game: GameState, id: string): ShipState | null {
   return game.ships.find((s) => s.id === id) ?? null
@@ -682,11 +701,15 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return ok
     }
     case 'set-shield-down': {
+      const wrong = inSegment(game, 'operations', 'Raising or lowering a shield (A3.3.2, G1.1.5)')
+      if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
       return said(setShieldDown(game, ship, action.side, action.down))
     }
     case 'tractor-lock': {
+      const wrong = inSegment(game, 'operations', 'A tractor lock attempt (J3.2)')
+      if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
       const result = attemptTractorLock(game, ship, action.targetId, action.beams)
@@ -703,12 +726,16 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return said(result.refusal ?? (result.locked ? 'The beam holds.' : 'Broken free.'))
     }
     case 'transport': {
+      const wrong = inSegment(game, 'operations', 'Transporting (J5)')
+      if (wrong) return wrong
       const from = shipById(game, action.shipId)
       const to = shipById(game, action.targetId)
       if (!from || !to) return said('No such ship.')
       return said(performTransport(game, from, to, action.squads).refusal)
     }
     case 'scan': {
+      const wrong = inSegment(game, 'operations', 'An informational scan (J4.2)')
+      if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
       return said(performScan(game, ship, action.targetId).refusal)
@@ -720,6 +747,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const target = shipById(game, action.targetId)
       if (!attacker || !target) return said('No such ship.')
 
+      {
+        const wrong = inSegment(game, 'combat', 'Offensive fire (E6.2)')
+        if (wrong) return wrong
+      }
       /*
        * The firing sequence is enforced here, not just drawn on the panel.
        * Refusing in the engine is what makes it hold in an online match: a
@@ -786,14 +817,25 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       game.firedThisSegment.add(attacker.id)
       if (game.coordinatedFire && !inGroup) recordAttack(game, attacker, target)
       const dice = result.records.flatMap((r) => r.rolls.map((d) => d.face)).join(' ')
-      pushLog(
-        game,
+      const announcement =
         `${attacker.name} fires on ${target.name} at effective range ${result.effectiveRange} ` +
-          `(${result.targetShield} shield). Dice: ${dice} → ${result.damage.standard} damage` +
-          (result.damage.leak ? `, ${result.damage.leak} leak` : '') +
-          (result.held ? ' — damage held for simultaneous resolution (H2.4.2)' : ''),
-      )
-      if (result.held) game.pendingVolleys.push(result.held)
+        `(${result.targetShield} shield). Dice: ${dice} → ${result.damage.standard} damage` +
+        (result.damage.leak ? `, ${result.damage.leak} leak` : '')
+      if (result.held) {
+        /*
+         * H2.4.2 has tie-mates plot "secretly and simultaneously" and reveal
+         * together. The log is shared between consoles, and it used to print
+         * this ship's dice, target and damage the moment they were rolled —
+         * so the second tie-mate read the first's whole volley before
+         * declaring its own, which is the opposite of the rule. Playtest
+         * report 1 shows the leak verbatim. The announcement now waits with
+         * the damage and both come out at the reveal.
+         */
+        pushLog(game, `${attacker.name} plots its volley — held for simultaneous reveal (H2.4.2).`)
+        game.pendingVolleys.push({ ...result.held, announcement })
+      } else {
+        pushLog(game, announcement)
+      }
       // A landed volley's shield absorption is public — both players saw the
       // side declared and the boxes come off. Held volleys record at flush.
       if (result.outcome) {
@@ -811,6 +853,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return { message: null, volley: result, flushed }
     }
     case 'pass-fire': {
+      const wrong = inSegment(game, 'combat', 'Passing the option to fire (E6.2 Step 1)')
+      if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
       if (game.firedThisSegment.has(ship.id)) return ok
@@ -820,6 +864,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return flushed ? { message: null, flushed } : ok
     }
     case 'declare-coordinated': {
+      const wrong = inSegment(game, 'combat', 'Declaring coordinated fire (H4.5)')
+      if (wrong) return wrong
       const ships = action.shipIds
         .map((id) => shipById(game, id))
         .filter((s): s is ShipState => s !== null)
@@ -828,6 +874,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return said(declareCoordinatedFire(game, ships, target))
     }
     case 'fire-small-target': {
+      const wrong = inSegment(game, 'combat', 'Firing at a small target (E12)')
+      if (wrong) return wrong
       const attacker = shipById(game, action.attackerId)
       if (!attacker) return said('No such ship.')
       const result = fireAtSmallTarget(game, attacker, action.targetId, action.weaponId, action.mountIndex)
@@ -848,6 +896,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       return said(tractorIncomingHoming(game, ship, action.homingId, action.beams).refusal ?? null)
     }
     case 'launch-homing': {
+      const wrong = inSegment(game, 'combat', 'Launching a homing weapon (E5.2)')
+      if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       const target = shipById(game, action.targetId)
       if (!ship || !target) return said('No such ship.')

@@ -814,6 +814,8 @@ export function flushPendingVolleys(game: GameState): FlushedVolley[] {
     if (!target || target.destroyed || target.disengaged) continue
     const outcome = applyHeldVolley(target, held, damageContext(game))
     recordShieldHit(game, target.id, held.damage.side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+    // The reveal (H2.4.2): the fire line waited with the damage.
+    if (held.announcement) pushLog(game, held.announcement)
     pushLog(
       game,
       `${held.attackerName}'s held volley lands on ${target.name}: ` +
