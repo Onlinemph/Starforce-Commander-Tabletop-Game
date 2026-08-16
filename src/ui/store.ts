@@ -496,6 +496,16 @@ export function currentSetup(): GameSetup {
   return setup
 }
 
+/**
+ * How many actions the journal holds — the title screen's "is a battle
+ * actually underway" question. Zero means a fresh table nobody has touched,
+ * which gets "New battle" top billing; anything else earns a Continue button
+ * that names the scenario and the round it left off in.
+ */
+export function actionCount(): number {
+  return journal.length
+}
+
 // ---------------------------------------------------------------------------
 // Undo
 // ---------------------------------------------------------------------------

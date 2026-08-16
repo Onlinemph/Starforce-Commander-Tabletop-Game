@@ -4622,3 +4622,146 @@ button.chip:hover:not(:disabled) {
   stroke: rgba(10, 14, 24, 0.8);
   stroke-width: 2.5;
 }
+
+/* ── The title screen ─────────────────────────────────────────────────────
+   The front door. Same LCARS language as the chrome — black ground, one
+   accent, condensed caps — with a CSS-only starfield so it works offline
+   and costs no asset. The battle screen underneath is untouched; every
+   entry here routes into a flow that already existed. */
+
+.title-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 48px 16px;
+  background:
+    radial-gradient(1px 1px at 12% 22%, #cfd8ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 12%, #9fb2e8 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 74%, #e9edf7 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 84%, #8ea0d0 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 56%, #cfd8ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 44% 38%, #aebdf0 50%, transparent 51%),
+    radial-gradient(1px 1px at 8% 64%, #e9edf7 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 88%, #9fb2e8 50%, transparent 51%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, #10142a 0%, transparent 60%),
+    var(--bg);
+}
+
+.title-hero {
+  text-align: center;
+}
+
+.title-hero h1 {
+  font-family: var(--font-lcars);
+  font-size: clamp(38px, 7vw, 72px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+  line-height: 1;
+}
+
+.title-sub {
+  color: var(--ink-dim);
+  margin: 10px 0 0;
+  font-size: 15px;
+}
+
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(440px, 92vw);
+}
+
+.title-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 18px;
+  font-size: 16px;
+  text-align: left;
+  border-radius: 14px;
+}
+
+.title-detail {
+  font-size: 12px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink-dim);
+}
+
+button.primary .title-detail {
+  color: #3a2a00;
+}
+
+/* New battle: the start button and its scenario picker share one row. */
+.title-new {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.title-new .title-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 18px;
+  font-size: 16px;
+  text-align: left;
+  border-radius: 14px;
+}
+
+.title-new select {
+  max-width: 150px;
+  border-radius: 14px;
+}
+
+/* Load battle is a label wrapping a hidden file input, styled as its
+   siblings — the input cannot be a button, the button can be a label. */
+.title-load {
+  cursor: pointer;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-lcars);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.title-load:hover {
+  border-color: var(--accent);
+}
+
+.title-load input {
+  display: none;
+}
+
+.title-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.title-note {
+  color: var(--warn);
+  margin: 0;
+}
+
+.title-footing {
+  color: var(--ink-dim);
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.8;
+}

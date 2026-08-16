@@ -62,6 +62,7 @@ import {
   unattendedSides,
   undo,
   useGame,
+  actionCount,
 } from './store'
 
 /** Which side's player is holding the console. Survives a refresh mid-handoff. */
@@ -93,9 +94,27 @@ export function App() {
   const [linking, setLinking] = useState(false)
   const [lobby, setLobby] = useState(false)
   const [replaying, setReplaying] = useState(false)
-  // The guided battle. Offered unprompted the first time, because someone who
-  // has never seen a command card will not go looking for a tutorial button.
-  const [teaching, setTeaching] = useState(() => !tutorialSeen())
+  /*
+   * The guided battle. It used to open itself on first run, because someone
+   * who has never seen a command card will not go looking for a tutorial
+   * button — the title screen carries that duty now, with the Tutorial entry
+   * spotlighted until it has been taken once.
+   */
+  const [teaching, setTeaching] = useState(false)
+  /*
+   * The title screen. The app opens on it like any game does — the board
+   * with ships already on it made sense when the map WAS the app, and reads
+   * as "whose battle is this?" now that it is one room of many. Every entry
+   * routes into a flow that already existed; the battle screen underneath is
+   * untouched and keeps its whole header, so nothing is lost to the front
+   * door. An invite link skips it: whoever follows one has already chosen
+   * where they are going.
+   */
+  const [screen, setScreen] = useState<'menu' | 'battle'>(() =>
+    typeof location !== 'undefined' && /[#&]join=/.test(location.hash) ? 'battle' : 'menu',
+  )
+  const [menuScenario, setMenuScenario] = useState<string | null>(null)
+  const [menuNote, setMenuNote] = useState<string | null>(null)
   const net = useNet()
   const online = useOnline()
   // Subscribing keeps the scenario dropdown live as designs are saved.
@@ -121,6 +140,16 @@ export function App() {
    * of least effort, exactly as B1.9 intends.)
    */
   const enrolledInMatch = inMatch(online)
+  /*
+   * A match outranks the menu. Enrollment is remembered across refreshes and
+   * the reconnect is asynchronous, so a player mid-match who reloads would
+   * otherwise land on the title screen while their battle quietly reattached
+   * behind it — and a correspondence player answering a "your move" tab wants
+   * the board, not a menu.
+   */
+  useEffect(() => {
+    if (screen === 'menu' && (enrolledInMatch || online.phase !== 'idle')) setScreen('battle')
+  }, [screen, enrolledInMatch, online.phase])
   const lockedView = enrolledInMatch && online.side && sides.includes(online.side) ? online.side : null
   const viewSide =
     lockedView ?? (rawView !== null && sides.includes(rawView) ? rawView : null)
@@ -197,6 +226,137 @@ export function App() {
     }
   }
 
+  if (screen === 'menu') {
+    const underway = actionCount() > 0
+    const startNew = () => {
+      newGame({
+        scenarioId: menuScenario ?? game.scenario.id,
+        seed: Math.floor(Math.random() * 1e9),
+      })
+      setTargetId(null)
+      setPicking(true)
+      setScreen('battle')
+    }
+    return (
+      <div className="app title-screen">
+        <div className="title-hero">
+          <h1>StarForce Commander</h1>
+          <p className="title-sub">
+            The digital tabletop — plotted movement, coloured dice, and every rule in the book
+          </p>
+        </div>
+
+        <nav className="title-menu" aria-label="Main menu">
+          {/*
+            Always a way back to the table. A battle set up but not yet begun
+            has no journal, and gating this on "actions taken" once stranded a
+            fresh setup behind a menu whose only other door resets it.
+          */}
+          <button
+            type="button"
+            className={underway ? 'primary title-item' : 'title-item'}
+            onClick={() => setScreen('battle')}
+          >
+            {underway ? 'Continue' : 'To the table'}
+            <span className="title-detail">
+              {game.scenario.name} — {underway ? `round ${game.round}` : 'set up and ready'}
+            </span>
+          </button>
+
+          <div className="title-item title-new">
+            <button
+              type="button"
+              className={underway ? 'title-start' : 'primary title-start'}
+              onClick={startNew}
+            >
+              New battle
+              <span className="title-detail">Pick the forces, then fight it out</span>
+            </button>
+            <select
+              aria-label="Scenario"
+              value={menuScenario ?? game.scenario.id}
+              onChange={(e) => setMenuScenario(e.target.value)}
+            >
+              {allScenarioEntries().map(({ scenario }) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className="title-item"
+            onClick={() => {
+              markTutorialSeen()
+              setTeaching(true)
+              setScreen('battle')
+            }}
+          >
+            Tutorial
+            <span className="title-detail">
+              {tutorialSeen() ? 'A battle walked through step by step' : 'New here? Start with this'}
+            </span>
+          </button>
+
+          <button type="button" className="title-item" onClick={() => setLobby(true)}>
+            Online match
+            <span className="title-detail">Host or join — the battle waits between sessions</span>
+          </button>
+
+          <label className="title-item title-load">
+            Load battle
+            <span className="title-detail">A saved file resumes exactly where it left off</span>
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                void file.text().then((text) => {
+                  const problem = importBattle(text)
+                  setMenuNote(problem)
+                  if (!problem) setScreen('battle')
+                })
+                e.target.value = ''
+              }}
+            />
+          </label>
+
+          <button type="button" className="title-item" onClick={() => setReplaying(true)}>
+            Replay theater
+            <span className="title-detail">Scrub any battle like a film</span>
+          </button>
+
+          <div className="title-row">
+            <button type="button" onClick={() => setBuilding(true)}>
+              Ship builder
+            </button>
+            <button type="button" onClick={() => setDesigning(true)}>
+              Scenario designer
+            </button>
+            <button type="button" onClick={() => setLibrary(true)}>
+              Library
+            </button>
+          </div>
+        </nav>
+
+        {menuNote && <p className="title-note">{menuNote}</p>}
+        <p className="title-footing">
+          A fan-made digital tabletop of Mariner Games&apos; StarForce Commander, rules v2.6
+        </p>
+
+        {/* The workshop doors open from here as they do from the table. */}
+        {library && <ShipLibraryPanel onClose={() => setLibrary(false)} />}
+        {building && <ShipBuilder onClose={() => setBuilding(false)} />}
+        {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
+        {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
+        {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       {/*
@@ -212,6 +372,13 @@ export function App() {
           <span className="subtitle">Digital tabletop · Standard rules · hot-seat &amp; remote</span>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setScreen('menu')}
+          title="Back to the title screen — the battle stays exactly as it is"
+        >
+          Menu
+        </button>
         <label className="field inline" title={enrolledInMatch ? LOCKED_HINT : undefined}>
           <span>Scenario</span>
           <select
