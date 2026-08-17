@@ -71,6 +71,14 @@ const out = arg('out') ?? 'tools/titration_results.csv'
 const anchorFilter = arg('anchors')?.split(',')
 const probeFilter = arg('probes')?.split(',')
 const [ratioLo, ratioHi] = (arg('window') ?? '0.25,2.0').split(',').map(Number)
+/**
+ * `--retreat off` nails every hull to the deck. The admiral's hopeless-odds
+ * doctrine declines any battle at three-to-one *by hull count*, so with
+ * retreats on, a lone capital ship facing three frigates concedes half its
+ * value without firing — and the titration measures the doctrine instead of
+ * the combat. Off, the break-even is the fight itself.
+ */
+const retreats = (arg('retreat') ?? 'on') !== 'off'
 
 function runGame(anchorId: string, probeId: string, n: number, seed: number) {
   registerCustomScenarios([
@@ -95,7 +103,7 @@ function runGame(anchorId: string, probeId: string, n: number, seed: number) {
       const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
       for (const side of sides) {
         for (let g = 0; g < 400; g++) {
-          const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g === 0, rank, 'steady', true)
+          const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g === 0, rank, 'steady', retreats)
           if (batch.length === 0) break
           for (const a of batch) applyAction(game, a as GameAction)
         }
