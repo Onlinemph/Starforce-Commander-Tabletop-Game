@@ -23,6 +23,8 @@ import { registerCustomScenarios, startScenario } from '../src/data/scenarios'
 import { applyAction, type GameAction } from '../src/engine/actions'
 import { aiNextActions, createAiMemo, setWingDoctrine, type AiMemo, type WingDoctrine } from '../src/engine/ai'
 import { activeShips, victoryPoints, type GameState } from '../src/engine/game'
+import { flightDestroyed } from '../src/engine/fighters'
+import { structureRemaining, structureTotal } from '../src/engine/shipState'
 import { balancedPointValue } from '../src/engine/fleetValue'
 import { health } from '../src/engine/battleScore'
 
@@ -199,6 +201,101 @@ if (only.includes('d')) {
       }
       report(`  bare hull vs ${n}x ${probe.split('-')[1]}`, [CARRIER], Array(n).fill(probe), results, false)
     }
+  }
+}
+// ---- E. ten flights, no carrier, one warship ------------------------------
+// "Have 10 flights without a carrier fight a 40 point ship." The engine ties
+// every flight to a mother, so the closest legal staging is an unarmed
+// 1-point tender parked in its own corner with the wing spawned airborne.
+// Dead flights concede no victory points, so the verdict is what happens to
+// the warship: does forty points of pure wing kill forty balanced points of
+// hull before the strikes run out?
+if (only.includes('e')) {
+  console.log('== E. 10 MAGPIE strike flights (no carrier) vs one warship ==')
+  const nelson = shipFormById(NELSON)!
+  const tender = structuredClone(nelson)
+  tender.id = 'fan-wing-tender'
+  tender.name = 'WING TENDER (unarmed)'
+  tender.weapons = []
+  tender.functions = tender.functions.filter((f) => f.kind !== 'weapon')
+  tender.pointValue = 1
+  registerCustomForms([...FILE_FORMS, tender])
+  for (const [target, label] of [
+    ['union-yorktown-iii-class-heavy-cruiser', 'YORKTOWN III (38 balanced)'],
+    ['union-kursk-i-class-battlecruiser', 'KURSK I (42 balanced)'],
+    ['union-exeter-ii-class-heavy-cruiser', 'EXETER II (59 balanced)'],
+  ] as Array<[string, string]>) {
+    let killed = 0
+    let hurtSum = 0
+    let flightsLeftSum = 0
+    let roundSum = 0
+    for (let g = 0; g < games; g++) {
+      registerCustomScenarios([
+        {
+          id: 'wing-only',
+          name: 'Wing Only',
+          background: '',
+          victory: 'destruction',
+          bounds: { width: 72, height: 72, fixed: true },
+          terrain: [],
+          sides: [
+            { side: 'Alpha Fleet', objective: 'strike', facing: 2, speed: 0, anchor: { x: 6, y: 6 }, spread: { x: 0, y: 3 }, force: ['fan-wing-tender'], value: [1] },
+            { side: 'Beta Fleet', objective: 'destroy', facing: 6, speed: 4, anchor: { x: 60, y: 36 }, spread: { x: 0, y: 5 }, force: [target] },
+          ],
+        },
+      ])
+      const game: GameState = startScenario('wing-only', { seed: 25000 + g * 7919, mapScale: 2 })
+      for (let i = 0; i < 10; i++) {
+        game.counters.flight += 1
+        game.flights.push({
+          id: `flight-${game.counters.flight}`,
+          side: 'Alpha Fleet',
+          motherId: game.ships.find((s) => s.side === 'Alpha Fleet')!.id,
+          cardId: 'magpie',
+          config: 'strike',
+          spent: false,
+          members: 6,
+          position: { x: 14 + (i % 5) * 3, y: 24 + Math.floor(i / 5) * 4 },
+          damage: 0,
+          activated: false,
+          attacked: false,
+        })
+      }
+      const sides = [...new Set(game.ships.map((s) => s.side))]
+      const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
+      const drive = (closing: boolean) => {
+        for (let pass = 0; pass < 50; pass++) {
+          const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
+          for (const side of sides) {
+            for (let g2 = 0; g2 < 400; g2++) {
+              const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g2 === 0, 'captain', 'steady', true)
+              if (batch.length === 0) break
+              for (const a of batch) applyAction(game, a as GameAction)
+            }
+          }
+          if (game.log.length + game.firingStepIndex + game.firedThisSegment.size === before) return
+        }
+      }
+      drive(false)
+      for (let step = 0; step < 3000; step++) {
+        if (game.round > rounds) break
+        const shipsLeft = new Set(activeShips(game).map((s) => s.side))
+        const wingLeft = game.flights.some((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f))
+        if (!shipsLeft.has('Beta Fleet') || (!shipsLeft.has('Alpha Fleet') && !wingLeft)) break
+        drive(true)
+        applyAction(game, { type: 'advance-segment' })
+        drive(false)
+      }
+      const foe = game.ships.find((s) => s.side === 'Beta Fleet')!
+      if (foe.destroyed) killed += 1
+      hurtSum += 1 - structureRemaining(foe) / structureTotal(foe)
+      flightsLeftSum += game.flights.filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f)).length
+      roundSum += game.round
+    }
+    console.log(
+      `  vs ${label}: killed ${killed}/${games}, mean structure lost ${(100 * hurtSum / games).toFixed(0)}%, ` +
+        `flights surviving ${(flightsLeftSum / games).toFixed(1)}/10, mean end round ${(roundSum / games).toFixed(1)}`,
+    )
   }
 }
 console.log('done')
