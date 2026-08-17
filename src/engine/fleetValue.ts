@@ -42,5 +42,17 @@ export function balancedPointValue(form: ShipForm): number {
   if (measured !== undefined) return measured
   const printed = form.pointValue
   if (!(printed > 0)) return printed
+  /**
+   * A hangar means part of the price is a fighter wing, and a wing is
+   * already a swarm — it is owed none of the concentration discount the
+   * curve applies to gunships. An unmeasured carrier therefore keeps its
+   * printed price; the ARK ROYAL, titrated directly, carries its own entry
+   * (61 — the wing that fights dead even with a lone heavy cruiser melts
+   * against the massed point defense of a cruiser screen, and both formats
+   * land on the same worth).
+   */
+  if (form.systems.some((group) => group.kind === 'HNGR' && group.boxes > 0)) {
+    return printed
+  }
   return Math.round(NORM * CURVE_SCALE * printed ** CURVE_EXPONENT * 10) / 10
 }

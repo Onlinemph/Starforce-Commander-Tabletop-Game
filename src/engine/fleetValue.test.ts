@@ -46,6 +46,20 @@ describe('balancedPointValue', () => {
     // value = 23 * (92/23)^0.745 — the curve, anchored at the YORKTOWN I.
     expect(balancedPointValue(fan)).toBeCloseTo(23 * (92 / 23) ** 0.745, 0)
   })
+
+  it('prices the carrier from its own titration, not the gunship curve', () => {
+    // Half its price is fighter wing — already a swarm, owed none of the
+    // concentration discount. Measured: the wing that fights a lone heavy
+    // cruiser dead even melts against the massed PD of a cruiser screen.
+    const carrier = shipFormById('fan-union-ark-royal-fleet-carrier')!
+    expect(balancedPointValue(carrier)).toBe(61)
+  })
+
+  it('leaves an unmeasured hangar hull at its printed price', () => {
+    const base = shipFormById('fan-union-ark-royal-fleet-carrier')!
+    const fanCarrier: ShipForm = { ...base, id: 'fan-test-carrier', pointValue: 120 }
+    expect(balancedPointValue(fanCarrier)).toBe(120)
+  })
 })
 
 describe('a battle built on balanced points', () => {
