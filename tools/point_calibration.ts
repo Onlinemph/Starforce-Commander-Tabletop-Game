@@ -69,6 +69,25 @@ const rank = (arg('rank') ?? 'captain') as AiDifficulty
 const out = arg('out') ?? 'tools/calibration_results.csv'
 const onlyPair = arg('pair') // "3,7" panel indexes, for spot checks / timing
 
+/**
+ * `--prices tools/repriced_draft.json` — validate a proposed price list. The
+ * fleets are budget-matched at the *draft* prices instead of the printed
+ * ones; if the draft is right, the numbers-advantage curve flattens to a
+ * coin flip. The game itself is untouched either way — prices only decide
+ * how many hulls each side brings.
+ */
+const priceFile = arg('prices')
+const priceOf: (id: string) => number = priceFile
+  ? (() => {
+      const table = new Map<string, number>(
+        (JSON.parse(fs.readFileSync(priceFile, 'utf8')) as Array<{ id: string; draft: number }>).map(
+          (d) => [d.id, d.draft],
+        ),
+      )
+      return (id) => table.get(id) ?? shipFormById(id)!.pointValue
+    })()
+  : (id) => shipFormById(id)!.pointValue
+
 const MAX_COUNT = 8
 const MISMATCH_LIMIT = 0.12
 
@@ -169,9 +188,12 @@ let skipped = 0
 for (const [i, j] of selected) {
   const idA = PANEL[i]
   const idB = PANEL[j]
+  // Counts are matched at the prices under test; the CSV keeps the printed
+  // totals, because the game's own VP scoring stays printed-anchored and the
+  // margin normalization must match the currency the scores are paid in.
   const pvA = shipFormById(idA)!.pointValue
   const pvB = shipFormById(idB)!.pointValue
-  const match = matchCounts(pvA, pvB)
+  const match = matchCounts(priceOf(idA), priceOf(idB))
   if (!match) {
     skipped++
     continue

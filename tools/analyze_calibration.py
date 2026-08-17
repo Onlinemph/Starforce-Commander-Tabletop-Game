@@ -13,9 +13,11 @@ Run after tools/point_calibration.ts:  python3 tools/analyze_calibration.py
 import csv
 import json
 import math
+import sys
 from collections import defaultdict
 
-ROWS = list(csv.DictReader(open('tools/calibration_results.csv')))
+SOURCE = sys.argv[1] if len(sys.argv) > 1 else 'tools/calibration_results.csv'
+ROWS = list(csv.DictReader(open(SOURCE)))
 SHIPS = {s['id']: s for s in json.load(open('tools/ships_final.json'))}
 
 # Outcome per game: fraction of the enemy fleet's value destroyed minus the
