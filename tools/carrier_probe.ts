@@ -24,7 +24,7 @@ import { applyAction, type GameAction } from '../src/engine/actions'
 import { aiNextActions, createAiMemo, setWingDoctrine, type AiMemo, type WingDoctrine } from '../src/engine/ai'
 import { activeShips, victoryPoints, type GameState } from '../src/engine/game'
 import { flightDestroyed } from '../src/engine/fighters'
-import { structureRemaining, structureTotal } from '../src/engine/shipState'
+import { hitPointDamage, structureRemaining, structureTotal } from '../src/engine/shipState'
 import { balancedPointValue } from '../src/engine/fleetValue'
 import { health } from '../src/engine/battleScore'
 
@@ -295,6 +295,101 @@ if (only.includes('e')) {
     console.log(
       `  vs ${label}: killed ${killed}/${games}, mean structure lost ${(100 * hurtSum / games).toFixed(0)}%, ` +
         `flights surviving ${(flightsLeftSum / games).toFixed(1)}/10, mean end round ${(roundSum / games).toFixed(1)}`,
+    )
+  }
+}
+// ---- F. the same wing, but with a base to rearm from ----------------------
+// Same fight as E, except the tender is a working 10-bay hangar: spent
+// flights fly home, reload in the Hangar Bay Segment, and sortie again. If
+// the wing's problem is ordnance supply, this fixes it; if its problem is
+// that a strike pass cannot outpace the target's shield repair, it will not.
+if (only.includes('f')) {
+  console.log('== F. 10 MAGPIE flights WITH a rearm base vs one warship ==')
+  const nelson2 = shipFormById(NELSON)!
+  const base = structuredClone(nelson2)
+  base.id = 'fan-wing-base'
+  base.name = 'WING BASE (unarmed, 10 bays)'
+  base.weapons = []
+  base.functions = base.functions.filter((f) => f.kind !== 'weapon')
+  base.systems = [...base.systems, { kind: 'HNGR', label: 'Hangar Bay', boxes: 10 }]
+  base.pointValue = 1
+  registerCustomForms([...FILE_FORMS, base])
+  for (const [target, label] of [
+    ['union-yorktown-iii-class-heavy-cruiser', 'YORKTOWN III (38 balanced)'],
+    ['union-nelson-ii-class-light-frigate', '2x NELSON II (31 balanced)'],
+  ] as Array<[string, string]>) {
+    const red = target.includes('nelson') ? [target, target] : [target]
+    let killed = 0
+    let hpSum = 0
+    let strikesSum = 0
+    let flightsLeftSum = 0
+    for (let g = 0; g < games; g++) {
+      registerCustomScenarios([
+        {
+          id: 'wing-base',
+          name: 'Wing Base',
+          background: '',
+          victory: 'destruction',
+          bounds: { width: 72, height: 72, fixed: true },
+          terrain: [],
+          sides: [
+            { side: 'Alpha Fleet', objective: 'strike', facing: 2, speed: 0, anchor: { x: 6, y: 6 }, spread: { x: 0, y: 3 }, force: ['fan-wing-base'], value: [1] },
+            { side: 'Beta Fleet', objective: 'destroy', facing: 6, speed: 4, anchor: { x: 60, y: 36 }, spread: { x: 0, y: 5 }, force: red },
+          ],
+        },
+      ])
+      const game: GameState = startScenario('wing-base', { seed: 26000 + g * 7919, mapScale: 2 })
+      const mother = game.ships.find((s) => s.side === 'Alpha Fleet')!
+      mother.flightsAboard = 0 // the wing starts airborne, not boxed
+      for (let i = 0; i < 10; i++) {
+        game.counters.flight += 1
+        game.flights.push({
+          id: `flight-${game.counters.flight}`,
+          side: 'Alpha Fleet',
+          motherId: mother.id,
+          cardId: 'magpie',
+          config: 'strike',
+          spent: false,
+          members: 6,
+          position: { x: 14 + (i % 5) * 3, y: 24 + Math.floor(i / 5) * 4 },
+          damage: 0,
+          activated: false,
+          attacked: false,
+        })
+      }
+      const sides = [...new Set(game.ships.map((s) => s.side))]
+      const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
+      const drive = (closing: boolean) => {
+        for (let pass = 0; pass < 50; pass++) {
+          const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
+          for (const side of sides) {
+            for (let g2 = 0; g2 < 400; g2++) {
+              const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g2 === 0, 'captain', 'steady', true)
+              if (batch.length === 0) break
+              for (const a of batch) applyAction(game, a as GameAction)
+            }
+          }
+          if (game.log.length + game.firingStepIndex + game.firedThisSegment.size === before) return
+        }
+      }
+      drive(false)
+      for (let step = 0; step < 3000; step++) {
+        if (game.round > rounds) break
+        const shipsLeft = new Set(activeShips(game).map((s) => s.side))
+        if (!shipsLeft.has('Beta Fleet')) break
+        drive(true)
+        applyAction(game, { type: 'advance-segment' })
+        drive(false)
+      }
+      const foes = game.ships.filter((s) => s.side === 'Beta Fleet')
+      if (foes.every((f) => f.destroyed)) killed += 1
+      hpSum += foes.reduce((n, f) => n + hitPointDamage(f), 0)
+      strikesSum += game.log.filter((l) => /runs in on|strikes .* shield/.test(l.message)).length
+      flightsLeftSum += game.flights.filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f)).length
+    }
+    console.log(
+      `  vs ${label}: killed all ${killed}/${games}, mean foe hit points lost ${(hpSum / games).toFixed(1)}, ` +
+        `strike passes ${(strikesSum / games).toFixed(0)}/game, flights surviving ${(flightsLeftSum / games).toFixed(1)}/10`,
     )
   }
 }
