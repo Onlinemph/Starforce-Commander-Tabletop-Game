@@ -564,7 +564,7 @@ function ForceList({
                 {form.name}
                 <em className={RARITY_CLASS[rarity]}>{rarity}</em>
               </span>
-              <span className="fleet-points">{form.pointValue * entry.count}</span>
+              <span className="fleet-points">{Math.round(form.pointValue * entry.count * 10) / 10}</span>
             </li>
           )
         })}

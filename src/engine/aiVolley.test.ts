@@ -4,6 +4,7 @@ import { aiNextActions, createAiMemo } from './ai'
 import { type GameState } from './game'
 import { shieldsFacing } from './geometry'
 import { type ShipState } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * Volley craft: the trained captain does not just pull every trigger — it
@@ -110,7 +111,7 @@ describe('the admiral’s scalpel (E9)', () => {
     red.placement = { position: { x: 15, y: 12 }, heading: 0 }
     blue.placement = { position: { x: 15, y: 16 }, heading: 0 }
     // Broken target, and only the PREC phasers armed — no mixing (E9.2.1).
-    red.structureDamaged = red.structureDamaged.map((_, i, all) => i < all.length * 0.8)
+    woundToFraction(red, 0.8)
     const torpedo = blue.form.weapons.find((w) => w.weaponClass === 'a-mat-torpedo')!
     torpedo.mounts.forEach((_, i) => {
       blue.mounts[torpedo.id][i].armed = 0

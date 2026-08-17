@@ -673,27 +673,98 @@ export function applyPreDamage(ship: ShipState, fraction: number): void {
   ship.preDamaged = boxes
 }
 
+// ---------------------------------------------------------------------------
+// Hit points (S2.8.4, as re-listed by the hit-point damage level sheets)
+// ---------------------------------------------------------------------------
+
+/**
+ * How much of the ship there is to shoot, in hit points: every box on the
+ * internal damage chart is one, every structure box is two.
+ *
+ * The designers' new Master Ship List measures damage levels against SYST
+ * BOXES + STR, and its SYST BOXES column already counts the structure track
+ * once among the internal boxes — so a structure box weighs double, which
+ * suits the box that actually kills the ship. Shields and armor are the
+ * *outside* of the ship and never count; a hull that has been hammered to no
+ * effect through its screens has conceded nothing.
+ */
+export function hitPointTotal(ship: ShipState): number {
+  const form = ship.form
+  const internal =
+    form.reactors.reduce((n, g) => n + g.points.reduce((b, p) => b + p.boxes, 0), 0) +
+    form.batteries +
+    form.ftlDriveBoxes +
+    form.sublight.driveBoxes +
+    form.systems.reduce((n, g) => n + g.boxes, 0) +
+    form.weapons.reduce((n, w) => n + w.mounts.reduce((b, m) => b + m.hitBoxes, 0), 0) +
+    (form.scoutSensor?.damageBoxes ?? 0) +
+    form.shields.generatorBoxes
+  return internal + 2 * structureTotal(ship)
+}
+
+/** Hit points this ship has lost: marked internal boxes plus structure twice. */
+export function hitPointDamage(ship: ShipState): number {
+  const form = ship.form
+  // Each family is clamped at what the form actually draws, so an over-mark
+  // anywhere (excess damage bookkeeping, a stale save) cannot outrun the total.
+  const clamp = (damaged: number, boxes: number) => Math.min(Math.max(0, damaged), boxes)
+  let damaged = 0
+  for (const group of form.reactors) {
+    const hits = ship.reactorDamage[group.id] ?? []
+    group.points.forEach((point, i) => {
+      damaged += clamp(hits[i] ?? 0, point.boxes)
+    })
+  }
+  damaged += ship.batteryDamaged.filter(Boolean).length
+  damaged += clamp(ship.ftlDriveDamage, form.ftlDriveBoxes)
+  damaged += clamp(sublightDriveDamage(ship), form.sublight.driveBoxes)
+  for (const group of form.systems) {
+    damaged += clamp(ship.systemDamage[group.kind] ?? 0, group.boxes)
+  }
+  for (const weapon of form.weapons) {
+    const states = ship.mounts[weapon.id] ?? []
+    weapon.mounts.forEach((mount, i) => {
+      damaged += clamp(states[i]?.damage ?? 0, mount.hitBoxes)
+    })
+  }
+  damaged += clamp(ship.scoutSensorDamage, form.scoutSensor?.damageBoxes ?? 0)
+  damaged += clamp(ship.shieldGeneratorDamage, form.shields.generatorBoxes)
+  damaged += 2 * (structureTotal(ship) - structureRemaining(ship))
+  return damaged
+}
+
 /** Damage level for victory points (S2.8.4). */
 export type DamageLevel = 'none' | 'minor' | 'light' | 'moderate' | 'heavy' | 'crippled' | 'destroyed'
 
 export function damageLevel(ship: ShipState): DamageLevel {
-  const total = structureTotal(ship)
+  const total = hitPointTotal(ship)
   if (total === 0) return 'none'
-  const damaged = total - structureRemaining(ship)
-  if (ship.destroyed || damaged >= total) return 'destroyed'
-  return damageLevelAt(damaged, total)
+  // Structure is what a ship dies of; a spent track is a dead hull no matter
+  // how many internal boxes survive it (E11.2.1).
+  if (ship.destroyed || (structureTotal(ship) > 0 && structureRemaining(ship) === 0)) {
+    return 'destroyed'
+  }
+  return damageLevelAt(hitPointDamage(ship), total)
 }
 
-/** The S2.8.4 damage level a given box count amounts to on a given track. */
+/**
+ * The damage level a given hit-point count amounts to against a given total.
+ *
+ * The bands are the hit-point sheets' thresholds: LIGHT is a quarter of the
+ * total, MINOR is one hit point shy of it, and the rest are multiples of
+ * LIGHT — 2x for moderate, 3x for heavy, 3.6x for crippled. Note what MINOR
+ * means now: scratch damage concedes *nothing* until the ship is within one
+ * hit point of light damage.
+ */
 export function damageLevelAt(damaged: number, total: number): DamageLevel {
   if (total === 0 || damaged >= total) return total === 0 ? 'none' : 'destroyed'
-  const pct = damaged / total
-  if (pct === 0) return 'none'
-  if (pct >= 0.9) return 'crippled'
-  if (pct >= 0.75) return 'heavy'
-  if (pct >= 0.5) return 'moderate'
-  if (pct >= 0.25) return 'light'
-  return 'minor'
+  const light = total / 4
+  if (damaged >= 3.6 * light) return 'crippled'
+  if (damaged >= 3 * light) return 'heavy'
+  if (damaged >= 2 * light) return 'moderate'
+  if (damaged >= light) return 'light'
+  if (damaged >= light - 1) return 'minor'
+  return 'none'
 }
 
 /** Fraction of point value earned by an opponent (S2.8.4). */

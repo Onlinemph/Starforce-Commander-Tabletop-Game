@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FILE_FORMS, findShipForm, shipFormById, SHIP_FORMS, VALLARI_CRUISER, YORKTOWN } from './ships'
 import { validateDesign } from '../engine/shipBuilder'
-import { createShip, damageControlRating, markStructure, structureBoxes } from '../engine/shipState'
+import { createShip, damageControlRating, hitPointTotal, markStructure, structureBoxes } from '../engine/shipState'
 import { armingCapacityThisRound } from '../engine/shipState'
 import { ARC_ORDER } from '../engine/geometry'
 
@@ -161,7 +161,7 @@ describe('roster', () => {
     }
   })
 
-  it('carries the canon victory table in ascending order (S2.8.3)', () => {
+  it('carries the hit-point victory table in ascending order (S2.8.3)', () => {
     for (const form of SHIP_FORMS) {
       const table = form.victoryTable
       expect(table, form.name).toBeDefined()
@@ -170,8 +170,17 @@ describe('roster', () => {
         expect(table![i].damage, form.name).toBeGreaterThanOrEqual(table![i - 1].damage)
         expect(table![i].points, form.name).toBeGreaterThanOrEqual(table![i - 1].points)
       }
-      // Crippling damage never exceeds the ship's structure.
-      expect(table![4].damage, form.name).toBeLessThanOrEqual(structureBoxes(makeShip(form)).length)
+      // The thresholds are computed from the Master Ship List's printed SYST
+      // BOXES + STR aggregates, while the engine counts the boxes the form
+      // actually draws (structure double). The two tallies drift by a few
+      // boxes on some hulls, so the invariant that matters is reachability:
+      // even crippling damage must be markable on the real form, or the band
+      // could never pay out.
+      expect(table![4].damage, form.name).toBeLessThan(hitPointTotal(makeShip(form)))
+      // And the sheets' shape: light damage is a quarter of the basis, minor
+      // one hit point shy of it.
+      expect(table![1].damage - table![0].damage, form.name).toBeCloseTo(1)
+      expect(table![2].damage, form.name).toBeCloseTo(table![1].damage * 2, 1)
     }
   })
 })

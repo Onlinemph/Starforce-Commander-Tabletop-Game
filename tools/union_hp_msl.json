@@ -1,0 +1,224 @@
+[
+ {
+  "class": "UNION-Class Dreadnought (DN)",
+  "pointValue": 50.4,
+  "systemBoxes": 87,
+  "structure": 19
+ },
+ {
+  "class": "UNION II-Class Dreadnought (DN)",
+  "pointValue": 77.0,
+  "systemBoxes": 93,
+  "structure": 20
+ },
+ {
+  "class": "UNION III-Class Dreadnought (DN)",
+  "pointValue": 158.5,
+  "systemBoxes": 102,
+  "structure": 22
+ },
+ {
+  "class": "KURSK I Class Battlecruiser (CB)",
+  "pointValue": 50.3,
+  "systemBoxes": 67,
+  "structure": 14
+ },
+ {
+  "class": "YORKTOWN I-Class Heavy Cruiser (CH)",
+  "pointValue": 23.0,
+  "systemBoxes": 55,
+  "structure": 13
+ },
+ {
+  "class": "YORKTOWN II-Class Heavy Cruiser (CH)",
+  "pointValue": 29.0,
+  "systemBoxes": 59,
+  "structure": 13
+ },
+ {
+  "class": "YORKTOWN IIc-Class Command Cruiser (CC)",
+  "pointValue": 32.2,
+  "systemBoxes": 61,
+  "structure": 13
+ },
+ {
+  "class": "YORKTOWN III-Class Heavy Cruiser (CH)",
+  "pointValue": 42.3,
+  "systemBoxes": 59,
+  "structure": 14
+ },
+ {
+  "class": "YORKTOWN IIIc-Class Command Cruiser (CC)",
+  "pointValue": 49.2,
+  "systemBoxes": 64,
+  "structure": 14
+ },
+ {
+  "class": "YORKTOWN IV-Class Heavy Cruiser (CH)",
+  "pointValue": 48.4,
+  "systemBoxes": 63,
+  "structure": 15
+ },
+ {
+  "class": "YORKTOWN IVc-Class Command Cruiser (CC)",
+  "pointValue": 57.6,
+  "systemBoxes": 68,
+  "structure": 15
+ },
+ {
+  "class": "YORKTOWN V-Class Heavy Cruiser (CH)",
+  "pointValue": 78.3,
+  "systemBoxes": 70,
+  "structure": 16
+ },
+ {
+  "class": "YORKTOWN Vc-Class Command Cruiser (CC)",
+  "pointValue": 115.2,
+  "systemBoxes": 78,
+  "structure": 16
+ },
+ {
+  "class": "EXETER I-Class Heavy Cruiser (CH)",
+  "pointValue": 86.2,
+  "systemBoxes": 72,
+  "structure": 16
+ },
+ {
+  "class": "EXETER II-Class Heavy Cruiser (CH)",
+  "pointValue": 100.1,
+  "systemBoxes": 72,
+  "structure": 16
+ },
+ {
+  "class": "COVENTRY I-Class Light Cruiser (CL)",
+  "pointValue": 20.2,
+  "systemBoxes": 51,
+  "structure": 11
+ },
+ {
+  "class": "COVENTRY II-Class Light Cruiser (CL)",
+  "pointValue": 27.3,
+  "systemBoxes": 53,
+  "structure": 12
+ },
+ {
+  "class": "COVENTRY IIc-Class Light Cmnd Cruiser (CCL)",
+  "pointValue": 29.6,
+  "systemBoxes": 53,
+  "structure": 12
+ },
+ {
+  "class": "KNOX I Class Escort Cruiser(CE)",
+  "pointValue": 21.6,
+  "systemBoxes": 49,
+  "structure": 14
+ },
+ {
+  "class": "KNOX II Class Survey Cruiser (CS)",
+  "pointValue": 36.7,
+  "systemBoxes": 50,
+  "structure": 14
+ },
+ {
+  "class": "KNOX III Class Adv Escort Cruiser (CE)",
+  "pointValue": 43.0,
+  "systemBoxes": 57,
+  "structure": 14
+ },
+ {
+  "class": "ATHENA I-Class Light Cruiser (CL)",
+  "pointValue": 55.8,
+  "systemBoxes": 69,
+  "structure": 15
+ },
+ {
+  "class": "ATHENA II-Class Light Cruiser (CL)",
+  "pointValue": 78.9,
+  "systemBoxes": 70,
+  "structure": 15
+ },
+ {
+  "class": "XERXES I-Class Destroyer (DD)",
+  "pointValue": 16.3,
+  "systemBoxes": 39,
+  "structure": 10
+ },
+ {
+  "class": "XERXES II-Class Destroyer (DD)",
+  "pointValue": 23.5,
+  "systemBoxes": 41,
+  "structure": 10
+ },
+ {
+  "class": "XERXES III-Class Destroyer (DD)",
+  "pointValue": 41.4,
+  "systemBoxes": 48,
+  "structure": 11
+ },
+ {
+  "class": "XERXES IV-Class Destroyer (DD)",
+  "pointValue": 69.3,
+  "systemBoxes": 49,
+  "structure": 11
+ },
+ {
+  "class": "HERMES I-Class Scout (DS)",
+  "pointValue": 21.0,
+  "systemBoxes": 38,
+  "structure": 10
+ },
+ {
+  "class": "HERMES II-Class Scout (DS)",
+  "pointValue": 25.2,
+  "systemBoxes": 40,
+  "structure": 10
+ },
+ {
+  "class": "HERMES III-Class Scout (DS)",
+  "pointValue": 39.2,
+  "systemBoxes": 48,
+  "structure": 11
+ },
+ {
+  "class": "HERMES IV-Class Scout (DS)",
+  "pointValue": 53.5,
+  "systemBoxes": 49,
+  "structure": 11
+ },
+ {
+  "class": "SORYU I-Class Frigate (FF)",
+  "pointValue": 12.3,
+  "systemBoxes": 40,
+  "structure": 8
+ },
+ {
+  "class": "SORYU II-Class-Frigate (FF)",
+  "pointValue": 17.3,
+  "systemBoxes": 42,
+  "structure": 8
+ },
+ {
+  "class": "NELSON I-Class Frigate (FF)",
+  "pointValue": 12.0,
+  "systemBoxes": 30,
+  "structure": 6
+ },
+ {
+  "class": "NELSON II-Class Frigate (FF)",
+  "pointValue": 15.5,
+  "systemBoxes": 32,
+  "structure": 6
+ },
+ {
+  "class": "PELLEW III-Class Frigate (FF)",
+  "pointValue": 32.0,
+  "systemBoxes": 44,
+  "structure": 10
+ },
+ {
+  "class": "PELLEW IV-Class Frigate (FF)",
+  "pointValue": 52.6,
+  "systemBoxes": 48,
+  "structure": 11
+ }
+]

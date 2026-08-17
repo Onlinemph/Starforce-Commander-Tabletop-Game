@@ -59,7 +59,11 @@ export function availabilityIn(form: ShipForm, year?: number): Availability | 'u
 }
 
 export function fleetPoints(entries: FleetEntry[], forms: Map<string, ShipForm>): number {
-  return entries.reduce((n, e) => n + (forms.get(e.formId)?.pointValue ?? 0) * e.count, 0)
+  const total = entries.reduce((n, e) => n + (forms.get(e.formId)?.pointValue ?? 0) * e.count, 0)
+  // Point values carry one decimal since the hit-point Master Ship List
+  // (50.4-point dreadnoughts), and binary floats would let three of them show
+  // as 151.20000000000002 in the picker.
+  return Math.round(total * 10) / 10
 }
 
 export function fleetSize(entries: FleetEntry[]): number {

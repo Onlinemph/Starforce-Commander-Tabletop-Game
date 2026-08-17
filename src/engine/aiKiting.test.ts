@@ -3,6 +3,7 @@ import { startScenario } from '../data/scenarios'
 import { aiNextActions, createAiMemo, kiteBand } from './ai'
 import { type GameState } from './game'
 import { type ShipState } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * Anti-swarm doctrine: numbers beat tonnage in close battle, so the
@@ -136,12 +137,17 @@ describe('refusing the hopeless battle', () => {
 describe('cutting losses', () => {
   function heavyAndOutnumbered(): { game: GameState; big: ShipState } {
     const { game, big } = goliathBoard(2)
-    big.structureDamaged = big.structureDamaged.map((_, i, all) => i < Math.ceil(all.length * 0.8))
+    woundToFraction(big, 0.8) // heavy damage, in the hit points the ledger counts
     return { game, big }
   }
 
   it('a leaver funds the drive that leaves during Resource Allocation (J9.1.3)', () => {
-    const { game, big } = heavyAndOutnumbered()
+    // The leaver here is the admiral declining hopeless odds while whole —
+    // three to one, no wounds. Under the hit-point damage levels a hull at
+    // *heavy* damage has spent most of its reactor boxes getting there, so
+    // "badly hurt but with power to fund the drive" is no longer a state a
+    // fixture can stage honestly.
+    const { game, big } = goliathBoard(3)
     game.segment = 'resource-allocation'
     const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
     const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'admiral')

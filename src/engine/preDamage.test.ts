@@ -6,6 +6,8 @@ import {
   applyPreDamage,
   createShip,
   damageControlRating,
+  hitPointDamage,
+  hitPointTotal,
   structureRemaining,
   structureTotal,
   type ShipState,
@@ -68,21 +70,22 @@ describe('the victory ledger scores only this battle (S2.8.2 baseline)', () => {
   })
 
   it('prices new damage from the baseline, not from zero', () => {
-    // YORKTOWN's printed table: 7 boxes -> 12 points, 10 boxes -> 17.
+    // YORKTOWN's hit-point table: light damage at 17 hit points pays 5.8.
+    // A structure box is two hit points, so six boxes (12 HP) are still below
+    // the minor threshold of 16 — the baseline concedes nothing — and ten
+    // boxes (20 HP) are light damage.
     const ship = hull()
     applyPreDamage(ship, 0.5) // 6 of 13 boxes
     expect(ship.preDamaged).toBe(6)
     for (let i = 0; i < 4; i++) ship.structureDamaged[ship.structureDamaged.findIndex((d) => !d)] = true
-    // 10 damaged: the table says 17, the baseline of 6 says 6 — this battle
-    // earned the difference.
-    expect(pointsAgainst(ship)).toBe(17 - 6)
+    expect(pointsAgainst(ship)).toBeCloseTo(5.8)
   })
 
   it('awards the gap to full value for destroying a pre-damaged hull, not the whole prize', () => {
     const ship = hull()
-    applyPreDamage(ship, 0.9) // 11 of 13 boxes; the table prices 11 at 17
+    applyPreDamage(ship, 0.9) // 11 of 13 boxes = 22 HP; the table prices that at 5.8
     ship.destroyed = true
-    expect(pointsAgainst(ship)).toBe(ship.form.pointValue - 17)
+    expect(pointsAgainst(ship)).toBeCloseTo(ship.form.pointValue - 5.8)
     const fresh = hull()
     fresh.destroyed = true
     expect(pointsAgainst(fresh)).toBe(fresh.form.pointValue)
@@ -158,8 +161,13 @@ describe('a scenario re-prices its hulls (S2.8 override)', () => {
   it('scores the override by damage fractions, ignoring the printed table', () => {
     const ship = hull()
     ship.pointValue = 100
-    // 7 of 13 boxes is moderate (50%): half of 100, not the table's 12.
-    for (let i = 0; i < 7; i++) ship.structureDamaged[i] = true
+    // Wreck the internals to moderate damage: half the ship's own hit-point
+    // total (the re-priced fallback measures against the form, not the
+    // printed aggregates). All systems plus eleven structure boxes clears it.
+    for (const g of ship.form.systems) ship.systemDamage[g.kind] = g.boxes
+    for (let i = 0; i < 11; i++) ship.structureDamaged[i] = true
+    expect(hitPointDamage(ship)).toBeGreaterThanOrEqual(hitPointTotal(ship) / 2)
+    expect(hitPointDamage(ship)).toBeLessThan(hitPointTotal(ship) * 0.75)
     expect(pointsAgainst(ship)).toBe(50)
     ship.destroyed = true
     expect(pointsAgainst(ship)).toBe(100)
@@ -167,14 +175,15 @@ describe('a scenario re-prices its hulls (S2.8 override)', () => {
 
   it('keeps the printed victory table while the book value stands', () => {
     const ship = hull()
-    for (let i = 0; i < 7; i++) ship.structureDamaged[i] = true
-    expect(pointsAgainst(ship)).toBe(12)
+    // Eight structure boxes are 16 hit points: exactly the minor band, 2.3.
+    for (let i = 0; i < 8; i++) ship.structureDamaged[i] = true
+    expect(pointsAgainst(ship)).toBeCloseTo(2.3)
   })
 
   it('composes with pre-damage: the override prices only this battle', () => {
     const ship = hull()
     ship.pointValue = 100
-    applyPreDamage(ship, 0.5) // 6 of 13: minor side of moderate -> 25%
+    applyPreDamage(ship, 0.9) // 11 of 13 boxes = 22 HP: light on this hull -> 25%
     ship.destroyed = true
     expect(pointsAgainst(ship)).toBe(100 - 25)
   })

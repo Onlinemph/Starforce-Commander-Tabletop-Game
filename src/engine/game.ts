@@ -219,6 +219,8 @@ import {
   clampSensors,
   crewIsArmed,
   damageLevelAt,
+  hitPointDamage,
+  hitPointTotal,
   mountIsReady,
   structureRemaining,
   structureTotal,
@@ -1448,13 +1450,17 @@ export function recordAttack(game: GameState, attacker: ShipState, target: ShipS
 /**
  * Points an opponent earns for the state of one ship (S2.8.2 – S2.8.4).
  *
- * The Master Ship List prints an exact damage/points table per ship, so use it
- * when present and fall back to the S2.8.4 percentages otherwise. A ship that
- * disengages is worth the moderate-damage value, or its actual damage level if
- * that is higher (S2.8.4 item 4).
+ * Damage is measured in *hit points* — every marked internal box, with
+ * structure counting double — the way the designers' hit-point-based Master
+ * Ship List re-drew the damage levels. The roster carries an exact
+ * damage/points table per ship computed from that list's printed aggregates,
+ * so use it when present and fall back to the S2.8.4 percentages over the
+ * form's own hit-point total otherwise. A ship that disengages is worth the
+ * moderate-damage value, or its actual damage level if that is higher
+ * (S2.8.4 item 4).
  */
 export function pointsAgainst(ship: ShipState): number {
-  const total = structureTotal(ship)
+  const total = hitPointTotal(ship)
   const table = ship.form.victoryTable
   /**
    * What the table (or the S2.8.4 fractions) awards for a given box count.
@@ -1480,8 +1486,11 @@ export function pointsAgainst(ship: ShipState): number {
     return value * VICTORY_FRACTION[damageLevelAt(damaged, total)]
   }
 
-  const damaged = total - structureRemaining(ship)
-  let earned = ship.destroyed ? value : earnedAt(damaged)
+  // A spent structure track is a dead hull whatever its internal boxes say
+  // (E11.2.1), so it concedes full value the same way the destroyed flag does.
+  const dead =
+    ship.destroyed || (structureTotal(ship) > 0 && structureRemaining(ship) === 0)
+  let earned = dead ? value : earnedAt(hitPointDamage(ship))
   if (ship.disengaged) {
     earned = Math.max(earned, value * VICTORY_FRACTION.moderate)
   }
@@ -1491,9 +1500,10 @@ export function pointsAgainst(ship: ShipState): number {
    * printed rule assumes every hull starts whole, so the baseline is
    * subtracted rather than woven in: destroy the wreck and you earn the gap
    * between its full value and what its wounds were already worth, not the
-   * whole prize.
+   * whole prize. `preDamaged` counts structure boxes, which are two hit
+   * points each.
    */
-  return Math.max(0, earned - earnedAt(ship.preDamaged ?? 0))
+  return Math.max(0, earned - earnedAt(2 * (ship.preDamaged ?? 0)))
 }
 
 /** Victory points earned by each side (S2.8.2 – S2.8.4). */

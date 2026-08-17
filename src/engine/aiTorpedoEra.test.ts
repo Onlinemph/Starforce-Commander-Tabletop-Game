@@ -6,6 +6,7 @@ import { activeShips, victoryPoints, type GameState } from './game'
 import { impactShield, isHoming } from './homing'
 import { type AiMemo } from './ai'
 import { type ShipState } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * The fleet fights the torpedo era: point defense splits across the incoming
@@ -15,9 +16,7 @@ import { type ShipState } from './shipState'
  */
 
 function wound(ship: ShipState, fraction: number): void {
-  ship.structureDamaged = ship.structureDamaged.map(
-    (_, i, all) => i < Math.ceil(all.length * fraction),
-  )
+  woundToFraction(ship, fraction)
 }
 
 function armEverything(ship: ShipState): void {

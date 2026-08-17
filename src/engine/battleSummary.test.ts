@@ -5,6 +5,7 @@ import { battleSummary } from './battleSummary'
 import { defaultCommandCard, type GameState } from './game'
 import { arcTo, canBearOn } from './geometry'
 import { SHIELD_SIDES, type ShipState } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * The end-of-battle summary. Its deeds are mined from the battle log, so the
@@ -126,11 +127,9 @@ describe('the verdict', () => {
     const { game, blue, red } = armedDuel()
     // Blue leaves badly mauled; Red stays but has given up more points —
     // the disengaged hull is worth less than the wrecked-in-place points
-    // Red's own damage yielded. Contrive it directly: Red near-dead, Blue
-    // disengaged lightly hurt.
-    for (let i = 0; i < red.form.structure.length - 1; i++) {
-      if (red.form.structure[i].kind === 'box') red.structureDamaged[i] = true
-    }
+    // Red's own damage yielded. Contrive it directly: Red crippled in hit
+    // points (90% of its value conceded), Blue disengaged lightly hurt (50%).
+    woundToFraction(red, 0.95)
     blue.disengaged = true
     const summary = battleSummary(game)
     expect(summary.over).toBe(true)

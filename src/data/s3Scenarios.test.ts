@@ -11,6 +11,7 @@ import {
 } from '../engine/game'
 import { commandPointsAvailable } from '../engine/command'
 import { blueShieldRemaining } from '../engine/shipState'
+import { woundToFraction } from '../engine/testWounds'
 
 /**
  * The printed Section S3 scenarios.
@@ -122,19 +123,18 @@ describe('S3.6 Target the Flagship', () => {
   })
 
   it('scores double for damage done to a flagship', () => {
-    const game = play('s3.6-target-the-flagship')
-    const flag = game.ships.find((s) => s.side === 'Red Force' && s.flagship)!
-    const escort = game.ships.find((s) => s.side === 'Red Force' && !s.flagship)!
-    // Same damage to each, and the flagship is worth twice as much.
-    const hurt = (ship: typeof flag, on: boolean) => {
-      ship.structureDamaged = ship.structureDamaged.map((_, i) => on && i < 8)
+    // Moderate damage in hit points to one Red hull at a time: the flagship
+    // is the biggest and worth the most to begin with, and its damage counts
+    // double on top — so hurting it always outscores hurting the escort.
+    const hurting = (which: 'flag' | 'escort'): number => {
+      const game = play('s3.6-target-the-flagship')
+      const ship = game.ships.find(
+        (s) => s.side === 'Red Force' && (which === 'flag' ? s.flagship : !s.flagship),
+      )!
+      woundToFraction(ship, 0.5)
+      return victoryPoints(game)['Blue Force']
     }
-    hurt(flag, true)
-    const withFlagship = victoryPoints(game)['Blue Force']
-    hurt(flag, false)
-    hurt(escort, true)
-    const withEscort = victoryPoints(game)['Blue Force']
-    expect(withFlagship).toBeGreaterThan(withEscort)
+    expect(hurting('flag')).toBeGreaterThan(hurting('escort'))
   })
 
   it('gives the flagship two scan points to hand out, with no power spent', () => {

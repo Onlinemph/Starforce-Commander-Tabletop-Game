@@ -4,6 +4,7 @@ import { aiNextActions, createAiMemo, postureOf } from './ai'
 import { defaultCommandCard, pushLog, victoryPoints, type GameState, type Terrain } from './game'
 import { isHoming } from './homing'
 import { type ShipState } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * The AI plays the game, not just the phase: the scoreboard sets its appetite
@@ -19,11 +20,9 @@ function duel(seed = 7): { game: GameState; blue: ShipState; red: ShipState } {
   return { game, blue, red }
 }
 
-/** Mark the leading fraction of structure boxes damaged. */
+/** Wound to a fraction of the ship's hit points (the victory measure). */
 function wound(ship: ShipState, fraction: number): void {
-  ship.structureDamaged = ship.structureDamaged.map(
-    (_, i, all) => i < Math.ceil(all.length * fraction),
-  )
+  woundToFraction(ship, fraction)
 }
 
 /** The longest reach of any battery the ship carries. */
@@ -84,7 +83,9 @@ describe('press loosens the trigger', () => {
     expect(heldActions.some((a) => a.type === 'fire-volley')).toBe(false)
 
     const pressed = longShotBoard()
-    wound(pressed.blue, 0.8) // behind on points now — any dice beat none
+    // Light damage is enough to fall behind on points (the margin gate is 3),
+    // and it leaves the guns standing to fire the volley being tested.
+    wound(pressed.blue, 0.35)
     const pressActions = aiNextActions(
       pressed.game,
       ['Blue Force'],

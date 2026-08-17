@@ -26,6 +26,34 @@ if os.path.exists('aurelian_raw.json'):
 # hand the form its predecessor's point value.
 M = json.load(open('msl.json'))
 
+# Doyle's hit-point-based damage levels (Aug 2026, "MASTER SHIP LIST UNION UFS
+# Hit Point BASED DMG LEVELS"). Damage levels are no longer fractions of the
+# structure track alone: they are measured in *hit points*, where every marked
+# box on the internal damage chart is one hit point and every marked structure
+# box is two. The sheet's basis is its printed SYST BOXES + STR columns — and
+# SYST BOXES already includes the structure track (verified by summing the
+# forms across the roster), which is where structure's double weight comes
+# from. The thresholds, verified exactly against all 37 Union rows:
+#
+#   LIGHT  = (SYST BOXES + STR) / 4      MINOR = LIGHT - 1
+#   MOD    = 2 x LIGHT     HVY = 3 x LIGHT     CRIP = 3.6 x LIGHT
+#
+# with the same victory percentages as before (10/25/50/75/90% of PV). The
+# sheet only covers the Union, but the formula runs on columns every faction's
+# MSL row carries, so the whole roster moves together. Union point values are
+# taken from the sheet (a handful moved: UNION 50 -> 50.4, XERXES II 24 ->
+# 23.5, ...); the other factions keep their MSL values until Doyle re-lists
+# them.
+HP_MSL = json.load(open('union_hp_msl.json')) if os.path.exists('union_hp_msl.json') else []
+
+
+def victory_table(point_value, system_boxes, structure):
+    light = (system_boxes + structure) / 4
+    bands = [(light - 1, 0.1), (light, 0.25), (2 * light, 0.5),
+             (3 * light, 0.75), (3.6 * light, 0.9)]
+    return [{'damage': round(damage, 2), 'points': round(point_value * fraction, 1)}
+            for damage, fraction in bands]
+
 for _s in S:
     _s['strCount'] = sum(1 for e in _s['structure'] if e['kind'] == 'box')
 
@@ -163,6 +191,21 @@ def norm(s):
     return re.sub(r'[^A-Z0-9]', '', s.upper())
 
 
+def hp_key(name):
+    """The class identity shorn of hull-type suffixes: 'NELSON I-Class Frigate
+    (FF)' and 'NELSON I-class Light Frigate' are the same ship."""
+    s = re.sub(r'\((DN|CB|CH|CC|CCL|CL|CE|CS|DD|DS|FF)\)', '', name, flags=re.I)
+    m = re.match(r'(.*?)[\s-]+class\b', s, flags=re.I)
+    key = norm(m.group(1) if m else s)
+    # The sheet writes the first of the line bare: "UNION-Class" is the UNION I.
+    if not re.search(r'(I|II|III|IV|V|VI)$|[0-9][A-Z]*$', key):
+        key += 'I'
+    return key
+
+
+HP_BY_KEY = {hp_key(h['class']): h for h in HP_MSL}
+
+
 def match_msl(ship):
     # An exact class-name match outranks everything. The year+structure filter
     # exists for rows whose names drifted between printings, but it backfires
@@ -243,6 +286,14 @@ def build(ship):
     msl = match_msl(ship)
     faction = ship['faction']
     errata = apply_errata(ship)
+
+    # Hit-point-based damage levels: point value from Doyle's HP sheet where it
+    # re-lists the hull (Union only, so far), the MSL otherwise; the victory
+    # table computed from the printed SYST BOXES + STR aggregates either way.
+    hp = HP_BY_KEY.get(hp_key(ship['name'])) if faction == 'union' else None
+    point_value = hp['pointValue'] if hp else msl['pointValue']
+    system_boxes = hp['systemBoxes'] if hp else msl['systemBoxes']
+    hp_structure = hp['structure'] if hp else msl['structure']
 
     # ---- reactors, batteries, FTL boxes -----------------------------------
     reactors, batteries, ftl_boxes = [], 0, 0
@@ -448,10 +499,10 @@ def build(ship):
         },
         'marineSquads': ship.get('marines', 0),
         'shuttles': ship.get('shuttles', 0),
-        'pointValue': msl['pointValue'],
+        'pointValue': point_value,
         'year': msl['year'],
         'availability': msl['availability'],
-        'victoryTable': msl['victory'],
+        'victoryTable': victory_table(point_value, system_boxes, hp_structure),
         'shipBookPage': ship['page'],
         **({'shipBook': ship['book']} if ship.get('book') else {}),
         **({'scoutSensor': ship['scoutSensor']} if ship.get('scoutSensor') else {}),
@@ -480,6 +531,23 @@ print(f'built {len(ships)} ships')
 
 # ---- validation -----------------------------------------------------------
 problems = 0
+# Every HP-sheet row must land on exactly one Union form, or a hull silently
+# keeps its old price while its neighbours move to the new one.
+if HP_MSL:
+    union_keys = {hp_key(s['name']) for s in S if s['faction'] == 'union'}
+    for h in HP_MSL:
+        if hp_key(h['class']) not in union_keys:
+            print(f"  HP sheet row unmatched: {h['class']}")
+            problems += 1
+    for s in S:
+        if s['faction'] == 'union' and hp_key(s['name']) not in HP_BY_KEY:
+            print(f"  Union form missing from HP sheet: {s['name']}")
+            problems += 1
+        if s['faction'] == 'union' and hp_key(s['name']) in HP_BY_KEY:
+            if HP_BY_KEY[hp_key(s['name'])]['structure'] != s['strCount']:
+                print(f"  HP sheet structure mismatch: {s['name']} "
+                      f"{HP_BY_KEY[hp_key(s['name'])]['structure']} vs form {s['strCount']}")
+                problems += 1
 for s, raw in zip(ships, S):
     power = sum(len(r['points']) for r in s['reactors'])
     if power != raw.get('totalPower'):

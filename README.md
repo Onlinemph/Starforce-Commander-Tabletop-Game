@@ -1314,8 +1314,11 @@ To add one in code, write a `Scenario` plus a function returning its starting sh
   *beyond* a track marker is damaged, and sets it to the *following* marker — so the Yorktown's four
   hits leave it at 4 and the fifth drops it to 3. A roster test asserts every ship starts at its
   printed rating and only ever decreases.
-- **Victory points come from the Master Ship List.** Each ship carries the printed damage/points
-  table (S2.8.3), which is used in preference to recomputing the S2.8.4 percentages.
+- **Victory points come from the Master Ship List.** Each ship carries a damage/points table
+  (S2.8.3), used in preference to recomputing the S2.8.4 percentages. Since the designers' hit-point
+  revision of the list, damage levels are measured in *hit points* — every marked internal box is
+  one, every marked structure box two — with thresholds at LIGHT = (system boxes + structure) / 4,
+  MINOR one hit point below that, and 2×/3×/3.6× LIGHT for moderate/heavy/crippled.
 
 ## Credits
 

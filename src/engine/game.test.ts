@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BLUE, RED, startScenario } from '../data/scenarios'
 import { advanceSegment, PHASE_ORDER, PHASE_SEGMENTS, victoryPoints, type GameState } from './game'
 import { applyAction } from './actions'
-import { markStructure, sensorFunctionCap, sensorPointsAvailable } from './shipState'
+import { hitPointDamage, markStructure, sensorFunctionCap, sensorPointsAvailable, structureRemaining } from './shipState'
 
 /** Walk the sequence of play until the given round/phase/segment is reached. */
 function runTo(game: GameState, predicate: (g: GameState) => boolean, limit = 200): void {
@@ -159,7 +159,7 @@ describe('sequence of play (A3)', () => {
 })
 
 describe('victory points (S2.8.4)', () => {
-  it('scores each damage band from the Master Ship List table (S2.8.3)', () => {
+  it('scores each damage band from the hit-point table (S2.8.3)', () => {
     const game = startScenario('s3.1-the-duel', { seed: 1 })
     const red = game.ships.find((s) => s.id === 'red-1')!
     const table = red.form.victoryTable!
@@ -169,9 +169,40 @@ describe('victory points (S2.8.4)', () => {
     expect(victoryPoints(game)[BLUE]).toBe(0)
 
     // Each band pays exactly its printed points, and bands are not cumulative.
-    let damage = 0
+    // Damage is dealt in hit points: internal boxes first (one each), then
+    // structure (two each) — but never the last structure box, which would be
+    // destruction rather than a band.
+    const dealOneHitPoint = (): void => {
+      const group = red.form.systems.find((g) => (red.systemDamage[g.kind] ?? 0) < g.boxes)
+      if (group) {
+        red.systemDamage[group.kind] = (red.systemDamage[group.kind] ?? 0) + 1
+        return
+      }
+      for (const weapon of red.form.weapons) {
+        for (const [i, mount] of weapon.mounts.entries()) {
+          const state = red.mounts[weapon.id][i]
+          if (state.damage < mount.hitBoxes) {
+            state.damage += 1
+            return
+          }
+        }
+      }
+      for (const reactor of red.form.reactors) {
+        for (const [i, point] of reactor.points.entries()) {
+          if (red.reactorDamage[reactor.id][i] < point.boxes) {
+            red.reactorDamage[reactor.id][i] += 1
+            return
+          }
+        }
+      }
+      if (structureRemaining(red) > 1) {
+        markStructure(red)
+        return
+      }
+      throw new Error('ran out of boxes before the band was reached')
+    }
     for (const row of table) {
-      while (damage < row.damage && markStructure(red)) damage += 1
+      while (hitPointDamage(red) < row.damage) dealOneHitPoint()
       expect(victoryPoints(game)[BLUE]).toBeCloseTo(row.points)
     }
     expect(victoryPoints(game)[RED]).toBe(0)

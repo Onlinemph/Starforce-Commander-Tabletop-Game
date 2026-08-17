@@ -3,6 +3,7 @@ import { startScenario } from '../data/scenarios'
 import { aiNextActions, createAiMemo, estimatedVolleyDamage } from './ai'
 import { defaultCommandCard, type GameState } from './game'
 import { damageLevel } from './shipState'
+import { woundToFraction } from './testWounds'
 
 /**
  * Threat assessment: the AI reads the table — who is close, who is bow-on —
@@ -91,8 +92,11 @@ describe('threat-aware shields', () => {
     expect(at(12, 40)).toBe(0)
 
     // The public damage marker scales the estimate down as the enemy breaks.
+    // The estimate itself reads only the book (the printed weapon charts), so
+    // the wounds' marks on the actual mounts do not touch it — only the
+    // marker does.
     const healthy = at(6)
-    red.structureDamaged = red.structureDamaged.map((_, i, all) => i < all.length - 1)
+    woundToFraction(red, 0.95)
     expect(damageLevel(red)).toBe('crippled')
     expect(at(6)).toBeLessThan(healthy)
     expect(at(6)).toBeGreaterThan(0)

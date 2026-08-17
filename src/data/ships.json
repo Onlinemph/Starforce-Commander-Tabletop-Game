@@ -774,29 +774,29 @@
   },
   "marineSquads": 18,
   "shuttles": 6,
-  "pointValue": 50,
+  "pointValue": 50.4,
   "year": 3656,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 5
+    "damage": 25.5,
+    "points": 5.0
    },
    {
-    "damage": 5,
-    "points": 13
+    "damage": 26.5,
+    "points": 12.6
    },
    {
-    "damage": 10,
-    "points": 25
+    "damage": 53.0,
+    "points": 25.2
    },
    {
-    "damage": 14,
-    "points": 38
+    "damage": 79.5,
+    "points": 37.8
    },
    {
-    "damage": 17,
-    "points": 45
+    "damage": 95.4,
+    "points": 45.4
    }
   ],
   "shipBookPage": 7
@@ -1674,29 +1674,29 @@
   },
   "marineSquads": 18,
   "shuttles": 6,
-  "pointValue": 76,
+  "pointValue": 77.0,
   "year": 3668,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 8
+    "damage": 27.25,
+    "points": 7.7
    },
    {
-    "damage": 5,
-    "points": 19
+    "damage": 28.25,
+    "points": 19.2
    },
    {
-    "damage": 10,
-    "points": 38
+    "damage": 56.5,
+    "points": 38.5
    },
    {
-    "damage": 15,
-    "points": 57
+    "damage": 84.75,
+    "points": 57.8
    },
    {
-    "damage": 18,
-    "points": 69
+    "damage": 101.7,
+    "points": 69.3
    }
   ],
   "shipBookPage": 8
@@ -2603,29 +2603,29 @@
   },
   "marineSquads": 18,
   "shuttles": 6,
-  "pointValue": 158,
+  "pointValue": 158.5,
   "year": 3675,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 5,
-    "points": 16
+    "damage": 30.0,
+    "points": 15.9
    },
    {
-    "damage": 6,
-    "points": 40
+    "damage": 31.0,
+    "points": 39.6
    },
    {
-    "damage": 11,
-    "points": 79
+    "damage": 62.0,
+    "points": 79.2
    },
    {
-    "damage": 17,
-    "points": 119
+    "damage": 93.0,
+    "points": 118.9
    },
    {
-    "damage": 20,
-    "points": 143
+    "damage": 111.6,
+    "points": 142.7
    }
   ],
   "shipBookPage": 9
@@ -3462,29 +3462,29 @@
   },
   "marineSquads": 12,
   "shuttles": 4,
-  "pointValue": 50,
+  "pointValue": 50.3,
   "year": 3655,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 5
+    "damage": 19.25,
+    "points": 5.0
    },
    {
-    "damage": 4,
-    "points": 13
+    "damage": 20.25,
+    "points": 12.6
    },
    {
-    "damage": 7,
-    "points": 25
+    "damage": 40.5,
+    "points": 25.1
    },
    {
-    "damage": 11,
-    "points": 38
+    "damage": 60.75,
+    "points": 37.7
    },
    {
-    "damage": 13,
-    "points": 45
+    "damage": 72.9,
+    "points": 45.3
    }
   ],
   "shipBookPage": 10
@@ -4151,29 +4151,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 23,
+  "pointValue": 23.0,
   "year": 3645,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 16.0,
+    "points": 2.3
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 17.0,
+    "points": 5.8
    },
    {
-    "damage": 7,
-    "points": 12
+    "damage": 34.0,
+    "points": 11.5
    },
    {
-    "damage": 10,
-    "points": 17
+    "damage": 51.0,
+    "points": 17.2
    },
    {
-    "damage": 12,
-    "points": 21
+    "damage": 61.2,
+    "points": 20.7
    }
   ],
   "shipBookPage": 11
@@ -4865,29 +4865,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 29,
+  "pointValue": 29.0,
   "year": 3655,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 17.0,
+    "points": 2.9
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 18.0,
+    "points": 7.2
    },
    {
-    "damage": 7,
-    "points": 15
+    "damage": 36.0,
+    "points": 14.5
    },
    {
-    "damage": 10,
-    "points": 22
+    "damage": 54.0,
+    "points": 21.8
    },
    {
-    "damage": 12,
-    "points": 26
+    "damage": 64.8,
+    "points": 26.1
    }
   ],
   "shipBookPage": 12
@@ -5588,29 +5588,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 32,
+  "pointValue": 32.2,
   "year": 3655,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 17.5,
+    "points": 3.2
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 18.5,
+    "points": 8.1
    },
    {
-    "damage": 7,
-    "points": 16
+    "damage": 37.0,
+    "points": 16.1
    },
    {
-    "damage": 10,
-    "points": 24
+    "damage": 55.5,
+    "points": 24.2
    },
    {
-    "damage": 12,
-    "points": 29
+    "damage": 66.6,
+    "points": 29.0
    }
   ],
   "shipBookPage": 13
@@ -6374,29 +6374,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 42,
+  "pointValue": 42.3,
   "year": 3662,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 4
+    "damage": 17.25,
+    "points": 4.2
    },
    {
-    "damage": 4,
-    "points": 11
+    "damage": 18.25,
+    "points": 10.6
    },
    {
-    "damage": 7,
-    "points": 21
+    "damage": 36.5,
+    "points": 21.1
    },
    {
-    "damage": 11,
-    "points": 32
+    "damage": 54.75,
+    "points": 31.7
    },
    {
-    "damage": 13,
-    "points": 38
+    "damage": 65.7,
+    "points": 38.1
    }
   ],
   "shipBookPage": 14
@@ -7184,29 +7184,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 49,
+  "pointValue": 49.2,
   "year": 3663,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 5
+    "damage": 18.5,
+    "points": 4.9
    },
    {
-    "damage": 4,
-    "points": 12
+    "damage": 19.5,
+    "points": 12.3
    },
    {
-    "damage": 7,
-    "points": 25
+    "damage": 39.0,
+    "points": 24.6
    },
    {
-    "damage": 11,
-    "points": 37
+    "damage": 58.5,
+    "points": 36.9
    },
    {
-    "damage": 13,
-    "points": 44
+    "damage": 70.2,
+    "points": 44.3
    }
   ],
   "shipBookPage": 15
@@ -7977,29 +7977,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 48,
+  "pointValue": 48.4,
   "year": 3667,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 5
+    "damage": 18.5,
+    "points": 4.8
    },
    {
-    "damage": 4,
-    "points": 12
+    "damage": 19.5,
+    "points": 12.1
    },
    {
-    "damage": 8,
-    "points": 24
+    "damage": 39.0,
+    "points": 24.2
    },
    {
-    "damage": 11,
-    "points": 36
+    "damage": 58.5,
+    "points": 36.3
    },
    {
-    "damage": 14,
-    "points": 44
+    "damage": 70.2,
+    "points": 43.6
    }
   ],
   "shipBookPage": 16
@@ -8794,29 +8794,29 @@
   },
   "marineSquads": 11,
   "shuttles": 4,
-  "pointValue": 58,
+  "pointValue": 57.6,
   "year": 3668,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 6
+    "damage": 19.75,
+    "points": 5.8
    },
    {
-    "damage": 4,
-    "points": 14
+    "damage": 20.75,
+    "points": 14.4
    },
    {
-    "damage": 8,
-    "points": 29
+    "damage": 41.5,
+    "points": 28.8
    },
    {
-    "damage": 11,
-    "points": 43
+    "damage": 62.25,
+    "points": 43.2
    },
    {
-    "damage": 14,
-    "points": 52
+    "damage": 74.7,
+    "points": 51.8
    }
   ],
   "shipBookPage": 17
@@ -9558,29 +9558,29 @@
   },
   "marineSquads": 11,
   "shuttles": 6,
-  "pointValue": 78,
+  "pointValue": 78.3,
   "year": 3672,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 8
+    "damage": 20.5,
+    "points": 7.8
    },
    {
-    "damage": 4,
-    "points": 20
+    "damage": 21.5,
+    "points": 19.6
    },
    {
-    "damage": 8,
-    "points": 39
+    "damage": 43.0,
+    "points": 39.1
    },
    {
-    "damage": 12,
-    "points": 59
+    "damage": 64.5,
+    "points": 58.7
    },
    {
-    "damage": 14,
-    "points": 70
+    "damage": 77.4,
+    "points": 70.5
    }
   ],
   "shipBookPage": 18
@@ -10412,29 +10412,29 @@
   },
   "marineSquads": 12,
   "shuttles": 6,
-  "pointValue": 115,
+  "pointValue": 115.2,
   "year": 3673,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 12
+    "damage": 22.5,
+    "points": 11.5
    },
    {
-    "damage": 4,
-    "points": 29
+    "damage": 23.5,
+    "points": 28.8
    },
    {
-    "damage": 8,
-    "points": 58
+    "damage": 47.0,
+    "points": 57.6
    },
    {
-    "damage": 12,
-    "points": 86
+    "damage": 70.5,
+    "points": 86.4
    },
    {
-    "damage": 14,
-    "points": 104
+    "damage": 84.6,
+    "points": 103.7
    }
   ],
   "shipBookPage": 19
@@ -11241,29 +11241,29 @@
   },
   "marineSquads": 12,
   "shuttles": 6,
-  "pointValue": 86,
+  "pointValue": 86.2,
   "year": 3670,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 9
+    "damage": 21.0,
+    "points": 8.6
    },
    {
-    "damage": 4,
-    "points": 22
+    "damage": 22.0,
+    "points": 21.6
    },
    {
-    "damage": 8,
-    "points": 43
+    "damage": 44.0,
+    "points": 43.1
    },
    {
-    "damage": 12,
-    "points": 65
+    "damage": 66.0,
+    "points": 64.7
    },
    {
-    "damage": 14,
-    "points": 78
+    "damage": 79.2,
+    "points": 77.6
    }
   ],
   "shipBookPage": 21
@@ -12071,29 +12071,29 @@
   },
   "marineSquads": 12,
   "shuttles": 6,
-  "pointValue": 100,
+  "pointValue": 100.1,
   "year": 3673,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 10
+    "damage": 21.0,
+    "points": 10.0
    },
    {
-    "damage": 4,
-    "points": 25
+    "damage": 22.0,
+    "points": 25.0
    },
    {
-    "damage": 8,
-    "points": 50
+    "damage": 44.0,
+    "points": 50.0
    },
    {
-    "damage": 12,
-    "points": 75
+    "damage": 66.0,
+    "points": 75.1
    },
    {
-    "damage": 14,
-    "points": 90
+    "damage": 79.2,
+    "points": 90.1
    }
   ],
   "shipBookPage": 22
@@ -12740,29 +12740,29 @@
   },
   "marineSquads": 9,
   "shuttles": 8,
-  "pointValue": 20,
+  "pointValue": 20.2,
   "year": 3652,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 14.5,
+    "points": 2.0
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 15.5,
+    "points": 5.0
    },
    {
-    "damage": 6,
-    "points": 10
+    "damage": 31.0,
+    "points": 10.1
    },
    {
-    "damage": 8,
-    "points": 15
+    "damage": 46.5,
+    "points": 15.1
    },
    {
-    "damage": 10,
-    "points": 18
+    "damage": 55.8,
+    "points": 18.2
    }
   ],
   "shipBookPage": 23
@@ -13424,29 +13424,29 @@
   },
   "marineSquads": 9,
   "shuttles": 8,
-  "pointValue": 27,
+  "pointValue": 27.3,
   "year": 3667,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 15.25,
+    "points": 2.7
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 16.25,
+    "points": 6.8
    },
    {
-    "damage": 6,
-    "points": 14
+    "damage": 32.5,
+    "points": 13.7
    },
    {
-    "damage": 9,
-    "points": 21
+    "damage": 48.75,
+    "points": 20.5
    },
    {
-    "damage": 11,
-    "points": 25
+    "damage": 58.5,
+    "points": 24.6
    }
   ],
   "shipBookPage": 24
@@ -14113,29 +14113,29 @@
   },
   "marineSquads": 9,
   "shuttles": 4,
-  "pointValue": 30,
+  "pointValue": 29.6,
   "year": 3667,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 15.25,
+    "points": 3.0
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 16.25,
+    "points": 7.4
    },
    {
-    "damage": 6,
-    "points": 15
+    "damage": 32.5,
+    "points": 14.8
    },
    {
-    "damage": 9,
-    "points": 22
+    "damage": 48.75,
+    "points": 22.2
    },
    {
-    "damage": 11,
-    "points": 27
+    "damage": 58.5,
+    "points": 26.6
    }
   ],
   "shipBookPage": 25
@@ -14779,29 +14779,29 @@
   },
   "marineSquads": 8,
   "shuttles": 4,
-  "pointValue": 22,
+  "pointValue": 21.6,
   "year": 3666,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 2
+    "damage": 14.75,
+    "points": 2.2
    },
    {
-    "damage": 4,
-    "points": 5
+    "damage": 15.75,
+    "points": 5.4
    },
    {
-    "damage": 7,
-    "points": 11
+    "damage": 31.5,
+    "points": 10.8
    },
    {
-    "damage": 11,
-    "points": 16
+    "damage": 47.25,
+    "points": 16.2
    },
    {
-    "damage": 13,
-    "points": 19
+    "damage": 56.7,
+    "points": 19.4
    }
   ],
   "shipBookPage": 26
@@ -15461,29 +15461,29 @@
   },
   "marineSquads": 8,
   "shuttles": 4,
-  "pointValue": 37,
+  "pointValue": 36.7,
   "year": 3667,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 4
+    "damage": 15.0,
+    "points": 3.7
    },
    {
-    "damage": 4,
-    "points": 9
+    "damage": 16.0,
+    "points": 9.2
    },
    {
-    "damage": 7,
-    "points": 18
+    "damage": 32.0,
+    "points": 18.4
    },
    {
-    "damage": 11,
-    "points": 28
+    "damage": 48.0,
+    "points": 27.5
    },
    {
-    "damage": 13,
-    "points": 33
+    "damage": 57.6,
+    "points": 33.0
    }
   ],
   "shipBookPage": 27,
@@ -16169,29 +16169,29 @@
   },
   "marineSquads": 8,
   "shuttles": 4,
-  "pointValue": 43,
+  "pointValue": 43.0,
   "year": 3673,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 4
+    "damage": 16.75,
+    "points": 4.3
    },
    {
-    "damage": 4,
-    "points": 11
+    "damage": 17.75,
+    "points": 10.8
    },
    {
-    "damage": 7,
-    "points": 22
+    "damage": 35.5,
+    "points": 21.5
    },
    {
-    "damage": 11,
-    "points": 32
+    "damage": 53.25,
+    "points": 32.2
    },
    {
-    "damage": 13,
-    "points": 39
+    "damage": 63.9,
+    "points": 38.7
    }
   ],
   "shipBookPage": 28
@@ -16993,29 +16993,29 @@
   },
   "marineSquads": 9,
   "shuttles": 8,
-  "pointValue": 56,
+  "pointValue": 55.8,
   "year": 3670,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 6
+    "damage": 20.0,
+    "points": 5.6
    },
    {
-    "damage": 4,
-    "points": 14
+    "damage": 21.0,
+    "points": 13.9
    },
    {
-    "damage": 8,
-    "points": 28
+    "damage": 42.0,
+    "points": 27.9
    },
    {
-    "damage": 11,
-    "points": 42
+    "damage": 63.0,
+    "points": 41.8
    },
    {
-    "damage": 14,
-    "points": 50
+    "damage": 75.6,
+    "points": 50.2
    }
   ],
   "shipBookPage": 29
@@ -17818,29 +17818,29 @@
   },
   "marineSquads": 9,
   "shuttles": 8,
-  "pointValue": 79,
+  "pointValue": 78.9,
   "year": 3674,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 8
+    "damage": 20.25,
+    "points": 7.9
    },
    {
-    "damage": 4,
-    "points": 20
+    "damage": 21.25,
+    "points": 19.7
    },
    {
-    "damage": 8,
-    "points": 39
+    "damage": 42.5,
+    "points": 39.5
    },
    {
-    "damage": 11,
-    "points": 59
+    "damage": 63.75,
+    "points": 59.2
    },
    {
-    "damage": 14,
-    "points": 71
+    "damage": 76.5,
+    "points": 71.0
    }
   ],
   "shipBookPage": 30
@@ -18498,29 +18498,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 16,
+  "pointValue": 16.3,
   "year": 3647,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 11.25,
+    "points": 1.6
    },
    {
-    "damage": 3,
-    "points": 4
+    "damage": 12.25,
+    "points": 4.1
    },
    {
-    "damage": 5,
-    "points": 8
+    "damage": 24.5,
+    "points": 8.2
    },
    {
-    "damage": 8,
-    "points": 12
+    "damage": 36.75,
+    "points": 12.2
    },
    {
-    "damage": 9,
-    "points": 15
+    "damage": 44.1,
+    "points": 14.7
    }
   ],
   "shipBookPage": 31
@@ -19186,29 +19186,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 24,
+  "pointValue": 23.5,
   "year": 3661,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 11.75,
+    "points": 2.4
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 12.75,
+    "points": 5.9
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 25.5,
+    "points": 11.8
    },
    {
-    "damage": 8,
-    "points": 18
+    "damage": 38.25,
+    "points": 17.6
    },
    {
-    "damage": 9,
-    "points": 21
+    "damage": 45.9,
+    "points": 21.2
    }
   ],
   "shipBookPage": 32
@@ -19967,29 +19967,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 41,
+  "pointValue": 41.4,
   "year": 3667,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 13.75,
+    "points": 4.1
    },
    {
-    "damage": 3,
-    "points": 10
+    "damage": 14.75,
+    "points": 10.3
    },
    {
-    "damage": 6,
-    "points": 21
+    "damage": 29.5,
+    "points": 20.7
    },
    {
-    "damage": 8,
-    "points": 31
+    "damage": 44.25,
+    "points": 31.0
    },
    {
-    "damage": 10,
-    "points": 37
+    "damage": 53.1,
+    "points": 37.3
    }
   ],
   "shipBookPage": 33
@@ -20753,29 +20753,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 69,
+  "pointValue": 69.3,
   "year": 3676,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 7
+    "damage": 14.0,
+    "points": 6.9
    },
    {
-    "damage": 3,
-    "points": 17
+    "damage": 15.0,
+    "points": 17.3
    },
    {
-    "damage": 6,
-    "points": 35
+    "damage": 30.0,
+    "points": 34.6
    },
    {
-    "damage": 8,
-    "points": 52
+    "damage": 45.0,
+    "points": 52.0
    },
    {
-    "damage": 10,
-    "points": 62
+    "damage": 54.0,
+    "points": 62.4
    }
   ],
   "shipBookPage": 34
@@ -21327,29 +21327,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 21,
+  "pointValue": 21.0,
   "year": 3652,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 11.0,
+    "points": 2.1
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 12.0,
+    "points": 5.2
    },
    {
-    "damage": 5,
-    "points": 11
+    "damage": 24.0,
+    "points": 10.5
    },
    {
-    "damage": 8,
-    "points": 16
+    "damage": 36.0,
+    "points": 15.8
    },
    {
-    "damage": 9,
-    "points": 19
+    "damage": 43.2,
+    "points": 18.9
    }
   ],
   "shipBookPage": 35,
@@ -21923,29 +21923,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 25,
+  "pointValue": 25.2,
   "year": 3665,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 11.5,
+    "points": 2.5
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 12.5,
+    "points": 6.3
    },
    {
-    "damage": 5,
-    "points": 13
+    "damage": 25.0,
+    "points": 12.6
    },
    {
-    "damage": 8,
-    "points": 19
+    "damage": 37.5,
+    "points": 18.9
    },
    {
-    "damage": 9,
-    "points": 23
+    "damage": 45.0,
+    "points": 22.7
    }
   ],
   "shipBookPage": 36,
@@ -22620,29 +22620,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 39,
+  "pointValue": 39.2,
   "year": 3669,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 13.75,
+    "points": 3.9
    },
    {
-    "damage": 3,
-    "points": 10
+    "damage": 14.75,
+    "points": 9.8
    },
    {
-    "damage": 6,
-    "points": 20
+    "damage": 29.5,
+    "points": 19.6
    },
    {
-    "damage": 8,
-    "points": 29
+    "damage": 44.25,
+    "points": 29.4
    },
    {
-    "damage": 10,
-    "points": 35
+    "damage": 53.1,
+    "points": 35.3
    }
   ],
   "shipBookPage": 37,
@@ -23326,29 +23326,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 54,
+  "pointValue": 53.5,
   "year": 3674,
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 5
+    "damage": 14.0,
+    "points": 5.4
    },
    {
-    "damage": 3,
-    "points": 13
+    "damage": 15.0,
+    "points": 13.4
    },
    {
-    "damage": 6,
-    "points": 27
+    "damage": 30.0,
+    "points": 26.8
    },
    {
-    "damage": 8,
-    "points": 40
+    "damage": 45.0,
+    "points": 40.1
    },
    {
-    "damage": 10,
-    "points": 48
+    "damage": 54.0,
+    "points": 48.1
    }
   ],
   "shipBookPage": 38,
@@ -24056,29 +24056,29 @@
   },
   "marineSquads": 8,
   "shuttles": 4,
-  "pointValue": 12,
+  "pointValue": 12.3,
   "year": 3646,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 11.0,
+    "points": 1.2
    },
    {
-    "damage": 2,
-    "points": 3
+    "damage": 12.0,
+    "points": 3.1
    },
    {
-    "damage": 4,
-    "points": 6
+    "damage": 24.0,
+    "points": 6.2
    },
    {
-    "damage": 6,
-    "points": 9
+    "damage": 36.0,
+    "points": 9.2
    },
    {
-    "damage": 7,
-    "points": 11
+    "damage": 43.2,
+    "points": 11.1
    }
   ],
   "shipBookPage": 39
@@ -24793,29 +24793,29 @@
   },
   "marineSquads": 8,
   "shuttles": 4,
-  "pointValue": 17,
+  "pointValue": 17.3,
   "year": 3662,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 11.5,
+    "points": 1.7
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 12.5,
+    "points": 4.3
    },
    {
-    "damage": 4,
-    "points": 9
+    "damage": 25.0,
+    "points": 8.7
    },
    {
-    "damage": 6,
-    "points": 13
+    "damage": 37.5,
+    "points": 13.0
    },
    {
-    "damage": 7,
-    "points": 16
+    "damage": 45.0,
+    "points": 15.6
    }
   ],
   "shipBookPage": 40
@@ -25414,29 +25414,29 @@
   },
   "marineSquads": 10,
   "shuttles": 2,
-  "pointValue": 12,
+  "pointValue": 12.0,
   "year": 3658,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 8.0,
+    "points": 1.2
    },
    {
-    "damage": 2,
-    "points": 3
+    "damage": 9.0,
+    "points": 3.0
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 18.0,
+    "points": 6.0
    },
    {
-    "damage": 5,
-    "points": 9
+    "damage": 27.0,
+    "points": 9.0
    },
    {
-    "damage": 5,
-    "points": 11
+    "damage": 32.4,
+    "points": 10.8
    }
   ],
   "shipBookPage": 41
@@ -26137,29 +26137,29 @@
   },
   "marineSquads": 6,
   "shuttles": 2,
-  "pointValue": 15,
+  "pointValue": 15.5,
   "year": 3659,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 8.5,
+    "points": 1.6
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 9.5,
+    "points": 3.9
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 19.0,
+    "points": 7.8
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 28.5,
+    "points": 11.6
    },
    {
-    "damage": 5,
-    "points": 14
+    "damage": 34.2,
+    "points": 14.0
    }
   ],
   "shipBookPage": 42
@@ -26830,29 +26830,29 @@
   },
   "marineSquads": 8,
   "shuttles": 2,
-  "pointValue": 32,
+  "pointValue": 32.0,
   "year": 3665,
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 12.5,
+    "points": 3.2
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 13.5,
+    "points": 8.0
    },
    {
-    "damage": 5,
-    "points": 16
+    "damage": 27.0,
+    "points": 16.0
    },
    {
-    "damage": 8,
-    "points": 24
+    "damage": 40.5,
+    "points": 24.0
    },
    {
-    "damage": 9,
-    "points": 29
+    "damage": 48.6,
+    "points": 28.8
    }
   ],
   "shipBookPage": 43
@@ -27538,29 +27538,29 @@
   },
   "marineSquads": 8,
   "shuttles": 2,
-  "pointValue": 53,
+  "pointValue": 52.6,
   "year": 3673,
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 5
+    "damage": 13.75,
+    "points": 5.3
    },
    {
-    "damage": 3,
-    "points": 13
+    "damage": 14.75,
+    "points": 13.2
    },
    {
-    "damage": 6,
-    "points": 26
+    "damage": 29.5,
+    "points": 26.3
    },
    {
-    "damage": 8,
-    "points": 39
+    "damage": 44.25,
+    "points": 39.5
    },
    {
-    "damage": 10,
-    "points": 47
+    "damage": 53.1,
+    "points": 47.3
    }
   ],
   "shipBookPage": 44
@@ -28522,24 +28522,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 5
+    "damage": 25.75,
+    "points": 5.1
    },
    {
-    "damage": 5,
-    "points": 13
+    "damage": 26.75,
+    "points": 12.8
    },
    {
-    "damage": 9,
-    "points": 26
+    "damage": 53.5,
+    "points": 25.5
    },
    {
-    "damage": 14,
-    "points": 38
+    "damage": 80.25,
+    "points": 38.2
    },
    {
-    "damage": 16,
-    "points": 46
+    "damage": 96.3,
+    "points": 45.9
    }
   ],
   "shipBookPage": 45
@@ -29525,24 +29525,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 7
+    "damage": 27.0,
+    "points": 6.8
    },
    {
-    "damage": 5,
-    "points": 17
+    "damage": 28.0,
+    "points": 17.0
    },
    {
-    "damage": 10,
-    "points": 34
+    "damage": 56.0,
+    "points": 34.0
    },
    {
-    "damage": 14,
-    "points": 51
+    "damage": 84.0,
+    "points": 51.0
    },
    {
-    "damage": 17,
-    "points": 61
+    "damage": 100.8,
+    "points": 61.2
    }
   ],
   "shipBookPage": 46
@@ -30582,24 +30582,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 14
+    "damage": 28.75,
+    "points": 14.2
    },
    {
-    "damage": 5,
-    "points": 35
+    "damage": 29.75,
+    "points": 35.5
    },
    {
-    "damage": 10,
-    "points": 71
+    "damage": 59.5,
+    "points": 71.0
    },
    {
-    "damage": 14,
-    "points": 106
+    "damage": 89.25,
+    "points": 106.5
    },
    {
-    "damage": 17,
-    "points": 128
+    "damage": 107.1,
+    "points": 127.8
    }
   ],
   "shipBookPage": 47
@@ -31518,24 +31518,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 4
+    "damage": 21.0,
+    "points": 4.4
    },
    {
-    "damage": 4,
-    "points": 11
+    "damage": 22.0,
+    "points": 11.0
    },
    {
-    "damage": 8,
-    "points": 22
+    "damage": 44.0,
+    "points": 22.0
    },
    {
-    "damage": 11,
-    "points": 33
+    "damage": 66.0,
+    "points": 33.0
    },
    {
-    "damage": 14,
-    "points": 39
+    "damage": 79.2,
+    "points": 39.6
    }
   ],
   "shipBookPage": 48
@@ -32474,24 +32474,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 6
+    "damage": 21.0,
+    "points": 5.8
    },
    {
-    "damage": 4,
-    "points": 15
+    "damage": 22.0,
+    "points": 14.5
    },
    {
-    "damage": 8,
-    "points": 29
+    "damage": 44.0,
+    "points": 29.0
    },
    {
-    "damage": 11,
-    "points": 44
+    "damage": 66.0,
+    "points": 43.5
    },
    {
-    "damage": 14,
-    "points": 52
+    "damage": 79.2,
+    "points": 52.2
    }
   ],
   "shipBookPage": 49
@@ -33455,24 +33455,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 10
+    "damage": 22.0,
+    "points": 10.0
    },
    {
-    "damage": 4,
-    "points": 25
+    "damage": 23.0,
+    "points": 25.0
    },
    {
-    "damage": 8,
-    "points": 50
+    "damage": 46.0,
+    "points": 50.0
    },
    {
-    "damage": 11,
-    "points": 75
+    "damage": 69.0,
+    "points": 75.0
    },
    {
-    "damage": 14,
-    "points": 90
+    "damage": 82.8,
+    "points": 90.0
    }
   ],
   "shipBookPage": 50
@@ -34223,24 +34223,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 15.0,
+    "points": 1.9
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 16.0,
+    "points": 4.8
    },
    {
-    "damage": 6,
-    "points": 10
+    "damage": 32.0,
+    "points": 9.5
    },
    {
-    "damage": 8,
-    "points": 14
+    "damage": 48.0,
+    "points": 14.2
    },
    {
-    "damage": 10,
-    "points": 17
+    "damage": 57.6,
+    "points": 17.1
    }
   ],
   "shipBookPage": 51
@@ -35001,24 +35001,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 15.5,
+    "points": 2.1
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 16.5,
+    "points": 5.2
    },
    {
-    "damage": 6,
-    "points": 10
+    "damage": 33.0,
+    "points": 10.5
    },
    {
-    "damage": 8,
-    "points": 16
+    "damage": 49.5,
+    "points": 15.8
    },
    {
-    "damage": 10,
-    "points": 19
+    "damage": 59.4,
+    "points": 18.9
    }
   ],
   "shipBookPage": 52
@@ -35783,24 +35783,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 15.5,
+    "points": 2.5
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 16.5,
+    "points": 6.2
    },
    {
-    "damage": 6,
-    "points": 12
+    "damage": 33.0,
+    "points": 12.5
    },
    {
-    "damage": 8,
-    "points": 19
+    "damage": 49.5,
+    "points": 18.8
    },
    {
-    "damage": 10,
-    "points": 22
+    "damage": 59.4,
+    "points": 22.5
    }
   ],
   "shipBookPage": 53
@@ -36570,24 +36570,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 16.0,
+    "points": 2.6
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 17.0,
+    "points": 6.5
    },
    {
-    "damage": 6,
-    "points": 13
+    "damage": 34.0,
+    "points": 13.0
    },
    {
-    "damage": 8,
-    "points": 19
+    "damage": 51.0,
+    "points": 19.5
    },
    {
-    "damage": 10,
-    "points": 23
+    "damage": 61.2,
+    "points": 23.4
    }
   ],
   "shipBookPage": 54
@@ -37367,24 +37367,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 16.5,
+    "points": 2.9
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 17.5,
+    "points": 7.2
    },
    {
-    "damage": 7,
-    "points": 14
+    "damage": 35.0,
+    "points": 14.5
    },
    {
-    "damage": 10,
-    "points": 22
+    "damage": 52.5,
+    "points": 21.8
    },
    {
-    "damage": 12,
-    "points": 26
+    "damage": 63.0,
+    "points": 26.1
    }
   ],
   "shipBookPage": 55
@@ -38169,24 +38169,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 17.25,
+    "points": 3.2
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 18.25,
+    "points": 8.0
    },
    {
-    "damage": 7,
-    "points": 16
+    "damage": 36.5,
+    "points": 16.0
    },
    {
-    "damage": 10,
-    "points": 24
+    "damage": 54.75,
+    "points": 24.0
    },
    {
-    "damage": 12,
-    "points": 29
+    "damage": 65.7,
+    "points": 28.8
    }
   ],
   "shipBookPage": 56
@@ -38978,24 +38978,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 16.5,
+    "points": 3.3
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 17.5,
+    "points": 8.2
    },
    {
-    "damage": 7,
-    "points": 17
+    "damage": 35.0,
+    "points": 16.5
    },
    {
-    "damage": 10,
-    "points": 25
+    "damage": 52.5,
+    "points": 24.8
    },
    {
-    "damage": 12,
-    "points": 30
+    "damage": 63.0,
+    "points": 29.7
    }
   ],
   "shipBookPage": 57
@@ -39792,24 +39792,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 17.25,
+    "points": 3.5
    },
    {
-    "damage": 3,
-    "points": 9
+    "damage": 18.25,
+    "points": 8.8
    },
    {
-    "damage": 7,
-    "points": 17
+    "damage": 36.5,
+    "points": 17.5
    },
    {
-    "damage": 10,
-    "points": 26
+    "damage": 54.75,
+    "points": 26.2
    },
    {
-    "damage": 12,
-    "points": 31
+    "damage": 65.7,
+    "points": 31.5
    }
   ],
   "shipBookPage": 58
@@ -40650,24 +40650,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 6
+    "damage": 18.25,
+    "points": 5.7
    },
    {
-    "damage": 4,
-    "points": 14
+    "damage": 19.25,
+    "points": 14.2
    },
    {
-    "damage": 8,
-    "points": 28
+    "damage": 38.5,
+    "points": 28.5
    },
    {
-    "damage": 11,
-    "points": 42
+    "damage": 57.75,
+    "points": 42.8
    },
    {
-    "damage": 14,
-    "points": 51
+    "damage": 69.3,
+    "points": 51.3
    }
   ],
   "shipBookPage": 59
@@ -41508,24 +41508,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 6
+    "damage": 18.25,
+    "points": 6.4
    },
    {
-    "damage": 4,
-    "points": 16
+    "damage": 19.25,
+    "points": 16.0
    },
    {
-    "damage": 8,
-    "points": 32
+    "damage": 38.5,
+    "points": 32.0
    },
    {
-    "damage": 11,
-    "points": 48
+    "damage": 57.75,
+    "points": 48.0
    },
    {
-    "damage": 14,
-    "points": 58
+    "damage": 69.3,
+    "points": 57.6
    }
   ],
   "shipBookPage": 60
@@ -42376,24 +42376,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 7
+    "damage": 18.25,
+    "points": 7.5
    },
    {
-    "damage": 4,
-    "points": 19
+    "damage": 19.25,
+    "points": 18.8
    },
    {
-    "damage": 8,
-    "points": 37
+    "damage": 38.5,
+    "points": 37.5
    },
    {
-    "damage": 11,
-    "points": 56
+    "damage": 57.75,
+    "points": 56.2
    },
    {
-    "damage": 14,
-    "points": 67
+    "damage": 69.3,
+    "points": 67.5
    }
   ],
   "shipBookPage": 61
@@ -43126,24 +43126,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 14.5,
+    "points": 1.7
    },
    {
-    "damage": 3,
-    "points": 4
+    "damage": 15.5,
+    "points": 4.2
    },
    {
-    "damage": 6,
-    "points": 8
+    "damage": 31.0,
+    "points": 8.5
    },
    {
-    "damage": 8,
-    "points": 13
+    "damage": 46.5,
+    "points": 12.8
    },
    {
-    "damage": 10,
-    "points": 15
+    "damage": 55.8,
+    "points": 15.3
    }
   ],
   "shipBookPage": 63
@@ -43880,24 +43880,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 14.75,
+    "points": 2.0
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 15.75,
+    "points": 5.0
    },
    {
-    "damage": 6,
-    "points": 10
+    "damage": 31.5,
+    "points": 10.0
    },
    {
-    "damage": 9,
-    "points": 15
+    "damage": 47.25,
+    "points": 15.0
    },
    {
-    "damage": 11,
-    "points": 18
+    "damage": 56.7,
+    "points": 18.0
    }
   ],
   "shipBookPage": 64
@@ -44638,24 +44638,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 14.75,
+    "points": 2.2
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 15.75,
+    "points": 5.5
    },
    {
-    "damage": 6,
-    "points": 11
+    "damage": 31.5,
+    "points": 11.0
    },
    {
-    "damage": 9,
-    "points": 17
+    "damage": 47.25,
+    "points": 16.5
    },
    {
-    "damage": 11,
-    "points": 20
+    "damage": 56.7,
+    "points": 19.8
    }
   ],
   "shipBookPage": 65,
@@ -45411,24 +45411,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 15.75,
+    "points": 3.5
    },
    {
-    "damage": 3,
-    "points": 9
+    "damage": 16.75,
+    "points": 8.8
    },
    {
-    "damage": 6,
-    "points": 18
+    "damage": 33.5,
+    "points": 17.5
    },
    {
-    "damage": 9,
-    "points": 27
+    "damage": 50.25,
+    "points": 26.2
    },
    {
-    "damage": 11,
-    "points": 32
+    "damage": 60.3,
+    "points": 31.5
    }
   ],
   "shipBookPage": 66
@@ -46154,24 +46154,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 12.0,
+    "points": 1.5
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 13.0,
+    "points": 3.8
    },
    {
-    "damage": 5,
-    "points": 7
+    "damage": 26.0,
+    "points": 7.5
    },
    {
-    "damage": 7,
-    "points": 11
+    "damage": 39.0,
+    "points": 11.2
    },
    {
-    "damage": 8,
-    "points": 13
+    "damage": 46.8,
+    "points": 13.5
    }
   ],
   "shipBookPage": 67
@@ -46899,24 +46899,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 12.0,
+    "points": 1.7
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 13.0,
+    "points": 4.2
    },
    {
-    "damage": 5,
-    "points": 8
+    "damage": 26.0,
+    "points": 8.5
    },
    {
-    "damage": 7,
-    "points": 13
+    "damage": 39.0,
+    "points": 12.8
    },
    {
-    "damage": 8,
-    "points": 15
+    "damage": 46.8,
+    "points": 15.3
    }
   ],
   "shipBookPage": 68
@@ -47648,24 +47648,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 12.25,
+    "points": 2.0
    },
    {
-    "damage": 2,
-    "points": 5
+    "damage": 13.25,
+    "points": 5.0
    },
    {
-    "damage": 5,
-    "points": 10
+    "damage": 26.5,
+    "points": 10.0
    },
    {
-    "damage": 7,
-    "points": 15
+    "damage": 39.75,
+    "points": 15.0
    },
    {
-    "damage": 8,
-    "points": 18
+    "damage": 47.7,
+    "points": 18.0
    }
   ],
   "shipBookPage": 69
@@ -48421,24 +48421,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 13.25,
+    "points": 3.3
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 14.25,
+    "points": 8.2
    },
    {
-    "damage": 5,
-    "points": 17
+    "damage": 28.5,
+    "points": 16.5
    },
    {
-    "damage": 8,
-    "points": 25
+    "damage": 42.75,
+    "points": 24.8
    },
    {
-    "damage": 9,
-    "points": 30
+    "damage": 51.3,
+    "points": 29.7
    }
   ],
   "shipBookPage": 70
@@ -49096,24 +49096,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 12.25,
+    "points": 2.5
    },
    {
-    "damage": 2,
-    "points": 6
+    "damage": 13.25,
+    "points": 6.2
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 26.5,
+    "points": 12.5
    },
    {
-    "damage": 7,
-    "points": 19
+    "damage": 39.75,
+    "points": 18.8
    },
    {
-    "damage": 8,
-    "points": 22
+    "damage": 47.7,
+    "points": 22.5
    }
   ],
   "shipBookPage": 71,
@@ -49806,24 +49806,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 13.25,
+    "points": 3.7
    },
    {
-    "damage": 3,
-    "points": 9
+    "damage": 14.25,
+    "points": 9.2
    },
    {
-    "damage": 5,
-    "points": 19
+    "damage": 28.5,
+    "points": 18.5
    },
    {
-    "damage": 8,
-    "points": 28
+    "damage": 42.75,
+    "points": 27.8
    },
    {
-    "damage": 9,
-    "points": 33
+    "damage": 51.3,
+    "points": 33.3
    }
   ],
   "shipBookPage": 72,
@@ -50548,24 +50548,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 5
+    "damage": 14.5,
+    "points": 4.7
    },
    {
-    "damage": 3,
-    "points": 12
+    "damage": 15.5,
+    "points": 11.8
    },
    {
-    "damage": 6,
-    "points": 24
+    "damage": 31.0,
+    "points": 23.5
    },
    {
-    "damage": 9,
-    "points": 35
+    "damage": 46.5,
+    "points": 35.2
    },
    {
-    "damage": 11,
-    "points": 42
+    "damage": 55.8,
+    "points": 42.3
    }
   ],
   "shipBookPage": 73
@@ -51284,24 +51284,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 6
+    "damage": 14.5,
+    "points": 6.3
    },
    {
-    "damage": 3,
-    "points": 16
+    "damage": 15.5,
+    "points": 15.8
    },
    {
-    "damage": 6,
-    "points": 31
+    "damage": 31.0,
+    "points": 31.5
    },
    {
-    "damage": 9,
-    "points": 47
+    "damage": 46.5,
+    "points": 47.2
    },
    {
-    "damage": 11,
-    "points": 56
+    "damage": 55.8,
+    "points": 56.7
    }
   ],
   "shipBookPage": 74
@@ -51941,24 +51941,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 6.25,
+    "points": 0.8
    },
    {
-    "damage": 1,
-    "points": 2
+    "damage": 7.25,
+    "points": 2.0
    },
    {
-    "damage": 3,
-    "points": 4
+    "damage": 14.5,
+    "points": 4.0
    },
    {
-    "damage": 4,
-    "points": 6
+    "damage": 21.75,
+    "points": 6.0
    },
    {
-    "damage": 5,
-    "points": 7
+    "damage": 26.1,
+    "points": 7.2
    }
   ],
   "shipBookPage": 75
@@ -52598,24 +52598,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 6.75,
+    "points": 1.0
    },
    {
-    "damage": 1,
-    "points": 2
+    "damage": 7.75,
+    "points": 2.5
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 15.5,
+    "points": 5.0
    },
    {
-    "damage": 4,
-    "points": 7
+    "damage": 23.25,
+    "points": 7.5
    },
    {
-    "damage": 5,
-    "points": 9
+    "damage": 27.9,
+    "points": 9.0
    }
   ],
   "shipBookPage": 76
@@ -53258,24 +53258,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 6.75,
+    "points": 1.3
    },
    {
-    "damage": 1,
-    "points": 3
+    "damage": 7.75,
+    "points": 3.2
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 15.5,
+    "points": 6.5
    },
    {
-    "damage": 4,
-    "points": 10
+    "damage": 23.25,
+    "points": 9.8
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 27.9,
+    "points": 11.7
    }
   ],
   "shipBookPage": 77
@@ -53776,24 +53776,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 6.75,
+    "points": 1.5
    },
    {
-    "damage": 1,
-    "points": 4
+    "damage": 7.75,
+    "points": 3.8
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 15.5,
+    "points": 7.5
    },
    {
-    "damage": 4,
-    "points": 11
+    "damage": 23.25,
+    "points": 11.2
    },
    {
-    "damage": 5,
-    "points": 13
+    "damage": 27.9,
+    "points": 13.5
    }
   ],
   "shipBookPage": 78,
@@ -54383,24 +54383,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 7.25,
+    "points": 1.3
    },
    {
-    "damage": 2,
-    "points": 3
+    "damage": 8.25,
+    "points": 3.2
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 16.5,
+    "points": 6.5
    },
    {
-    "damage": 5,
-    "points": 10
+    "damage": 24.75,
+    "points": 9.8
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 29.7,
+    "points": 11.7
    }
   ],
   "shipBookPage": 80
@@ -54999,24 +54999,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 7.75,
+    "points": 1.6
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 8.75,
+    "points": 4.0
    },
    {
-    "damage": 3,
-    "points": 8
+    "damage": 17.5,
+    "points": 8.0
    },
    {
-    "damage": 5,
-    "points": 12
+    "damage": 26.25,
+    "points": 12.0
    },
    {
-    "damage": 5,
-    "points": 15
+    "damage": 31.5,
+    "points": 14.4
    }
   ],
   "shipBookPage": 81
@@ -55644,24 +55644,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 6.25,
+    "points": 0.6
    },
    {
-    "damage": 1,
-    "points": 2
+    "damage": 7.25,
+    "points": 1.5
    },
    {
-    "damage": 3,
-    "points": 3
+    "damage": 14.5,
+    "points": 3.0
    },
    {
-    "damage": 4,
-    "points": 5
+    "damage": 21.75,
+    "points": 4.5
    },
    {
-    "damage": 5,
-    "points": 6
+    "damage": 26.1,
+    "points": 5.4
    }
   ],
   "shipBookPage": 6,
@@ -56299,24 +56299,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 0,
-    "points": 1
+    "damage": 7.0,
+    "points": 0.9
    },
    {
-    "damage": 1,
-    "points": 2
+    "damage": 8.0,
+    "points": 2.2
    },
    {
-    "damage": 3,
-    "points": 4
+    "damage": 16.0,
+    "points": 4.5
    },
    {
-    "damage": 4,
-    "points": 7
+    "damage": 24.0,
+    "points": 6.8
    },
    {
-    "damage": 5,
-    "points": 8
+    "damage": 28.8,
+    "points": 8.1
    }
   ],
   "shipBookPage": 7,
@@ -57052,24 +57052,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 11.0,
+    "points": 1.9
    },
    {
-    "damage": 2,
-    "points": 5
+    "damage": 12.0,
+    "points": 4.8
    },
    {
-    "damage": 4,
-    "points": 9
+    "damage": 24.0,
+    "points": 9.5
    },
    {
-    "damage": 5,
-    "points": 14
+    "damage": 36.0,
+    "points": 14.2
    },
    {
-    "damage": 6,
-    "points": 17
+    "damage": 43.2,
+    "points": 17.1
    }
   ],
   "shipBookPage": 8,
@@ -57807,24 +57807,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 10.75,
+    "points": 2.2
    },
    {
-    "damage": 2,
-    "points": 5
+    "damage": 11.75,
+    "points": 5.5
    },
    {
-    "damage": 4,
-    "points": 11
+    "damage": 23.5,
+    "points": 11.0
    },
    {
-    "damage": 5,
-    "points": 16
+    "damage": 35.25,
+    "points": 16.5
    },
    {
-    "damage": 6,
-    "points": 20
+    "damage": 42.3,
+    "points": 19.8
    }
   ],
   "shipBookPage": 9,
@@ -58566,24 +58566,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 10.25,
+    "points": 1.5
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 11.25,
+    "points": 3.8
    },
    {
-    "damage": 5,
-    "points": 8
+    "damage": 22.5,
+    "points": 7.5
    },
    {
-    "damage": 7,
-    "points": 12
+    "damage": 33.75,
+    "points": 11.2
    },
    {
-    "damage": 8,
-    "points": 14
+    "damage": 40.5,
+    "points": 13.5
    }
   ],
   "shipBookPage": 10,
@@ -59338,24 +59338,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 10.75,
+    "points": 1.8
    },
    {
-    "damage": 2,
-    "points": 5
+    "damage": 11.75,
+    "points": 4.5
    },
    {
-    "damage": 5,
-    "points": 9
+    "damage": 23.5,
+    "points": 9.0
    },
    {
-    "damage": 7,
-    "points": 14
+    "damage": 35.25,
+    "points": 13.5
    },
    {
-    "damage": 8,
-    "points": 17
+    "damage": 42.3,
+    "points": 16.2
    }
   ],
   "shipBookPage": 11,
@@ -60048,24 +60048,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 9.75,
+    "points": 1.0
    },
    {
-    "damage": 2,
-    "points": 3
+    "damage": 10.75,
+    "points": 2.5
    },
    {
-    "damage": 4,
-    "points": 5
+    "damage": 21.5,
+    "points": 5.0
    },
    {
-    "damage": 6,
-    "points": 8
+    "damage": 32.25,
+    "points": 7.5
    },
    {
-    "damage": 7,
-    "points": 9
+    "damage": 38.7,
+    "points": 9.0
    }
   ],
   "shipBookPage": 12,
@@ -60692,24 +60692,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 9.75,
+    "points": 1.2
    },
    {
-    "damage": 2,
-    "points": 3
+    "damage": 10.75,
+    "points": 3.0
    },
    {
-    "damage": 4,
-    "points": 6
+    "damage": 21.5,
+    "points": 6.0
    },
    {
-    "damage": 6,
-    "points": 9
+    "damage": 32.25,
+    "points": 9.0
    },
    {
-    "damage": 7,
-    "points": 10
+    "damage": 38.7,
+    "points": 10.8
    }
   ],
   "shipBookPage": 13,
@@ -61425,24 +61425,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 1
+    "damage": 11.0,
+    "points": 1.5
    },
    {
-    "damage": 2,
-    "points": 4
+    "damage": 12.0,
+    "points": 3.8
    },
    {
-    "damage": 5,
-    "points": 7
+    "damage": 24.0,
+    "points": 7.5
    },
    {
-    "damage": 7,
-    "points": 11
+    "damage": 36.0,
+    "points": 11.2
    },
    {
-    "damage": 8,
-    "points": 13
+    "damage": 43.2,
+    "points": 13.5
    }
   ],
   "shipBookPage": 14,
@@ -62173,24 +62173,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 12.25,
+    "points": 2.0
    },
    {
-    "damage": 3,
-    "points": 5
+    "damage": 13.25,
+    "points": 5.0
    },
    {
-    "damage": 5,
-    "points": 10
+    "damage": 26.5,
+    "points": 10.0
    },
    {
-    "damage": 8,
-    "points": 15
+    "damage": 39.75,
+    "points": 15.0
    },
    {
-    "damage": 9,
-    "points": 18
+    "damage": 47.7,
+    "points": 18.0
    }
   ],
   "shipBookPage": 15,
@@ -62853,24 +62853,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 12.25,
+    "points": 1.8
    },
    {
-    "damage": 3,
-    "points": 4
+    "damage": 13.25,
+    "points": 4.5
    },
    {
-    "damage": 6,
-    "points": 9
+    "damage": 26.5,
+    "points": 9.0
    },
    {
-    "damage": 8,
-    "points": 13
+    "damage": 39.75,
+    "points": 13.5
    },
    {
-    "damage": 10,
-    "points": 16
+    "damage": 47.7,
+    "points": 16.2
    }
   ],
   "shipBookPage": 16,
@@ -63629,24 +63629,24 @@
   "availability": "common",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 14.0,
+    "points": 2.6
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 15.0,
+    "points": 6.5
    },
    {
-    "damage": 6,
-    "points": 13
+    "damage": 30.0,
+    "points": 13.0
    },
    {
-    "damage": 8,
-    "points": 19
+    "damage": 45.0,
+    "points": 19.5
    },
    {
-    "damage": 10,
-    "points": 23
+    "damage": 54.0,
+    "points": 23.4
    }
   ],
   "shipBookPage": 17,
@@ -64410,24 +64410,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 15.25,
+    "points": 2.7
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 16.25,
+    "points": 6.8
    },
    {
-    "damage": 6,
-    "points": 14
+    "damage": 32.5,
+    "points": 13.5
    },
    {
-    "damage": 8,
-    "points": 20
+    "damage": 48.75,
+    "points": 20.2
    },
    {
-    "damage": 10,
-    "points": 24
+    "damage": 58.5,
+    "points": 24.3
    }
   ],
   "shipBookPage": 18,
@@ -65104,24 +65104,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 14.75,
+    "points": 2.4
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 15.75,
+    "points": 6.0
    },
    {
-    "damage": 6,
-    "points": 12
+    "damage": 31.5,
+    "points": 12.0
    },
    {
-    "damage": 8,
-    "points": 18
+    "damage": 47.25,
+    "points": 18.0
    },
    {
-    "damage": 10,
-    "points": 22
+    "damage": 56.7,
+    "points": 21.6
    }
   ],
   "shipBookPage": 19,
@@ -65792,24 +65792,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 2
+    "damage": 15.5,
+    "points": 2.3
    },
    {
-    "damage": 3,
-    "points": 6
+    "damage": 16.5,
+    "points": 5.8
    },
    {
-    "damage": 6,
-    "points": 12
+    "damage": 33.0,
+    "points": 11.5
    },
    {
-    "damage": 8,
-    "points": 17
+    "damage": 49.5,
+    "points": 17.2
    },
    {
-    "damage": 10,
-    "points": 21
+    "damage": 59.4,
+    "points": 20.7
    }
   ],
   "shipBookPage": 20,
@@ -66703,24 +66703,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 6
+    "damage": 18.75,
+    "points": 6.0
    },
    {
-    "damage": 3,
-    "points": 15
+    "damage": 19.75,
+    "points": 15.0
    },
    {
-    "damage": 6,
-    "points": 30
+    "damage": 39.5,
+    "points": 30.0
    },
    {
-    "damage": 9,
-    "points": 45
+    "damage": 59.25,
+    "points": 45.0
    },
    {
-    "damage": 11,
-    "points": 54
+    "damage": 71.1,
+    "points": 54.0
    }
   ],
   "shipBookPage": 21,
@@ -67517,24 +67517,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 2
+    "damage": 12.75,
+    "points": 2.2
    },
    {
-    "damage": 2,
-    "points": 5
+    "damage": 13.75,
+    "points": 5.5
    },
    {
-    "damage": 5,
-    "points": 11
+    "damage": 27.5,
+    "points": 11.0
    },
    {
-    "damage": 7,
-    "points": 16
+    "damage": 41.25,
+    "points": 16.5
    },
    {
-    "damage": 8,
-    "points": 20
+    "damage": 49.5,
+    "points": 19.8
    }
   ],
   "shipBookPage": 22,
@@ -68354,24 +68354,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 1,
-    "points": 4
+    "damage": 15.0,
+    "points": 3.6
    },
    {
-    "damage": 2,
-    "points": 9
+    "damage": 16.0,
+    "points": 9.0
    },
    {
-    "damage": 5,
-    "points": 18
+    "damage": 32.0,
+    "points": 18.0
    },
    {
-    "damage": 7,
-    "points": 27
+    "damage": 48.0,
+    "points": 27.0
    },
    {
-    "damage": 8,
-    "points": 33
+    "damage": 57.6,
+    "points": 32.4
    }
   ],
   "shipBookPage": 23,
@@ -69180,24 +69180,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 3
+    "damage": 16.5,
+    "points": 2.8
    },
    {
-    "damage": 3,
-    "points": 7
+    "damage": 17.5,
+    "points": 7.0
    },
    {
-    "damage": 6,
-    "points": 14
+    "damage": 35.0,
+    "points": 14.0
    },
    {
-    "damage": 9,
-    "points": 21
+    "damage": 52.5,
+    "points": 21.0
    },
    {
-    "damage": 11,
-    "points": 25
+    "damage": 63.0,
+    "points": 25.2
    }
   ],
   "shipBookPage": 24,
@@ -70022,24 +70022,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 17.75,
+    "points": 4.2
    },
    {
-    "damage": 3,
-    "points": 10
+    "damage": 18.75,
+    "points": 10.5
    },
    {
-    "damage": 6,
-    "points": 21
+    "damage": 37.5,
+    "points": 21.0
    },
    {
-    "damage": 9,
-    "points": 31
+    "damage": 56.25,
+    "points": 31.5
    },
    {
-    "damage": 11,
-    "points": 38
+    "damage": 67.5,
+    "points": 37.8
    }
   ],
   "shipBookPage": 25,
@@ -70791,24 +70791,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 4
+    "damage": 16.0,
+    "points": 3.6
    },
    {
-    "damage": 3,
-    "points": 9
+    "damage": 17.0,
+    "points": 9.0
    },
    {
-    "damage": 6,
-    "points": 18
+    "damage": 34.0,
+    "points": 18.0
    },
    {
-    "damage": 9,
-    "points": 27
+    "damage": 51.0,
+    "points": 27.0
    },
    {
-    "damage": 11,
-    "points": 32
+    "damage": 61.2,
+    "points": 32.4
    }
   ],
   "shipBookPage": 26,
@@ -71571,24 +71571,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 5
+    "damage": 17.5,
+    "points": 4.7
    },
    {
-    "damage": 3,
-    "points": 12
+    "damage": 18.5,
+    "points": 11.8
    },
    {
-    "damage": 6,
-    "points": 24
+    "damage": 37.0,
+    "points": 23.5
    },
    {
-    "damage": 9,
-    "points": 36
+    "damage": 55.5,
+    "points": 35.2
    },
    {
-    "damage": 11,
-    "points": 43
+    "damage": 66.6,
+    "points": 42.3
    }
   ],
   "shipBookPage": 27,
@@ -72459,24 +72459,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 8
+    "damage": 20.25,
+    "points": 8.1
    },
    {
-    "damage": 3,
-    "points": 20
+    "damage": 21.25,
+    "points": 20.2
    },
    {
-    "damage": 7,
-    "points": 40
+    "damage": 42.5,
+    "points": 40.5
    },
    {
-    "damage": 10,
-    "points": 60
+    "damage": 63.75,
+    "points": 60.8
    },
    {
-    "damage": 12,
-    "points": 73
+    "damage": 76.5,
+    "points": 72.9
    }
   ],
   "shipBookPage": 28,
@@ -73365,24 +73365,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 9
+    "damage": 20.0,
+    "points": 9.3
    },
    {
-    "damage": 3,
-    "points": 23
+    "damage": 21.0,
+    "points": 23.2
    },
    {
-    "damage": 7,
-    "points": 46
+    "damage": 42.0,
+    "points": 46.5
    },
    {
-    "damage": 10,
-    "points": 70
+    "damage": 63.0,
+    "points": 69.8
    },
    {
-    "damage": 12,
-    "points": 84
+    "damage": 75.6,
+    "points": 83.7
    }
   ],
   "shipBookPage": 29,
@@ -74271,24 +74271,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 2,
-    "points": 10
+    "damage": 21.25,
+    "points": 10.1
    },
    {
-    "damage": 3,
-    "points": 25
+    "damage": 22.25,
+    "points": 25.2
    },
    {
-    "damage": 7,
-    "points": 50
+    "damage": 44.5,
+    "points": 50.5
    },
    {
-    "damage": 10,
-    "points": 76
+    "damage": 66.75,
+    "points": 75.8
    },
    {
-    "damage": 12,
-    "points": 91
+    "damage": 80.1,
+    "points": 90.9
    }
   ],
   "shipBookPage": 30,
@@ -75172,24 +75172,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 9
+    "damage": 21.75,
+    "points": 8.7
    },
    {
-    "damage": 4,
-    "points": 22
+    "damage": 22.75,
+    "points": 21.8
    },
    {
-    "damage": 8,
-    "points": 44
+    "damage": 45.5,
+    "points": 43.5
    },
    {
-    "damage": 12,
-    "points": 65
+    "damage": 68.25,
+    "points": 65.2
    },
    {
-    "damage": 14,
-    "points": 78
+    "damage": 81.9,
+    "points": 78.3
    }
   ],
   "shipBookPage": 31,
@@ -76077,24 +76077,24 @@
   "availability": "uncommon",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 10
+    "damage": 21.75,
+    "points": 10.3
    },
    {
-    "damage": 4,
-    "points": 26
+    "damage": 22.75,
+    "points": 25.8
    },
    {
-    "damage": 8,
-    "points": 52
+    "damage": 45.5,
+    "points": 51.5
    },
    {
-    "damage": 12,
-    "points": 77
+    "damage": 68.25,
+    "points": 77.2
    },
    {
-    "damage": 14,
-    "points": 93
+    "damage": 81.9,
+    "points": 92.7
    }
   ],
   "shipBookPage": 32,
@@ -76987,24 +76987,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 11
+    "damage": 22.0,
+    "points": 10.9
    },
    {
-    "damage": 4,
-    "points": 27
+    "damage": 23.0,
+    "points": 27.2
    },
    {
-    "damage": 8,
-    "points": 54
+    "damage": 46.0,
+    "points": 54.5
    },
    {
-    "damage": 12,
-    "points": 81
+    "damage": 69.0,
+    "points": 81.8
    },
    {
-    "damage": 14,
-    "points": 98
+    "damage": 82.8,
+    "points": 98.1
    }
   ],
   "shipBookPage": 33,
@@ -77892,24 +77892,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 3,
-    "points": 9
+    "damage": 22.25,
+    "points": 9.4
    },
    {
-    "damage": 4,
-    "points": 24
+    "damage": 23.25,
+    "points": 23.5
    },
    {
-    "damage": 8,
-    "points": 47
+    "damage": 46.5,
+    "points": 47.0
    },
    {
-    "damage": 12,
-    "points": 71
+    "damage": 69.75,
+    "points": 70.5
    },
    {
-    "damage": 14,
-    "points": 85
+    "damage": 83.7,
+    "points": 84.6
    }
   ],
   "shipBookPage": 34,
@@ -78890,24 +78890,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 7
+    "damage": 28.5,
+    "points": 7.5
    },
    {
-    "damage": 5,
-    "points": 19
+    "damage": 29.5,
+    "points": 18.8
    },
    {
-    "damage": 10,
-    "points": 37
+    "damage": 59.0,
+    "points": 37.5
    },
    {
-    "damage": 15,
-    "points": 56
+    "damage": 88.5,
+    "points": 56.2
    },
    {
-    "damage": 18,
-    "points": 67
+    "damage": 106.2,
+    "points": 67.5
    }
   ],
   "shipBookPage": 35,
@@ -79954,24 +79954,24 @@
   "availability": "rare",
   "victoryTable": [
    {
-    "damage": 4,
-    "points": 16
+    "damage": 31.25,
+    "points": 15.8
    },
    {
-    "damage": 5,
-    "points": 39
+    "damage": 32.25,
+    "points": 39.5
    },
    {
-    "damage": 9,
-    "points": 79
+    "damage": 64.5,
+    "points": 79.0
    },
    {
-    "damage": 14,
-    "points": 118
+    "damage": 96.75,
+    "points": 118.5
    },
    {
-    "damage": 16,
-    "points": 142
+    "damage": 116.1,
+    "points": 142.2
    }
   ],
   "shipBookPage": 36,
