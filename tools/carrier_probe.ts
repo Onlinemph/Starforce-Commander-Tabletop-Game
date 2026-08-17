@@ -31,6 +31,7 @@ const arg = (n: string) => {
   return i === -1 ? undefined : process.argv[i + 1]
 }
 const games = Number(arg('games') ?? 6)
+const only = (arg('only') ?? 'abc').toLowerCase()
 const rounds = 12
 
 registerCustomForms(FILE_FORMS)
@@ -122,6 +123,7 @@ function report(label: string, blue: string[], red: string[], results: ReturnTyp
 }
 
 // ---- A. massing A/B --------------------------------------------------------
+if (only.includes('a')) {
 console.log('== A. concentrate vs distribute, in the fights the titration lost ==')
 for (const [red, label] of [
   [[RAIDER, RAIDER, RAIDER], '3x V-7C'],
@@ -137,7 +139,9 @@ for (const [red, label] of [
   }
 }
 
+}
 // ---- B. the escorted carrier ----------------------------------------------
+if (only.includes('b')) {
 console.log('== B. carrier + two cruisers, equal balanced points, balanced scoring ==')
 const escort = [CARRIER, YORKTOWN, YORKTOWN] // 61 + 23 + 23 = 107 balanced
 for (const [red, label] of [
@@ -152,7 +156,9 @@ for (const [red, label] of [
   report(`  vs ${label}`, escort, red, results, true)
 }
 
+}
 // ---- C. carrier vs carrier, and the card spread ---------------------------
+if (only.includes('c')) {
 console.log('== C. carrier vs carrier: mirror, then NIAL (best card) vs MAGPIE (weakest) ==')
 for (const [wingA, wingB] of [
   ['sabre', 'sabre'],
@@ -167,5 +173,6 @@ for (const [wingA, wingB] of [
     )
   }
   report(`  ${wingA} vs ${wingB}`, [CARRIER], [CARRIER], results, false)
+}
 }
 console.log('done')

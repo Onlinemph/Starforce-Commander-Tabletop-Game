@@ -1135,6 +1135,10 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     defaults: () => s.force.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f)),
     damage: s.damage,
     value: s.value,
+    // Lost in translation until a carrier-vs-carrier measurement came back
+    // bit-identical across four different fighter cards: the designed-scenario
+    // format promises `wing`, and this mapping silently dropped it.
+    wing: s.wing,
   }))
   return { scenario, sides }
 }

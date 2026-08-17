@@ -68,6 +68,25 @@ afterEach(() => {
 })
 
 describe('designed scenarios', () => {
+  it('carries a named fighter wing onto the deployed carrier', () => {
+    // The format promised `wing` and the conversion dropped it — found when a
+    // carrier-vs-carrier sweep came back bit-identical across four different
+    // fighter cards.
+    registerCustomScenarios([
+      {
+        ...KESSEL,
+        id: 'scenario-wing-test',
+        sides: [
+          { ...KESSEL.sides[0], force: ['fan-union-ark-royal-fleet-carrier'], wing: ['nial'] },
+          KESSEL.sides[1],
+        ],
+      },
+    ])
+    const game = startScenario('scenario-wing-test', { seed: 1 })
+    const carrier = game.ships.find((s) => s.side === 'Blue Force')!
+    expect(carrier.wingCardId).toBe('nial')
+  })
+
   it('resolves through the same lookup as the printed set', () => {
     registerCustomScenarios([KESSEL])
     expect(scenarioSides('scenario-kessel-run')).toEqual(['Blue Force', 'Red Force'])
