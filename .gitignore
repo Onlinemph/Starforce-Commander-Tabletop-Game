@@ -33,5 +33,6 @@ tools/titration_results.csv
 tools/validation_results.csv
 tools/validation2_results.csv
 tools/titration_admiral.csv
+tools/titration_admiral_kill.csv
 tools/validation_admiral.csv
 tools/repriced_draft2.json
