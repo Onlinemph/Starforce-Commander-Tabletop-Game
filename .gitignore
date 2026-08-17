@@ -26,3 +26,6 @@ tools/ships_raw.json
 tools/aurelian_raw.json
 tools/ships_final.json
 tools/__pycache__/
+# Point-calibration sweep outputs: regenerable by re-running the harness
+tools/calibration_results.csv
+tools/repriced_draft.json
