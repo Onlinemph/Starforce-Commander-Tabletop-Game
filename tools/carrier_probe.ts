@@ -399,4 +399,105 @@ if (only.includes('f')) {
     )
   }
 }
+// ---- G. wing against wing: ten flights each, opposing cards ---------------
+// Pure air war: two unarmed ten-bay tenders in opposite corners, ten flights
+// a side, both wings rigged space-superiority. Strike power is irrelevant
+// against fighters — the dogfight runs on DFR and Dodge — so this is the
+// experiment that prices the sky-fighting half of a card.
+if (only.includes('g')) {
+  console.log('== G. 10 flights vs 10 flights, space-superiority rig ==')
+  const nelson3 = shipFormById(NELSON)!
+  const base2 = structuredClone(nelson3)
+  base2.id = 'fan-wing-base-g'
+  base2.name = 'WING BASE (unarmed, 10 bays)'
+  base2.weapons = []
+  base2.functions = base2.functions.filter((f) => f.kind !== 'weapon')
+  base2.systems = [...base2.systems, { kind: 'HNGR', label: 'Hangar Bay', boxes: 10 }]
+  base2.pointValue = 1
+  registerCustomForms([...FILE_FORMS, base2])
+  for (const [cardA, cardB] of [
+    ['nial', 'peregrine'],
+    ['peregrine', 'nial'],
+  ] as Array<[string, string]>) {
+    let aliveA = 0
+    let aliveB = 0
+    let winsA = 0
+    for (let g = 0; g < games; g++) {
+      registerCustomScenarios([
+        {
+          id: 'wing-war',
+          name: 'Wing War',
+          background: '',
+          victory: 'destruction',
+          bounds: { width: 72, height: 72, fixed: true },
+          terrain: [],
+          sides: [
+            { side: 'Alpha Fleet', objective: 'sky', facing: 2, speed: 0, anchor: { x: 6, y: 36 }, spread: { x: 0, y: 3 }, force: ['fan-wing-base-g'], value: [1] },
+            { side: 'Beta Fleet', objective: 'sky', facing: 6, speed: 0, anchor: { x: 66, y: 36 }, spread: { x: 0, y: 3 }, force: ['fan-wing-base-g'], value: [1] },
+          ],
+        },
+      ])
+      const game: GameState = startScenario('wing-war', { seed: 27000 + g * 7919, mapScale: 2 })
+      for (const [side, card, x] of [
+        ['Alpha Fleet', cardA, 14],
+        ['Beta Fleet', cardB, 58],
+      ] as Array<[string, string, number]>) {
+        const mother = game.ships.find((s) => s.side === side)!
+        mother.flightsAboard = 0
+        for (let i = 0; i < 10; i++) {
+          game.counters.flight += 1
+          game.flights.push({
+            id: `flight-${game.counters.flight}`,
+            side,
+            motherId: mother.id,
+            cardId: card,
+            config: 'space-superiority',
+            spent: false,
+            members: 6,
+            position: { x: x + (i % 5) * 2, y: 26 + Math.floor(i / 5) * 4 },
+            damage: 0,
+            activated: false,
+            attacked: false,
+          })
+        }
+      }
+      const sides = [...new Set(game.ships.map((s) => s.side))]
+      const memos = new Map<string, AiMemo>(sides.map((x2) => [x2, createAiMemo()]))
+      const drive = (closing: boolean) => {
+        for (let pass = 0; pass < 50; pass++) {
+          const before = game.log.length + game.firingStepIndex + game.firedThisSegment.size
+          for (const side of sides) {
+            for (let g2 = 0; g2 < 400; g2++) {
+              const batch = aiNextActions(game, [side], memos.get(side)!, closing && pass === 0 && g2 === 0, 'captain', 'steady', true)
+              if (batch.length === 0) break
+              for (const a of batch) applyAction(game, a as GameAction)
+            }
+          }
+          if (game.log.length + game.firingStepIndex + game.firedThisSegment.size === before) return
+        }
+      }
+      drive(false)
+      for (let step = 0; step < 3000; step++) {
+        if (game.round > rounds) break
+        const fightersOf = (side: string) =>
+          game.flights.filter((f) => f.side === side && !flightDestroyed(f)).reduce((n, f) => n + f.members, 0)
+        if (fightersOf('Alpha Fleet') === 0 || fightersOf('Beta Fleet') === 0) break
+        drive(true)
+        applyAction(game, { type: 'advance-segment' })
+        drive(false)
+      }
+      const fightersOf = (side: string) =>
+        game.flights.filter((f) => f.side === side && !flightDestroyed(f)).reduce((n, f) => n + f.members, 0)
+      const a = fightersOf('Alpha Fleet')
+      const b = fightersOf('Beta Fleet')
+      aliveA += a
+      aliveB += b
+      if (a > b) winsA++
+    }
+    console.log(
+      `  ${cardA.toUpperCase()} vs ${cardB.toUpperCase()}: ${cardA.toUpperCase()} wins the sky ${winsA}/${games}, ` +
+        `mean fighters left ${(aliveA / games).toFixed(1)} vs ${(aliveB / games).toFixed(1)} (of 60 each)`,
+    )
+  }
+}
 console.log('done')
