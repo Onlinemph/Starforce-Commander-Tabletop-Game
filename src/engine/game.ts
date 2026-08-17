@@ -3593,13 +3593,16 @@ export function flightStrike(game: GameState, flightId: string, shipId: string):
   // somewhere else.
   game.ops.shieldsStruckThisPhase.add(shieldKey)
   const config = currentConfig(flight)
+  // Whether THIS run spent the load — a flight already on its BASIC face
+  // stays there, and its follow-up passes must not re-announce the flip.
+  const justExpended = strikeExpendsLoad(config) && !flight.spent
   if (strikeExpendsLoad(config)) flight.spent = true
 
   if (result.damage === 0) {
     pushLog(
       game,
       `${flightName(game, flight)} runs in on ${ship.name}'s ${side} shield and scores nothing` +
-        (flight.spent ? ' — ordnance expended, the counter flips to BASIC' : ''),
+        (justExpended ? ' — ordnance expended, the counter flips to BASIC' : ''),
     )
     return null
   }

@@ -34,6 +34,8 @@ const arg = (n: string) => {
 }
 const games = Number(arg('games') ?? 6)
 const only = (arg('only') ?? 'abc').toLowerCase()
+// Which card the carrierless-wing experiments fly (E and F).
+const wingCard = arg('card') ?? 'magpie'
 const rounds = 12
 
 registerCustomForms(FILE_FORMS)
@@ -211,7 +213,7 @@ if (only.includes('d')) {
 // the warship: does forty points of pure wing kill forty balanced points of
 // hull before the strikes run out?
 if (only.includes('e')) {
-  console.log('== E. 10 MAGPIE strike flights (no carrier) vs one warship ==')
+  console.log(`== E. 10 ${wingCard.toUpperCase()} strike flights (no carrier) vs one warship ==`)
   const nelson = shipFormById(NELSON)!
   const tender = structuredClone(nelson)
   tender.id = 'fan-wing-tender'
@@ -251,7 +253,7 @@ if (only.includes('e')) {
           id: `flight-${game.counters.flight}`,
           side: 'Alpha Fleet',
           motherId: game.ships.find((s) => s.side === 'Alpha Fleet')!.id,
-          cardId: 'magpie',
+          cardId: wingCard,
           config: 'strike',
           spent: false,
           members: 6,
@@ -289,12 +291,14 @@ if (only.includes('e')) {
       const foe = game.ships.find((s) => s.side === 'Beta Fleet')!
       if (foe.destroyed) killed += 1
       hurtSum += 1 - structureRemaining(foe) / structureTotal(foe)
-      flightsLeftSum += game.flights.filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f)).length
+      flightsLeftSum += game.flights
+        .filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f))
+        .reduce((n, f) => n + f.members, 0)
       roundSum += game.round
     }
     console.log(
       `  vs ${label}: killed ${killed}/${games}, mean structure lost ${(100 * hurtSum / games).toFixed(0)}%, ` +
-        `flights surviving ${(flightsLeftSum / games).toFixed(1)}/10, mean end round ${(roundSum / games).toFixed(1)}`,
+        `fighters surviving ${(flightsLeftSum / games).toFixed(1)}/60, mean end round ${(roundSum / games).toFixed(1)}`,
     )
   }
 }
@@ -304,7 +308,7 @@ if (only.includes('e')) {
 // the wing's problem is ordnance supply, this fixes it; if its problem is
 // that a strike pass cannot outpace the target's shield repair, it will not.
 if (only.includes('f')) {
-  console.log('== F. 10 MAGPIE flights WITH a rearm base vs one warship ==')
+  console.log(`== F. 10 ${wingCard.toUpperCase()} flights WITH a rearm base vs one warship ==`)
   const nelson2 = shipFormById(NELSON)!
   const base = structuredClone(nelson2)
   base.id = 'fan-wing-base'
@@ -347,7 +351,7 @@ if (only.includes('f')) {
           id: `flight-${game.counters.flight}`,
           side: 'Alpha Fleet',
           motherId: mother.id,
-          cardId: 'magpie',
+          cardId: wingCard,
           config: 'strike',
           spent: false,
           members: 6,
@@ -385,11 +389,13 @@ if (only.includes('f')) {
       if (foes.every((f) => f.destroyed)) killed += 1
       hpSum += foes.reduce((n, f) => n + hitPointDamage(f), 0)
       strikesSum += game.log.filter((l) => /runs in on|strikes .* shield/.test(l.message)).length
-      flightsLeftSum += game.flights.filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f)).length
+      flightsLeftSum += game.flights
+        .filter((f) => f.side === 'Alpha Fleet' && !flightDestroyed(f))
+        .reduce((n, f) => n + f.members, 0)
     }
     console.log(
       `  vs ${label}: killed all ${killed}/${games}, mean foe hit points lost ${(hpSum / games).toFixed(1)}, ` +
-        `strike passes ${(strikesSum / games).toFixed(0)}/game, flights surviving ${(flightsLeftSum / games).toFixed(1)}/10`,
+        `strike passes ${(strikesSum / games).toFixed(0)}/game, fighters surviving ${(flightsLeftSum / games).toFixed(1)}/60`,
     )
   }
 }
