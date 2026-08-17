@@ -3,6 +3,7 @@ import { startScenario } from '../data/scenarios'
 import { applyAction } from './actions'
 import { aiNextActions, createAiMemo } from './ai'
 import { crewIsArmed, damageLevel } from './shipState'
+import { woundToFraction } from './testWounds'
 import { shieldsAllDown, transportCapacity, transporterRange } from './operations'
 import { type GameState } from './game'
 import { actualRange } from './geometry'
@@ -137,7 +138,7 @@ describe('the transporter boarding party', () => {
     const [attacker, cripple] = game.ships
     game.segment = 'operations'
     cripple.placement.position = { ...attacker.placement.position }
-    cripple.structureDamaged = cripple.structureDamaged.map((_, i) => i < cripple.structureDamaged.length - 1)
+    woundToFraction(cripple, 0.95)
     attacker.marineSquads = Math.max(attacker.marineSquads, 4)
     for (const side of ['F', 'A', 'P', 'S'] as const) cripple.shieldsDown[side] = false
 
