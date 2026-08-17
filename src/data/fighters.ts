@@ -104,6 +104,38 @@ export const SFC_FIGHTERS: FighterCard[] = [
   },
   {
     /*
+     * RAPIER — the Union's air-superiority fighter, and the only DFR 5 the
+     * printed factions field.
+     *
+     * The wing-war measurements said the sky is decided by DFR against Dodge
+     * and almost nothing else: ten NIAL flights erased ten PEREGRINEs while
+     * keeping half their own strength, purely on the dogfight numbers. The
+     * Union answer to that arithmetic is the same as its answer everywhere —
+     * precision. The RAPIER gives up the strike role almost entirely (a 1‑2
+     * token warhead, nothing a shield will ever feel) and spends everything
+     * on the merge: DFR 5 rigged for space superiority, the NIAL's own
+     * figure, aimed by the best sensors in the sky.
+     *
+     * It is not untouchable and it is not armoured — Dodge 3 and Structure 4,
+     * the SABRE's airframe. It wins by shooting first and hitting more, or
+     * not at all.
+     */
+    id: 'rapier',
+    name: 'RAPIER',
+    faction: UNION,
+    origin: 'Union air-superiority fighter — escort for the HALBERD strike',
+    speed: 6,
+    jamming: 6,
+    structure: 4,
+    sensor: 2,
+    loadouts: [
+      { kind: 'strike', dfr: 3, dodge: 3, strikeHit: 2, strikeDamage: 2, speed: 5, jamming: 5 },
+      { kind: 'space-superiority', dfr: 5, dodge: 3, strikeHit: 2, strikeDamage: 1 },
+      { kind: 'basic', dfr: 4, dodge: 3, strikeHit: 2, strikeDamage: 1 },
+    ],
+  },
+  {
+    /*
      * V-1 TALON — Vallari, and the only armoured fighter in the game.
      *
      * The Vallari are the one faction that carries armour, up to eighteen
@@ -135,6 +167,43 @@ export const SFC_FIGHTERS: FighterCard[] = [
     loadouts: [
       { kind: 'strike', dfr: 2, dodge: 1, strikeHit: 3, strikeDamage: 3 },
       { kind: 'space-superiority', dfr: 4, dodge: 2, strikeHit: 3, strikeDamage: 1 },
+      { kind: 'basic', dfr: 3, dodge: 2, strikeHit: 2, strikeDamage: 1 },
+    ],
+  },
+  {
+    /*
+     * V-2 SPUR — the Vallari dogfighter, which does not dodge either.
+     *
+     * The TALON took the armour-versus-agility axis to its end for the strike
+     * role; the SPUR is the same bet made in the merge. Structure 5 — six of
+     * them soak thirty points under COA 1 — and Dodge 1 in the rig it fights
+     * in: every hit lands, and the SPUR's plan is to still be there when it
+     * has traded. DFR 4 means the trades are real.
+     *
+     * The first cut of this card flew Dodge 1 in the superiority rig and was
+     * annihilated sixty to nil in every measured game — the dogfight rules
+     * kill on any unsaved hit, so Structure is worth nothing in the merge
+     * and Dodge is worth everything. The soak pays on the *run-in*, where
+     * point defense has to chew through thirty points a flight; the sky is
+     * a strict ladder of DFR against Dodge — a wing one step down on both
+     * axes does not lose, it evaporates (measured twice on the way here:
+     * Dodge 1 and Dodge 2 both wiped sixty to nil). So the SPUR flies the
+     * dodge the merge demands, one DFR below the RAPIER — a rung, not a
+     * corpse — and carries the faction where armour genuinely works:
+     * Structure 5 on the run-in, where point defense must chew thirty
+     * points a flight.
+     */
+    id: 'v-2-spur',
+    name: 'V-2 SPUR',
+    faction: VALLARI,
+    origin: 'Vallari escort fighter — armour doctrine applied to the dogfight',
+    speed: 5,
+    jamming: 5,
+    structure: 5,
+    sensor: 1,
+    loadouts: [
+      { kind: 'strike', dfr: 2, dodge: 1, strikeHit: 3, strikeDamage: 2 },
+      { kind: 'space-superiority', dfr: 4, dodge: 3, strikeHit: 3, strikeDamage: 1 },
       { kind: 'basic', dfr: 3, dodge: 2, strikeHit: 2, strikeDamage: 1 },
     ],
   },
@@ -174,6 +243,34 @@ export const SFC_FIGHTERS: FighterCard[] = [
     loadouts: [
       { kind: 'strike', dfr: 2, dodge: 3, strikeHit: 2, strikeDamage: 4, jamming: 7 },
       { kind: 'space-superiority', dfr: 4, dodge: 4, strikeHit: 2, strikeDamage: 2 },
+      { kind: 'basic', dfr: 3, dodge: 4, strikeHit: 1, strikeDamage: 1 },
+    ],
+  },
+  {
+    /*
+     * NOCTUA — the Aurelian night-owl, the hardest thing in the sky to hit.
+     *
+     * The STRIX translated the cloak into Jamming 8 against starship guns;
+     * the NOCTUA translates it into the merge as well — Dodge 4, the
+     * calibration set's ceiling, on the same whisper-thin Structure 3. A
+     * dogfight against it is mostly misses, and the Aurelian wager is the
+     * faction's own: that the fight ends before the law of averages arrives.
+     * DFR 4 rigged for superiority makes its own passes count.
+     *
+     * The strike face keeps the plasma character at reduced weight — 1‑2 to
+     * hit for 3 — a raid load, not the STRIX's ship-killer.
+     */
+    id: 'noctua',
+    name: 'NOCTUA',
+    faction: AURELIAN,
+    origin: 'Aurelian escort fighter — the cloak doctrine flown into the merge',
+    speed: 6,
+    jamming: 8,
+    structure: 3,
+    sensor: 1,
+    loadouts: [
+      { kind: 'strike', dfr: 2, dodge: 3, strikeHit: 2, strikeDamage: 3 },
+      { kind: 'space-superiority', dfr: 4, dodge: 4, strikeHit: 1, strikeDamage: 1 },
       { kind: 'basic', dfr: 3, dodge: 4, strikeHit: 1, strikeDamage: 1 },
     ],
   },

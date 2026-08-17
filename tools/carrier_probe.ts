@@ -36,6 +36,8 @@ const games = Number(arg('games') ?? 6)
 const only = (arg('only') ?? 'abc').toLowerCase()
 // Which card the carrierless-wing experiments fly (E and F).
 const wingCard = arg('card') ?? 'magpie'
+// Second card for the wing-war experiment: G flies card vs card2 both ways.
+const wingCard2 = arg('card2')
 const rounds = 12
 
 registerCustomForms(FILE_FORMS)
@@ -415,10 +417,16 @@ if (only.includes('g')) {
   base2.systems = [...base2.systems, { kind: 'HNGR', label: 'Hangar Bay', boxes: 10 }]
   base2.pointValue = 1
   registerCustomForms([...FILE_FORMS, base2])
-  for (const [cardA, cardB] of [
-    ['nial', 'peregrine'],
-    ['peregrine', 'nial'],
-  ] as Array<[string, string]>) {
+  const pairs: Array<[string, string]> = wingCard2
+    ? [
+        [wingCard, wingCard2],
+        [wingCard2, wingCard],
+      ]
+    : [
+        ['nial', 'peregrine'],
+        ['peregrine', 'nial'],
+      ]
+  for (const [cardA, cardB] of pairs) {
     let aliveA = 0
     let aliveB = 0
     let winsA = 0

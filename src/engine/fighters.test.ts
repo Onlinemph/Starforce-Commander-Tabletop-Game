@@ -134,8 +134,11 @@ describe('the StarForce roster', () => {
     expect(SFC_FIGHTERS.map((c) => c.id)).toEqual([
       'sabre',
       'halberd',
+      'rapier',
       'v-1-talon',
+      'v-2-spur',
       'strix',
+      'noctua',
       'magpie',
     ])
     expect(SFC_FIGHTERS.every((c) => !c.fan)).toBe(true)
@@ -177,6 +180,33 @@ describe('the StarForce roster', () => {
     expect(card('halberd').sensor).toBe(best)
     expect(card('v-1-talon').sensor).toBeLessThan(best)
     expect(card('strix').sensor).toBeLessThan(best)
+  })
+
+  it('three sky-fighters win the same dogfight three different ways', () => {
+    // The wing-war measurements said the merge is DFR against Dodge and
+    // little else, so each faction's air-superiority card bets its own trait:
+    // Union marksmanship, Vallari meat, Aurelian mist. Every cross-faction
+    // pairing asks a different question, which is what keeps the sky
+    // interesting.
+    const sup = (id: string) => loadoutOf(card(id), 'space-superiority')!
+    // Union: the only DFR 5 the printed factions field — it hits most.
+    expect(sup('rapier').dfr).toBe(5)
+    expect(sup('rapier').dfr).toBe(
+      Math.max(...SFC_FIGHTERS.map((c) => loadoutOf(c, 'space-superiority')!.dfr)),
+    )
+    // Vallari: most hull, one rung of gunnery down. The first cuts flew the
+    // faction's no-dodge doctrine into the merge and were annihilated sixty
+    // to nil, twice — the dogfight kills on any unsaved hit, so the sky is a
+    // strict DFR-against-Dodge ladder and armour buys nothing there. The
+    // SPUR flies the dodge the merge demands and keeps the armour for the
+    // run-in, where point defense has to chew thirty points a flight.
+    expect(card('v-2-spur').structure).toBe(Math.max(...SFC_FIGHTERS.map((c) => c.structure)))
+    expect(sup('v-2-spur').dodge).toBe(3)
+    expect(sup('v-2-spur').dfr).toBe(sup('rapier').dfr - 1)
+    // Aurelian: hardest to hit, dead when hit — the cloak flown into the merge.
+    expect(sup('noctua').dodge).toBe(4)
+    expect(card('noctua').structure).toBe(Math.min(...SFC_FIGHTERS.map((c) => c.structure)))
+    expect(card('noctua').jamming).toBe(Math.max(...SFC_FIGHTERS.map((c) => c.jamming)))
   })
 
   it('the MAGPIE is a SABRE with the good parts sold', () => {
