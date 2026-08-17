@@ -175,4 +175,30 @@ for (const [wingA, wingB] of [
   report(`  ${wingA} vs ${wingB}`, [CARRIER], [CARRIER], results, false)
 }
 }
+// ---- D. the bare hull: strip the hangar, titrate what is left -------------
+// The carrier's 61 decomposes as hull + wing only if the hull is measured
+// too. Same trick the versus machine uses for cloak ablations: the hangar is
+// taken off the form, so the ship deploys with no flights at all.
+if (only.includes('d')) {
+  console.log('== D. the bare hull (hangar stripped): break-even vs the probes ==')
+  const base = shipFormById(CARRIER)!
+  const bare = structuredClone(base)
+  bare.id = `${base.id}-no-wing`
+  bare.name = `${base.name} (no wing)`
+  bare.systems = bare.systems.filter((g) => g.kind !== 'HNGR')
+  registerCustomForms([...FILE_FORMS, bare])
+  for (const [probe, counts] of [
+    [YORKTOWN, [1, 2]],
+    [RAIDER, [1, 2]],
+    [NELSON, [2, 3, 4]],
+  ] as Array<[string, number[]]>) {
+    for (const n of counts) {
+      const results = []
+      for (let g = 0; g < games; g++) {
+        results.push(run({ blue: [bare.id], red: Array(n).fill(probe), seed: 24000 + g * 7919 }))
+      }
+      report(`  bare hull vs ${n}x ${probe.split('-')[1]}`, [CARRIER], Array(n).fill(probe), results, false)
+    }
+  }
+}
 console.log('done')

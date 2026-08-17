@@ -43,6 +43,7 @@ import {
   type FighterCard,
 } from '../src/engine/fighters'
 import type { ShipForm } from '../src/engine/types'
+import { balancedPointValue } from '../src/engine/fleetValue'
 
 /*
  * `SHIP_FORMS` deliberately, not `allShipForms()`. The fan designs' point
@@ -173,11 +174,18 @@ function fitLanchester(
 
 /** The printed roster, and only the printed roster. */
 const printed = SHIP_FORMS.filter((f) => (f.pointValue ?? 0) > 0)
+/*
+ * `--balanced` re-anchors the exchange rate to the measured battle values
+ * instead of the printed list. Fighters are then priced in the same currency
+ * the balanced fleet picker spends, which is the only consistent way to put
+ * a wing and a warship in one budget.
+ */
+const useBalanced = process.argv.includes('--balanced')
 const rows = printed.map((f) => ({
   name: f.name,
   d: shipDamagePerRound(f),
   h: shipHitPoints(f),
-  y: f.pointValue!,
+  y: useBalanced ? balancedPointValue(f) : f.pointValue!,
 }))
 const { k, gamma } = fitLanchester(rows)
 
