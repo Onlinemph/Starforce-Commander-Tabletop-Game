@@ -119,13 +119,11 @@ describe('the H4 step machine is played, not passed', () => {
 
   it('a scan-2 pair holds its individual step and coordinates on the focus target', () => {
     /*
-     * Group declaration is off in play — it measures worse than firing
-     * individually (see `setCoordinatedGroups`) — so this test opts in. The
-     * machinery is kept correct and covered against a later pass that works
-     * out when a group is worth waiting for; it is the doctrine that is wrong,
-     * not the code below it.
+     * Two of ours, one of theirs: H4.3.1's cap binds, so the group is worth
+     * the wait and the AI declares one without being told to. (This test used
+     * to opt in via `setCoordinatedGroups`, back when grouping was a blanket
+     * doctrine that measured worse than firing individually.)
      */
-    setCoordinatedGroups(true)
     const { game, blues, reds } = h4Squadron()
     const [a, b] = blues
     for (const other of blues.slice(2)) other.destroyed = true
@@ -171,6 +169,43 @@ describe('the H4 step machine is played, not passed', () => {
       expect('targetId' in volley && volley.targetId).toBe(reds[0].id)
       expect('mode' in volley && volley.mode).not.toBe('precision') // H4.6.2
     }
+  })
+
+  it('does not wait for a group when every ship has a hull of its own to shoot', () => {
+    /*
+     * The other half of the doctrine. Same two scan-2 cruisers, but now there
+     * are two live enemy hulls: nobody is going to be left firing at nothing,
+     * so a group buys only the shared target and costs three firing steps.
+     * They take their individual step instead.
+     */
+    const { game, blues, reds } = h4Squadron()
+    const [a, b] = blues
+    for (const other of blues.slice(2)) other.destroyed = true
+    a.placement = { position: { x: 14, y: 20 }, heading: 0 }
+    b.placement = { position: { x: 22, y: 20 }, heading: 0 }
+    reds[0].placement = { position: { x: 14, y: 12 }, heading: 180 }
+    reds[1].placement = { position: { x: 22, y: 12 }, heading: 180 }
+    for (const other of reds.slice(2)) other.destroyed = true
+    armEverything(a)
+    armEverything(b)
+    a.sensors = { targeting: 0, jamming: 0, tacticalScan: 2 }
+    b.sensors = { targeting: 0, jamming: 0, tacticalScan: 2 }
+    game.phase = 'combat-1'
+    game.segment = 'combat'
+
+    const memo = createAiMemo()
+    while (game.firingStepIndex < 3) applyAction(game, { type: 'advance-firing-step' })
+    const fired: GameAction[] = []
+    for (let guard = 0; guard < 10; guard++) {
+      const batch = aiNextActions(game, ['Blue Force'], memo, false, 'captain')
+      if (batch.length === 0) break
+      for (const action of batch) {
+        applyAction(game, action)
+        if (action.type === 'fire-volley') fired.push(action)
+        expect(action.type).not.toBe('declare-coordinated')
+      }
+    }
+    expect(fired.length).toBeGreaterThan(0)
   })
 
   it('individual fire spreads across targets: one attack per faction per hull (H4.3.1)', () => {

@@ -38,3 +38,8 @@ tools/titration_carrier.csv
 tools/duel_results.csv
 tools/validation_admiral.csv
 tools/repriced_draft2.json
+# The two firing-rule arms: base game and Coordinated Fire (H4)
+tools/titration_h4off.csv
+tools/titration_h4on.csv
+tools/calib_h4off.csv
+tools/calib_h4on.csv

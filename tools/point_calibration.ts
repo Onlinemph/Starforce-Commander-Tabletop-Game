@@ -88,6 +88,14 @@ const priceOf: (id: string) => number = priceFile
     })()
   : (id) => shipFormById(id)!.pointValue
 
+/**
+ * `--coordinated` plays the optional H4 rules, whose H4.3.1 caps a faction at
+ * one attack per target per combat phase. At printed prices this sweep is the
+ * one that answers the plain question — is the numbers advantage the printed
+ * points ignore actually a rule Doyle already wrote, and left optional?
+ */
+const coordinated = process.argv.includes('--coordinated')
+
 const MAX_COUNT = 8
 const MISMATCH_LIMIT = 0.12
 
@@ -124,7 +132,7 @@ function runGame(idA: string, idB: string, nA: number, nB: number, seed: number)
       ],
     },
   ])
-  const game: GameState = startScenario('calibration', { seed, mapScale: 2 })
+  const game: GameState = startScenario('calibration', { seed, mapScale: 2, coordinatedFire: coordinated })
   const sides = [...new Set(game.ships.map((s) => s.side))]
   const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
   // The interleaved driver from the versus machine: both AIs act until the

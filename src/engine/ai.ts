@@ -58,7 +58,13 @@ import {
   tractorReach,
   TRACTOR_RANGE,
 } from './tractor'
-import { FIRING_STEPS, coordinatedStepFor, mayFireAlone, stepMatchesScan } from './coordinatedFire'
+import {
+  FIRING_STEPS,
+  attackKey,
+  coordinatedStepFor,
+  mayFireAlone,
+  stepMatchesScan,
+} from './coordinatedFire'
 import {
   assignedPoints,
   COMMAND_RANGE,
@@ -3976,13 +3982,14 @@ function planFiring(
  * that button belongs to the human.
  */
 /**
- * Whether the captain declares coordinated groups (H4.5).
+ * Force coordinated groups on regardless of the board (H4.5).
  *
- * Off by default because it measures worse than firing individually — see the
- * note on `plans` in `planCoordinatedFiring`. The machinery is kept and kept
- * tested rather than deleted: the rule is optional, the doctrine is the part
- * that is wrong, and a future pass that works out when a group is worth the
- * wait wants the code it is fixing to still be here and still be correct.
+ * This used to be the on/off switch for grouping at all, held off because
+ * blanket grouping measures worse than firing individually. Grouping is now
+ * decided per step by whether H4.3.1's cap actually binds — see the note on
+ * `plans` in `planCoordinatedFiring` — and this flag survives as the override
+ * that pins the old blanket doctrine on, which is what a measurement of one
+ * doctrine against the other needs.
  */
 let coordinatedGroupsEnabled = false
 export function setCoordinatedGroups(enabled: boolean): void {
@@ -4048,17 +4055,28 @@ function planCoordinatedFiring(
    * qualifies for, so the waiting buys only the shared target, and H4.3.1
    * already caps a faction at one attack per target per phase.
    *
-   * Note the admiral still loses under H4 either way. The rule is playable
-   * now, which it was not, but the AI is not good at it.
+   * That reasoning is right and its conclusion was too broad. "The waiting
+   * buys only the shared target" is worthless when every ship has a target of
+   * its own to shoot — and it is the entire game when they do not. Against a
+   * lone capital hull, seven ships hold ONE attack between them per phase
+   * (H4.3.1) and the six that do not get it fire at nothing at all; a group
+   * turns two of those wasted volleys into landed ones. So the doctrine is
+   * not on or off, it is a question asked of the board every step:
+   *
+   *   group exactly when the concentration cap binds — when more of our
+   *   hulls want to shoot than there are enemy hulls left to shoot at.
+   *
+   * In the fair fights the old measurement was taken in, that predicate is
+   * false and the behaviour is unchanged. `setCoordinatedGroups(true)` forces
+   * groups on regardless, which is how the two doctrines are measured against
+   * each other.
    */
   const plans = new Map<string, { shipIds: string[]; targetId: string; stepIndex: number }>()
-  if (coordinatedGroupsEnabled && difficulty !== 'ensign') {
+  if (difficulty !== 'ensign') {
     for (const side of [...new Set(unfired.map((s) => s.side))].sort()) {
-      const plan = plannedCoordinatedGroup(
-        game,
-        unfired.filter((s) => s.side === side),
-        difficulty,
-      )
+      const ours = unfired.filter((s) => s.side === side)
+      if (!coordinatedGroupsEnabled && !concentrationCapBinds(game, side, ours)) continue
+      const plan = plannedCoordinatedGroup(game, ours, difficulty)
       if (plan) plans.set(side, plan)
     }
   }
@@ -4162,6 +4180,29 @@ function planCoordinatedFiring(
     return [{ type: 'advance-firing-step' }]
   }
   return []
+}
+
+/**
+ * Does H4.3.1's one-attack-per-target cap actually bind this side this phase?
+ *
+ * Count the hulls that still want to shoot against the enemy hulls this
+ * faction has not already spent its attack on. When the shooters outnumber
+ * the targets, somebody is going to end the phase having fired at nothing —
+ * and a coordinated group is the only way to convert that wasted volley into
+ * a landed one, because it is the only way two of our ships may attack the
+ * same hull in one phase.
+ *
+ * Deliberately cheap and slightly generous: a shooter with no firing solution
+ * counts here, and the worst that costs is a planning pass that finds no legal
+ * group (`plannedCoordinatedGroup` re-checks every member for a live volley)
+ * and reserves nobody.
+ */
+function concentrationCapBinds(game: GameState, side: string, unfiredOurs: ShipState[]): boolean {
+  if (unfiredOurs.length < 2) return false
+  const targets = activeShips(game).filter(
+    (s) => s.side !== side && !game.attackedThisPhase.has(attackKey(side, s.id)),
+  )
+  return unfiredOurs.length > targets.length
 }
 
 /**

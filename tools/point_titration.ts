@@ -83,6 +83,25 @@ const [ratioLo, ratioHi] = (arg('window') ?? '0.25,2.0').split(',').map(Number)
  * the combat. Off, the break-even is the fight itself.
  */
 const retreats = (arg('retreat') ?? 'on') !== 'off'
+/**
+ * `--coordinated` plays the optional H4 rules. It belongs in a titration more
+ * than anywhere else in the toolbox: H4.3.1 caps a faction at one attack per
+ * target per combat phase, which is the printed game's own answer to the
+ * question this whole campaign is about, and every measurement so far has been
+ * taken with it switched off. A lone anchor under H4 faces one attack a phase
+ * however many probes are on the table — unless they hold Tactical Scan enough
+ * to coordinate, which the small hulls' sensor lines cannot pay for.
+ */
+const coordinated = process.argv.includes('--coordinated')
+/**
+ * How many probes the swarm may grow to. Eight is enough for the middle of the
+ * roster and not enough for the top of it: a UNION III against NELSON IIs is
+ * still winning at eight, so its crossing is never seen and the cell comes
+ * back censored — which is precisely where the two firing-rule arms differ
+ * most, and a censored bound compared against a censored bound measures the
+ * bound. Raise it for the big anchors and the crossing is read, not guessed.
+ */
+const maxN = Number(arg('maxn') ?? 8)
 
 function runGame(anchorId: string, probeId: string, n: number, seed: number) {
   registerCustomScenarios([
@@ -99,7 +118,7 @@ function runGame(anchorId: string, probeId: string, n: number, seed: number) {
       ],
     },
   ])
-  const game: GameState = startScenario('titration', { seed, mapScale: 2 })
+  const game: GameState = startScenario('titration', { seed, mapScale: 2, coordinatedFire: coordinated })
   const sides = [...new Set(game.ships.map((s) => s.side))]
   const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
   const drive = (closing: boolean) => {
@@ -154,7 +173,7 @@ for (const anchorId of ANCHORS) {
   for (const probeId of PROBES) {
     if (probeFilter && !probeFilter.some((f) => probeId.includes(f))) continue
     const pvP = shipFormById(probeId)!.pointValue
-    for (let n = 1; n <= 8; n++) {
+    for (let n = 1; n <= maxN; n++) {
       // Probe the region around parity: far outside it the answer is known.
       const ratio = (n * pvP) / pvA
       if (ratio < ratioLo || ratio > ratioHi) continue
