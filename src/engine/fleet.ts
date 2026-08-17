@@ -58,8 +58,24 @@ export function availabilityIn(form: ShipForm, year?: number): Availability | 'u
   return AVAILABILITY_ORDER.indexOf(byAge) > AVAILABILITY_ORDER.indexOf(printed) ? byAge : printed
 }
 
-export function fleetPoints(entries: FleetEntry[], forms: Map<string, ShipForm>): number {
-  const total = entries.reduce((n, e) => n + (forms.get(e.formId)?.pointValue ?? 0) * e.count, 0)
+/**
+ * How the picker prices a hull: the printed Master Ship List value by
+ * default, or the measured battle value when the battle is being built on
+ * the balanced scale (engine/fleetValue.ts).
+ */
+export type PriceOf = (form: ShipForm) => number
+
+const printedPrice: PriceOf = (form) => form.pointValue
+
+export function fleetPoints(
+  entries: FleetEntry[],
+  forms: Map<string, ShipForm>,
+  price: PriceOf = printedPrice,
+): number {
+  const total = entries.reduce((n, e) => {
+    const form = forms.get(e.formId)
+    return n + (form ? price(form) : 0) * e.count
+  }, 0)
   // Point values carry one decimal since the hit-point Master Ship List
   // (50.4-point dreadnoughts), and binary floats would let three of them show
   // as 151.20000000000002 in the picker.
@@ -86,6 +102,8 @@ export interface FleetCheckOptions {
   year?: number
   /** Point budget both forces are built to, if the players agreed one. */
   budget?: number
+  /** The price scale the budget is denominated in. Printed by default. */
+  price?: PriceOf
 }
 
 /**
@@ -100,6 +118,7 @@ export function validateFleets(
 ): FleetProblem[] {
   const problems: FleetProblem[] = []
   const { year, budget } = options
+  const price = options.price ?? printedPrice
   let uniquesInBattle = 0
 
   for (const fleet of fleets) {
@@ -115,7 +134,7 @@ export function validateFleets(
       push('error', `A setup zone holds at most ${MAX_SHIPS_PER_SIDE} ships; this force has ${size}.`)
     }
 
-    const total = fleetPoints(fleet.entries, forms)
+    const total = fleetPoints(fleet.entries, forms, price)
     if (budget !== undefined && total > budget) {
       push('error', `${total} points fielded against a budget of ${budget} (S2.5.1).`)
     }
@@ -134,7 +153,7 @@ export function validateFleets(
         continue
       }
       const bucket = byRarity.get(rarity) ?? { points: 0, count: 0, names: [] }
-      bucket.points += form.pointValue * entry.count
+      bucket.points += price(form) * entry.count
       bucket.count += entry.count
       if (!bucket.names.includes(form.name)) bucket.names.push(form.name)
       byRarity.set(rarity, bucket)

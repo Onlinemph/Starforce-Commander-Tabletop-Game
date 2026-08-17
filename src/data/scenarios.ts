@@ -1,4 +1,5 @@
 import { MAX_SHIPS_PER_SIDE } from '../engine/fleet'
+import { balancedPointValue } from '../engine/fleetValue'
 import { createGame, type GameState, type Scenario, type Terrain } from '../engine/game'
 import type { MissionDef } from '../engine/missions'
 import { DIE_FACES, Rng } from '../engine/dice'
@@ -291,6 +292,15 @@ export interface SetupOptions {
   optionalBatteries?: boolean
   /** Online matches: both sides must signal ready before a segment closes. */
   readyGate?: boolean
+  /**
+   * Price every hull at its measured battle value instead of the printed
+   * Master Ship List number (see engine/fleetValue.ts). The victory ledger,
+   * and through it the AI's posture and retreat arithmetic, follow the value
+   * a hull was bought at — a re-priced hull scores by the S2.8.4 fractions
+   * rather than its printed damage table. A scenario's own per-hull `value`
+   * override still outranks this.
+   */
+  balancedPoints?: boolean
 }
 
 /**
@@ -629,7 +639,9 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
         // The scenario names one hull as the flagship, and it is the first
         // one it lists (S3.6).
         flagship: setup.flagship === true && i === 0,
-        pointValue: setup.value?.[i] || undefined,
+        pointValue:
+          setup.value?.[i] ||
+          (options.balancedPoints ? balancedPointValue(form) : undefined),
         arrivesRound: late ? late.round : undefined,
       })
       applyAlert(ship, setup.alert ?? 'yellow')

@@ -10,7 +10,9 @@ import {
   MAX_SHIPS_PER_SIDE,
   validateFleets,
   type FleetEntry,
+  type PriceOf,
 } from '../engine/fleet'
+import { balancedPointValue } from '../engine/fleetValue'
 import type { Availability, ShipForm } from '../engine/types'
 import { isCanonForm } from '../data/ships'
 import { useCustomForms } from './customShips'
@@ -79,6 +81,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   )
   const [year, setYear] = useState(latestYear)
   const [budget, setBudget] = useState<number | null>(null)
+  /**
+   * Build (and fight) at the measured battle values instead of the printed
+   * list — the scale under which equal points is actually an even fight
+   * (engine/fleetValue.ts). The choice travels into the battle: the victory
+   * ledger prices every hull at what it was bought for.
+   */
+  const [balancedPoints, setBalancedPoints] = useState(false)
+  const price: PriceOf = useMemo(
+    () => (balancedPoints ? balancedPointValue : (form: ShipForm) => form.pointValue),
+    [balancedPoints],
+  )
   const [terrain, setTerrain] = useState<'none' | 'roll' | 4 | 6 | 8>('none')
   const [aiSides, setAiSides] = useState<Set<string>>(new Set())
   const [aiDifficulty, setAiDifficulty] = useState<'ensign' | 'captain' | 'admiral'>('admiral')
@@ -118,9 +131,9 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       validateFleets(
         sides.map((side) => ({ side, entries: fleets[side] ?? [] })),
         byId,
-        { year, budget: budget ?? undefined },
+        { year, budget: budget ?? undefined, price },
       ),
-    [sides, fleets, byId, year, budget],
+    [sides, fleets, byId, year, budget, price],
   )
   const errors = problems.filter((p) => p.severity === 'error')
   const blocked = errors.length > 0 && !ignoreLimits
@@ -140,6 +153,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       aiRetreats: ai.length > 0 && !aiRetreats ? false : undefined,
       mapScale: mapScale !== 1 ? mapScale : undefined,
       armedStart: armedStart || undefined,
+      balancedPoints: balancedPoints || undefined,
       optionalBatteries: optionalBatteries || undefined,
       derelicts: derelicts || undefined,
       // A ship cannot linger long enough to explode or be abandoned unless it
@@ -370,6 +384,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setBudget(e.target.value === '' ? null : Number(e.target.value))}
             />
           </label>
+          <label
+            className="field tiny checkbox"
+            title="Prices every hull at its measured battle value instead of the printed Master Ship List number — the scale under which equal points is an even fight. Measured across thousands of AI-vs-AI battles: big hulls cost less (a UNION III is 97, not 158.5), small hulls hold their price. The scoreboard prices each hull at what it was bought for."
+          >
+            <span>Balanced points</span>
+            <input
+              type="checkbox"
+              checked={balancedPoints}
+              onChange={(e) => setBalancedPoints(e.target.checked)}
+            />
+          </label>
           <label className="field grow">
             <span>Filter roster ({roster.length} ships)</span>
             <input
@@ -417,7 +442,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
                       >
                         <span className="roster-name">{form.name}</span>
                         <span className="roster-meta">
-                          {form.pointValue} PV · size {form.sizeClass} · {form.year}{' '}
+                          {price(form)} PV · size {form.sizeClass} · {form.year}{' '}
                           <em className={RARITY_CLASS[rarity]}>{rarity}</em>
                         </span>
                       </button>
@@ -437,6 +462,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
                 forms={byId}
                 year={year}
                 budget={budget}
+                price={price}
                 problems={problems.filter((p) => p.side === side)}
                 ai={aiSides.has(side)}
                 onAi={(on) =>
@@ -491,6 +517,7 @@ function ForceList({
   forms,
   year,
   budget,
+  price,
   problems,
   ai,
   onAi,
@@ -502,13 +529,14 @@ function ForceList({
   forms: Map<string, ShipForm>
   year: number
   budget: number | null
+  price: PriceOf
   problems: ReturnType<typeof validateFleets>
   ai: boolean
   onAi: (on: boolean) => void
   onAdjust: (formId: string, delta: number) => void
   onReset: () => void
 }) {
-  const total = fleetPoints(entries, forms)
+  const total = fleetPoints(entries, forms, price)
   const hulls = fleetSize(entries)
   return (
     <section className={`fleet-side picker-${side.split(' ')[0].toLowerCase()}`}>
@@ -564,7 +592,7 @@ function ForceList({
                 {form.name}
                 <em className={RARITY_CLASS[rarity]}>{rarity}</em>
               </span>
-              <span className="fleet-points">{Math.round(form.pointValue * entry.count * 10) / 10}</span>
+              <span className="fleet-points">{Math.round(price(form) * entry.count * 10) / 10}</span>
             </li>
           )
         })}

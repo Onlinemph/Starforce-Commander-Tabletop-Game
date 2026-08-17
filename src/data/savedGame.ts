@@ -46,6 +46,8 @@ export interface GameSetup {
   mapScale?: number
   /** House rule: every weapon arrives fully armed instead of charging up. */
   armedStart?: boolean
+  /** Hulls priced at their measured battle values instead of the printed list. */
+  balancedPoints?: boolean
   /** Sides the computer commands. Carried in the save so a resumed battle keeps playing itself. */
   aiSides?: string[]
   /** How sharp the computer's captains are. Default 'admiral'. */
@@ -87,6 +89,7 @@ export function buildGame(setup: GameSetup): GameState {
     terrain: setup.terrain,
     mapScale: setup.mapScale,
     armedStart: setup.armedStart,
+    balancedPoints: setup.balancedPoints,
     derelicts: setup.derelicts ?? false,
     explosions: setup.explosions ?? false,
     abandonShip: setup.abandonShip ?? false,
