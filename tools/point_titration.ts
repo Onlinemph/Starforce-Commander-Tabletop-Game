@@ -37,6 +37,10 @@ const ANCHORS = [
   'vallari-v-7m-3-marauder-class-battlecruiser', // 75
   'union-exeter-ii-class-heavy-cruiser', //     100.1
   'union-union-iii-class-dreadnought', //       158.5
+  // The carrier: its price is half fighter wing, and a wing is already a
+  // swarm — the concentration discount the curve applies to gunships has no
+  // business touching it. Measured instead.
+  'fan-union-ark-royal-fleet-carrier', //        99.2 (hull 47.3 + wing)
 ]
 
 /** The swarms that press them. */
