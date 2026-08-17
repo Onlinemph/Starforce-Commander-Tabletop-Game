@@ -14,6 +14,11 @@ UPLOADS = '/root/.claude/uploads/62d6f1a5-56b2-574a-9fb3-4d36711828b4/'
 BOOKS = {
     'master': UPLOADS + 'ccff2378-2_StarForce_Commander_Ship_Book_4_MASTER_SHIP_Book.pdf',
     'aurelian': UPLOADS + '18b6b876-007_AURELIAN_STARSHIP_BOOK_v26_Expansion_5.pdf',
+    # Ship Book 5 (Sep 2025): the Exp 5 roster plus nine Exp 6 hulls. Same
+    # form layout and palette as the Expansion 5 book it supersedes. Its
+    # Master Ship List page is blank in the PDF export, so point values for
+    # the new hulls come from the design-tool model rather than a printed row.
+    'aurelian2': UPLOADS + 'f689eaa1-01_AURELIAN_MASTER_SHIP_BOOK_Exp_5_and_Exp_61.pdf',
 }
 # `BOOK=aurelian python3 extract_ship_book.py all` reads the Expansion 5 book
 # instead of the Master Ship Book. The two share a layout and differ only in
@@ -551,7 +556,12 @@ def parse_weapons(page, chars, gl):
         # same purple as the section bands, so skip everything above the bands.
         if cs[0]['y'] < 45:
             continue
-        if cs[0]['color'] in HEADER_COLORS and cs[0]['font'].startswith('Arial') and cs[0]['size'] >= 9.5:
+        # 8.5, not 9.5: Ship Book 5 shrinks one weapon header (the AQUILA
+        # BELLUM VI's ADL-2) to 9.0pt to fit its panel, and at 9.5 that header
+        # vanished — the ADL-2's whole panel was swallowed into the ADM-15
+        # above it, brackets interleaved with brackets. The colour and font
+        # tests still hold the line against body text, which is black.
+        if cs[0]['color'] in HEADER_COLORS and cs[0]['font'].startswith('Arial') and cs[0]['size'] >= 8.5:
             t = row_text(chars, cs[0]['y'], 3, 500).strip()
             if t and 'WEAPONS' not in t:
                 heads.append((cs[0]['y'], re.sub(r'\s+', ' ', t)))
@@ -694,7 +704,11 @@ def parse_weapons(page, chars, gl):
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'all':
         ships = []
-        for pno in range(6, len(doc)):
+        # Index 5 onward: Ship Book 5 opens its forms one page earlier than
+        # the books before it. A non-form page parses to nothing and is
+        # skipped by the weapons/structure guard, so starting early is safe
+        # for every book; starting late silently dropped PASSER I.
+        for pno in range(5, len(doc)):
             try:
                 s = parse_ship(pno)
             except Exception as e:

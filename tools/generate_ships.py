@@ -62,6 +62,14 @@ ERRATA = [
         'fix': lambda w: [b.update({'min': 11}) for b in w['brackets'] if b['min'] == 9 and b['max'] == 15],
     },
     {
+        # Ship Book 5 carries the same copy-paste forward into the refit.
+        'ship': 'INVICTUS II-class', 'weapon': 'RP-B MEDIUM PLASMA TORP',
+        'note': ('Ship Book 5 prints "TRAIT: PREC 1, PD MODE, ATMO" on this plasma '
+                 'torpedo — a disruptor block\'s trait line. The same weapon reads '
+                 '"HOMING 3, PARTCL, NoBAT, FTL" everywhere else it appears.'),
+        'fix': lambda w: w.__setitem__('traits', ['HOMING 3', 'PARTCL', 'NoBAT', 'FTL']),
+    },
+    {
         'ship': 'INVICTUS I-class', 'weapon': 'RP-B MEDIUM PLASMA TORP',
         'note': ('Aurelian Starship Book prints "TRAIT: PREC 1, PD MODE, ATMO" on this '
                  'plasma torpedo — the trait line of the disruptor block below it. The '
@@ -82,6 +90,43 @@ SHIELD_BOX_ERRATA = {
     'CORVUS I-class Destroyer': (48,
         'Form prints AFT SHIELD 12 but draws 10 aft shield boxes (50 printed, 48 drawn). '
         'The printed strengths are used.'),
+    # Ship Book 5 carries the CORVUS I's art defect forward into its refit.
+    'CORVUS II-class Destroyer': (58,
+        'Form prints AFT SHIELD 12 but draws 10 aft shield boxes (60 printed, 58 drawn). '
+        'The printed strengths are used.'),
+}
+
+
+# Structure strips whose DC markers are printed in the wrong order. Every
+# multi-DC form descends left to right (CORVUS II: "…2 …1"; INVICTUS II:
+# "…4 …3 …2 …1") because marking damage left to right must never *raise* the
+# rating (B3.1.2) — and both new PASSER forms print "…1 …2" while their own
+# wrench icon says the fresh-hull rating is 2. The markers are swapped in
+# place, and the note travels on the form.
+STRUCTURE_DC_SWAP = {
+    'PASSER III-class Frigate':
+        'Form prints the structure strip DC markers ascending ("…1 …2") where '
+        'every other form descends and the printed Damage Control Rating is 2. '
+        'The markers are read as "…2 …1".',
+    'PASSER IV-class Frigate':
+        'Form prints the structure strip DC markers ascending ("…1 …2") where '
+        'every other form descends and the printed Damage Control Rating is 2. '
+        'The markers are read as "…2 …1".',
+}
+
+
+# The INVICTUS II prints Damage Control 5 in the wrench and a structure strip
+# of 4-3-2-1 — the strip is box-for-box the INVICTUS I's, on a refit where
+# every other number went up, so the strip reads as the copy-paste and the
+# wrench as the intent. The quoted number beats the drawn boxes here for the
+# same reason it does on the CORVUS shields: the rating is what the rules
+# read (B1.3.4), the strip is the bookkeeping drawn under it. One for Doyle
+# to confirm.
+STRUCTURE_DC_OVERRIDE = {
+    'INVICTUS II-class Dreadnought': ([5, 4, 3, 2],
+        'Form prints Damage Control 5 but a structure strip of 4-3-2-1, '
+        'identical to the INVICTUS I\'s. The wrench is read as the intent and '
+        'the strip as 5-4-3-2.'),
 }
 
 
@@ -97,6 +142,20 @@ def apply_errata(ship):
     known = SHIELD_BOX_ERRATA.get(ship['name'])
     if known:
         notes.append(known[1])
+    override = STRUCTURE_DC_OVERRIDE.get(ship['name'])
+    if override:
+        ratings, note = override
+        dcs = [e for e in ship['structure'] if e['kind'] == 'dc']
+        for e, r in zip(dcs, ratings):
+            e['rating'] = r
+        notes.append(note)
+    swap = STRUCTURE_DC_SWAP.get(ship['name'])
+    if swap:
+        dcs = [e for e in ship['structure'] if e['kind'] == 'dc']
+        ratings = sorted((e['rating'] for e in dcs), reverse=True)
+        for e, r in zip(dcs, ratings):
+            e['rating'] = r
+        notes.append(swap)
     return notes
 
 
@@ -105,18 +164,79 @@ def norm(s):
 
 
 def match_msl(ship):
+    # An exact class-name match outranks everything. The year+structure filter
+    # exists for rows whose names drifted between printings, but it backfires
+    # when the *list* is stale: the Exp 5 MSL announced the INVICTUS II with
+    # 18 structure and the printed form arrived with 20, so the filter found
+    # nothing, fell back to fuzzy, and handed the II its predecessor's 75
+    # points instead of its own 158. The name, minus the "(Exp 6)" flag, is
+    # not ambiguous; trust it first.
+    target = norm(ship['name'])
+    exact = [m for m in M if m['faction'] == ship['faction']
+             and norm(re.sub(r'\(EXP ?6\)', '', m['class'], flags=re.I)) == target]
+    if len(exact) == 1:
+        return exact[0]
     cands = [m for m in M if m['faction'] == ship['faction'] and m['year'] == ship['year']
              and m['structure'] == ship['strCount']]
     if not cands:
         cands = [m for m in M if m['faction'] == ship['faction']]
     if len(cands) == 1:
         return cands[0]
-    target = norm(ship['name'])
     return max(cands, key=lambda m: difflib.SequenceMatcher(None, target, norm(m['class'])).ratio())
 
 
 def slug(name):
     return re.sub(r'-+', '-', re.sub(r'[^a-z0-9]+', '-', name.lower())).strip('-')
+
+
+# The forms abbreviate on the FUNCTIONS list what the weapon panels spell out.
+LABEL_EXPANSIONS = {
+    'HVY': 'HEAVY', 'MED': 'MEDIUM', 'LT': 'LIGHT', 'SML': 'SMALL',
+    'PLAS': 'PLASMA', 'DISR': 'DISRUPTOR', 'TORP': 'TORPEDO', 'PHSR': 'PHASER',
+}
+
+
+def claim_weapon_for_label(ship, label, claimed, name_first):
+    """The weapon a FUNCTIONS line arms.
+
+    Two forms lie in two different ways, and each exposes the other's fix:
+
+     - The AQUILA BELLUM VI *omits* a line (no SML PLAS row), so ordinal
+       matching slides every later line one weapon up — the medium disruptor's
+       line armed the small plasma. Names catch it.
+     - The INVICTUS I *mislabels* a line ("MED DISR" printed where MED PLAS is
+       meant — the circle counts match its plasma, not its disruptor), so name
+       matching cross-links two weapons ordinal had right.
+
+    The tell is the count. When every weapon has a line, print order is the
+    author's own pairing and the labels are decoration; only when lines are
+    missing has the order come apart, and then the names are what is left."""
+    if not name_first:
+        pick = next((i for i in range(len(ship['weapons'])) if i not in claimed), None)
+        if pick is None:
+            return None
+        claimed.add(pick)
+        return ship['weapons'][pick]
+    tokens = [LABEL_EXPANSIONS.get(t, t) for t in re.split(r'[\s/]+', label.upper()) if t]
+    scored = []
+    for i, w in enumerate(ship['weapons']):
+        if i in claimed:
+            continue
+        name = ' ' + w['name'].upper() + ' '
+        expanded = name
+        for short, long in LABEL_EXPANSIONS.items():
+            expanded = expanded.replace(f' {short} ', f' {long} ')
+        if all(t in expanded for t in tokens):
+            scored.append(i)
+    pick = scored[0] if len(scored) == 1 else None
+    if pick is None:
+        # Ambiguous or no name match: the next unclaimed weapon in print order,
+        # which is the behaviour every already-verified form was built with.
+        pick = next((i for i in range(len(ship['weapons'])) if i not in claimed), None)
+    if pick is None:
+        return None
+    claimed.add(pick)
+    return ship['weapons'][pick]
 
 
 def build(ship):
@@ -141,6 +261,8 @@ def build(ship):
                     if f['label'] not in STANDARD and f['label'] not in SPECIAL]
     functions = []
     wi = 0
+    claimed = set()
+    name_first = len(weapon_lines) < len(ship['weapons'])
     for f in ship['functions']:
         label, circles = f['label'], f['circles']
         free = next((c for c in circles if c['free']), None)
@@ -191,14 +313,37 @@ def build(ship):
                               'steps': steps(), 'sequential': True})
             continue
 
-        # Weapon arming line, matched to the weapon block of the same ordinal.
-        weapon = ship['weapons'][wi] if wi < len(ship['weapons']) else None
+        # Weapon arming line. Matched by name first, ordinal second: the
+        # AQUILA BELLUM VI's form omits its small plasma's arming line, and
+        # ordinal matching then slid every later line up one weapon — MED DISR
+        # armed the small plasma, LT DISR armed the medium disruptor, and the
+        # light disruptor armed nothing.
+        weapon = claim_weapon_for_label(ship, label, claimed, name_first)
         wi += 1
         functions.append({'id': f'f-{slug(label)}-{wi}', 'label': label, 'kind': 'weapon',
                           'freeValue': (free['value'] or 0) if free else 0,
                           'steps': steps(), 'sequential': True,
-                          'weaponSystemId': slug(weapon['name']) + f'-{wi}' if weapon else None})
+                          'weaponSystemId':
+                              slug(weapon['name']) + f"-{ship['weapons'].index(weapon) + 1}"
+                              if weapon else None})
 
+    # A weapon the FUNCTIONS list never arms is a hole in the form, not a
+    # free gun: E4.2.6 gives every weapon system exactly one arming line. The
+    # AQUILA BELLUM VI omits its small plasma's SML PLAS row — every other
+    # RP-G carrier in the book prints one — so the line is synthesized to the
+    # book's own pattern: one purchased circle per mount, sequential, no free
+    # value, exactly the shape TONITRUS IV prints for the same weapon.
+    for i, w in enumerate(ship['weapons']):
+        if i in claimed:
+            continue
+        mounts_n = max(1, len(w.get('mounts', [])) or 1)
+        wid = slug(w['name']) + f'-{i + 1}'
+        functions.append({'id': f'f-synth-{wid}', 'label': 'SML PLAS', 'kind': 'weapon',
+                          'freeValue': 0,
+                          'steps': [{'powerCost': 1, 'value': k + 1} for k in range(mounts_n)],
+                          'sequential': True, 'weaponSystemId': wid})
+        errata.append(f"Form omits an arming line for {w['name']}; one is supplied "
+                      f'(one circle per mount, as its sister ships print).')
     # ---- weapons -----------------------------------------------------------
     weapons = []
     seen_ids = defaultdict(int)

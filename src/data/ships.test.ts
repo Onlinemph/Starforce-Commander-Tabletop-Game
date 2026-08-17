@@ -16,13 +16,14 @@ import { ARC_ORDER } from '../engine/geometry'
 describe('roster', () => {
   it('imports all three factions in full', () => {
     // 72 from the Master Ship Book plus 21 Aurelians from Expansion 5.
-    expect(SHIP_FORMS.length).toBe(93)
+    expect(SHIP_FORMS.length).toBe(103)
     const union = SHIP_FORMS.filter((f) => f.faction === 'Union of Federated Systems')
     const vallari = SHIP_FORMS.filter((f) => f.faction === 'Vallari Imperium')
     const aurelian = SHIP_FORMS.filter((f) => f.faction === 'Aurelian Empire')
     expect(union.length).toBe(37)
     expect(vallari.length).toBe(35)
-    expect(aurelian.length).toBe(21)
+    // Ship Book 5 (Sep 2025): the Exp 5 twenty-one plus ten Exp 6 hulls.
+    expect(aurelian.length).toBe(31)
   })
 
   it('gives every ship a unique id', () => {
