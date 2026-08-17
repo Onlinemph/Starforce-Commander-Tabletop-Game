@@ -96,18 +96,20 @@ describe('untouchable fire discipline inverts', () => {
 })
 
 describe('refusing the hopeless battle', () => {
-  it('at three to one the admiral declines whole — the captain stands and dies', () => {
+  it('at triple strength the admiral declines whole — the captain stands and dies', () => {
     // Measured to the bone before this existed: at these odds no doctrine
     // wins or even escapes once engaged. Refusing concedes half value
     // (S2.8.4); standing conceded nearly all of it, 24 sorties in 24.
+    // Hopelessness is weighed in points, so it is the light cruiser staring
+    // down two heavy cruisers that leaves.
     const stage = (difficulty: 'captain' | 'admiral') => {
       const game = startScenario('s3.1-the-duel', {
         seed: 3,
-        fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(3).fill(COVENTRY) },
+        fleets: { 'Blue Force': [COVENTRY], 'Red Force': Array(2).fill(YORKTOWN_III) },
       })
-      const big = game.ships.find((s) => s.side === 'Blue Force')!
-      const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
-      big.allocation[ftlLine.id] = ftlLine.steps.length
+      const little = game.ships.find((s) => s.side === 'Blue Force')!
+      const ftlLine = little.form.functions.find((l) => l.kind === 'ftl-drive')!
+      little.allocation[ftlLine.id] = ftlLine.steps.length
       game.segment = 'disengagement'
       return aiNextActions(game, ['Blue Force'], createAiMemo(), false, difficulty).some(
         (a) => a.type === 'disengage',
@@ -117,13 +119,30 @@ describe('refusing the hopeless battle', () => {
     expect(stage('captain')).toBe(false)
   })
 
+  it('does not flee a swarm it outguns: three frigate-weights are not "three to one"', () => {
+    // The gate used to count hulls, and the point-calibration sweep caught a
+    // dreadnought conceding half its value to three frigates worth a third
+    // of its price — a fight it wins every single time it stays. Strength is
+    // what the odds are made of.
+    const game = startScenario('s3.1-the-duel', {
+      seed: 3,
+      fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(3).fill(COVENTRY) },
+    })
+    const big = game.ships.find((s) => s.side === 'Blue Force')!
+    const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
+    big.allocation[ftlLine.id] = ftlLine.steps.length
+    game.segment = 'disengagement'
+    const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'admiral')
+    expect(actions.some((a) => a.type === 'disengage')).toBe(false)
+  })
+
   it('the "AI may retreat" switch pins every hull to its post — even a cripple', () => {
     const game = startScenario('s3.1-the-duel', {
       seed: 3,
       fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(3).fill(COVENTRY) },
     })
     const big = game.ships.find((s) => s.side === 'Blue Force')!
-    big.structureDamaged = big.structureDamaged.map((_, i, all) => i < Math.ceil(all.length * 0.9))
+    woundToFraction(big, 0.92) // crippled, in the hit points the ledger counts
     const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
     big.allocation[ftlLine.id] = ftlLine.steps.length
     game.segment = 'disengagement'
@@ -135,32 +154,43 @@ describe('refusing the hopeless battle', () => {
 })
 
 describe('cutting losses', () => {
-  function heavyAndOutnumbered(): { game: GameState; big: ShipState } {
-    const { game, big } = goliathBoard(2)
+  const KURSK = 'union-kursk-i-class-battlecruiser'
+
+  /** A heavy-damaged cruiser staring down better than twice its strength. */
+  function heavyAndOvermatched(): { game: GameState; big: ShipState } {
+    const game = startScenario('s3.1-the-duel', {
+      seed: 5,
+      fleets: { 'Blue Force': [YORKTOWN_III], 'Red Force': Array(2).fill(KURSK) },
+    })
+    const big = game.ships.find((s) => s.side === 'Blue Force')!
     woundToFraction(big, 0.8) // heavy damage, in the hit points the ledger counts
     return { game, big }
   }
 
   it('a leaver funds the drive that leaves during Resource Allocation (J9.1.3)', () => {
-    // The leaver here is the admiral declining hopeless odds while whole —
-    // three to one, no wounds. Under the hit-point damage levels a hull at
-    // *heavy* damage has spent most of its reactor boxes getting there, so
-    // "badly hurt but with power to fund the drive" is no longer a state a
-    // fixture can stage honestly.
-    const { game, big } = goliathBoard(3)
+    // The leaver here is the admiral declining hopeless strength while whole
+    // — a light cruiser against two heavy cruisers, no wounds. Under the
+    // hit-point damage levels a hull at *heavy* damage has spent most of its
+    // reactor boxes getting there, so "badly hurt but with power to fund the
+    // drive" is no longer a state a fixture can stage honestly.
+    const game = startScenario('s3.1-the-duel', {
+      seed: 5,
+      fleets: { 'Blue Force': [COVENTRY], 'Red Force': Array(2).fill(YORKTOWN_III) },
+    })
+    const little = game.ships.find((s) => s.side === 'Blue Force')!
     game.segment = 'resource-allocation'
-    const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
+    const ftlLine = little.form.functions.find((l) => l.kind === 'ftl-drive')!
     const actions = aiNextActions(game, ['Blue Force'], createAiMemo(), false, 'admiral')
     const funded = actions.find(
-      (a) => a.type === 'allocate' && a.shipId === big.id && a.lineId === ftlLine.id,
+      (a) => a.type === 'allocate' && a.shipId === little.id && a.lineId === ftlLine.id,
     )
     expect(funded).toBeDefined()
     expect(funded && 'circles' in funded && funded.circles).toBe(ftlLine.steps.length)
   })
 
-  it('a heavy hull facing twice its numbers disengages under the admiral, fights on under the captain', () => {
+  it('a heavy hull facing twice its strength disengages under the admiral, fights on under the captain', () => {
     const stage = (difficulty: 'captain' | 'admiral') => {
-      const { game, big } = heavyAndOutnumbered()
+      const { game, big } = heavyAndOvermatched()
       const ftlLine = big.form.functions.find((l) => l.kind === 'ftl-drive')!
       big.allocation[ftlLine.id] = ftlLine.steps.length // the drive is lit
       game.segment = 'disengagement'

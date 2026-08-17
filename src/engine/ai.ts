@@ -453,23 +453,38 @@ function wantsToLeave(game: GameState, ship: ShipState, difficulty: AiDifficulty
   const enemies = enemiesOf(game, ship)
   const own = game.ships.filter((s) => s.side === ship.side && !s.destroyed && !s.disengaged)
   /**
-   * Hopeless odds are refused outright, whole hull and all. Measured to the
-   * bone: at three-to-one and beyond, no doctrine on offer wins or even
-   * escapes once engaged — kiting is enveloped (the board is six moves
-   * across), diving kills a third of a frigate before dying, and a flight
-   * begun at half health ends under the guns 22 times in 24. The scoreboard
-   * itself prices the refusal at half value and the stand at all of it
-   * (S2.8.4), so the admiral declines the battle while declining is free.
+   * Odds are weighed in *strength* — the scoreboard's own currency — not in
+   * hulls. These gates used to count ships, and the point-calibration sweeps
+   * caught the misfire at both ends: a lone dreadnought fled three frigates
+   * worth a third of its price (conceding half its value to enemies it kills
+   * 100% of the time when it stays), while two frigates would happily charge
+   * two dreadnoughts because one-to-one "isn't outnumbered". Point value is
+   * what the enemy is paid for hurting this hull (S2.8.4), so it is the
+   * measure a refusal has to be priced in.
    */
-  if (difficulty === 'admiral' && enemies.length >= own.length * 3 && enemies.length >= 3) {
+  const strength = (ships: ShipState[]) =>
+    ships.reduce((total, s) => total + (s.pointValue ?? s.form.pointValue), 0)
+  const mine = strength(own)
+  const theirs = strength(enemies)
+  /**
+   * Hopeless odds are refused outright, whole hull and all. Measured to the
+   * bone (originally at three-to-one by count between like hulls, which is
+   * the same ratio in points): beyond triple strength, no doctrine on offer
+   * wins or even escapes once engaged — kiting is enveloped (the board is
+   * six moves across), diving kills a third of a frigate before dying, and
+   * a flight begun at half health ends under the guns 22 times in 24. The
+   * scoreboard itself prices the refusal at half value and the stand at all
+   * of it (S2.8.4), so the admiral declines the battle while declining is
+   * free.
+   */
+  if (difficulty === 'admiral' && theirs >= mine * 3) {
     return true
   }
   if (level !== 'heavy' && level !== 'moderate') return false
   if (level === 'heavy' && postureOf(game, ship, difficulty) === 'protect') return true
   if (difficulty !== 'admiral') return false
-  const outnumbered = enemies.length >= own.length * 2 && enemies.length >= 2
-  if (!outnumbered) return false
-  // Against twice the numbers a heavy hull always cuts its losses, and a
+  if (theirs < mine * 2) return false
+  // Against twice the strength a heavy hull always cuts its losses, and a
   // moderate one already losing on points calls the sortie failed — half
   // the hull conceded now beats all of it conceded three rounds from now.
   return level === 'heavy' || postureOf(game, ship, difficulty) === 'press'
