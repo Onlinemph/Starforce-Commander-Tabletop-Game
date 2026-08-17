@@ -61,6 +61,16 @@ const games = Number(arg('games') ?? 4)
 const rounds = Number(arg('rounds') ?? 12)
 const rank = (arg('rank') ?? 'captain') as AiDifficulty
 const out = arg('out') ?? 'tools/titration_results.csv'
+/**
+ * Subset filters for expensive ranks: `--anchors exeter,union-iii` and
+ * `--probes nelson,yorktown-i` match by substring, and `--window 0.35,1.3`
+ * narrows the probed ratio band around parity. The admiral thinks about a
+ * hundred times longer per game than the captain, so its sweep has to spend
+ * games where the crossing actually lives.
+ */
+const anchorFilter = arg('anchors')?.split(',')
+const probeFilter = arg('probes')?.split(',')
+const [ratioLo, ratioHi] = (arg('window') ?? '0.25,2.0').split(',').map(Number)
 
 function runGame(anchorId: string, probeId: string, n: number, seed: number) {
   registerCustomScenarios([
@@ -127,13 +137,15 @@ const done = new Set(
 
 let played = 0
 for (const anchorId of ANCHORS) {
+  if (anchorFilter && !anchorFilter.some((f) => anchorId.includes(f))) continue
   const pvA = shipFormById(anchorId)!.pointValue
   for (const probeId of PROBES) {
+    if (probeFilter && !probeFilter.some((f) => probeId.includes(f))) continue
     const pvP = shipFormById(probeId)!.pointValue
     for (let n = 1; n <= 8; n++) {
       // Probe the region around parity: far outside it the answer is known.
       const ratio = (n * pvP) / pvA
-      if (ratio < 0.25 || ratio > 2.0) continue
+      if (ratio < ratioLo || ratio > ratioHi) continue
       for (let g = 0; g < games; g++) {
         const seed = 5000 + g * 7919 + ANCHORS.indexOf(anchorId) * 733 + PROBES.indexOf(probeId) * 89 + n * 13
         if (done.has(`${anchorId}|${probeId}|${n}|${seed}`)) continue
