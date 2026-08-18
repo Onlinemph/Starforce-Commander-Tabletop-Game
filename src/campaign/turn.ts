@@ -20,12 +20,14 @@ import {
   decayContacts,
   reckonedHex,
   runDetection,
+  unitIsCloaked,
   unitProfile,
   type DetectionContext,
 } from './detection'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
-import { repairTick } from './logistics'
+import { enduranceTick, repairTick, wingTick } from './logistics'
+import { deliveryTick, settleWinner } from './scoring'
 import {
   DEFAULT_REPAIR_QUEUE,
   sideToMove,
@@ -116,10 +118,10 @@ function applyBattleResult(state: CampaignState, record: BattleRecord): void {
     if (!ship) throw new PhaseError(`Battle result names unknown ship ${key}.`)
     if (outcome.destroyed) {
       unit.ships = unit.ships.filter((s) => s.id !== shipId)
-    } else if (outcome.scars) {
-      ship.scars = structuredClone(outcome.scars)
     } else {
-      delete ship.scars
+      if (outcome.scars) ship.scars = structuredClone(outcome.scars)
+      else delete ship.scars
+      if (outcome.wing) ship.wing = structuredClone(outcome.wing)
     }
     if (!outcome.destroyed && outcome.disengaged) {
       const step = { q: unit.hex.q + retreatDir[unit.side], r: unit.hex.r }
@@ -248,16 +250,58 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
   runDetection(ctx, next)
   checkEngagements(ctx, next)
 
+  // Cloaked running is an endurance cost at the tick (6.4): note anyone dark
+  // during any phase, whichever side moved.
+  for (const unit of next.units) {
+    if (unitIsCloaked(unit)) unit.cloakedThisRound = true
+  }
+
   if (next.phase === 12) {
-    // The round tick (5.1): decay, then the repair crews. Endurance, rearm,
-    // convoys and reinforcements land in build Phase 4.
+    /*
+     * The round tick (5.1), in a fixed order the tests pin: the fog fades,
+     * the crews work, the tanks drain and refill, the wings rearm, the
+     * convoys ride their beacons, deliveries bank their points, the
+     * reinforcements arrive — and only then does the clock decide whether
+     * the campaign is over, so a final-round delivery still counts.
+     */
     decayContacts(next)
     repairTick(next)
+    enduranceTick(next)
+    wingTick(next)
+    convoyBeaconStep(ctx, next)
+    deliveryTick(ctx.scenario, next)
     next.phase = 1
     next.round += 1
+    for (const r of [...next.reinforcements]) {
+      if (r.arrivesRound <= next.round) {
+        next.units.push(r.unit)
+        next.reinforcements = next.reinforcements.filter((x) => x !== r)
+      }
+    }
     if (next.round > next.roundLimit) next.finished = true
+    settleWinner(ctx.scenario, next)
   } else {
     next.phase += 1
   }
   return next
+}
+
+/**
+ * The beacon chains (6.3): a convoy that ends the round beside an intact
+ * friendly jump beacon rides it one hex further along its route — the +1 hex
+ * a round that makes scheduled shipping worth escorting and beacons worth
+ * hunting.
+ */
+function convoyBeaconStep(ctx: DetectionContext, state: CampaignState): void {
+  for (const unit of state.units) {
+    if (unit.kind !== 'convoy') continue
+    const chained = state.infrastructure.some(
+      (i) =>
+        !i.destroyed &&
+        i.side === unit.side &&
+        i.kind === 'jump-beacon' &&
+        hexDistance(i.hex, unit.hex) <= 1,
+    )
+    if (chained) stepUnit(ctx, state, unit)
+  }
 }

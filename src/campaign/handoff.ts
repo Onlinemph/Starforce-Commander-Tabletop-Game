@@ -20,6 +20,7 @@ import { shipFormById } from '../data/ships'
 import { parseSavedGame, replayGame, withEmbeddedForms, type GameSetup, type SavedGame } from '../data/savedGame'
 import type { CustomScenario } from '../data/scenarios'
 import { victoryPoints } from '../engine/game'
+import { MAX_FLIGHT_SIZE } from '../engine/fighters'
 import { captureScars, scarsAreEmpty } from '../engine/shipState'
 import { terrainAt } from './hexmap'
 import type { DetectionContext } from './detection'
@@ -156,6 +157,10 @@ export function battleFileFor(
         force: ships.map((s) => s.formId),
         // Exact scars ride the scenario (3.2): null keeps a hull fresh.
         scars: ships.map((s) => s.scars ?? null),
+        // Only a READY wing flies its card (3.3). A rearming or depleted
+        // wing leaves the entry unset — full grounding of a spent wing
+        // waits on a scenario knob for hangar contents, noted in the docs.
+        wing: ships.map((s) => (s.wing?.readiness === 'ready' ? s.wing.cardId : undefined)) as string[],
       }
     }),
   }
@@ -209,6 +214,7 @@ export function readback(
     if (fleet.length !== keys.length) {
       return `The battle fields ${fleet.length} ships for ${SIDE_LABEL[side]}; the engagement has ${keys.length}.`
     }
+    const records = unitsOf(state, engagement, side).flatMap((u) => u.ships)
     keys.forEach((key, i) => {
       const ship = fleet[i]
       const dead = ship.destroyed || ship.derelict || ship.capturedBy !== null
@@ -218,12 +224,50 @@ export function readback(
         disengaged: ship.disengaged,
         scars: scars && !scarsAreEmpty(scars) ? scars : null,
       }
+      const record = records[i]
+      if (record?.wing && !dead) {
+        result.ships[key].wing = wingAfterBattle(game, ship, record.wing)
+      }
     })
   }
   const vp = victoryPoints(game)
   result.vp.A = vp[SIDE_LABEL.A] ?? 0
   result.vp.B = vp[SIDE_LABEL.B] ?? 0
   return result
+}
+
+/**
+ * Wing readiness read off the table (3.3): fighters still flying by the
+ * carrier plus flights still in the hangar, against the hangar's full
+ * complement. A wing that never flew keeps its record; one that came home
+ * having fought rearms for two rounds; past half its fighters gone it is
+ * depleted until a fleet base rebuilds it; none left is a destroyed wing —
+ * replacement fighters are a scenario's reinforcements, not a timer.
+ */
+function wingAfterBattle(
+  game: { flights: Array<{ motherId: string; members: number }>; ships: Array<unknown> },
+  ship: { id: string; flightsAboard: number; form: { systems: Array<{ kind: string; boxes: number }> } },
+  wing: { cardId: string; readiness: string; rearmRounds: number },
+): { cardId: string; readiness: 'ready' | 'rearming' | 'depleted' | 'destroyed'; rearmRounds: number } {
+  const hangar = ship.form.systems
+    .filter((g) => g.kind === 'HNGR')
+    .reduce((n, g) => n + g.boxes, 0)
+  const capacity = Math.max(1, hangar) * MAX_FLIGHT_SIZE
+  const flying = game.flights
+    .filter((f) => f.motherId === ship.id)
+    .reduce((n, f) => n + f.members, 0)
+  const survivors = flying + ship.flightsAboard * MAX_FLIGHT_SIZE
+  const flew = flying > 0 || ship.flightsAboard < hangar
+  if (!flew) {
+    return {
+      cardId: wing.cardId,
+      readiness: wing.readiness as 'ready' | 'rearming' | 'depleted' | 'destroyed',
+      rearmRounds: wing.rearmRounds,
+    }
+  }
+  if (survivors === 0) return { cardId: wing.cardId, readiness: 'destroyed', rearmRounds: 0 }
+  if (survivors < capacity / 2) return { cardId: wing.cardId, readiness: 'depleted', rearmRounds: 0 }
+  return { cardId: wing.cardId, readiness: 'rearming', rearmRounds: 2 }
 }
 
 /** Round-trip check used by tests and any UI that wants to verify a form id. */

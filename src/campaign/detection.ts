@@ -82,7 +82,8 @@ export function unitProfile(unit: Unit): {
 }
 
 export function unitIsCloaked(unit: Unit): boolean {
-  return unit.order.cloaked && unitProfile(unit).cloakCapable
+  // An empty tank cannot feed a cloak (6.4).
+  return unit.order.cloaked && unit.endurance > 0 && unitProfile(unit).cloakCapable
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +155,8 @@ function postureOf(map: CampaignMap, unit: Unit): ScanPosture {
     moved: unit.movedLastOwnPhase,
     cloaked: unitIsCloaked(unit),
     formation: unit.order.formation,
-    sensorPower: unit.order.sensorPower,
+    // A dry tank caps the sensors at zero power (6.4).
+    sensorPower: unit.endurance > 0 ? unit.order.sensorPower : 0,
     terrain: terrainAt(map, unit.hex),
   }
 }

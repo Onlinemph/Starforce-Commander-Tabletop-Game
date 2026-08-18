@@ -7,6 +7,7 @@
  */
 
 import { generateMap } from './hexmap'
+import { enduranceMaxOf } from './logistics'
 import { orderRefusal, resolvePhase, type DetectionContext } from './turn'
 import {
   DETECTION_CURVE,
@@ -51,22 +52,50 @@ export function blankScenario(overrides: Partial<CampaignScenario> = {}): Campai
  * to make, a generator improvement would silently break every saved campaign.
  */
 export function openingState(scenario: CampaignScenario): CampaignState {
-  const units: Unit[] = (['A', 'B'] as const).flatMap((side) =>
-    scenario.forces[side].map((f) => ({
+  const build = (side: 'A' | 'B', f: (typeof scenario.forces)['A'][number]): Unit => {
+    const unit: Unit = {
       id: f.id,
       side,
       kind: f.kind,
-      ships: f.ships.map((formId, i) => ({ id: `${f.id}-s${i + 1}`, formId, name: f.name ?? f.id })),
+      ships: f.ships.map((formId, i) => ({
+        id: `${f.id}-s${i + 1}`,
+        formId,
+        name: f.name ?? f.id,
+        // A named wing arrives ready (3.3); hulls without hangars simply
+        // never launch it, so naming one is harmless there.
+        ...(f.wings?.[i]
+          ? { wing: { cardId: f.wings[i]!, readiness: 'ready' as const, rearmRounds: 0 } }
+          : {}),
+      })),
       hex: { ...f.hex },
       order: { ...structuredClone(DEFAULT_ORDER), ...structuredClone(f.order ?? {}) },
       moveDebt: 0,
-      // Endurance from the largest hull aboard lands with logistics (Phase 4);
-      // until then every unit carries the full default.
-      endurance: 8,
+      endurance: 0,
+      enduranceMax: 0,
+      cloakedThisRound: false,
       movedLastOwnPhase: false,
       course: null,
-    })),
-  )
+    }
+    // The smallest tank aboard sets the unit's legs (3.1, 6.4).
+    unit.enduranceMax = enduranceMaxOf(unit)
+    unit.endurance = unit.enduranceMax
+    return unit
+  }
+  const units: Unit[] = []
+  const reinforcements: CampaignState['reinforcements'] = []
+  for (const side of ['A', 'B'] as const) {
+    for (const f of scenario.forces[side]) {
+      const unit = build(side, f)
+      // Reinforcements are held off the map until their round (S3.2): not
+      // drawn, not scannable, not engageable — and not in the enemy's view
+      // by construction, because they are not on the board at all.
+      if (f.arrivesRound && f.arrivesRound > 1) {
+        reinforcements.push({ arrivesRound: f.arrivesRound, side, unit })
+      } else {
+        units.push(unit)
+      }
+    }
+  }
   const state: CampaignState = {
     round: 1,
     phase: 1,
@@ -74,6 +103,8 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     contactSeq: 1,
     engagementSeq: 1,
     pendingBattles: [],
+    reinforcements,
+    winner: null,
     rng: { seed: scenario.mapSeed, calls: 0 },
     units,
     infrastructure: scenario.infrastructure.map((i) => ({ ...i, hex: { ...i.hex }, destroyed: false })),

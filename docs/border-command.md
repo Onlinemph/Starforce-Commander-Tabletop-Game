@@ -94,14 +94,52 @@ and the repo's data — the latter feed the doc's Part 12 list for Doyle.
   silent. Guarded in `scenarios.ts`; printed scenarios and their replays are
   untouched.
 
-Still to come per the doc: logistics/endurance, convoys, reinforcements, VP
-scoring and Quick Resolve (build Phase 4), remote play (Phase 5), the
-campaign UI, and false contacts (4.6 — the tuning flag exists, off by
-default). Listening posts are not yet themselves scannable targets; enemy
-bases, outposts, colonies and beacons are chart-known per the doc's 12.8
-presumption. Post-battle, contacts are not force-updated to truth — the
-table revealed the enemy for one fight, but the dossier keeps its own
-history (a deliberate reading; flag for Doyle if deployment should teach).
+## Build Phase 4 — operations and Quick Resolve (shipped)
+
+- **Endurance** (6.4, `logistics.ts`): one pooled point a round, one more for
+  cloaked running (tracked per phase, either side's), one more for sensors
+  held at full power; the smallest tank aboard sets a unit's legs (3.1);
+  bases, outposts and colonies refill whoever ends the round alongside
+  (3.4). A dry tank grounds the cloak and caps sensors at zero power. Sprint
+  costs join when Doyle's FTL rules replace the 5.4 placeholder.
+- **Convoys and victory** (6.3, 10.1, `scoring.ts`): a convoy ending its
+  round beside an intact friendly jump beacon rides the chain one hex
+  further; standing on its delivery hex banks the scenario's points and
+  leaves the map. The campaign ends at the round limit or a VP threshold,
+  higher ledger wins, level draws — settled at the tick so a final-round
+  delivery counts. The 3.4 infrastructure VP table is exported for when
+  infrastructure assault lands.
+- **Reinforcements** (S3.2): scenario units with `arrivesRound` are held OFF
+  the map — not drawn, not scannable, not engageable — and spawned by the
+  tick. Your own schedule shows in your view (`incoming`); the enemy's never
+  crosses, and an arrived reinforcement is found the way anything is found.
+- **Starwings** (3.3): `WingRecord` per carrier hull — ready wings fly their
+  card into the battle file; readback grades the survivors (fought → rearming
+  two rounds; under half left → depleted until a fleet base rebuilds; none →
+  destroyed, replacements being reinforcements, not a timer). A not-ready
+  wing withholds its card; fully grounding its hangar awaits a scenario knob
+  for hangar contents.
+- **Quick Resolve** (Part 8, `quickResolve.ts` over the engine's new public
+  `playBattle` driver — the doc's permitted touch 7.6.1): the same battle
+  file, played headlessly, read back by the same readback; temperament from
+  posture (intercept → aggressive, withdraw/shadow → cautious); admiral by
+  default, honest about retreat. The parity test pins quick = played-with-
+  both-AI byte for byte, and the returned battle file replays in the theater.
+- **Launch scenarios** (10.2, `scenarios.ts`): The Border Watch, Raid on
+  Delta Videus, The Long Patrol — all canon hulls, convoys sailing small
+  warships as freighter stand-ins until Doyle's civilian designs land.
+
+Still to come per the doc: remote play (build Phase 5), the campaign UI,
+false contacts (4.6 — the tuning flag exists, off by default), and
+infrastructure assault (the VP table waits on it). Listening posts are not
+yet themselves scannable targets; enemy bases, outposts, colonies and
+beacons are chart-known per the doc's 12.8 presumption. Post-battle,
+contacts are not force-updated to truth — the table revealed the enemy for
+one fight, but the dossier keeps its own history (a deliberate reading; flag
+for Doyle if deployment should teach). One honesty note for hotseat play:
+the VIEW is the leak-proof window, but the campaign file itself holds the
+umpire's truth — file-exchange play trusts the players not to read it, and
+build Phase 5's server is what removes that trust.
 
 ## Where the doc met the data (Part 12 material)
 

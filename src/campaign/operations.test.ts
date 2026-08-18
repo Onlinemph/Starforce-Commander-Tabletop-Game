@@ -1,0 +1,331 @@
+import { describe, expect, it } from 'vitest'
+import { blankScenario, newCampaign, replayCampaign } from './file'
+import { battleFileFor, hashText, readback } from './handoff'
+import { playBattle, playedBattleFile } from '../engine/selfPlay'
+import { quickResolve, temperamentOf } from './quickResolve'
+import { unitIsCloaked } from './detection'
+import { LAUNCH_SCENARIOS, raidOnDeltaVideus } from './scenarios'
+import { resolvePhase, type DetectionContext } from './turn'
+import { viewFor } from './views'
+import { hexDistance } from './hexmap'
+import { sideToMove, type CampaignFile, type PhaseMove } from './types'
+import type { QuickResolved as QR } from './quickResolve'
+
+/**
+ * Operations (build Phase 4): endurance, convoys, reinforcements, victory,
+ * wings, and Quick Resolve — with the wall's leak tests carried forward.
+ */
+
+const CERTAIN = [1, 1, 1, 1, 1, 1]
+const BLIND = [0, 0, 0, 0, 0, 0]
+
+const ctxOf = (file: CampaignFile): DetectionContext => ({ map: file.map, scenario: file.scenario })
+
+function pass(file: CampaignFile, battles?: PhaseMove['battles']): void {
+  const move: PhaseMove = {
+    round: file.state.round,
+    phase: file.state.phase,
+    side: sideToMove(file.state.phase),
+    interventions: [],
+    ...(battles ? { battles } : {}),
+  }
+  file.state = resolvePhase(ctxOf(file), file.state, move)
+  file.journal.push(move)
+}
+
+function passRound(file: CampaignFile): void {
+  for (let i = 0; i < 12; i++) pass(file)
+}
+
+function opsFile(over: Partial<Parameters<typeof blankScenario>[0]> = {}): CampaignFile {
+  const scenario = blankScenario({
+    mapSeed: 21,
+    mapWidth: 24,
+    mapHeight: 20,
+    rounds: 20,
+    forces: {
+      A: [
+        {
+          id: 'a-1',
+          kind: 'ship',
+          name: 'USS Steady',
+          ships: ['union-yorktown-i-class-heavy-cruiser'],
+          hex: { q: 4, r: 8 },
+          order: { speed: 'hold' },
+        },
+      ],
+      B: [
+        {
+          id: 'b-1',
+          kind: 'ship',
+          name: 'AMV Wisp',
+          ships: ['aurelian-corvus-i-class-destroyer'],
+          hex: { q: 20, r: 2 },
+          order: { speed: 'hold' },
+        },
+      ],
+    },
+    tuning: { detectionCurve: BLIND, misinformationBase: 0, falseContacts: false },
+    ...over,
+  })
+  const file = newCampaign(scenario, 'c-ops')
+  file.map.terrain = []
+  return file
+}
+
+describe('endurance (6.4)', () => {
+  it('burns one a round at cruise, one more cloaked, one more at full sensors', () => {
+    const file = opsFile()
+    const a = () => file.state.units.find((u) => u.id === 'a-1')!
+    const b = () => file.state.units.find((u) => u.id === 'b-1')!
+    expect(a().endurance).toBe(a().enduranceMax)
+    b().order.cloaked = true
+    a().order.sensorPower = 2
+    const aStart = a().endurance
+    const bStart = b().endurance
+    passRound(file)
+    expect(a().endurance).toBe(aStart - 2) // baseline + hungry sensors
+    expect(b().endurance).toBe(bStart - 2) // baseline + cloaked running
+  })
+
+  it('a depot refills whoever ends the round alongside it (3.4)', () => {
+    const file = opsFile()
+    file.state.infrastructure.push({
+      id: 'a-outpost',
+      side: 'A',
+      kind: 'outpost',
+      hex: { q: 4, r: 8 },
+      destroyed: false,
+    })
+    passRound(file)
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    expect(a.endurance).toBe(a.enduranceMax)
+    // The enemy's outpost feeds nobody else.
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    expect(b.endurance).toBe(b.enduranceMax - 1)
+  })
+
+  it('a dry tank grounds the cloak (6.4)', () => {
+    const file = opsFile()
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    b.order.cloaked = true
+    expect(unitIsCloaked(b)).toBe(true)
+    b.endurance = 0
+    expect(unitIsCloaked(b)).toBe(false)
+  })
+})
+
+describe('reinforcements (S3.2)', () => {
+  function relief() {
+    return opsFile({
+      forces: {
+        A: [
+          { id: 'a-1', kind: 'ship', name: 'USS Steady', ships: ['union-yorktown-i-class-heavy-cruiser'], hex: { q: 4, r: 8 }, order: { speed: 'hold' } },
+          { id: 'a-late', kind: 'ship', name: 'USS Latecomer', ships: ['union-kursk-i-class-battlecruiser'], hex: { q: 2, r: 9 }, arrivesRound: 3 },
+        ],
+        B: [{ id: 'b-1', kind: 'ship', name: 'AMV Wisp', ships: ['aurelian-corvus-i-class-destroyer'], hex: { q: 20, r: 2 }, order: { speed: 'hold' } }],
+      },
+    })
+  }
+
+  it('held off the map until its round, then it simply exists', () => {
+    const file = relief()
+    expect(file.state.units.some((u) => u.id === 'a-late')).toBe(false)
+    passRound(file) // → round 2
+    expect(file.state.units.some((u) => u.id === 'a-late')).toBe(false)
+    passRound(file) // → round 3
+    expect(file.state.units.some((u) => u.id === 'a-late')).toBe(true)
+    expect(file.state.reinforcements).toHaveLength(0)
+  })
+
+  it('your schedule is in your view; theirs is nowhere in yours — the leak test', () => {
+    const file = relief()
+    const own = viewFor(file.map, file.state, 'A')
+    expect(own.incoming).toEqual([
+      { unitId: 'a-late', arrivesRound: 3, kind: 'ship', shipCount: 1 },
+    ])
+    const enemy = viewFor(file.map, file.state, 'B')
+    expect(enemy.incoming).toEqual([])
+    const bytes = JSON.stringify(enemy)
+    expect(bytes).not.toContain('a-late')
+    expect(bytes).not.toContain('Latecomer')
+    expect(bytes).not.toContain('kursk')
+  })
+
+  it('an arrived reinforcement is found like anything else: through the fog', () => {
+    const file = relief()
+    passRound(file)
+    passRound(file) // a-late is on the map now
+    const enemy = viewFor(file.map, file.state, 'B')
+    // Blind curve: on the map, still invisible.
+    expect(JSON.stringify(enemy)).not.toContain('a-late')
+  })
+})
+
+describe('convoys and victory (6.3, 10.1)', () => {
+  function shipping() {
+    return opsFile({
+      vpThreshold: 10,
+      forces: {
+        A: [
+          {
+            id: 'a-convoy',
+            kind: 'convoy',
+            name: 'Convoy One',
+            ships: ['union-nelson-i-class-light-frigate', 'union-nelson-i-class-light-frigate'],
+            hex: { q: 4, r: 8 },
+            order: { waypoints: [{ q: 12, r: 6 }] },
+            deliverHex: { q: 12, r: 6 },
+            deliveryVp: 12,
+          },
+        ],
+        B: [{ id: 'b-1', kind: 'ship', name: 'AMV Wisp', ships: ['aurelian-corvus-i-class-destroyer'], hex: { q: 22, r: 0 }, order: { speed: 'hold' } }],
+      },
+    })
+  }
+
+  it('a delivery banks its points, ends a threshold campaign, and clears the board', () => {
+    const file = shipping()
+    for (let round = 0; round < 6 && !file.state.finished; round++) passRound(file)
+    expect(file.state.vp.A).toBe(12)
+    expect(file.state.units.some((u) => u.id === 'a-convoy')).toBe(false)
+    expect(file.state.finished).toBe(true)
+    expect(file.state.winner).toBe('A')
+  })
+
+  it('a beacon chain adds a hex a round (6.3)', () => {
+    // Walk the flat run first to learn where the convoy ends its round, then
+    // put the beacon exactly there for the chained run: same steps, same
+    // spot, and the only difference between the two rounds is the chain.
+    const route = [{ q: 20, r: 2 }]
+    const flat = shipping()
+    flat.scenario.vpThreshold = undefined
+    flat.state.units.find((u) => u.id === 'a-convoy')!.order.waypoints = structuredClone(route)
+    passRound(flat)
+    const start = { q: 4, r: 8 }
+    const restStop = flat.state.units.find((u) => u.id === 'a-convoy')!.hex
+
+    const chained = shipping()
+    chained.scenario.vpThreshold = undefined
+    chained.state.units.find((u) => u.id === 'a-convoy')!.order.waypoints = structuredClone(route)
+    chained.state.infrastructure.push({
+      id: 'bcn-1',
+      side: 'A',
+      kind: 'jump-beacon',
+      hex: { ...restStop },
+      destroyed: false,
+    })
+    passRound(chained)
+    const rode = hexDistance(start, chained.state.units.find((u) => u.id === 'a-convoy')!.hex)
+    const walked = hexDistance(start, restStop)
+    expect(rode).toBe(walked + 1)
+  })
+
+  it('the round limit settles the winner from the ledger', () => {
+    const file = opsFile({ rounds: 1 })
+    file.state.roundLimit = 1
+    file.state.vp.B = 7
+    passRound(file)
+    expect(file.state.finished).toBe(true)
+    expect(file.state.winner).toBe('B')
+  })
+})
+
+describe('quick resolve (Part 8)', () => {
+  function collision() {
+    const file = opsFile({ tuning: { detectionCurve: CERTAIN, misinformationBase: 0, falseContacts: false } })
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    b.hex = { q: 5, r: 8 }
+    pass(file) // scans land
+    file.state.units.find((u) => u.id === 'b-1')!.hex = { ...file.state.units.find((u) => u.id === 'a-1')!.hex }
+    pass(file) // engagement
+    expect(file.state.pendingBattles).toHaveLength(1)
+    return file
+  }
+
+  it('the parity test: quick equals played-with-both-AI, byte for byte', () => {
+    const file = collision()
+    const engagement = file.state.pendingBattles[0]
+    const quick = quickResolve(ctxOf(file), file.state, file.campaignId, engagement, {
+      difficulty: 'captain',
+      rounds: 8,
+    })
+    expect(typeof quick).not.toBe('string')
+    const q = quick as QR
+
+    // The played path, by hand, same knobs.
+    const battle = battleFileFor(ctxOf(file), file.state, file.campaignId, engagement)
+    const played = playBattle(battle.setup, {
+      difficulty: 'captain',
+      rounds: 8,
+      retreats: true,
+      personality: { 'Alpha Command': 'steady', 'Beta Command': 'steady' },
+    })
+    const result = readback(file.state, engagement, JSON.stringify(playedBattleFile(battle.setup, played)))
+    expect(JSON.stringify(q.record.result)).toBe(JSON.stringify(result))
+    expect(q.record.fileHash).toBe(hashText(JSON.stringify(battle)))
+
+    // And the record lands like any table-fought one. (Survivors standing
+    // in a shared hex re-engage at once — the fight continues next phase —
+    // so the assertion is that THIS battle is settled, not that the hex is
+    // quiet.)
+    pass(file, [q.record])
+    expect(file.state.pendingBattles.some((p) => p.id === engagement.id)).toBe(false)
+    // The quick battle file replays in the theater — it is a real battle.
+    expect(JSON.parse(q.battleText).actions.length).toBeGreaterThan(0)
+  })
+
+  it('temperament follows posture', () => {
+    const file = collision()
+    const units = file.state.units.filter((u) => u.side === 'A')
+    expect(temperamentOf(units)).toBe('steady')
+    units[0].order.mission = { type: 'intercept', contactId: 'x' }
+    expect(temperamentOf(units)).toBe('aggressive')
+    units[0].order.mission = undefined
+    units[0].order.engagement = 'withdraw'
+    expect(temperamentOf(units)).toBe('cautious')
+  })
+})
+
+describe('the launch scenarios (10.2)', () => {
+  it('all three open, and their campaigns replay', () => {
+    for (const { id, build } of LAUNCH_SCENARIOS) {
+      const file = newCampaign(build(), `c-${id}`)
+      expect(file.state.units.length, id).toBeGreaterThan(2)
+      for (let i = 0; i < 6; i++) pass(file)
+      expect(JSON.stringify(replayCampaign(file)), id).toBe(JSON.stringify(file.state))
+    }
+  })
+
+  it('the raid ships a convoy with a route, a prize, and pickets to run', () => {
+    const raid = raidOnDeltaVideus()
+    const convoy = raid.forces.A.find((f) => f.kind === 'convoy')!
+    expect(convoy.deliverHex).toBeDefined()
+    expect(convoy.deliveryVp).toBeGreaterThan(0)
+    expect(raid.forces.B.every((f) => f.ships.length > 0)).toBe(true)
+  })
+})
+
+describe('the wall, operations edition', () => {
+  it('a rearming wing is your ship’s business, not the enemy dossier’s', () => {
+    const file = opsFile()
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    b.ships[0].wing = { cardId: 'strix', readiness: 'rearming', rearmRounds: 2 }
+    const enemyView = viewFor(file.map, file.state, 'A')
+    const bytes = JSON.stringify(enemyView)
+    expect(bytes).not.toContain('rearming')
+    expect(bytes).not.toContain('strix')
+    const ownView = viewFor(file.map, file.state, 'B')
+    expect(ownView.units[0].ships[0].wing?.readiness).toBe('rearming')
+  })
+
+  it('endurance is your own gauge: contacts carry no tank readings', () => {
+    const file = opsFile({ tuning: { detectionCurve: CERTAIN, misinformationBase: 0, falseContacts: false } })
+    file.state.units.find((u) => u.id === 'b-1')!.hex = { q: 6, r: 8 } // in scan range
+    pass(file)
+    const view = viewFor(file.map, file.state, 'A')
+    expect(view.contacts.length).toBeGreaterThan(0)
+    expect(JSON.stringify(view.contacts)).not.toContain('endurance')
+    expect(view.units.every((u) => typeof u.endurance === 'number')).toBe(true)
+  })
+})

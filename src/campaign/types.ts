@@ -45,11 +45,25 @@ export interface CampaignMap {
 export type Side = 'A' | 'B'
 
 /** One ship aboard a unit. Damage state rides along whole from Phase 3 on. */
+/**
+ * A carrier's wing between battles (3.3): the readiness ladder the round tick
+ * climbs back up. Rearming takes two rounds anywhere; a depleted wing needs a
+ * fleet base to rebuild before it can rearm at all.
+ */
+export interface WingRecord {
+  cardId: string
+  readiness: 'ready' | 'rearming' | 'depleted' | 'destroyed'
+  /** Rounds of rearming left, while readiness is 'rearming'. */
+  rearmRounds: number
+}
+
 export interface ShipRecord {
   id: string
   /** Canon or embedded custom form id. */
   formId: string
   name: string
+  /** The fighter wing this hull carries, if any (3.3). */
+  wing?: WingRecord
   /**
    * Exact marked boxes between battles (3.2) — the engine's own ShipScars
    * shape (its 7.6.2 integration point), captured at battle end and applied
@@ -125,8 +139,12 @@ export interface Unit {
    * phase is spent clearing it.
    */
   moveDebt: number
-  /** Endurance points remaining (6.4). Ticked at round end from Phase 4 on. */
+  /** Endurance points remaining (6.4): fuel, supplies, ammo, spares. */
   endurance: number
+  /** The tank's size — the smallest aboard sets the unit's legs (3.1). */
+  enduranceMax: number
+  /** Cloaked during any phase this round: +1 endurance at the tick (6.4). */
+  cloakedThisRound: boolean
   /**
    * Whether the unit changed hex (or paid slow-terrain debt) in its most
    * recent own phase — the "held still" input to the detection bands (4.3),
@@ -254,6 +272,13 @@ export interface ScenarioForceUnit {
   ships: string[]
   hex: Hex
   order?: Partial<StandingOrder>
+  /** Fighter card per ship, for hulls with hangars (3.3). Null entries fly nothing. */
+  wings?: (string | null)[]
+  /** A reinforcement: held off the map until this round's tick (1.2, S3.2). */
+  arrivesRound?: number
+  /** Convoys: the hex that scores the delivery, and what it is worth (6.3, 10.1). */
+  deliverHex?: Hex
+  deliveryVp?: number
 }
 
 export interface CampaignScenario {
@@ -266,6 +291,8 @@ export interface CampaignScenario {
   mapHeight: number
   forces: Record<Side, ScenarioForceUnit[]>
   infrastructure: Array<Omit<Infrastructure, 'destroyed'>>
+  /** First to this many victory points wins outright (10.1). Unset: rounds only. */
+  vpThreshold?: number
   /** Balance dials (10.3), detection curve first among them. */
   tuning: {
     detectionCurve: readonly number[]
@@ -319,6 +346,8 @@ export interface BattleResult {
       /** Left the map under J9 — retreats a hex on the operational map. */
       disengaged: boolean
       scars: import('../engine/shipState').ShipScars | null
+      /** The carrier's wing after the battle, if the hull carries one (3.3). */
+      wing?: WingRecord
     }
   >
   vp: Record<Side, number>
@@ -349,6 +378,10 @@ export interface CampaignState {
   engagementSeq: number
   /** Battles triggered and not yet resolved — the campaign holds for them. */
   pendingBattles: PendingEngagement[]
+  /** Reinforcements not yet arrived, spawned by the round tick (S3.2). */
+  reinforcements: Array<{ arrivesRound: number; side: Side; unit: Unit }>
+  /** Set when the campaign ends: the higher ledger, or a draw (10.1). */
+  winner: Side | 'draw' | null
   rng: CampaignRng
   units: Unit[]
   infrastructure: Infrastructure[]

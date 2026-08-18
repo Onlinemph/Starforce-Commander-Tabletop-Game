@@ -80,6 +80,12 @@ export interface SideView {
   contacts: ViewedContact[]
   /** Battles waiting on the table that this side is party to (7.1). */
   engagements: ViewedEngagement[]
+  /**
+   * YOUR reinforcement schedule (S3.2): what is coming and when, so a plan
+   * can lean on it. The enemy's schedule never crosses — their arrivals are
+   * simply new hulls in the fog, found the way anything is found.
+   */
+  incoming: Array<{ unitId: string; arrivesRound: number; kind: string; shipCount: number }>
   /** The scoreboard is public (10.1). */
   vp: Record<Side, number>
 }
@@ -120,6 +126,15 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
     })
   }
 
+  const incoming = state.reinforcements
+    .filter((r) => r.side === side)
+    .map((r) => ({
+      unitId: r.unit.id,
+      arrivesRound: r.arrivesRound,
+      kind: r.unit.kind as string,
+      shipCount: r.unit.ships.length,
+    }))
+
   const engagements: ViewedEngagement[] = state.pendingBattles
     .filter((p) => p.unitIds[side].length > 0)
     .map((p) => ({
@@ -146,6 +161,7 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
     ),
     contacts,
     engagements,
+    incoming,
     vp: { A: state.vp.A, B: state.vp.B },
   }
 }

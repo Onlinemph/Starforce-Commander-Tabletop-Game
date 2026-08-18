@@ -16,6 +16,7 @@
 
 import { shipFormById } from '../data/ships'
 import { hexEquals } from './hexmap'
+import { operationalStats } from './stats'
 import { scarsAreEmpty, type ShipScars } from '../engine/shipState'
 import {
   DEFAULT_REPAIR_QUEUE,
@@ -175,6 +176,87 @@ export function repairTick(state: CampaignState): void {
         }
       }
       if (scarsAreEmpty(ship.scars)) delete ship.scars
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Endurance (6.4) — fuel, supplies, ammo and spares as one pooled number
+// ---------------------------------------------------------------------------
+
+/** The smallest tank aboard sets the unit's legs (3.1). */
+export function enduranceMaxOf(unit: Unit): number {
+  return Math.min(
+    ...unit.ships.map((s) => {
+      const form = shipFormById(s.formId)
+      return form ? operationalStats(form).endurance : 8
+    }),
+  )
+}
+
+/** Anywhere with a berth or a depot refills the tank (3.4, 6.4). */
+export function canResupplyAt(state: CampaignState, unit: Unit): boolean {
+  return state.infrastructure.some(
+    (i) =>
+      !i.destroyed &&
+      i.side === unit.side &&
+      hexEquals(i.hex, unit.hex) &&
+      (i.kind === 'fleet-base' || i.kind === 'outpost' || i.kind === 'colony'),
+  )
+}
+
+/** A dry tank grounds the tricks: no cloak, sensors at zero power (6.4). */
+export function enduranceEmpty(unit: Unit): boolean {
+  return unit.endurance <= 0
+}
+
+/**
+ * The round tick's endurance pass (6.4): one point a round, one more for any
+ * cloaked running, one more for sensors held at full power — then the depots
+ * refill whoever ends the round alongside one. Sprint costs join when the
+ * FTL rules replace the 5.4 placeholder.
+ */
+export function enduranceTick(state: CampaignState): void {
+  for (const unit of state.units) {
+    let burn = 1
+    if (unit.cloakedThisRound) burn += 1
+    if (unit.order.sensorPower === 2) burn += 1
+    unit.endurance = Math.max(0, unit.endurance - burn)
+    unit.cloakedThisRound = false
+    if (canResupplyAt(state, unit)) unit.endurance = unit.enduranceMax
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Starwing readiness (3.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * The wing clocks at the round tick: rearming counts down two rounds to
+ * ready; a depleted wing rebuilds only alongside a fleet base's rearm shops,
+ * where it becomes a rearming wing with the full clock. Destroyed stays
+ * destroyed — replacement fighters are a scenario's reinforcements, not a
+ * timer.
+ */
+export function wingTick(state: CampaignState): void {
+  for (const unit of state.units) {
+    const atBase = state.infrastructure.some(
+      (i) =>
+        !i.destroyed && i.side === unit.side && i.kind === 'fleet-base' && hexEquals(i.hex, unit.hex),
+    )
+    for (const ship of unit.ships) {
+      const wing = ship.wing
+      if (!wing) continue
+      if (wing.readiness === 'rearming') {
+        wing.rearmRounds -= 1
+        if (wing.rearmRounds <= 0) {
+          wing.readiness = 'ready'
+          wing.rearmRounds = 0
+        }
+      } else if (wing.readiness === 'depleted' && atBase) {
+        wing.readiness = 'rearming'
+        wing.rearmRounds = 2
+      }
     }
   }
 }
