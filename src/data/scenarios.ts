@@ -5,7 +5,7 @@ import type { MissionDef } from '../engine/missions'
 import { DIE_FACES, Rng } from '../engine/dice'
 import { ASTEROID_COUNTERS, DENSITY_STATS } from './terrainCounters'
 import type { MapBounds } from '../engine/navigation'
-import { applyPreDamage, createShip, type ShipState } from '../engine/shipState'
+import { applyPreDamage, applyScars, createShip, type ShipScars, type ShipState } from '../engine/shipState'
 import type { Point, ShipForm } from '../engine/types'
 import { shipFormById, VALLARI_CRUISER, YORKTOWN } from './ships'
 
@@ -349,6 +349,8 @@ interface SideSetup {
    * it. Scored as a baseline — see `pointsAgainst`.
    */
   damage?: number[]
+  /** Exact marked boxes per hull; outranks `damage` where both are set. */
+  scars?: (ShipScars | null)[]
   /**
    * Victory-ledger worth per hull, by force index — the freighter the raid is
    * about, the obsolete monitor nobody would die for. Unset entries keep the
@@ -585,8 +587,20 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
   // Secret placement is seeded from the battle, never from the clock, so the
   // same battle file always deploys the same way.
   const scatterRng = new Rng((options.seed ?? 0) ^ 0x5ecc7)
+  const prefixes = new Set<string>()
   for (const setup of setups) {
-    const prefix = setup.side.split(' ')[0].toLowerCase()
+    /*
+     * Ship ids are prefixed by the side's first word — and two sides whose
+     * names SHARE a first word ("Task Force 1" vs "Task Force 2") used to
+     * mint colliding ids, so every lookup resolved to the first side's hull:
+     * orders landed on the wrong ship, volleys "fired on themselves", and a
+     * whole force went silent. Found when a campaign battle named its sides
+     * "Force A" and "Force B". Printed scenarios all differ in their first
+     * word, so their ids — and every existing replay — are untouched.
+     */
+    let prefix = setup.side.split(' ')[0].toLowerCase()
+    if (prefixes.has(prefix)) prefix = `${prefix}${setups.indexOf(setup) + 1}`
+    prefixes.add(prefix)
     const forms = forceFor(setup, options)
     /**
      * The whole force lands somewhere unknown, so the box it may land in is
@@ -650,7 +664,8 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
       // Wounds the scenario says the ship arrived with (campaign scars, a
       // cripple under rescue). Applied at deploy so replays re-derive the
       // same baseline from the scenario itself — saves never carry it.
-      if (setup.damage?.[i]) applyPreDamage(ship, setup.damage[i])
+      if (setup.scars?.[i]) applyScars(ship, setup.scars[i]!)
+      else if (setup.damage?.[i]) applyPreDamage(ship, setup.damage[i])
       if (setup.wing?.[i]) ship.wingCardId = setup.wing[i]
       ships.push(ship)
     })
@@ -1102,6 +1117,12 @@ export interface CustomScenario {
     force: string[]
     /** Starting damage per hull, as a fraction of its structure track. */
     damage?: number[]
+    /**
+     * Exact marked boxes per hull — the campaign's box-for-box persistence
+     * (Border Command 3.2). Outranks `damage` where both are set; null
+     * entries field the hull fresh.
+     */
+    scars?: (ShipScars | null)[]
     /** Victory-point worth per hull; unset entries keep the printed value. */
     value?: number[]
     /** The fighter card each carrier's wing flies. */
@@ -1136,6 +1157,7 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     names: NAME_POOLS[i % NAME_POOLS.length],
     defaults: () => s.force.map((id) => shipFormById(id)).filter((f): f is ShipForm => Boolean(f)),
     damage: s.damage,
+    scars: s.scars,
     value: s.value,
     // Lost in translation until a carrier-vs-carrier measurement came back
     // bit-identical across four different fighter cards: the designed-scenario

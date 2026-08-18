@@ -674,6 +674,124 @@ export function applyPreDamage(ship: ShipState, fraction: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Exact scars — the campaign integration point (Border Command 3.2, 7.6.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every marked box on a ship, exactly, in a shape that survives a JSON file.
+ *
+ * The campaign layer's contract is box-for-box damage persistence: a hull
+ * enters its next battle with its real scars, not a percentage. This is the
+ * one setup-injection touch the campaign design doc permits in the engine
+ * (its 7.6.2) — capture at battle end, apply at deployment — and it lives
+ * here because these are this module's fields and nobody else should be
+ * reaching into them.
+ *
+ * Shields and sensor splits are round-state, not scars: screens re-energize
+ * between battles. Armor damage IS a scar — plating does not grow back.
+ */
+export interface ShipScars {
+  /** Structure boxes marked, applied through markStructure so DC and stress remember. */
+  structure: number
+  reactors: Record<string, number[]>
+  batteries: boolean[]
+  ftl: number
+  /** Includes the '__sublight' pseudo-entry the drive stores its hits under. */
+  systems: Record<string, number>
+  scout: number
+  shieldGenerator: number
+  armor: Record<ShieldSide, number>
+  /** Damage boxes per mount, keyed by weapon system id. */
+  mounts: Record<string, number[]>
+}
+
+export function captureScars(ship: ShipState): ShipScars {
+  return {
+    structure: ship.structureDamaged.filter(Boolean).length,
+    reactors: structuredClone(ship.reactorDamage),
+    batteries: [...ship.batteryDamaged],
+    ftl: ship.ftlDriveDamage,
+    systems: structuredClone(ship.systemDamage),
+    scout: ship.scoutSensorDamage,
+    shieldGenerator: ship.shieldGeneratorDamage,
+    armor: { ...ship.armorDamage },
+    mounts: Object.fromEntries(
+      Object.entries(ship.mounts).map(([id, states]) => [id, states.map((m) => m.damage)]),
+    ),
+  }
+}
+
+/** Are these scars anything at all? Fresh hulls skip the whole mechanism. */
+export function scarsAreEmpty(scars: ShipScars): boolean {
+  return (
+    scars.structure === 0 &&
+    scars.ftl === 0 &&
+    scars.scout === 0 &&
+    scars.shieldGenerator === 0 &&
+    Object.values(scars.reactors).every((g) => g.every((d) => d === 0)) &&
+    scars.batteries.every((b) => !b) &&
+    Object.values(scars.systems).every((d) => d === 0) &&
+    Object.values(scars.armor).every((d) => d === 0) &&
+    Object.values(scars.mounts).every((g) => g.every((d) => d === 0))
+  )
+}
+
+/**
+ * Field a ship with last battle's exact damage. Everything is clamped to the
+ * form's own maxima — a scar record from a stale or foreign form cannot mark
+ * boxes the hull does not have — and structure goes through `markStructure`
+ * so damage control and stress carry the history (B3.1.2, C3.3).
+ *
+ * The victory baseline is set in HIT POINTS: `preDamaged` is halved scar-HP
+ * because the ledger doubles it back (see pointsAgainst), so an opponent
+ * scores exactly the damage inflicted THIS battle, internal boxes included.
+ */
+export function applyScars(ship: ShipState, scars: ShipScars): void {
+  const structure = Math.min(structureTotal(ship) - 1, Math.max(0, scars.structure))
+  for (let i = 0; i < structure; i++) markStructure(ship)
+
+  for (const group of ship.form.reactors) {
+    const marked = scars.reactors[group.id]
+    if (!marked) continue
+    ship.reactorDamage[group.id] = group.points.map((p, i) =>
+      Math.min(p.boxes, Math.max(0, marked[i] ?? 0)),
+    )
+  }
+  ship.batteryDamaged = ship.batteryDamaged.map((_, i) => scars.batteries[i] === true)
+  ship.ftlDriveDamage = Math.min(ship.form.ftlDriveBoxes, Math.max(0, scars.ftl))
+  for (const group of ship.form.systems) {
+    const marked = scars.systems[group.kind]
+    if (marked !== undefined) {
+      ship.systemDamage[group.kind] = Math.min(group.boxes, Math.max(0, marked))
+    }
+  }
+  // The sublight drive keeps its hits under a pseudo-key (E8.5.4).
+  if (scars.systems['__sublight'] !== undefined) {
+    ship.systemDamage['__sublight'] = Math.min(
+      ship.form.sublight.driveBoxes,
+      Math.max(0, scars.systems['__sublight']),
+    )
+  }
+  ship.scoutSensorDamage = Math.min(ship.form.scoutSensor?.damageBoxes ?? 0, Math.max(0, scars.scout))
+  ship.shieldGeneratorDamage = Math.min(ship.form.shields.generatorBoxes, Math.max(0, scars.shieldGenerator))
+  for (const side of Object.keys(ship.armorDamage) as ShieldSide[]) {
+    ship.armorDamage[side] = Math.min(ship.form.armor[side] ?? 0, Math.max(0, scars.armor[side] ?? 0))
+  }
+  for (const weapon of ship.form.weapons) {
+    const marked = scars.mounts[weapon.id]
+    if (!marked) continue
+    ship.mounts[weapon.id].forEach((mount, i) => {
+      mount.damage = Math.min(weapon.mounts[i].hitBoxes, Math.max(0, marked[i] ?? 0))
+    })
+  }
+
+  // The baseline in hit points: internal boxes once, structure double —
+  // matching hitPointDamage's own measure, so pointsAgainst's
+  // `earnedAt(2 * preDamaged)` prices old wounds at exactly zero.
+  ship.preDamaged = hitPointDamage(ship) / 2
+}
+
+// ---------------------------------------------------------------------------
 // Hit points (S2.8.4, as re-listed by the hit-point damage level sheets)
 // ---------------------------------------------------------------------------
 

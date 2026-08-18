@@ -124,6 +124,9 @@ export function withEmbeddedForms(setup: GameSetup): GameSetup {
   const ids = new Set<string>()
   for (const id of Object.values(setup.forms ?? {})) if (id) ids.add(id)
   for (const list of Object.values(setup.fleets ?? {})) for (const id of list ?? []) ids.add(id)
+  // A designed scenario carries its own force lists — a campaign battle file
+  // is exactly that — and any non-canon hull in them must embed too.
+  for (const side of setup.customScenario?.sides ?? []) for (const id of side.force) ids.add(id)
 
   const custom: ShipForm[] = []
   for (const id of ids) {

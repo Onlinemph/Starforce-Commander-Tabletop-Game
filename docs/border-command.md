@@ -59,13 +59,49 @@ and the repo's data — the latter feed the doc's Part 12 list for Doyle.
   this by penciling in a deliberately wrong estimate and confirming the
   interceptor chases the belief, not the ship.
 
-Still to come per the doc: battle handoff and repair queues (build Phase 3),
-logistics/VP/Quick Resolve (Phase 4), remote play (Phase 5), the campaign UI,
-and false contacts (4.6 — the flag exists in tuning, off by default,
-mechanics pending). Listening posts are not yet themselves scannable targets
-(they stay hidden until the infra-combat work in Phases 3–4 makes finding
-them matter); enemy bases, outposts, colonies and beacons are chart-known
-per the doc's 12.8 presumption.
+## Build Phase 3 — the battle handoff (shipped)
+
+- **Exact scars** (3.2, via the doc's one permitted engine touch, 7.6.2):
+  `ShipScars` + `captureScars`/`applyScars` in `src/engine/shipState.ts` —
+  every marked box, clamped to the form, structure through `markStructure` so
+  damage control and stress remember, and the victory baseline set in hit
+  points so an opponent scores exactly the damage inflicted THIS battle.
+  `CustomScenario` sides carry `scars` beside the old fractional `damage`.
+- **Engagements** (`engagement.ts`, 7.1–7.2): knowledge-gated — a unit whose
+  presence is unknown to the enemy is never auto-engaged; its standing-order
+  posture springs the ambush or stays silent, and since a same-hex scan
+  always finds an uncloaked hull, ambush is a cloak's privilege by
+  construction. Withdrawal rolls the campaign stream with the doc's
+  modifiers; failure fights as the defender, caught retreating.
+- **The handoff** (`handoff.ts`, 7.3–7.4): a deterministic battle file per
+  engagement — same campaign state, same bytes, so both consoles derive it
+  without exchanging it and the journal's FNV-1a hash proves they did.
+  Terrain translates per 2.2, formations set deployment spread, the richer
+  dossier deploys second (an ambusher outranks arithmetic), campaignRef
+  links back. `readback` replays the finished battle and walks the final
+  state into a `BattleResult`; results ride the NEXT journal move, and the
+  resolver refuses to advance while a battle is unresolved.
+- **Repair** (`logistics.ts`, 3.2): priority queues per unit (the doc says
+  per ship; per unit is the same knob with less clicking), spent down
+  deterministically — 1 system box a round underway, 3 at a colony, 6 at a
+  yard; structure never underway, every other round at a colony, 1 a round
+  at a yard; armor plate rides with structure. Damage bands feed the fog:
+  damaged hulls search worse, crippled hulls run loud and cannot cloak.
+- **A latent tactical bug found by the campaign**: `deploy()` prefixes ship
+  ids with the side's first word, so two sides sharing one ("Task Force 1"
+  vs "Task Force 2") minted colliding ids and every lookup hit the first
+  side's hull — orders landed on the wrong ship and a whole force went
+  silent. Guarded in `scenarios.ts`; printed scenarios and their replays are
+  untouched.
+
+Still to come per the doc: logistics/endurance, convoys, reinforcements, VP
+scoring and Quick Resolve (build Phase 4), remote play (Phase 5), the
+campaign UI, and false contacts (4.6 — the tuning flag exists, off by
+default). Listening posts are not yet themselves scannable targets; enemy
+bases, outposts, colonies and beacons are chart-known per the doc's 12.8
+presumption. Post-battle, contacts are not force-updated to truth — the
+table revealed the enemy for one fight, but the dossier keeps its own
+history (a deliberate reading; flag for Doyle if deployment should teach).
 
 ## Where the doc met the data (Part 12 material)
 

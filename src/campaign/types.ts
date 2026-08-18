@@ -51,10 +51,11 @@ export interface ShipRecord {
   formId: string
   name: string
   /**
-   * The tactical engine's serialized ship state between battles — exact marked
-   * boxes, not a percentage (3.2). Absent until the ship has scars.
+   * Exact marked boxes between battles (3.2) — the engine's own ShipScars
+   * shape (its 7.6.2 integration point), captured at battle end and applied
+   * at the next deployment. Absent until the ship has scars.
    */
-  damage?: unknown
+  scars?: import('../engine/shipState').ShipScars
 }
 
 export type Formation = 'close' | 'standard' | 'wide'
@@ -73,6 +74,20 @@ export interface StandingOrder {
   cloaked: boolean
   formation: Formation
   /**
+   * What to do when an engagement triggers in this unit's hex (7.2):
+   * stand and fight (default), try to withdraw, or — while the enemy does
+   * not know this unit exists — stay silent and let them pass. A hidden
+   * unit whose posture is 'fight' springs an ambush (7.1).
+   */
+  engagement?: 'fight' | 'withdraw' | 'silent'
+  /**
+   * Repair priority for the round tick (3.2): categories fixed first, in
+   * order. Unset uses DEFAULT_REPAIR_QUEUE. One queue per unit — the doc
+   * says per ship; per unit is the same knob with less clicking, revisit if
+   * playtests want finer control.
+   */
+  repairPriority?: RepairCategory[]
+  /**
    * Intercept or Shadow (5.3) — aimed at a CONTACT of the ordering side,
    * never at an enemy unit directly. That indirection is the anti-leak
    * guarantee: the resolver steers toward the contact's estimated position,
@@ -81,6 +96,18 @@ export interface StandingOrder {
    */
   mission?: { type: 'intercept' | 'shadow'; contactId: string }
 }
+
+export type RepairCategory = 'drive' | 'shields' | 'weapons' | 'sensors' | 'systems' | 'structure'
+
+/** Doc 3.2's default queue; 'systems' sweeps everything the five don't name. */
+export const DEFAULT_REPAIR_QUEUE: readonly RepairCategory[] = [
+  'drive',
+  'shields',
+  'weapons',
+  'sensors',
+  'systems',
+  'structure',
+]
 
 export type UnitKind = 'ship' | 'group' | 'starwing' | 'convoy'
 
@@ -251,6 +278,7 @@ export interface CampaignScenario {
 export type Intervention =
   | { type: 'set-order'; unitId: string; order: StandingOrder }
   | { type: 'set-waypoints'; unitId: string; waypoints: Hex[] }
+  | { type: 'set-repair-priority'; unitId: string; queue: RepairCategory[] }
 
 /**
  * One journal entry: one side's phase (5.1). A moves in odd phases, B in even.
@@ -262,6 +290,51 @@ export interface PhaseMove {
   phase: number
   side: Side
   interventions: Intervention[]
+  /**
+   * Results for battles pending when this move was made (Part 9's journal
+   * shape). The resolver refuses any move while a battle is unresolved and
+   * its results are not aboard: the campaign waits for the table.
+   */
+  battles?: BattleRecord[]
+}
+
+/** One fought battle, as the journal remembers it (7.4, Part 9). */
+export interface BattleRecord {
+  engagementId: string
+  /** FNV-1a of the generated battle file, linking journal to battle. */
+  fileHash: string
+  result: BattleResult
+}
+
+/**
+ * What came back from the table — computed by readback for on-screen and
+ * headless battles, hand-entered for the physical table (7.4). Ship keys are
+ * `unitId/shipRecordId`.
+ */
+export interface BattleResult {
+  ships: Record<
+    string,
+    {
+      destroyed: boolean
+      /** Left the map under J9 — retreats a hex on the operational map. */
+      disengaged: boolean
+      scars: import('../engine/shipState').ShipScars | null
+    }
+  >
+  vp: Record<Side, number>
+}
+
+/** An engagement waiting on the table (7.1). Umpire truth; views filter it. */
+export interface PendingEngagement {
+  id: string
+  hex: Hex
+  round: number
+  phase: number
+  unitIds: Record<Side, string[]>
+  /** The side that sprang from silence, if any — it deploys second (7.1). */
+  ambushBy: Side | null
+  /** A withdrawal that failed: the runner fights as defender (7.2). */
+  caughtRetreating: Side | null
 }
 
 export interface CampaignState {
@@ -272,6 +345,10 @@ export interface CampaignState {
   roundLimit: number
   /** Next contact sequence number, so contact ids stay opaque and stable. */
   contactSeq: number
+  /** Next engagement sequence number. */
+  engagementSeq: number
+  /** Battles triggered and not yet resolved — the campaign holds for them. */
+  pendingBattles: PendingEngagement[]
   rng: CampaignRng
   units: Unit[]
   infrastructure: Infrastructure[]

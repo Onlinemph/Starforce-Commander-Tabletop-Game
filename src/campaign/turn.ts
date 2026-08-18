@@ -23,13 +23,18 @@ import {
   unitProfile,
   type DetectionContext,
 } from './detection'
+import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
+import { repairTick } from './logistics'
 import {
+  DEFAULT_REPAIR_QUEUE,
   sideToMove,
+  type BattleRecord,
   type CampaignState,
   type Hex,
   type Intervention,
   type PhaseMove,
+  type Side,
   type StandingOrder,
   type Unit,
 } from './types'
@@ -55,6 +60,13 @@ export function orderRefusal(state: CampaignState, unit: Unit, order: StandingOr
       return `${unit.id}: no such contact ${order.mission.contactId} — missions steer by what this side has seen.`
     }
   }
+  if (order.repairPriority) {
+    for (const category of order.repairPriority) {
+      if (!DEFAULT_REPAIR_QUEUE.includes(category)) {
+        return `${unit.id}: unknown repair category ${String(category)}.`
+      }
+    }
+  }
   return null
 }
 
@@ -73,7 +85,52 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
     case 'set-waypoints':
       unit.order = { ...unit.order, waypoints: structuredClone(intervention.waypoints) }
       break
+    case 'set-repair-priority': {
+      const order = { ...unit.order, repairPriority: structuredClone(intervention.queue) }
+      const refusal = orderRefusal(state, unit, order)
+      if (refusal) throw new PhaseError(refusal)
+      unit.order = order
+      break
+    }
   }
+}
+
+/**
+ * Land a battle's result (7.4): scars onto ship records, the dead off the
+ * board, the ledger paid, and disengagers separated a hex toward home so a
+ * withdrawal actually ends the fight. Contacts shadowing a unit that no
+ * longer exists are dropped — a dossier on a cloud of debris is a marker the
+ * battle itself replaced.
+ */
+function applyBattleResult(state: CampaignState, record: BattleRecord): void {
+  const pendingIndex = state.pendingBattles.findIndex((p) => p.id === record.engagementId)
+  if (pendingIndex === -1) throw new PhaseError(`No pending battle ${record.engagementId}.`)
+  state.pendingBattles.splice(pendingIndex, 1)
+
+  const retreatDir: Record<Side, number> = { A: -1, B: 1 }
+  for (const [key, outcome] of Object.entries(record.result.ships)) {
+    const [unitId, shipId] = key.split('/')
+    const unit = state.units.find((u) => u.id === unitId)
+    if (!unit) throw new PhaseError(`Battle result names unknown unit ${unitId}.`)
+    const ship = unit.ships.find((s) => s.id === shipId)
+    if (!ship) throw new PhaseError(`Battle result names unknown ship ${key}.`)
+    if (outcome.destroyed) {
+      unit.ships = unit.ships.filter((s) => s.id !== shipId)
+    } else if (outcome.scars) {
+      ship.scars = structuredClone(outcome.scars)
+    } else {
+      delete ship.scars
+    }
+    if (!outcome.destroyed && outcome.disengaged) {
+      const step = { q: unit.hex.q + retreatDir[unit.side], r: unit.hex.r }
+      if (hexEquals(unit.hex, step) === false) unit.hex = step
+    }
+  }
+  const dead = state.units.filter((u) => u.ships.length === 0).map((u) => u.id)
+  state.units = state.units.filter((u) => u.ships.length > 0)
+  state.contacts = state.contacts.filter((c) => !dead.includes(c.targetUnitId))
+  state.vp.A += record.result.vp.A
+  state.vp.B += record.result.vp.B
 }
 
 /**
@@ -169,17 +226,33 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
   }
 
   const next = structuredClone(state)
+
+  /*
+   * Battles first (7.4): a campaign with a battle on the table is a campaign
+   * holding its breath. Every pending engagement must come back resolved on
+   * this move — from the played battle, the headless one, or the physical
+   * table's hand entry — before anyone moves a counter.
+   */
+  for (const record of move.battles ?? []) applyBattleResult(next, record)
+  if (next.pendingBattles.length > 0) {
+    throw new PhaseError(
+      `Battles unresolved: ${next.pendingBattles.map((p) => p.id).join(', ')} — fight them before moving.`,
+    )
+  }
+
   for (const intervention of move.interventions) applyIntervention(next, intervention, move.side)
   for (const unit of next.units) {
     if (unit.side === move.side) stepUnit(ctx, next, unit)
   }
 
   runDetection(ctx, next)
+  checkEngagements(ctx, next)
 
   if (next.phase === 12) {
-    // The round tick (5.1): contact decay now; endurance, repair queues,
-    // rearm, convoys, reinforcements and VP land in build Phases 3–4.
+    // The round tick (5.1): decay, then the repair crews. Endurance, rearm,
+    // convoys and reinforcements land in build Phase 4.
     decayContacts(next)
+    repairTick(next)
     next.phase = 1
     next.round += 1
     if (next.round > next.roundLimit) next.finished = true

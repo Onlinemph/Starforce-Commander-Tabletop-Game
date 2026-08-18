@@ -45,6 +45,22 @@ export interface ViewedContact {
   collapsed: boolean
 }
 
+/**
+ * An engagement as one side sees it: its own committed units, the hex, and
+ * whether it is the one springing the trap. The ENEMY's unit ids never
+ * appear — what jumped you is learned at the table, from the battle file's
+ * deployment, exactly as 7.3 intends.
+ */
+export interface ViewedEngagement {
+  id: string
+  hex: Hex
+  round: number
+  phase: number
+  yourUnitIds: string[]
+  youAmbush: boolean
+  youWereCaughtRetreating: boolean
+}
+
 export interface SideView {
   side: Side
   round: number
@@ -62,6 +78,8 @@ export interface SideView {
    */
   knownEnemyInfrastructure: Infrastructure[]
   contacts: ViewedContact[]
+  /** Battles waiting on the table that this side is party to (7.1). */
+  engagements: ViewedEngagement[]
   /** The scoreboard is public (10.1). */
   vp: Record<Side, number>
 }
@@ -102,6 +120,18 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
     })
   }
 
+  const engagements: ViewedEngagement[] = state.pendingBattles
+    .filter((p) => p.unitIds[side].length > 0)
+    .map((p) => ({
+      id: p.id,
+      hex: { q: p.hex.q, r: p.hex.r },
+      round: p.round,
+      phase: p.phase,
+      yourUnitIds: [...p.unitIds[side]],
+      youAmbush: p.ambushBy === side,
+      youWereCaughtRetreating: p.caughtRetreating === side,
+    }))
+
   return {
     side,
     round: state.round,
@@ -115,6 +145,7 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
       state.infrastructure.filter((i) => i.side !== side && i.kind !== 'listening-post'),
     ),
     contacts,
+    engagements,
     vp: { A: state.vp.A, B: state.vp.B },
   }
 }

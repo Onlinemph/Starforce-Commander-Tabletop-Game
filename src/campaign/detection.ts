@@ -17,6 +17,7 @@
 import { registerCustomForms, FILE_FORMS, SHIP_FORMS, shipFormById } from '../data/ships'
 import type { ShipForm } from '../engine/types'
 import { hexDistance, hexNeighbors, terrainAt } from './hexmap'
+import { unitDamageBand } from './logistics'
 import { operationalStats, type OperationalStats } from './stats'
 import {
   CONTACT_ATTRIBUTES,
@@ -66,11 +67,17 @@ export function unitProfile(unit: Unit): {
   cloakCapable: boolean
 } {
   const all = unit.ships.map((s) => statsFor(s.formId))
+  /*
+   * Battle scars change how a hull sounds and sees (3.2's operational
+   * bands): a damaged ship searches one point worse; a crippled one leaks
+   * two points of signature and cannot hold a cloak at all.
+   */
+  const band = unitDamageBand(unit)
   return {
-    signature: Math.max(...all.map((s) => s.signature)),
-    sensorRating: Math.max(...all.map((s) => s.sensorRating)),
+    signature: Math.max(...all.map((s) => s.signature)) + (band === 'crippled' ? 2 : 0),
+    sensorRating: Math.max(1, Math.max(...all.map((s) => s.sensorRating)) - (band === 'damaged' ? 1 : 0)),
     sciences: Math.max(...all.map((s) => s.sciences)),
-    cloakCapable: all.every((s) => s.cloak),
+    cloakCapable: all.every((s) => s.cloak) && band !== 'crippled',
   }
 }
 
@@ -189,8 +196,7 @@ export function trueAttribute(unit: Unit, attr: ContactAttribute): string {
     case 'faction':
       return lead.faction
     case 'damage':
-      // Fresh until battle scars persist (build Phase 3, 3.2).
-      return 'fresh'
+      return unitDamageBand(unit)
     case 'shipClass':
       return lead.name
     case 'shipName':
@@ -265,8 +271,11 @@ function falseAttribute(
       const others = factionPool().filter((f) => f !== truth)
       return others[nextInt(rng, others.length)] ?? truth
     }
-    case 'damage':
-      return truth === 'fresh' ? 'damaged' : 'fresh'
+    case 'damage': {
+      const bands = ['fresh', 'damaged', 'crippled']
+      const i = bands.indexOf(truth)
+      return bands[i === 0 ? 1 : i - 1] ?? 'damaged'
+    }
     case 'shipClass': {
       const pool = plausibleClasses(biggestForm(target).faction, sizeBand(biggestForm(target).sizeClass)).filter(
         (n) => n !== truth,

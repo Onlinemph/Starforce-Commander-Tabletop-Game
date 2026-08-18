@@ -72,6 +72,8 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     phase: 1,
     roundLimit: scenario.rounds,
     contactSeq: 1,
+    engagementSeq: 1,
+    pendingBattles: [],
     rng: { seed: scenario.mapSeed, calls: 0 },
     units,
     infrastructure: scenario.infrastructure.map((i) => ({ ...i, hex: { ...i.hex }, destroyed: false })),
