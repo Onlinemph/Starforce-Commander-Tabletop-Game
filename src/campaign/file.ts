@@ -7,7 +7,7 @@
  */
 
 import { generateMap } from './hexmap'
-import { resolvePhase } from './turn'
+import { orderRefusal, resolvePhase, type DetectionContext } from './turn'
 import {
   DETECTION_CURVE,
   type CampaignFile,
@@ -63,12 +63,15 @@ export function openingState(scenario: CampaignScenario): CampaignState {
       // Endurance from the largest hull aboard lands with logistics (Phase 4);
       // until then every unit carries the full default.
       endurance: 8,
+      movedLastOwnPhase: false,
+      course: null,
     })),
   )
-  return {
+  const state: CampaignState = {
     round: 1,
     phase: 1,
     roundLimit: scenario.rounds,
+    contactSeq: 1,
     rng: { seed: scenario.mapSeed, calls: 0 },
     units,
     infrastructure: scenario.infrastructure.map((i) => ({ ...i, hex: { ...i.hex }, destroyed: false })),
@@ -76,6 +79,13 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     vp: { A: 0, B: 0 },
     finished: false,
   }
+  // The same validator interventions face (turn.ts): a scenario cannot open
+  // with an order the rules would refuse mid-game.
+  for (const unit of state.units) {
+    const refusal = orderRefusal(state, unit, unit.order)
+    if (refusal) throw new Error(`Scenario force: ${refusal}`)
+  }
+  return state
 }
 
 /** Create a campaign: generate and store the map, open the state. */
@@ -91,8 +101,9 @@ export function newCampaign(scenario: CampaignScenario, campaignId: string): Cam
  * Uses the file's STORED map throughout; nothing is regenerated.
  */
 export function replayCampaign(file: CampaignFile): CampaignState {
+  const ctx: DetectionContext = { map: file.map, scenario: file.scenario }
   let state = openingState(file.scenario)
-  for (const move of file.journal) state = resolvePhase(file.map, state, move)
+  for (const move of file.journal) state = resolvePhase(ctx, state, move)
   return state
 }
 

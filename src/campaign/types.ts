@@ -72,6 +72,14 @@ export interface StandingOrder {
   sensorPower: 0 | 1 | 2
   cloaked: boolean
   formation: Formation
+  /**
+   * Intercept or Shadow (5.3) — aimed at a CONTACT of the ordering side,
+   * never at an enemy unit directly. That indirection is the anti-leak
+   * guarantee: the resolver steers toward the contact's estimated position,
+   * the same estimate the side's view shows, so no order — a player's or a
+   * future AI's — can act on information the side does not hold.
+   */
+  mission?: { type: 'intercept' | 'shadow'; contactId: string }
 }
 
 export type UnitKind = 'ship' | 'group' | 'starwing' | 'convoy'
@@ -92,6 +100,14 @@ export interface Unit {
   moveDebt: number
   /** Endurance points remaining (6.4). Ticked at round end from Phase 4 on. */
   endurance: number
+  /**
+   * Whether the unit changed hex (or paid slow-terrain debt) in its most
+   * recent own phase — the "held still" input to the detection bands (4.3),
+   * public in the physical sense a drive plume is public.
+   */
+  movedLastOwnPhase: boolean
+  /** Last step direction, for dead-reckoning a contact's course (4.4). */
+  course: Hex | null
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +158,8 @@ export interface ContactEntry {
 }
 
 export interface ContactRecord {
+  /** Opaque (`ct-<side>-<seq>`): a contact id that named its target unit
+   *  would hand the enemy's order of battle to any client that read it. */
   id: string
   /** The side doing the seeing. */
   side: Side
@@ -154,6 +172,10 @@ export interface ContactRecord {
   lastScan: { round: number; phase: number }
   /** Rounds with no successful scan; 3 collapses to a last-known marker (4.4). */
   unscannedRounds: number
+  /** Last observed course (truth's step direction at scan time), for reckoning. */
+  course: Hex | null
+  /** Last observed speed band, for reckoning: a holder is not extrapolated. */
+  observedMoving: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +270,8 @@ export interface CampaignState {
   phase: number
   /** Copied from the scenario at creation so the resolver can end the clock. */
   roundLimit: number
+  /** Next contact sequence number, so contact ids stay opaque and stable. */
+  contactSeq: number
   rng: CampaignRng
   units: Unit[]
   infrastructure: Infrastructure[]

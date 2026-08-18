@@ -1,39 +1,75 @@
 /**
  * The phase resolver (design doc 0.3.2, Part 5).
  *
- * `resolvePhase(map, state, move)` is the campaign's only state transition —
+ * `resolvePhase(ctx, state, move)` is the campaign's only state transition —
  * pure in the same sense the tactical engine's `applyAction` is: it returns a
  * new state, consults no clock, and draws all randomness from the seeded
  * stream carried in the state. A campaign replays by folding the journal over
  * the initial state, and the replay test holds that fold equal to the stored
  * cache forever.
  *
- * Phase 1 of the build resolves movement mechanics only as far as the journal
- * needs them — interventions, the waypoint auto-step, terrain move debt, the
- * twelve-phase clock and the round tick. Detection (Part 4) and engagements
- * (Part 7) land in later phases and slot in after the movement block here.
+ * Everything a player may do arrives here as an intervention, and everything
+ * an intervention may not do is refused HERE, not in a UI: both consoles and
+ * any future campaign AI run this same resolver, so an order the rules
+ * forbid — cloaking a hull with no cloak, steering by a contact the side does
+ * not hold, ordering the other side's ships — fails identically for everyone.
  */
 
-import { entryCost, hexEquals, hexStepToward, terrainAt } from './hexmap'
+import {
+  contactCollapsed,
+  decayContacts,
+  reckonedHex,
+  runDetection,
+  unitProfile,
+  type DetectionContext,
+} from './detection'
+import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
 import {
   sideToMove,
-  type CampaignMap,
   type CampaignState,
+  type Hex,
   type Intervention,
   type PhaseMove,
+  type StandingOrder,
   type Unit,
 } from './types'
 
+export type { DetectionContext } from './detection'
+
 export class PhaseError extends Error {}
+
+/**
+ * Why a standing order is illegal for this unit, or null. One validator for
+ * every path an order can arrive by — scenario setup, intervention, future
+ * AI — because a rule enforced in one door and not another is a leak.
+ */
+export function orderRefusal(state: CampaignState, unit: Unit, order: StandingOrder): string | null {
+  if (order.cloaked && !unitProfile(unit).cloakCapable) {
+    return `${unit.id} cannot cloak — not every hull aboard carries a cloak.`
+  }
+  if (order.mission) {
+    const contact = state.contacts.find(
+      (c) => c.id === order.mission!.contactId && c.side === unit.side,
+    )
+    if (!contact) {
+      return `${unit.id}: no such contact ${order.mission.contactId} — missions steer by what this side has seen.`
+    }
+  }
+  return null
+}
 
 function applyIntervention(state: CampaignState, intervention: Intervention, side: string): void {
   const unit = state.units.find((u) => u.id === intervention.unitId)
   if (!unit) throw new PhaseError(`No such unit: ${intervention.unitId}`)
   if (unit.side !== side) throw new PhaseError(`${unit.id} is not ${side}'s unit to order.`)
   switch (intervention.type) {
-    case 'set-order':
-      unit.order = structuredClone(intervention.order)
+    case 'set-order': {
+      const order = structuredClone(intervention.order)
+      const refusal = orderRefusal(state, unit, order)
+      if (refusal) throw new PhaseError(refusal)
+      unit.order = order
       break
+    }
     case 'set-waypoints':
       unit.order = { ...unit.order, waypoints: structuredClone(intervention.waypoints) }
       break
@@ -41,34 +77,86 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
 }
 
 /**
- * One unit's auto-step (5.2): a hex toward the next waypoint, unless holding,
- * out of path, or paying off slow terrain. Waypoints reached are consumed.
- * Deterministic throughout — the step choice's tie-break lives in hexmap.
+ * Where this unit is trying to go right now: its mission's contact, reckoned
+ * from what its side knows (never from truth — that indirection is the
+ * anti-leak guarantee, see StandingOrder.mission), or its next waypoint.
  */
-function stepUnit(map: CampaignMap, unit: Unit): void {
-  if (unit.order.speed === 'hold') return
-  if (unit.moveDebt > 0) {
-    unit.moveDebt -= 1
-    return
+function currentDestination(state: CampaignState, unit: Unit): Hex | null {
+  const mission = unit.order.mission
+  if (mission) {
+    const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)
+    if (!contact || contactCollapsed(contact)) return null // hold until told otherwise
+    const believed = reckonedHex(contact, state)
+    if (mission.type === 'intercept') return believed
+    // Shadow (5.3): keep the trail at distance three to four.
+    const range = hexDistance(unit.hex, believed)
+    if (range > 4) return believed
+    if (range < 3) {
+      // Open the range: step to the neighbor that increases distance most.
+      let best: Hex | null = null
+      let bestDist = range
+      for (const n of [unit.hex, ...hexNeighbors(unit.hex)]) {
+        const d = hexDistance(n, believed)
+        if (d > bestDist) {
+          best = n
+          bestDist = d
+        }
+      }
+      return best
+    }
+    return null // in the pocket: hold and listen
   }
   while (unit.order.waypoints.length > 0 && hexEquals(unit.order.waypoints[0], unit.hex)) {
     unit.order.waypoints.shift()
   }
-  const target = unit.order.waypoints[0]
-  if (!target) return
+  return unit.order.waypoints[0] ?? null
+}
+
+/**
+ * One unit's auto-step (5.2): a hex toward its destination, unless holding or
+ * paying off slow terrain. `movedLastOwnPhase` and `course` are recorded here
+ * because the detection bands and dead-reckoning read them (4.3, 4.4).
+ */
+function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit): void {
+  if (unit.order.speed === 'hold') {
+    unit.movedLastOwnPhase = false
+    unit.course = null
+    return
+  }
+  if (unit.moveDebt > 0) {
+    unit.moveDebt -= 1
+    unit.movedLastOwnPhase = true // the drive is hot mid-transit
+    return
+  }
+  const target = currentDestination(state, unit)
+  if (!target) {
+    unit.movedLastOwnPhase = false
+    unit.course = null
+    return
+  }
   const next = hexStepToward(unit.hex, target)
-  if (hexEquals(next, unit.hex)) return
+  // The map edge is a wall, not a suggestion: a waypoint (or a reckoned
+  // contact position) beyond it holds the unit at the border rather than
+  // walking it off the board.
+  if (hexEquals(next, unit.hex) || !inBounds(next, ctx.map.width, ctx.map.height)) {
+    unit.movedLastOwnPhase = false
+    unit.course = null
+    return
+  }
+  unit.course = { q: next.q - unit.hex.q, r: next.r - unit.hex.r }
   unit.hex = next
+  unit.movedLastOwnPhase = true
   // Nebula and dust cost two phases per hex (2.2): the second is owed.
-  unit.moveDebt = entryCost(terrainAt(map, next)) - 1
+  unit.moveDebt = entryCost(terrainAt(ctx.map, next)) - 1
 }
 
 /**
  * Resolve one side's phase: interventions first (they are the journal entry),
- * then that side's auto-steps, then — in build Phase 2 — everyone's passive
- * scans. Phase 12 additionally runs the round tick (5.1).
+ * then that side's auto-steps, then EVERYONE's passive scans (4.1) — twelve
+ * detection sweeps a round is the design's heartbeat. Phase 12 additionally
+ * runs the round tick (5.1).
  */
-export function resolvePhase(map: CampaignMap, state: CampaignState, move: PhaseMove): CampaignState {
+export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: PhaseMove): CampaignState {
   if (state.finished) throw new PhaseError('The campaign is over.')
   if (move.round !== state.round || move.phase !== state.phase) {
     throw new PhaseError(
@@ -83,18 +171,17 @@ export function resolvePhase(map: CampaignMap, state: CampaignState, move: Phase
   const next = structuredClone(state)
   for (const intervention of move.interventions) applyIntervention(next, intervention, move.side)
   for (const unit of next.units) {
-    if (unit.side === move.side) stepUnit(map, unit)
+    if (unit.side === move.side) stepUnit(ctx, next, unit)
   }
 
-  // Detection sweeps (4.1) run here for BOTH sides every phase — Phase 2.
+  runDetection(ctx, next)
 
   if (next.phase === 12) {
-    // The round tick (5.1): endurance, repair queues, rearm, convoys,
-    // reinforcements, VP — build Phases 3–4. The clock alone turns for now.
+    // The round tick (5.1): contact decay now; endurance, repair queues,
+    // rearm, convoys, reinforcements and VP land in build Phases 3–4.
+    decayContacts(next)
     next.phase = 1
     next.round += 1
-    // Scoring picks the winner in build Phase 4; the clock already knows
-    // when to stop, and a finished campaign refuses further moves.
     if (next.round > next.roundLimit) next.finished = true
   } else {
     next.phase += 1

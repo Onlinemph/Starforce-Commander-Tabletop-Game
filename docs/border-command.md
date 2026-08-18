@@ -28,9 +28,44 @@ and the repo's data — the latter feed the doc's Part 12 list for Doyle.
   whose stored state does not equal the journal replay; replay-equals-cache is
   the permanent test, exactly as it is for battles.
 
-Still to come per the doc: detection and views (build Phase 2), battle handoff
-and repair queues (Phase 3), logistics/VP/Quick Resolve (Phase 4), remote play
-(Phase 5), and the campaign UI.
+## Build Phase 2 — detection, contacts, views (shipped)
+
+- `detection.ts` — the passive sweep after every phase's movement, both sides,
+  twelve a round (4.1). Doyle's curve is scenario data; modifiers shift the
+  roll by whole columns (4.3), with the worked example's arithmetic pinned as
+  tests (a held-still target at range five is off-curve, sensors at two power
+  read range five as four). Contacts climb the graded attribute ladder (4.4),
+  sciences ≥ 3 climbing two rungs a scan, identification gated behind range
+  three or a scout block, a close formation hiding its count to range one.
+  Misinformation (4.5) corrupts description and never presence, and a closer
+  look than the lie was bought at re-rolls it. Contacts decay at the round
+  tick and collapse to last-known markers after three quiet rounds.
+  Infrastructure senses (3.4): bases/outposts/colonies as radar certainty on
+  the uncloaked, listening posts rolling the curve capped at three.
+- `views.ts` — the wall. `viewFor(map, state, side)` is the only way
+  player-facing code sees a campaign: own units whole, enemies only as
+  contacts with umpire fields stripped (no truth flags, no target unit ids —
+  contact ids are opaque sequence numbers precisely so they can't name their
+  target), positions dead-reckoned along the observed course while unobserved.
+  The tests attack the serialized view the way a cheating client would: grep
+  the bytes for anything the side should not know.
+- **No actor privilege, by construction.** Every actor — either player, a
+  future campaign AI — issues the same interventions through the same
+  resolver, which enforces the rules itself (a cloak order on a cloakless
+  hull, a mission aimed at a contact the side does not hold, another side's
+  unit: all `PhaseError`s, not UI conveniences). Intercept and Shadow (5.3)
+  take a *contact id*, never an enemy unit id, and steer by `reckonedHex` —
+  the side's belief — so no order can act on the umpire's truth. A test pins
+  this by penciling in a deliberately wrong estimate and confirming the
+  interceptor chases the belief, not the ship.
+
+Still to come per the doc: battle handoff and repair queues (build Phase 3),
+logistics/VP/Quick Resolve (Phase 4), remote play (Phase 5), the campaign UI,
+and false contacts (4.6 — the flag exists in tuning, off by default,
+mechanics pending). Listening posts are not yet themselves scannable targets
+(they stay hidden until the infra-combat work in Phases 3–4 makes finding
+them matter); enemy bases, outposts, colonies and beacons are chart-known
+per the doc's 12.8 presumption.
 
 ## Where the doc met the data (Part 12 material)
 

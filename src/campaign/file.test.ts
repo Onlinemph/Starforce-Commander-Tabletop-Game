@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { blankScenario, loadCampaign, newCampaign, replayCampaign, saveCampaign } from './file'
 import { hexDistance, terrainAt } from './hexmap'
-import { resolvePhase } from './turn'
+import { resolvePhase, type DetectionContext } from './turn'
 import { sideToMove, type CampaignFile, type Hex, type PhaseMove } from './types'
 
 /**
@@ -20,6 +20,8 @@ function scenario() {
   })
 }
 
+const ctxOf = (file: CampaignFile): DetectionContext => ({ map: file.map, scenario: file.scenario })
+
 /** Journal one uneventful phase for whoever is up. */
 function pass(file: CampaignFile): void {
   const move: PhaseMove = {
@@ -28,7 +30,7 @@ function pass(file: CampaignFile): void {
     side: sideToMove(file.state.phase),
     interventions: [],
   }
-  file.state = resolvePhase(file.map, file.state, move)
+  file.state = resolvePhase(ctxOf(file), file.state, move)
   file.journal.push(move)
 }
 
@@ -36,7 +38,7 @@ describe('the campaign file', () => {
   it('replay-from-phase-one equals the stored state — the permanent test', () => {
     const file = newCampaign(scenario(), 'c-test-1')
     // A round and a half of moves, with a real order change in the middle.
-    file.state = resolvePhase(file.map, file.state, {
+    file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 1,
       side: 'A',
@@ -80,7 +82,7 @@ describe('the campaign file', () => {
   it('a unit auto-steps one hex toward its waypoint each own phase, and only its own', () => {
     const file = newCampaign(scenario(), 'c-test-4')
     const start: Hex = { q: 5, r: 10 }
-    file.state = resolvePhase(file.map, file.state, {
+    file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 1,
       side: 'A',
@@ -91,7 +93,7 @@ describe('the campaign file', () => {
 
     // B's phase does not move A's unit.
     const held = structuredClone(after1.hex)
-    file.state = resolvePhase(file.map, file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
     expect(file.state.units.find((u) => u.id === 'a-patrol')!.hex).toEqual(held)
   })
 
@@ -106,7 +108,7 @@ describe('the campaign file', () => {
     const unit = file.state.units.find((u) => u.id === 'a-patrol')!
     const doorstep = { q: slow.q + 1, r: slow.r }
     unit.hex = doorstep
-    file.state = resolvePhase(file.map, file.state, {
+    file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 1,
       side: 'A',
@@ -117,8 +119,8 @@ describe('the campaign file', () => {
     expect(at.moveDebt).toBe(1)
 
     // Its next own phase is spent paying the debt, not moving on.
-    file.state = resolvePhase(file.map, file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
-    file.state = resolvePhase(file.map, file.state, {
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
+    file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 3,
       side: 'A',
@@ -132,13 +134,13 @@ describe('the campaign file', () => {
   it('refuses out-of-order moves and the wrong side', () => {
     const file = newCampaign(scenario(), 'c-test-6')
     expect(() =>
-      resolvePhase(file.map, file.state, { round: 1, phase: 2, side: 'B', interventions: [] }),
+      resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] }),
     ).toThrow(/Expected round 1 phase 1/)
     expect(() =>
-      resolvePhase(file.map, file.state, { round: 1, phase: 1, side: 'B', interventions: [] }),
+      resolvePhase(ctxOf(file), file.state, { round: 1, phase: 1, side: 'B', interventions: [] }),
     ).toThrow(/A's to move/)
     expect(() =>
-      resolvePhase(file.map, file.state, {
+      resolvePhase(ctxOf(file), file.state, {
         round: 1,
         phase: 1,
         side: 'A',
@@ -152,7 +154,7 @@ describe('the campaign file', () => {
     for (let i = 0; i < 12; i++) pass(file)
     expect(file.state.finished).toBe(true)
     expect(() =>
-      resolvePhase(file.map, file.state, { round: 2, phase: 1, side: 'A', interventions: [] }),
+      resolvePhase(ctxOf(file), file.state, { round: 2, phase: 1, side: 'A', interventions: [] }),
     ).toThrow(/over/)
   })
 })
