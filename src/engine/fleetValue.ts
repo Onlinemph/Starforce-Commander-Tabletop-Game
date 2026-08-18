@@ -25,6 +25,23 @@ import type { ShipForm } from './types'
  * The printed values stay the default and stay authoritative — this scale
  * is an opt-in the fleet picker offers, and the setup records the choice so
  * saves, replays and remote peers rebuild the same battle.
+ *
+ * SCOPE: this is a BASE-GAME scale. Every game behind it was played under the
+ * base firing sequence (H2.4), and the optional Coordinated Fire rules change
+ * the answer, because H4.3.1 bars a faction from attacking the same hull twice
+ * in a combat phase — which is to say it bars massed fire, which is the whole
+ * of what numbers buy. Measured over the same panel at printed prices, the
+ * swarm's win rate falls from 80.6% to 60.9% with H4 switched on (340 games
+ * each, z = 5.6); at two-to-one hulls, from 88% to 62%. That is close to what
+ * this scale achieves at base-game rules, so a table playing H4 with printed
+ * points is already near where a table playing the base game with these points
+ * lands — and using both together would over-correct at moderate mismatches.
+ *
+ * H4 is not a substitute at the extremes, though. Titrated break-even worth
+ * with H4 on rises only 8-37% per hull (median +22%): a UNION III measures 105
+ * where it measures 95 in the base game, against a printed 158.5. The rule
+ * moderates fights near parity; it does not make a dreadnought worth its price
+ * against a swarm five times its number.
  */
 
 /** The fitted curve, for hulls the sweeps never measured (fan designs). */
