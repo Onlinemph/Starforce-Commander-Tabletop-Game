@@ -43,3 +43,5 @@ tools/titration_h4off.csv
 tools/titration_h4on.csv
 tools/calib_h4off.csv
 tools/calib_h4on.csv
+# H4's group-size limit is Tactical Scan, and Tactical Scan climbs with tech
+tools/scan_tier.csv
