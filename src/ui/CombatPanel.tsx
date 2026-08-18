@@ -18,6 +18,7 @@ import {
   attackAllowed,
   cloakModifiers,
   firingOrderRefusal,
+  firingStepRefusal,
   cloudModifiers,
   impactingHoming,
   probeLaunchers,
@@ -70,6 +71,10 @@ export function CombatPanel({ game, attacker }: Props) {
   const target = enemies.find((s) => s.id === (forcedTargetId ?? targetId)) ?? null
 
   const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
+
+  // The engine's own gate on the shared step clock, so the button and the
+  // refusal can never disagree either.
+  const holdingStep = game.coordinatedFire ? firingStepRefusal(game) : null
 
   const alreadyFired = game.firedThisSegment.has(attacker.id)
   // The engine's own gate, so the button and the refusal can never disagree.
@@ -415,14 +420,22 @@ export function CombatPanel({ game, attacker }: Props) {
       <ProbeLaunch game={game} attacker={attacker} />
 
       {game.coordinatedFire && (
-        <button
-          type="button"
-          className="next-step"
-          disabled={step.index === FIRING_STEPS.length}
-          onClick={() => dispatch({ type: 'advance-firing-step' })}
-        >
-          Next firing step →
-        </button>
+        <>
+          <button
+            type="button"
+            className="next-step"
+            // The clock is shared and has one button, so in a match it is also
+            // the way to take somebody's turn away from them. The engine
+            // refuses to move off a ship's last step while it still has its
+            // volley; the button says so before it is pressed.
+            disabled={step.index === FIRING_STEPS.length || holdingStep !== null}
+            title={holdingStep ?? undefined}
+            onClick={() => dispatch({ type: 'advance-firing-step' })}
+          >
+            Next firing step →
+          </button>
+          {holdingStep && <p className="hint">{holdingStep}</p>}
+        </>
       )}
 
       {lastResult && typeof lastResult !== 'string' && (

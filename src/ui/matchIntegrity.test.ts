@@ -2,15 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { actionSide, applyAction, undoableInMatch, type GameAction } from '../engine/actions'
 import { advanceSegment, defaultCommandCard, type GameState } from '../engine/game'
+import { replayGame } from '../data/savedGame'
 import { stateHash } from '../engine/stateHash'
 import {
   canUndo,
   currentMatchSide,
+  currentSave,
   dispatch,
   enableReadyGate,
   gateIsWaiting,
   getGame,
   journalLength,
+  lockOptionalRules,
   newGame,
   readyAbsentSides,
   setMatchSide,
@@ -292,5 +295,57 @@ describe('the dispatch gate: one console, one side', () => {
     const outcome = dispatch({ type: 'signal-ready', side: 'Red Force', ready: true })
     expect(outcome.message === null || !outcome.message.includes('another console')).toBe(true)
     setMatchSide(null)
+  })
+})
+
+/**
+ * The optional rules are agreed before the battle, and `set-coordinated-fire`
+ * is one of the handful of actions that belongs to the table rather than to a
+ * side — so the ownership gate lets either console send it, and without a lock
+ * a player could switch H4 off from inside a firing sequence going against
+ * them.
+ */
+describe('the rule set is settled when the match begins', () => {
+  beforeEach(() => {
+    setMatchSide(null)
+    newGame({ scenarioId: 's3.1-the-duel', seed: 5, coordinatedFire: true })
+  })
+
+  it('lets a solo captain change their mind', () => {
+    expect(getGame().coordinatedFire).toBe(true)
+    expect(dispatch({ type: 'set-coordinated-fire', on: false }).message).toBeNull()
+    expect(getGame().coordinatedFire).toBe(false)
+  })
+
+  it('refuses the change once the rules are locked', () => {
+    expect(lockOptionalRules()).toBe(true)
+    expect(getGame().rulesLocked).toBe(true)
+    const refused = dispatch({ type: 'set-coordinated-fire', on: false })
+    expect(refused.message).toMatch(/settled when the match began/i)
+    expect(getGame().coordinatedFire).toBe(true)
+  })
+
+  it('refuses it from the other console too, so the two journals stay identical', () => {
+    lockOptionalRules()
+    setMatchSide('Red Force')
+    // The gate passes it — the action names no side — and the engine is what
+    // refuses, which is the point: a modified client changes nothing here.
+    dispatch({ type: 'set-coordinated-fire', on: false })
+    expect(getGame().coordinatedFire).toBe(true)
+    setMatchSide(null)
+  })
+
+  it('travels in the save, so a joiner and a replay arrive locked', () => {
+    lockOptionalRules()
+    const rebuilt = replayGame(currentSave())
+    expect(rebuilt.rulesLocked).toBe(true)
+    expect(rebuilt.coordinatedFire).toBe(true)
+  })
+
+  it('will not lock a battle that is already under way', () => {
+    const blue = getGame().ships.find((s) => s.side === 'Blue Force')!
+    dispatch({ type: 'rename-ship', shipId: blue.id, name: 'U.S.S. Too Late' })
+    expect(lockOptionalRules()).toBe(false)
+    expect(getGame().rulesLocked).toBe(false)
   })
 })

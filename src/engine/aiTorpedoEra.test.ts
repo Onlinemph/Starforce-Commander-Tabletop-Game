@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { startScenario } from '../data/scenarios'
 import { applyAction, type GameAction } from './actions'
 import { aiNextActions, createAiMemo, setCoordinatedGroups, postureOf } from './ai'
-import { activeShips, victoryPoints, type GameState } from './game'
+import { advanceFiringStep, activeShips, victoryPoints, type GameState } from './game'
 import { impactShield, isHoming } from './homing'
 import { type AiMemo } from './ai'
 import { type ShipState } from './shipState'
@@ -140,13 +140,19 @@ describe('the H4 step machine is played, not passed', () => {
     game.segment = 'combat'
 
     const memo = createAiMemo()
-    // Walk the clock to step 4 (Individual, scan 2): the pair holds its fire.
-    while (game.firingStepIndex < 3) applyAction(game, { type: 'advance-firing-step' })
+    /*
+     * Walk the clock to step 4 (Individual, scan 2): the pair holds its fire.
+     * Positioned with the engine helper rather than the action, because the
+     * action now refuses to move off a ship's last step while it still has a
+     * volley (`firingStepRefusal`) — which is the rule under test elsewhere,
+     * and here would only stop the clock short of the step being set up.
+     */
+    while (game.firingStepIndex < 3) advanceFiringStep(game)
     const onIndividual = aiNextActions(game, ['Blue Force'], memo, false, 'captain')
     expect(onIndividual.some((x) => x.type === 'fire-volley')).toBe(false)
 
     // Step 7 (Coordinated, scan 2): the group is declared, then fires together.
-    while (game.firingStepIndex < 6) applyAction(game, { type: 'advance-firing-step' })
+    while (game.firingStepIndex < 6) advanceFiringStep(game)
     const declared = aiNextActions(game, ['Blue Force'], memo, false, 'captain')
     const decl = declared.find((x) => x.type === 'declare-coordinated')
     expect(decl).toBeDefined()
@@ -194,7 +200,7 @@ describe('the H4 step machine is played, not passed', () => {
     game.segment = 'combat'
 
     const memo = createAiMemo()
-    while (game.firingStepIndex < 3) applyAction(game, { type: 'advance-firing-step' })
+    while (game.firingStepIndex < 3) advanceFiringStep(game)
     const fired: GameAction[] = []
     for (let guard = 0; guard < 10; guard++) {
       const batch = aiNextActions(game, ['Blue Force'], memo, false, 'captain')
@@ -224,7 +230,7 @@ describe('the H4 step machine is played, not passed', () => {
     b.sensors = { targeting: 0, jamming: 0, tacticalScan: 0 }
     game.phase = 'combat-1'
     game.segment = 'combat'
-    while (game.firingStepIndex < 5) applyAction(game, { type: 'advance-firing-step' })
+    while (game.firingStepIndex < 5) advanceFiringStep(game)
 
     const memo = createAiMemo()
     const fired: GameAction[] = []

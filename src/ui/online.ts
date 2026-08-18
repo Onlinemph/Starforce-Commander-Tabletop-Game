@@ -14,6 +14,7 @@ import {
   journalLength,
   readyAbsentSides,
   setMatchPresence,
+  lockOptionalRules,
   setMatchSide,
   setNetHooks,
   subscribeStore,
@@ -567,6 +568,12 @@ export async function createMatch(
    * the save is published, so the guest's copy arrives already gated.
    */
   enableReadyGate()
+  /**
+   * And the optional rules are settled here too, for the same reason and at
+   * the same moment: before the save is published, so the guest's copy arrives
+   * with the rule set already frozen rather than negotiable.
+   */
+  lockOptionalRules()
   const save = currentSave()
 
   if (key && looksLikeSupabase(server)) {

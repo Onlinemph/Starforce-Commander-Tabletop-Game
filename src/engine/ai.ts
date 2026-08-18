@@ -173,6 +173,18 @@ export interface AiMemo {
   volleys: Map<string, GameAction | null>
   /** Highest Tactical Scan each enemy side has shown — the auction remembered. */
   scanSeen: Map<string, number>
+  /**
+   * The coordinated group each side intends this firing step, one entry per
+   * (round, phase, step, side); null means "looked, and there is none".
+   *
+   * Planning a group costs a `bestVolley` for every candidate hull, and the
+   * drive loop asks for orders many times per step — so recomputing it on
+   * every call turned a squadron's H4 self-play from seconds into minutes.
+   * The plan is still checked against the open board before it is used, which
+   * is what the recompute was really for: a fallen partner or a dead target
+   * invalidates the entry instead of wedging it.
+   */
+  groups: Map<string, { shipIds: string[]; targetId: string; stepIndex: number } | null>
   /** Log entries digested so far by the observation pass. */
   logSeen: number
   /** Consecutive under-book volleys observed per enemy ship: a power-starved read. */
@@ -180,7 +192,15 @@ export interface AiMemo {
 }
 
 export function createAiMemo(): AiMemo {
-  return { done: new Set(), plots: new Map(), volleys: new Map(), scanSeen: new Map(), logSeen: 0, underPowered: new Map() }
+  return {
+    done: new Set(),
+    plots: new Map(),
+    volleys: new Map(),
+    scanSeen: new Map(),
+    groups: new Map(),
+    logSeen: 0,
+    underPowered: new Map(),
+  }
 }
 
 /**
@@ -4076,7 +4096,12 @@ function planCoordinatedFiring(
     for (const side of [...new Set(unfired.map((s) => s.side))].sort()) {
       const ours = unfired.filter((s) => s.side === side)
       if (!coordinatedGroupsEnabled && !concentrationCapBinds(game, side, ours)) continue
-      const plan = plannedCoordinatedGroup(game, ours, difficulty)
+      const key = `grp:${game.round}:${game.phase}:${step.index}:${side}`
+      let plan = memo.groups.get(key)
+      if (plan === undefined || (plan !== null && !planStillStands(game, plan))) {
+        plan = plannedCoordinatedGroup(game, ours, difficulty)
+        memo.groups.set(key, plan)
+      }
       if (plan) plans.set(side, plan)
     }
   }
@@ -4197,6 +4222,25 @@ function planCoordinatedFiring(
  * group (`plannedCoordinatedGroup` re-checks every member for a live volley)
  * and reserves nobody.
  */
+/**
+ * Whether a remembered group is still a group: its target alive and not yet
+ * attacked by this faction, every member still on the board and still holding
+ * its volley. This is the check the old recompute-every-call was really doing,
+ * kept while the expensive planning behind it is not.
+ */
+function planStillStands(
+  game: GameState,
+  plan: { shipIds: string[]; targetId: string; stepIndex: number },
+): boolean {
+  const target = game.ships.find((s) => s.id === plan.targetId)
+  if (!target || target.destroyed || target.disengaged) return false
+  const members = plan.shipIds.map((id) => game.ships.find((s) => s.id === id))
+  if (members.some((s) => !s || s.destroyed || s.disengaged || game.firedThisSegment.has(s.id))) {
+    return false
+  }
+  return attackAllowed(game, members[0]!, target) === null
+}
+
 function concentrationCapBinds(game: GameState, side: string, unfiredOurs: ShipState[]): boolean {
   if (unfiredOurs.length < 2) return false
   const targets = activeShips(game).filter(

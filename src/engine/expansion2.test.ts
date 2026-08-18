@@ -20,13 +20,16 @@ import {
   mayFireAlone,
   validateCoordinatedFire,
 } from './coordinatedFire'
+import { applyAction } from './actions'
 import { autoChoices, newDeck, setDestructionOptions, STANDARD_DESTRUCTION, type DamageContext } from './damage'
 import { Rng } from './dice'
 import {
+  advanceFiringStep,
   advanceSegment,
   createGame,
   currentFiringStep,
   attackAllowed,
+  firingStepRefusal,
   recordAttack,
   tacticalScanOf,
   type GameState,
@@ -297,6 +300,64 @@ describe('coordinated fire eligibility (H4.5)', () => {
     // A sixth ship needs six points each, which step 10 still covers.
     expect(validateCoordinatedFire(entries([5, 5, 5, 5, 5, 5]), FIRING_STEPS[9])).toMatch(/6 is required/)
     expect(validateCoordinatedFire(entries([6, 6, 6, 6, 6, 6]), FIRING_STEPS[9])).toBeNull()
+  })
+})
+
+describe('the shared step clock has one button (H4.2.3)', () => {
+  /**
+   * At a table nobody reaches across and takes your firing step away. Between
+   * two browsers the "Next firing step" button is exactly that reach, so the
+   * engine refuses to move off a ship's LAST step while it still has a volley.
+   */
+  function twoScans(a: number, b: number): GameState {
+    const blue = ship({ id: 'blue', side: 'Blue' })
+    const red = ship({ id: 'red', side: 'Red' })
+    blue.sensors = { targeting: 0, jamming: 0, tacticalScan: a }
+    red.sensors = { targeting: 0, jamming: 0, tacticalScan: b }
+    return createGame({ scenario: THE_DUEL, ships: [blue, red], seed: 1, coordinatedFire: true })
+  }
+
+  it('holds the clock on a ship’s last step while it still has its volley', () => {
+    // Scan 0 answers to individual step 6 and to no coordinated step at all
+    // (H4.5.1), so step 6 is its last chance.
+    const game = twoScans(0, 0)
+    while (game.firingStepIndex < 5) advanceFiringStep(game)
+    expect(currentFiringStep(game).index).toBe(6)
+    expect(firingStepRefusal(game)).toMatch(/last/)
+    expect(applyAction(game, { type: 'advance-firing-step' }).message).toMatch(/last/)
+    expect(currentFiringStep(game).index).toBe(6)
+  })
+
+  it('releases it once they have fired or passed', () => {
+    const game = twoScans(0, 0)
+    while (game.firingStepIndex < 5) advanceFiringStep(game)
+    for (const s of game.ships) game.firedThisSegment.add(s.id)
+    expect(firingStepRefusal(game)).toBeNull()
+    expect(applyAction(game, { type: 'advance-firing-step' }).message).toBeNull()
+    expect(currentFiringStep(game).index).toBe(7)
+  })
+
+  it('lets an EARLIER step be skipped, or holding for a group would wedge it', () => {
+    /*
+     * A scan-2 ship answers to individual step 4 and coordinated step 7. A
+     * squadron waiting to fire together on step 7 looks, on the public
+     * information, exactly like a squadron that can still act on step 4 — and
+     * nobody may announce that they are waiting, because that is the decision
+     * H4 asks them to keep. So the earlier step gives way.
+     */
+    const game = twoScans(2, 2)
+    while (game.firingStepIndex < 3) advanceFiringStep(game)
+    expect(currentFiringStep(game).index).toBe(4)
+    expect(firingStepRefusal(game)).toBeNull()
+
+    while (game.firingStepIndex < 6) advanceFiringStep(game)
+    expect(currentFiringStep(game).index).toBe(7)
+    expect(firingStepRefusal(game)).toMatch(/last/)
+  })
+
+  it('says nothing at all without the optional rule', () => {
+    const game = createGame({ scenario: THE_DUEL, ships: [ship({ id: 'a' })], seed: 1 })
+    expect(firingStepRefusal(game)).toBeNull()
   })
 })
 

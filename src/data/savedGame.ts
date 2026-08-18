@@ -36,6 +36,12 @@ export interface GameSetup {
   decelerationFromDamage?: boolean
   /** Online matches: a segment closes only when every side says so. */
   readyGate?: boolean
+  /**
+   * Online matches: the optional rules are settled and the engine refuses to
+   * change them mid-battle. Recorded here so a joiner's copy, a resumed save
+   * and a replay all arrive already locked.
+   */
+  rulesLocked?: boolean
   /** One form id per side — the ship builder's quick launch. */
   forms?: Partial<Record<string, string>>
   /** A whole force per side, one form id per hull (S2.5.1). */
@@ -84,6 +90,7 @@ export function buildGame(setup: GameSetup): GameState {
     coordinatedFire: setup.coordinatedFire ?? false,
     optionalBatteries: setup.optionalBatteries ?? false,
     readyGate: setup.readyGate ?? false,
+    rulesLocked: setup.rulesLocked ?? false,
     forms: setup.forms,
     fleets: setup.fleets,
     terrain: setup.terrain,

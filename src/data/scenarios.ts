@@ -292,6 +292,8 @@ export interface SetupOptions {
   optionalBatteries?: boolean
   /** Online matches: both sides must signal ready before a segment closes. */
   readyGate?: boolean
+  /** Freeze the optional rules for the battle (online matches). */
+  rulesLocked?: boolean
   /**
    * Price every hull at its measured battle value instead of the printed
    * Master Ship List number (see engine/fleetValue.ts). The victory ledger,
@@ -1254,6 +1256,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     coordinatedFire: options.coordinatedFire ?? false,
     optionalBatteries: options.optionalBatteries ?? false,
     readyGate: options.readyGate ?? false,
+    rulesLocked: options.rulesLocked ?? false,
     options: {
       derelicts: options.derelicts ?? false,
       explosions: options.explosions ?? false,

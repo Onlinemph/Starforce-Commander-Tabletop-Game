@@ -100,6 +100,8 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [mapScale, setMapScale] = useState<1 | 2>(1)
   const [armedStart, setArmedStart] = useState(false)
   const [optionalBatteries, setOptionalBatteries] = useState(false)
+  // H4: the ten firing steps, and one attack per faction per target per phase.
+  const [coordinatedFire, setCoordinatedFire] = useState(false)
   // E11's optional endgame: derelicts, explosions, and getting the crew off.
   const [derelicts, setDerelicts] = useState(false)
   const [explosions, setExplosions] = useState(false)
@@ -155,6 +157,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       armedStart: armedStart || undefined,
       balancedPoints: balancedPoints || undefined,
       optionalBatteries: optionalBatteries || undefined,
+      coordinatedFire: coordinatedFire || undefined,
       derelicts: derelicts || undefined,
       // A ship cannot linger long enough to explode or be abandoned unless it
       // lingers at all, so both of those imply derelicts (E11.3, E11.6.2).
@@ -274,6 +277,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setOptionalBatteries(e.target.checked)}
             />
             Batteries usable mid-round (B2.5)
+          </label>
+          <label
+            className="checkbox"
+            title="Optional rule H4. Offensive fire splits into ten steps — six Individual ones in descending Tactical Scan order, then four Coordinated ones ascending — and a ship may fire early or fire together with friends, never both. The rule that bites: a faction gets ONE attack per enemy ship per combat phase (H4.3.1), so putting a second hull on the same target means declaring a group, and every ship in a group needs Tactical Scan at least equal to the group's size (H4.5.1)."
+          >
+            <input
+              type="checkbox"
+              checked={coordinatedFire}
+              onChange={(e) => setCoordinatedFire(e.target.checked)}
+            />
+            Coordinated Fire (H4)
           </label>
           <label
             className="checkbox"

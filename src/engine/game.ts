@@ -47,6 +47,8 @@ import {
 import {
   checkOneAttackPerPhase,
   attackKey,
+  coordinatedStepFor,
+  individualStepFor,
   validateCoordinatedFire,
   FIRING_STEPS,
   type FiringStep,
@@ -611,6 +613,20 @@ export interface GameState {
    * writing, and the half-written card is what moves.
    */
   readyGate: boolean
+  /**
+   * The optional rules are settled and may not be changed mid-battle (online
+   * matches).
+   *
+   * Which optional rules are in force is a thing the players agree on before
+   * the first die is rolled, and at a shared table nobody can quietly revise
+   * it afterwards. Two browsers can: `set-coordinated-fire` belongs to the
+   * table rather than to a side, so the ownership gate lets either console
+   * send it, and a player who did not like where H4 had left them could
+   * switch it off in the middle of a firing sequence. Locked, the engine
+   * refuses that on both consoles, so a modified client changes nothing on
+   * the honest one and the two journals stay identical.
+   */
+  rulesLocked: boolean
   /** Sides that have signalled ready for the segment in progress. */
   readySides: string[]
   /** Position in the ten-step firing sequence while H4 is in force (H4.2.3). */
@@ -694,6 +710,8 @@ export function createGame(args: {
   coordinatedFire?: boolean
   optionalBatteries?: boolean
   readyGate?: boolean
+  /** Freeze the optional rules for the battle (online matches). */
+  rulesLocked?: boolean
   /** Play with the optional jamming-versus-homing rules (E5.10). */
   jammingVsHoming?: boolean
 }): GameState {
@@ -738,6 +756,7 @@ export function createGame(args: {
     coordinatedFire: args.coordinatedFire ?? false,
     optionalBatteries: args.optionalBatteries ?? false,
     readyGate: args.readyGate ?? false,
+    rulesLocked: args.rulesLocked ?? false,
     readySides: [],
     firingStepIndex: 0,
     attackedThisPhase: new Set(),
@@ -1384,6 +1403,44 @@ export function armCrew(game: GameState, ship: ShipState): string | null {
 
 export function currentFiringStep(game: GameState): FiringStep {
   return FIRING_STEPS[Math.min(game.firingStepIndex, FIRING_STEPS.length - 1)]
+}
+
+/**
+ * Why the firing step may not be wound on yet, or null when it may.
+ *
+ * The ten steps are a shared clock with one button, which at a table is fine —
+ * nobody reaches across and takes your step away — and between two browsers is
+ * a way to shoot first and skip the reply. Under H4 a ship answers to at most
+ * two steps: the Individual step its Tactical Scan calls (H4.4), and the
+ * Coordinated step for that same level five later (H4.2.3). This refuses to
+ * move off a ship's LAST one while it still has its volley.
+ *
+ * Only the last, deliberately. Refusing on the earlier step too would wedge
+ * the clock forever in the very case the rule exists for: a squadron holding
+ * its scan-2 hulls off step 4 so they can fire together on step 7 is, on the
+ * public information, a squadron with ships that "can still act" on step 4 —
+ * and nobody may say out loud that they are waiting, because that is the
+ * decision the rule is asking them to keep to themselves. So an early step may
+ * be skipped past you; your final one may not.
+ */
+export function firingStepRefusal(game: GameState): string | null {
+  if (!game.coordinatedFire) return null
+  const step = currentFiringStep(game)
+  const held: string[] = []
+  for (const ship of game.ships) {
+    if (ship.destroyed || ship.disengaged || ship.derelict) continue
+    if (game.firedThisSegment.has(ship.id)) continue
+    const scan = tacticalScanOf(game, ship)
+    // The last step this ship answers to: its coordinated step where it has
+    // one (scan 2+), its individual step otherwise (H4.5.1).
+    const last = coordinatedStepFor(scan) ?? individualStepFor(scan)
+    if (last.index === step.index) held.push(ship.name)
+  }
+  if (held.length === 0) return null
+  return (
+    `${held.join(' and ')} ${held.length === 1 ? 'has' : 'have'} not fired or passed, and step ` +
+    `${step.index} is ${held.length === 1 ? 'its' : 'their'} last (H4.2.3).`
+  )
 }
 
 /** Move to the next of the ten firing steps (H4.2.3). */

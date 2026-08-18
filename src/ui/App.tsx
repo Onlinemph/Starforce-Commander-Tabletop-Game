@@ -403,11 +403,15 @@ export function App() {
 
         <label
           className="checkbox"
-          title="Expansion 2, H4: ships may fire first or fire together, never both"
+          title={
+            game.rulesLocked
+              ? 'Settled when the match began — the optional rules are not changed mid-battle (H4.1)'
+              : 'Expansion 2, H4: ships may fire first or fire together, never both'
+          }
         >
           <input
             type="checkbox"
-            disabled={enrolledInMatch}
+            disabled={enrolledInMatch || game.rulesLocked}
             checked={game.coordinatedFire}
             onChange={(e) => dispatch({ type: 'set-coordinated-fire', on: e.target.checked })}
           />

@@ -28,6 +28,7 @@ import {
   advanceFiringStep,
   advanceOperationsStep,
   advanceSegment,
+  firingStepRefusal,
   asteroidCoverRerolls,
   asteroidFieldsAt,
   attackAllowed,
@@ -460,10 +461,23 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'ops-next-step':
       advanceOperationsStep(game)
       return ok
-    case 'advance-firing-step':
+    case 'advance-firing-step': {
+      const holding = firingStepRefusal(game)
+      if (holding) return said(holding)
       advanceFiringStep(game)
       return ok
+    }
     case 'set-coordinated-fire':
+      /*
+       * Which optional rules are in force was agreed before the battle. In a
+       * match that agreement is locked, and the refusal lives here rather than
+       * in the panel because both consoles run this same engine: a client that
+       * sends it anyway changes nothing on the other end, so the journals stay
+       * identical instead of quietly diverging.
+       */
+      if (game.rulesLocked) {
+        return said('The optional rules were settled when the match began (H4.1).')
+      }
       game.coordinatedFire = action.on
       game.firingStepIndex = 0
       game.coordinatedGroup = null

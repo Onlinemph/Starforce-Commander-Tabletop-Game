@@ -479,6 +479,29 @@ export function enableReadyGate(): boolean {
   return true
 }
 
+/**
+ * Settle the optional rules for this battle (online matches).
+ *
+ * Whether H4 is in force is something the two captains agree on before the
+ * first die, and at a table nobody may revise it later. `set-coordinated-fire`
+ * belongs to the table rather than to a side, so the ownership gate lets
+ * either console send it — which meant a player could switch the rule off in
+ * the middle of a firing sequence that had gone against them. Locked, the
+ * engine refuses it on both consoles.
+ *
+ * Like the ready gate, only before the first action: this rebuilds the battle
+ * from its setup, and a battle already under way would be rewound.
+ */
+export function lockOptionalRules(): boolean {
+  if (setup.rulesLocked) return true
+  if (journal.length > 0) return false
+  setup = { ...setup, rulesLocked: true }
+  game = buildGame(setup)
+  autosave()
+  emit()
+  return true
+}
+
 /** Start a fresh battle from a setup. Custom designs are embedded into it. */
 export function newGame(next: GameSetup): void {
   setup = withEmbeddedForms(next)
