@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectionChance, trueAttribute, unitProfile, type ScanPosture } from './detection'
+import { detectionChance, reckonedHex, trueAttribute, unitProfile, type ScanPosture } from './detection'
 import { blankScenario, newCampaign } from './file'
 import { hexDistance } from './hexmap'
 import { resolvePhase, PhaseError, type DetectionContext } from './turn'
@@ -356,6 +356,30 @@ describe('orders the engine refuses identically for every actor', () => {
     const a = file.state.units.find((u) => u.id === 'a-1')!
     expect(a.order.mission).toBeUndefined()
     expect(a.hex).toEqual({ q: 8, r: 4 }) // no waypoints, no mission: it held
+  })
+})
+
+describe('dead reckoning stays on the chart', () => {
+  it('a reckoning never sails off the board, however long the silence', () => {
+    const map = { width: 12, height: 10, terrain: [], border: [] }
+    const state = { round: 9, phase: 1 } as never
+    const contact = {
+      id: 'ct-A-1',
+      side: 'A' as const,
+      targetUnitId: 'b-x',
+      attributes: {},
+      estimatedHex: { q: 10, r: 2 },
+      positionEstimated: true,
+      lastScan: { round: 1, phase: 1 },
+      unscannedRounds: 2,
+      course: { q: 1, r: 1 }, // south-east, straight at the corner
+      observedMoving: true,
+    }
+    const believed = reckonedHex(map, contact, state)
+    expect(believed.q).toBeLessThanOrEqual(11)
+    const rMin = -Math.floor(believed.q / 2)
+    expect(believed.r).toBeGreaterThanOrEqual(rMin)
+    expect(believed.r).toBeLessThan(rMin + 10)
   })
 })
 

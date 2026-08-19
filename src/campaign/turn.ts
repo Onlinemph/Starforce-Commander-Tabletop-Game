@@ -126,7 +126,7 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
  * longer exists are dropped — a dossier on a cloud of debris is a marker the
  * battle itself replaced.
  */
-function applyBattleResult(state: CampaignState, record: BattleRecord): void {
+function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: BattleRecord): void {
   const pendingIndex = state.pendingBattles.findIndex((p) => p.id === record.engagementId)
   if (pendingIndex === -1) throw new PhaseError(`No pending battle ${record.engagementId}.`)
   state.pendingBattles.splice(pendingIndex, 1)
@@ -146,8 +146,10 @@ function applyBattleResult(state: CampaignState, record: BattleRecord): void {
       if (outcome.wing) ship.wing = structuredClone(outcome.wing)
     }
     if (!outcome.destroyed && outcome.disengaged) {
+      // A hex toward home — unless home is off the chart: the map edge walls
+      // retreats exactly as it walls ordinary movement.
       const step = { q: unit.hex.q + retreatDir[unit.side], r: unit.hex.r }
-      if (hexEquals(unit.hex, step) === false) unit.hex = step
+      if (!hexEquals(unit.hex, step) && inBounds(step, ctx.map.width, ctx.map.height)) unit.hex = step
     }
   }
   const dead = state.units.filter((u) => u.ships.length === 0).map((u) => u.id)
@@ -162,12 +164,12 @@ function applyBattleResult(state: CampaignState, record: BattleRecord): void {
  * from what its side knows (never from truth — that indirection is the
  * anti-leak guarantee, see StandingOrder.mission), or its next waypoint.
  */
-function currentDestination(state: CampaignState, unit: Unit): Hex | null {
+function currentDestination(ctx: DetectionContext, state: CampaignState, unit: Unit): Hex | null {
   const mission = unit.order.mission
   if (mission) {
     const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)
     if (!contact || contactCollapsed(contact)) return null // hold until told otherwise
-    const believed = reckonedHex(contact, state)
+    const believed = reckonedHex(ctx.map, contact, state)
     if (mission.type === 'intercept') return believed
     // Shadow (5.3): keep the trail at distance three to four.
     const range = hexDistance(unit.hex, believed)
@@ -214,7 +216,7 @@ function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credi
       unit.moveDebt -= 1 // the second phase a nebula hex costs (2.2)
       continue
     }
-    const target = currentDestination(state, unit)
+    const target = currentDestination(ctx, state, unit)
     if (!target) break
     const next = hexStepToward(unit.hex, target)
     // The map edge is a wall, not a suggestion: a waypoint (or a reckoned
@@ -226,7 +228,7 @@ function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credi
     // Nebula and dust cost two movement credits per hex (2.2): the second is owed.
     unit.moveDebt = entryCost(terrainAt(ctx.map, next)) - 1
   }
-  const underway = unit.moveDebt > 0 || currentDestination(state, unit) !== null
+  const underway = unit.moveDebt > 0 || currentDestination(ctx, state, unit) !== null
   unit.movedLastOwnPhase = underway
   if (!underway) unit.course = null
 }
@@ -258,7 +260,7 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
    * this move — from the played battle, the headless one, or the physical
    * table's hand entry — before anyone moves a counter.
    */
-  for (const record of move.battles ?? []) applyBattleResult(next, record)
+  for (const record of move.battles ?? []) applyBattleResult(ctx, next, record)
   if (next.pendingBattles.length > 0) {
     throw new PhaseError(
       `Battles unresolved: ${next.pendingBattles.map((p) => p.id).join(', ')} — fight them before moving.`,

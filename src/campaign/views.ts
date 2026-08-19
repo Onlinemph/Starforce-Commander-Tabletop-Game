@@ -108,7 +108,7 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
       if (collapsed && attr !== 'exists') continue
       attributes[attr] = { value: entry.value, stale: entry.stale }
     }
-    const believed = reckonedHex(record, state)
+    const believed = reckonedHex(map, record, state)
     // "Scanned this phase" means the phase just resolved: the resolver has
     // already advanced the clock by the time anyone looks, so a fresh fix is
     // one from the previous slot, not the (still unresolved) current one.

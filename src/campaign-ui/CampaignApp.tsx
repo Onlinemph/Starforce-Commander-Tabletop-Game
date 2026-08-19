@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GameSetup, SavedGame } from '../data/savedGame'
 import { loadCampaign, newCampaign, saveCampaign } from '../campaign/file'
-import { battleFileFor, hashText, readback } from '../campaign/handoff'
+import { battleFileFor, hashText, readback, SIDE_LABEL } from '../campaign/handoff'
 import { damageBand, unitSpeedTiers } from '../campaign/logistics'
 import { quickResolve } from '../campaign/quickResolve'
 import { LAUNCH_SCENARIOS } from '../campaign/scenarios'
@@ -384,8 +384,20 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                     </p>
                     {!staged && (
                       <div className="campaign-battle-actions">
-                        <button type="button" onClick={() => onFightBattle(battle().setup)}>
-                          Fight on the tabletop
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onFightBattle(
+                              // In solo the other commander must ALSO show up at
+                              // the table: hand its side to the tactical AI, the
+                              // same admiral who quick-resolves it.
+                              soloB
+                                ? { ...battle().setup, aiSides: [SIDE_LABEL.B], aiDifficulty: 'admiral' }
+                                : battle().setup,
+                            )
+                          }
+                        >
+                          {soloB ? 'Fight the computer on the tabletop' : 'Fight on the tabletop'}
                         </button>
                         <button
                           type="button"

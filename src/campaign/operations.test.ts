@@ -287,6 +287,34 @@ describe('convoys and victory (6.3, 10.1)', () => {
   })
 })
 
+describe('the map edge walls a battle retreat', () => {
+  it('a disengager already on the western edge holds rather than leaving the chart', () => {
+    const file = opsFile()
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    a.hex = { q: 0, r: 8 }
+    file.state.pendingBattles.push({
+      id: 'eng-edge',
+      hex: { q: 0, r: 8 },
+      round: file.state.round,
+      phase: file.state.phase,
+      unitIds: { A: ['a-1'], B: [] },
+      ambushBy: null,
+      caughtRetreating: null,
+    })
+    pass(file, [
+      {
+        engagementId: 'eng-edge',
+        fileHash: 'test',
+        result: {
+          ships: { 'a-1/a-1-s1': { destroyed: false, disengaged: true, scars: null } },
+          vp: { A: 0, B: 0 },
+        },
+      },
+    ])
+    expect(file.state.units.find((u) => u.id === 'a-1')!.hex).toEqual({ q: 0, r: 8 })
+  })
+})
+
 describe('quick resolve (Part 8)', () => {
   function collision() {
     const file = opsFile({ tuning: { detectionCurve: CERTAIN, misinformationBase: 0, falseContacts: false } })

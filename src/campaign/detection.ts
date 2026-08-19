@@ -551,18 +551,21 @@ export function contactCollapsed(contact: ContactRecord): boolean {
 
 /**
  * Where the contact's owner believes the target is right now: the scan hex,
- * advanced along the observed course at cruise pace while unobserved (4.4).
- * Views and mission steering both use THIS — never the target's true hex —
- * which is what keeps an Intercept order honest about what its side knows.
+ * advanced along the observed course at cruise pace while unobserved (4.4),
+ * clamped to the board — the map edge walls real ships (turn.ts), so a
+ * reckoning that sails off the chart is a belief nobody would hold, and an
+ * unclamped one had contact markers gliding clean off the map. Views and
+ * mission steering both use THIS — never the target's true hex — which is
+ * what keeps an Intercept order honest about what its side knows.
  */
-export function reckonedHex(contact: ContactRecord, state: CampaignState): Hex {
+export function reckonedHex(map: CampaignMap, contact: ContactRecord, state: CampaignState): Hex {
   if (!contact.course || !contact.observedMoving) return contact.estimatedHex
   const elapsed =
     (state.round - contact.lastScan.round) * 16 + (state.phase - contact.lastScan.phase)
   // Reckon at a typical cruise of four hexes a round: one per four table phases.
   const steps = Math.max(0, Math.floor(elapsed / 4))
-  return {
-    q: contact.estimatedHex.q + contact.course.q * steps,
-    r: contact.estimatedHex.r + contact.course.r * steps,
-  }
+  const q = Math.max(0, Math.min(map.width - 1, contact.estimatedHex.q + contact.course.q * steps))
+  const rMin = -Math.floor(q / 2)
+  const r = Math.max(rMin, Math.min(rMin + map.height - 1, contact.estimatedHex.r + contact.course.r * steps))
+  return { q, r }
 }

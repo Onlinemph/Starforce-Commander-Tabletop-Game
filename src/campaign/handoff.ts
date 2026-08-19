@@ -55,7 +55,7 @@ export function hashText(text: string): string {
 }
 
 // Distinct FIRST words on purpose: deploy() prefixes ship ids with them.
-const SIDE_LABEL: Record<Side, string> = { A: 'Alpha Command', B: 'Beta Command' }
+export const SIDE_LABEL: Record<Side, string> = { A: 'Alpha Command', B: 'Beta Command' }
 
 function unitsOf(state: CampaignState, engagement: PendingEngagement, side: Side): Unit[] {
   return engagement.unitIds[side]
