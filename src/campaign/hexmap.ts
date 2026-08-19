@@ -79,7 +79,7 @@ export function inBounds(h: Hex, width: number, height: number): boolean {
 export function allHexes(width: number, height: number): Hex[] {
   const out: Hex[] = []
   for (let q = 0; q < width; q++) {
-    const rMin = -Math.floor(q / 2)
+    const rMin = 0 - Math.floor(q / 2)
     for (let r = rMin; r < rMin + height; r++) out.push({ q, r })
   }
   return out

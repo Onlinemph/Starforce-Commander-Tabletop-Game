@@ -50,17 +50,9 @@ export class PhaseError extends Error {}
  * every path an order can arrive by — scenario setup, intervention, future
  * AI — because a rule enforced in one door and not another is a leak.
  */
-export function orderRefusal(state: CampaignState, unit: Unit, order: StandingOrder): string | null {
+export function orderRefusal(_state: CampaignState, unit: Unit, order: StandingOrder): string | null {
   if (order.cloaked && !unitProfile(unit).cloakCapable) {
     return `${unit.id} cannot cloak — not every hull aboard carries a cloak.`
-  }
-  if (order.mission) {
-    const contact = state.contacts.find(
-      (c) => c.id === order.mission!.contactId && c.side === unit.side,
-    )
-    if (!contact) {
-      return `${unit.id}: no such contact ${order.mission.contactId} — missions steer by what this side has seen.`
-    }
   }
   if (order.repairPriority) {
     for (const category of order.repairPriority) {
@@ -72,15 +64,41 @@ export function orderRefusal(state: CampaignState, unit: Unit, order: StandingOr
   return null
 }
 
+/**
+ * A mission may only steer by a contact its side holds. A mission whose
+ * contact does not exist — mistyped, another side's id, or erased by a battle
+ * result applied in this same move — is CLEARED rather than refused: the
+ * order stands and falls back to its waypoints. Refusing used to bounce the
+ * whole move, and the timing case is unavoidable — orders are staged before
+ * battle results land, so a hunter whose quarry just died would crash the
+ * campaign, human and solo alike. No information rides on the difference:
+ * a foreign or bogus contact id steers nothing either way.
+ */
+function sanitizeMission(state: CampaignState, unit: Unit, order: StandingOrder): void {
+  if (!order.mission) return
+  const held = state.contacts.some(
+    (c) => c.id === order.mission!.contactId && c.side === unit.side,
+  )
+  if (!held) delete order.mission
+}
+
 function applyIntervention(state: CampaignState, intervention: Intervention, side: string): void {
   const unit = state.units.find((u) => u.id === intervention.unitId)
-  if (!unit) throw new PhaseError(`No such unit: ${intervention.unitId}`)
+  /*
+   * Orders to the dead are dropped, not refused: a move's interventions are
+   * staged before its battle results land, so a unit lost in this very
+   * move's battle can legitimately still be named — by a human's console and
+   * the solo doctrine alike. The ownership gate below still refuses orders
+   * to a LIVING unit of the other side, which is the case that matters.
+   */
+  if (!unit) return
   if (unit.side !== side) throw new PhaseError(`${unit.id} is not ${side}'s unit to order.`)
   switch (intervention.type) {
     case 'set-order': {
       const order = structuredClone(intervention.order)
       const refusal = orderRefusal(state, unit, order)
       if (refusal) throw new PhaseError(refusal)
+      sanitizeMission(state, unit, order)
       unit.order = order
       break
     }

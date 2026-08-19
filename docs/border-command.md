@@ -129,7 +129,7 @@ and the repo's data — the latter feed the doc's Part 12 list for Doyle.
   Delta Videus, The Long Patrol — all canon hulls, convoys sailing small
   warships as freighter stand-ins until Doyle's civilian designs land.
 
-Still to come per the doc: remote play (build Phase 5), the campaign UI,
+Still to come per the doc: remote play (build Phase 5),
 false contacts (4.6 — the tuning flag exists, off by default), and
 infrastructure assault (the VP table waits on it). Listening posts are not
 yet themselves scannable targets; enemy bases, outposts, colonies and
@@ -140,6 +140,39 @@ for Doyle if deployment should teach). One honesty note for hotseat play:
 the VIEW is the leak-proof window, but the campaign file itself holds the
 umpire's truth — file-exchange play trusts the players not to read it, and
 build Phase 5's server is what removes that trust.
+
+## The campaign console and the solo opponent (shipped)
+
+- **The console** (`src/campaign-ui/`, opened from the title screen's
+  "Border Command" entry): an SVG map drawn from ONE `viewFor` result and
+  nothing else — the component's props are the wall's shape, so it cannot
+  render what the view does not carry. Own units whole; contacts as the
+  dossier knows them (position estimates fade, drift rings grow, collapsed
+  tracks grey out as "last known"); enemy infrastructure only as the charts
+  show it. Orders are edited per unit (speed, sensor power, formation,
+  engagement posture, cloak, waypoints by map click, intercept/shadow by
+  contact id) and staged as the interventions the journal will carry — one
+  set-order per touched unit, last edit winning, so the screen IS the file
+  format (5.2).
+- **Hotseat** hands the console across the same fully opaque blackout the
+  tactical game uses for B1.9 — nothing of the other commander's view is
+  mounted behind it.
+- **Battles round-trip**: a pending engagement offers *Fight on the tabletop*
+  (loads the deterministic battle file straight into the tactical table),
+  *Read back from the table* (verifies the save's campaignRef against this
+  campaign's pending engagements before grading), *Quick resolve*, and
+  *Download battle file* for a table elsewhere. Results stage onto the next
+  phase move exactly as the journal records them.
+- **Solo** (`campaign/solo.ts`): the computer commands side B through
+  `soloOrders(view: SideView)` — typed against the VIEW, so the compiler
+  itself enforces that the doctrine sees only fog: it hunts contact ids, not
+  enemy units, steers by reckoned positions, and patrols the border when the
+  picture is empty. Its pending battles quick-resolve at captain (the
+  browser's latency budget; the doc's admiral default remains the flag for a
+  patient player). A 48-phase double-blind self-play test drives both sides
+  through the real resolver, battles included.
+- The campaign autosaves to the browser and travels as JSON (Save /
+  Load campaign); the finished screen names the winner and offers the file.
 
 ## Where the doc met the data (Part 12 material)
 

@@ -310,33 +310,37 @@ describe('orders the engine refuses identically for every actor', () => {
     ).toThrow(PhaseError)
   })
 
-  it('a mission aimed at a contact the side does not hold', () => {
+  it('a mission aimed at a contact the side does not hold steers nothing', () => {
     const file = duelFile({})
     pass(file) // A phase 1: A now holds a contact on the raider
     pass(file) // B phase 2: B holds one too
     const bContact = contactOf(file, 'B')!
-    // A tries to intercept B's OWN contact record — not A's to steer by.
-    expect(() =>
-      resolvePhase(ctxOf(file), file.state, {
-        round: 1,
-        phase: 3,
-        side: 'A',
-        interventions: [
-          {
-            type: 'set-order',
-            unitId: 'a-1',
-            order: {
-              waypoints: [],
-              speed: 'cruise',
-              sensorPower: 1,
-              cloaked: false,
-              formation: 'standard',
-              mission: { type: 'intercept', contactId: bContact.id },
-            },
+    // A tries to intercept B's OWN contact record — not A's to steer by. The
+    // order is accepted but the mission is CLEARED (a contact can also die to
+    // a battle result in this very move, so refusal would crash honest play);
+    // either way the foreign id buys no steering.
+    file.state = resolvePhase(ctxOf(file), file.state, {
+      round: 1,
+      phase: 3,
+      side: 'A',
+      interventions: [
+        {
+          type: 'set-order',
+          unitId: 'a-1',
+          order: {
+            waypoints: [],
+            speed: 'cruise',
+            sensorPower: 1,
+            cloaked: false,
+            formation: 'standard',
+            mission: { type: 'intercept', contactId: bContact.id },
           },
-        ],
-      }),
-    ).toThrow(/no such contact/)
+        },
+      ],
+    })
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    expect(a.order.mission).toBeUndefined()
+    expect(a.hex).toEqual({ q: 8, r: 4 }) // no waypoints, no mission: it held
   })
 })
 

@@ -46,6 +46,7 @@ import { OnlinePanel } from './OnlinePanel'
 import { RemotePanel } from './RemotePanel'
 import { ReplayTheater } from './ReplayTheater'
 import { OperationsPanel } from './OperationsPanel'
+import { CampaignApp } from '../campaign-ui/CampaignApp'
 import { DamageChoicePrompt } from './DamageChoicePrompt'
 import { ShipFormPanel } from './ShipFormPanel'
 import {
@@ -110,7 +111,7 @@ export function App() {
    * door. An invite link skips it: whoever follows one has already chosen
    * where they are going.
    */
-  const [screen, setScreen] = useState<'menu' | 'battle'>(() =>
+  const [screen, setScreen] = useState<'menu' | 'battle' | 'campaign'>(() =>
     typeof location !== 'undefined' && /[#&]join=/.test(location.hash) ? 'battle' : 'menu',
   )
   const [menuScenario, setMenuScenario] = useState<string | null>(null)
@@ -226,6 +227,20 @@ export function App() {
     }
   }
 
+  if (screen === 'campaign') {
+    return (
+      <CampaignApp
+        onFightBattle={(setup) => {
+          newGame(setup)
+          setTargetId(null)
+          setScreen('battle')
+        }}
+        readTableSave={currentSave}
+        onExit={() => setScreen('menu')}
+      />
+    )
+  }
+
   if (screen === 'menu') {
     const underway = actionCount() > 0
     const startNew = () => {
@@ -303,6 +318,13 @@ export function App() {
           <button type="button" className="title-item" onClick={() => setLobby(true)}>
             Online match
             <span className="title-detail">Host or join — the battle waits between sessions</span>
+          </button>
+
+          <button type="button" className="title-item" onClick={() => setScreen('campaign')}>
+            Border Command
+            <span className="title-detail">
+              The operational campaign — hunt contacts on the border, fight the battles here
+            </span>
           </button>
 
           <label className="title-item title-load">

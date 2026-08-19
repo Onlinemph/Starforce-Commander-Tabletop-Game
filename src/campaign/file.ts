@@ -113,10 +113,12 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     finished: false,
   }
   // The same validator interventions face (turn.ts): a scenario cannot open
-  // with an order the rules would refuse mid-game.
+  // with an order the rules would refuse mid-game. Missions cannot exist at
+  // the opening bell — no contact does — so any scenario-set mission drops.
   for (const unit of state.units) {
     const refusal = orderRefusal(state, unit, unit.order)
     if (refusal) throw new Error(`Scenario force: ${refusal}`)
+    delete unit.order.mission
   }
   return state
 }
