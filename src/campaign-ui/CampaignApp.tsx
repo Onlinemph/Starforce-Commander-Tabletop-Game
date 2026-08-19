@@ -6,12 +6,29 @@
  * console across a fully opaque blackout (the tactical game's own B1.9
  * discipline, one level up); solo play drives the other side with the
  * view-typed doctrine in `campaign/solo.ts`, quick-resolving the battles it
- * starts. The campaign file autosaves locally and travels as JSON.
+ * starts; online play binds this console to ONE seat of a persistent match
+ * (onlineCampaign.ts) — the view is locked to that seat, phase moves ride the
+ * ledger, and the other commander plays from their own browser. The local
+ * campaign file autosaves and travels as JSON; an online campaign's ledger is
+ * the match itself.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameSetup, SavedGame } from '../data/savedGame'
 import { loadCampaign, newCampaign, saveCampaign } from '../campaign/file'
+import { DEFAULT_MATCH_KEY, DEFAULT_MATCH_SERVER } from '../ui/online'
+import {
+  fileFromLedger,
+  hostCampaignMatch,
+  listCampaignMatches,
+  loadEnrollment,
+  openCampaignMatch,
+  saveEnrollment,
+  SEAT_LABEL,
+  stateFingerprint,
+  type CampaignLedgerDoc,
+  type CampaignMatchLink,
+} from './onlineCampaign'
 import { battleFileFor, hashText, readback, SIDE_LABEL } from '../campaign/handoff'
 import { damageBand, unitSpeedTiers } from '../campaign/logistics'
 import { quickResolve } from '../campaign/quickResolve'
@@ -66,27 +83,56 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
+  /** The online session, when this console is one seat of a hosted match. */
+  const [online, setOnline] = useState<{
+    link: CampaignMatchLink
+    matchId: string
+    name: string
+    seat: Side
+    present: string[]
+    status: 'connected' | 'reconnecting'
+  } | null>(null)
+  const [joinForm, setJoinForm] = useState({ code: '', password: '', seat: 'B' as Side })
+  const [hostForm, setHostForm] = useState({ name: '', password: '', isPublic: true })
+  const [server, setServer] = useState(DEFAULT_MATCH_SERVER)
+  const [serverKey, setServerKey] = useState(DEFAULT_MATCH_KEY)
+  const [browse, setBrowse] = useState<Array<{ id: string; name: string; waiting: string[] }> | null>(null)
+  const [busy, setBusy] = useState(false)
+  // The live handlers need the latest file without re-opening the socket.
+  const fileRef = useRef<CampaignFile | null>(null)
+  fileRef.current = file
+  const onlineRef = useRef<typeof online>(null)
+  onlineRef.current = online
+
   const ctx: DetectionContext | null = useMemo(
     () => (file ? { map: file.map, scenario: file.scenario } : null),
     [file],
   )
-  const side: Side = file ? sideToMove(file.state.phase) : 'A'
+  // Online, the console IS one seat; local, it is whoever's phase it is.
+  const side: Side = online ? online.seat : file ? sideToMove(file.state.phase) : 'A'
+  const myTurn = !file || !online || sideToMove(file.state.phase) === online.seat
   const view = useMemo(
     () => (file && ctx ? viewFor(file.map, file.state, side) : null),
     [file, ctx, side],
   )
 
   useEffect(() => {
-    if (file) localStorage.setItem(AUTOSAVE_KEY, saveCampaign(file))
-  }, [file])
+    // An online campaign's persistence is the ledger, not this browser.
+    if (file && !online) localStorage.setItem(AUTOSAVE_KEY, saveCampaign(file))
+  }, [file, online])
+  useEffect(() => {
+    // Tell the match browser whose phase the campaign waits on. Best-effort.
+    if (file && online) void online.link.setWaiting(SEAT_LABEL[sideToMove(file.state.phase)])
+  }, [file, online])
   // Solo owns side B. If a file arrives mid-B (a hotseat save loaded with solo
   // on), the doctrine finishes B's turn before the human sees anything.
   useEffect(() => {
+    if (online) return // online, the other seat is a person, never the doctrine
     if (soloB && mode === 'console' && file && !file.state.finished && sideToMove(file.state.phase) === 'B') {
       setFile(runSolo(file))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [soloB, mode, file])
+  }, [soloB, mode, file, online])
   useEffect(() => {
     localStorage.setItem(SOLO_KEY, soloB ? '1' : '0')
   }, [soloB])
@@ -150,6 +196,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
 
   const endPhase = () => {
     if (!file || !view) return
+    if (online && !myTurn) return // the ledger would refuse it anyway
     const move: PhaseMove = {
       round: file.state.round,
       phase: file.state.phase,
@@ -164,6 +211,12 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     setSelectedUnit(null)
     setSelectedContact(null)
     setNote(null)
+    if (online) {
+      // The ledger orders the moves; a conflict resyncs us to it.
+      void online.link.appendMove(move, next.journal.length, stateFingerprint(next.state))
+      setFile(next)
+      return
+    }
     if (soloB) next = runSolo(next)
     setFile(next)
     if (!soloB && !next.state.finished) setMode('blackout')
@@ -192,6 +245,137 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     setNote(`Battle ${engagement.id} read back — end the phase to record it.`)
   }
 
+  // ── The online seat ─────────────────────────────────────────────────────
+
+  const config = () => ({ url: server.trim(), key: serverKey.trim() })
+  const serverReady = server.trim().length > 0 && serverKey.trim().length > 0
+
+  /** One remote phase move lands: fold it, check the sender's fingerprint. */
+  const applyRemoteMove = (move: PhaseMove, seq: number, hash?: string) => {
+    setFile((prev) => {
+      if (!prev) return prev
+      if (seq <= prev.journal.length) return prev // our own move, echoed back
+      if (seq !== prev.journal.length + 1) {
+        void onlineRef.current?.link.resync() // a gap: the ledger settles it
+        return prev
+      }
+      try {
+        const state = resolvePhase({ map: prev.map, scenario: prev.scenario }, prev.state, move)
+        if (hash && stateFingerprint(state) !== hash) void onlineRef.current?.link.resync()
+        return { ...prev, state, journal: [...prev.journal, move] }
+      } catch {
+        void onlineRef.current?.link.resync()
+        return prev
+      }
+    })
+  }
+
+  /** The whole ledger arrives — the answer to any disagreement. */
+  const applyLedger = (doc: CampaignLedgerDoc, journal: PhaseMove[]) => {
+    const current = fileRef.current
+    if (current && journal.length < current.journal.length) return // stale read-back of our own past
+    const rebuilt = fileFromLedger(doc, journal)
+    if (typeof rebuilt === 'string') setNote(rebuilt)
+    else setFile(rebuilt)
+  }
+
+  const connect = async (matchId: string, password: string, seat: Side): Promise<boolean> => {
+    setBusy(true)
+    setNote(null)
+    const result = await openCampaignMatch(config(), matchId, password, seat, {
+      onMove: applyRemoteMove,
+      onLedger: applyLedger,
+      onPresence: (labels) => setOnline((o) => (o ? { ...o, present: labels } : o)),
+      onDropped: () => setOnline((o) => (o ? { ...o, status: 'reconnecting' } : o)),
+    }, () => fileRef.current?.journal.length ?? 0)
+    setBusy(false)
+    if (!result.opened) {
+      setNote(result.error ?? 'Could not open the campaign.')
+      return false
+    }
+    const { link, name, doc, journal } = result.opened
+    const rebuilt = fileFromLedger(doc, journal)
+    if (typeof rebuilt === 'string') {
+      link.close()
+      setNote(rebuilt)
+      return false
+    }
+    onlineRef.current?.link.close()
+    setFile(rebuilt)
+    setOnline({ link, matchId: matchId.toUpperCase(), name, seat, present: [], status: 'connected' })
+    saveEnrollment({ server: server.trim(), key: serverKey.trim(), matchId: matchId.toUpperCase(), password, seat, name })
+    setPending([])
+    setStagedBattles([])
+    setMode('console')
+    return true
+  }
+
+  const hostOnline = async (scenarioId: string, build: () => Parameters<typeof newCampaign>[0]) => {
+    if (!hostForm.password) {
+      setNote('An online campaign needs a password — it is half of the invite.')
+      return
+    }
+    setBusy(true)
+    const fresh = newCampaign(build(), `${scenarioId}-${Date.now().toString(36)}`)
+    const name = hostForm.name || `Campaign: ${fresh.scenario.name}`
+    const hosted = await hostCampaignMatch(config(), name, hostForm.password, fresh, hostForm.isPublic)
+    setBusy(false)
+    if (!hosted.id) {
+      setNote(hosted.error ?? 'The project refused the campaign.')
+      return
+    }
+    await connect(hosted.id, hostForm.password, 'A')
+  }
+
+  const leaveOnline = () => {
+    online?.link.close()
+    setOnline(null)
+    saveEnrollment(null)
+    setFile(null)
+    setMode('menu')
+  }
+
+  // A remembered enrollment reconnects by itself when the console opens.
+  const reconnectTried = useRef(false)
+  useEffect(() => {
+    if (reconnectTried.current || online) return
+    const e = loadEnrollment()
+    if (!e) return
+    reconnectTried.current = true
+    setServer(e.server)
+    setServerKey(e.key)
+    void openCampaignMatch({ url: e.server, key: e.key }, e.matchId, e.password, e.seat, {
+      onMove: applyRemoteMove,
+      onLedger: applyLedger,
+      onPresence: (labels) => setOnline((o) => (o ? { ...o, present: labels } : o)),
+      onDropped: () => setOnline((o) => (o ? { ...o, status: 'reconnecting' } : o)),
+    }, () => fileRef.current?.journal.length ?? 0).then((result) => {
+      if (!result.opened) {
+        setNote(result.error ?? 'The online campaign could not be reopened.')
+        return
+      }
+      const rebuilt = fileFromLedger(result.opened.doc, result.opened.journal)
+      if (typeof rebuilt === 'string') {
+        result.opened.link.close()
+        setNote(rebuilt)
+        return
+      }
+      setFile(rebuilt)
+      setOnline({
+        link: result.opened.link,
+        matchId: e.matchId,
+        name: result.opened.name,
+        seat: e.seat,
+        present: [],
+        status: 'connected',
+      })
+      setMode('console')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Release the seat when the console unmounts; the enrollment re-claims it.
+  useEffect(() => () => onlineRef.current?.link.close(), [])
+
   // ── Screens ─────────────────────────────────────────────────────────────
 
   if (!file || mode === 'menu') {
@@ -206,55 +390,194 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           fought on the real table. Hotseat hands the console over; solo pits you against a scripted
           opponent that sees only its own fog.
         </p>
-        <label className="checkbox">
-          <input type="checkbox" checked={soloB} onChange={(e) => setSoloB(e.target.checked)} />
-          Solo — the computer commands side B
-        </label>
-        {LAUNCH_SCENARIOS.map(({ id, build }) => {
-          const scenario = build()
-          return (
-            <button
-              key={id}
-              type="button"
-              className="title-item"
-              onClick={() => {
-                const fresh = newCampaign(scenario, `${id}-${Date.now().toString(36)}`)
-                setFile(fresh)
-                setMode(soloB ? 'console' : 'blackout')
-                setPending([])
-                setStagedBattles([])
-              }}
-            >
-              {scenario.name}
-              <span className="title-detail">{scenario.rounds} rounds</span>
-            </button>
-          )
-        })}
-        <label className="title-item title-load">
-          Load campaign
-          <input
-            type="file"
-            accept="application/json,.json"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (!f) return
-              void f.text().then((text) => {
-                const loaded = loadCampaign(text)
-                if (typeof loaded === 'string') setNote(loaded)
-                else {
-                  setFile(loaded)
+        {!online && (
+          <label className="checkbox">
+            <input type="checkbox" checked={soloB} onChange={(e) => setSoloB(e.target.checked)} />
+            Solo — the computer commands side B
+          </label>
+        )}
+        {!online &&
+          LAUNCH_SCENARIOS.map(({ id, build }) => {
+            const scenario = build()
+            return (
+              <button
+                key={id}
+                type="button"
+                className="title-item"
+                onClick={() => {
+                  const fresh = newCampaign(scenario, `${id}-${Date.now().toString(36)}`)
+                  setFile(fresh)
                   setMode(soloB ? 'console' : 'blackout')
-                }
-              })
-              e.target.value = ''
-            }}
-          />
-        </label>
-        {file && (
+                  setPending([])
+                  setStagedBattles([])
+                }}
+              >
+                {scenario.name}
+                <span className="title-detail">{scenario.rounds} rounds</span>
+              </button>
+            )
+          })}
+        {!online && (
+          <label className="title-item title-load">
+            Load campaign
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                void f.text().then((text) => {
+                  const loaded = loadCampaign(text)
+                  if (typeof loaded === 'string') setNote(loaded)
+                  else {
+                    setFile(loaded)
+                    setMode(soloB ? 'console' : 'blackout')
+                  }
+                })
+                e.target.value = ''
+              }}
+            />
+          </label>
+        )}
+        {file && !online && (
           <button type="button" className="title-item" onClick={() => setMode(soloB ? 'console' : 'blackout')}>
             Continue — {file.scenario.name}, round {file.state.round}
           </button>
         )}
+        {online && (
+          <button type="button" className="title-item primary" onClick={() => setMode('console')}>
+            Back to the online campaign — {online.name} ({online.matchId})
+          </button>
+        )}
+
+        <section className="campaign-panel campaign-online">
+          <h3>Online campaign</h3>
+          {!serverReady && (
+            <>
+              <p className="hint">
+                Point at the same Supabase project the tactical Online matches use — the campaign
+                rides the very same tables, nothing new to deploy.
+              </p>
+              <label className="field">
+                <span>Project URL</span>
+                <input value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://….supabase.co" />
+              </label>
+              <label className="field">
+                <span>Publishable key</span>
+                <input value={serverKey} onChange={(e) => setServerKey(e.target.value)} />
+              </label>
+            </>
+          )}
+          {serverReady && !online && (
+            <>
+              <p className="hint">
+                Host a campaign as a persistent match — each commander plays their own seat from
+                their own browser, and the border waits between sessions.
+              </p>
+              <label className="field">
+                <span>Campaign name</span>
+                <input
+                  value={hostForm.name}
+                  onChange={(e) => setHostForm({ ...hostForm, name: e.target.value })}
+                  placeholder="Campaign: The Border Watch"
+                />
+              </label>
+              <label className="field">
+                <span>Password</span>
+                <input
+                  value={hostForm.password}
+                  onChange={(e) => setHostForm({ ...hostForm, password: e.target.value })}
+                  placeholder="share it with your opponent"
+                />
+              </label>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={hostForm.isPublic}
+                  onChange={(e) => setHostForm({ ...hostForm, isPublic: e.target.checked })}
+                />
+                Listed in the browser (joining still needs the password)
+              </label>
+              <div className="campaign-battle-actions">
+                {LAUNCH_SCENARIOS.map(({ id, build }) => (
+                  <button key={id} type="button" disabled={busy} onClick={() => void hostOnline(id, build)}>
+                    Host — {build().name}
+                  </button>
+                ))}
+              </div>
+              <label className="field">
+                <span>Join by code</span>
+                <input
+                  value={joinForm.code}
+                  onChange={(e) => setJoinForm({ ...joinForm, code: e.target.value })}
+                  placeholder="match code"
+                />
+              </label>
+              <label className="field">
+                <span>Password</span>
+                <input
+                  value={joinForm.password}
+                  onChange={(e) => setJoinForm({ ...joinForm, password: e.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>Seat</span>
+                <select
+                  value={joinForm.seat}
+                  onChange={(e) => setJoinForm({ ...joinForm, seat: e.target.value as Side })}
+                >
+                  <option value="A">{SEAT_LABEL.A}</option>
+                  <option value="B">{SEAT_LABEL.B}</option>
+                </select>
+              </label>
+              <div className="campaign-battle-actions">
+                <button
+                  type="button"
+                  disabled={busy || !joinForm.code || !joinForm.password}
+                  onClick={() => void connect(joinForm.code, joinForm.password, joinForm.seat)}
+                >
+                  Join campaign
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true)
+                    void listCampaignMatches(config()).then((r) => {
+                      setBusy(false)
+                      if (r.error) setNote(r.error)
+                      setBrowse(r.matches ?? [])
+                    })
+                  }}
+                >
+                  Find campaigns
+                </button>
+              </div>
+              {browse && browse.length === 0 && <p className="hint">No campaigns on offer right now.</p>}
+              {browse?.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="title-item"
+                  onClick={() => setJoinForm({ ...joinForm, code: m.id })}
+                >
+                  {m.name}
+                  <span className="title-detail">
+                    {m.id}
+                    {m.waiting.length > 0 && ` — waiting on ${m.waiting.join(', ')}`}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+          {online && (
+            <div className="campaign-battle-actions">
+              <button type="button" onClick={leaveOnline}>
+                Leave the online campaign
+              </button>
+            </div>
+          )}
+        </section>
         {note && <p className="fire-error">{note}</p>}
       </div>
     )
@@ -278,6 +601,10 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
         <button
           type="button"
           onClick={() => {
+            if (online) {
+              leaveOnline()
+              return
+            }
             localStorage.removeItem(AUTOSAVE_KEY)
             setFile(null)
             setMode('menu')
@@ -289,7 +616,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     )
   }
 
-  if (mode === 'blackout') {
+  if (mode === 'blackout' && !online) {
     return (
       <div className="handoff-backdrop">
         <div className="handoff-card">
@@ -308,7 +635,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
 
   // Solo's side never renders — not even for the frame before the doctrine
   // catches up. The human sees only Commander A's window.
-  if (soloB && side === 'B') {
+  if (soloB && !online && side === 'B') {
     return (
       <div className="handoff-backdrop">
         <div className="handoff-card">
@@ -330,14 +657,24 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
         <strong>StarForce: Border Command</strong>
         <span>
           Commander {side} — round {file.state.round}, phase {file.state.phase}/16 · VP {view!.vp.A}
-          –{view!.vp.B} {soloB && '· solo'}
+          –{view!.vp.B} {!online && soloB && '· solo'}
+          {online &&
+            ` · ${online.name} (${online.matchId})${
+              online.status === 'reconnecting' ? ' · connection lost' : ''
+            }${
+              online.present.includes(SEAT_LABEL[side === 'A' ? 'B' : 'A'])
+                ? ' · opponent connected'
+                : ' · opponent away'
+            }`}
         </span>
         <button type="button" onClick={() => downloadText('campaign.json', saveCampaign(file))}>
           Save
         </button>
         <button type="button" onClick={() => setMode('menu')}>Menu</button>
-        <button type="button" className="primary" onClick={endPhase}>
-          End phase {pending.length > 0 && `(${pending.length} orders)`}
+        <button type="button" className="primary" onClick={endPhase} disabled={Boolean(online) && !myTurn}>
+          {online && !myTurn
+            ? `${SEAT_LABEL[side === 'A' ? 'B' : 'A']} is moving…`
+            : `End phase ${pending.length > 0 ? `(${pending.length} orders)` : ''}`}
         </button>
       </header>
 
@@ -382,23 +719,30 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                       {engagement.youWereCaughtRetreating && ' — caught retreating'}
                       {staged && ' ✓ resolved, end the phase'}
                     </p>
-                    {!staged && (
+                    {!staged && !myTurn && (
+                      <p className="hint">
+                        The moving commander resolves this battle — it rides their phase move.
+                      </p>
+                    )}
+                    {!staged && myTurn && (
                       <div className="campaign-battle-actions">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onFightBattle(
-                              // In solo the other commander must ALSO show up at
-                              // the table: hand its side to the tactical AI, the
-                              // same admiral who quick-resolves it.
-                              soloB
-                                ? { ...battle().setup, aiSides: [SIDE_LABEL.B], aiDifficulty: 'admiral' }
-                                : battle().setup,
-                            )
-                          }
-                        >
-                          {soloB ? 'Fight the computer on the tabletop' : 'Fight on the tabletop'}
-                        </button>
+                        {!online && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onFightBattle(
+                                // In solo the other commander must ALSO show up at
+                                // the table: hand its side to the tactical AI, the
+                                // same admiral who quick-resolves it.
+                                soloB
+                                  ? { ...battle().setup, aiSides: [SIDE_LABEL.B], aiDifficulty: 'admiral' }
+                                  : battle().setup,
+                              )
+                            }
+                          >
+                            {soloB ? 'Fight the computer on the tabletop' : 'Fight on the tabletop'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -408,6 +752,19 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                         >
                           Read back from the table
                         </button>
+                        <label className="title-load">
+                          Read back from a battle save
+                          <input
+                            type="file"
+                            accept="application/json,.json"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (!f) return
+                              void f.text().then(readBattleText)
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
                         <button
                           type="button"
                           onClick={() => {

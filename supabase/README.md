@@ -10,6 +10,12 @@ Realtime relays each action to whoever is connected, and the match sits there
 between sessions. Refresh, switch devices, come back next week — the battle
 replays to exactly the board you left.
 
+**StarForce: Border Command campaigns ride the very same tables** — an online
+campaign is a match whose journal rows are campaign phase moves instead of
+battle actions, hosted and joined from the Border Command screen. If this
+schema is already set up for battles, online campaigns work with nothing new
+to run.
+
 ## 1. Make a project
 
 At [supabase.com](https://supabase.com), create a free account and a new

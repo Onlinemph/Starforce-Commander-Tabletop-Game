@@ -129,8 +129,8 @@ and the repo's data — the latter feed the doc's Part 12 list for Doyle.
   Delta Videus, The Long Patrol — all canon hulls, convoys sailing small
   warships as freighter stand-ins until Doyle's civilian designs land.
 
-Still to come per the doc: remote play (build Phase 5),
-false contacts (4.6 — the tuning flag exists, off by default), and
+Still to come per the doc: server-held fog for online play (the rest of
+build Phase 5), false contacts (4.6 — the tuning flag exists, off by default), and
 infrastructure assault (the VP table waits on it). Listening posts are not
 yet themselves scannable targets; enemy bases, outposts, colonies and
 beacons are chart-known per the doc's 12.8 presumption. Post-battle,
@@ -173,6 +173,38 @@ build Phase 5's server is what removes that trust.
   through the real resolver, battles included.
 - The campaign autosaves to the browser and travels as JSON (Save /
   Load campaign); the finished screen names the winner and offers the file.
+
+## Build Phase 5 — online campaigns (shipped, first slice)
+
+Two commanders, two browsers, one border. An online campaign is hosted from
+the Border Command menu as a persistent match on the SAME Supabase backend the
+tactical Online matches use — the match service stores "a jsonb setup plus an
+ordered jsonb journal" and never reads either, so a campaign is simply a match
+whose setup says `kind: 'campaign'` and whose journal rows are phase moves.
+Nothing new to deploy: a project running `supabase/schema.sql` already serves
+campaigns.
+
+- **Seats, not hotseat**: each console binds to one seat (Commander A or B),
+  claimed through the same ledger referee tactical chairs use, renewed on a
+  timer. The view is locked to the seat — there is no blackout online because
+  there is nothing to hand over. End phase is enabled only on your phases;
+  the other commander's moves arrive over Realtime and fold into the local
+  replay, each carrying a fingerprint of the state it produced so a drifted
+  board resyncs from the ledger instead of playing on in silence.
+- **Correspondence-friendly**: the enrollment (server, code, password, seat)
+  is remembered, the console reconnects by itself, presence shows whether the
+  other commander is at their desk, and the match browser lists campaigns
+  (recognized by their seat names) with whose phase they wait on.
+- **Battles online**: the moving commander resolves pending engagements —
+  quick resolve, or download the deterministic battle file, fight it anywhere
+  (including as an online tactical match), and read the save back in; the
+  record rides their phase move and the hash links it to the battle file both
+  clients derive identically.
+- **Trust posture, stated plainly**: every client holds the full ledger and
+  replays it (the resolver runs locally), rendering only its seat's view —
+  the same honour system the tactical online matches run on. The doc's full
+  Phase 5 ambition — truth held server-side, views served per seat by an edge
+  function — remains the hardening step on top of this slice.
 
 ## The fine-tuning pass (designer feedback, 2026-08)
 
