@@ -1,0 +1,1542 @@
+/* StarForce Commander — modals and workshop screens.
+   ────────────────────────────────────────────────────────────────────────────
+   Region layer. Loaded after src/ui/styles.css (and after the foundation
+   layer, src/ui/theme/tokens.css), so it overrides both by source order
+   wherever specificity ties. It owns exactly one thing: the `.picker` family —
+   the modal shell, the form-control system inside it, and the long lists the
+   workshop screens are mostly made of (the ship roster, the force lists, the
+   library, the match browser, the battle summary, the replay narration).
+
+   Three ideas do most of the work here.
+
+   FIRST, the modal is a block with a spine, not a card with a border. The
+   14px spine and the header are one continuous L: the header carries a
+   negative left margin equal to the spine width, so the coloured bar runs out
+   of the spine rather than sitting beside it. Every modal closes with a 20px
+   terminator in --lc-plum-deep, drawn as `::after` so it needs no markup. The
+   spine hue is the modal's zone (doc §1.8) and is carried in one custom
+   property, --zone, which the header, the terminator's neighbours and the
+   header's inverted on-state chips all read.
+
+   SECOND, form controls were the single worst defect on these screens.
+   `.field { font-size: .7rem }` plus the global `input { font: inherit }`
+   rendered EVERY control in EVERY modal at 9.8px, with its label at the same
+   9.8px in the same face, distinguished only by colour. The block under
+   "THE FORM-CONTROL SYSTEM" is the fix: controls are 13px --font-ui, labels
+   are 10px condensed uppercase sand. Label and value stop looking like the
+   same thing.
+
+   THIRD, a roster is a record, and a record is not a control. Rows are cells
+   (square, --panel-2 ground, separated by 5px of black rather than by a
+   hairline or by zebra), they carry a 4px spine that lights on hover and
+   selection, and the meta column stops being a dimmed run-on sentence and
+   becomes a right-aligned column with a hard-square rarity swatch. Rarity
+   colour is rules information and is untouched — the swatch inherits it with
+   `currentColor`, which adds a second, non-colour channel for free.
+
+   What this file deliberately does NOT do: the doc's §5.9 vh→flex conversion
+   for `.roster`, `.theater-narration ol` and `.theater-stage .map`. That
+   conversion needs row-track changes on `.fleet-body` / `.theater-body` that
+   cannot be verified without eyes on the screen, and getting it wrong either
+   clips a control (overflow: hidden on an auto row track) or SHRINKS the
+   replay map from 68vh to its 260px floor. The taller header is paid for out
+   of the bodies' existing scroll containers instead. See the note above
+   `.roster`. */
+
+/* ══ 1. THE MODAL SHELL ═════════════════════════════════════════════════════ */
+
+.picker-backdrop {
+  /* One token for the modal backdrop, and 24px of it so a maximised modal
+     still shows the app is behind it rather than gone. */
+  padding: var(--sp-6);
+  background: var(--backdrop);
+  animation: sfc-modal-backdrop var(--dur-modal) var(--ease);
+}
+
+.picker {
+  /* The zone hue. Every variant below re-points this one property; the spine,
+     the header fill and the header's inverted chips all read it, so a modal's
+     identity is a single line of CSS. */
+  --zone: var(--lc-orange);
+
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-modal) solid var(--zone);
+  /* A record is square, and a modal body is a record. The one corner that
+     turns is the bottom right, and it turns because the terminator below
+     turns — the card has to be clipped to the same radius or a wedge of
+     --panel shows through outside the terminator's arc. */
+  border-radius: 0 0 calc(var(--h-modal-foot) / 2) 0;
+  box-shadow: var(--shadow-modal);
+  animation: sfc-modal-in var(--dur-modal) var(--ease);
+}
+
+/* The header and the spine are ONE shape: the negative left margin pulls the
+   bar over the spine so the colour runs continuously round the turn, which is
+   the frame's elbow expressed at modal scale. The 5px black border-bottom is
+   not a rule or a separator — it is the block gutter, drawn as a border
+   because it is the only way to get 5px of ground between two flex items
+   without touching the markup. min-height and the radius are both stated
+   against the border box, hence the +--gutter and +--gutter arithmetic: the
+   orange itself is exactly 40px tall and turns at exactly half of that. */
+.picker > header {
+  flex: 0 0 auto;
+  display: flex;
+  /* Required: ReplayTheater's header has six children and would otherwise
+     push its Close button off the edge on a narrow window. */
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: calc(var(--h-modal-header) + var(--gutter));
+  margin-left: calc(-1 * var(--spine-modal));
+  padding: var(--sp-1) var(--sp-4) var(--sp-1)
+    calc(var(--spine-modal) + var(--sp-4));
+  background: var(--zone);
+  border: none;
+  border-bottom: var(--gutter) solid var(--bg);
+  border-bottom-right-radius: calc(var(--h-modal-header) / 2 + var(--gutter));
+}
+
+.picker > header h2 {
+  /* margin-right: auto rather than relying on space-between alone, so a
+     header with three children still puts the title hard left and clusters
+     its controls hard right. */
+  margin: 0 auto 0 0;
+  color: var(--ink-on-fill);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-title);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-title);
+  text-transform: uppercase;
+}
+
+/* Anything that used to be tinted with a chrome hue inside the header is now
+   sitting ON that hue. --ink-dim on orange is 2.4:1 and the theater's own
+   accent-coloured title was orange on orange. One ink on fill, always. */
+.picker > header .theater-title,
+.picker > header .hint,
+.picker > header .builder-status,
+.picker > header > span {
+  color: var(--ink-on-fill);
+}
+
+.picker > header .theater-title {
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.picker > header .hint {
+  margin: 0;
+  font-size: var(--fs-micro);
+}
+
+/* A chip's on-state is normally an orange fill, which is invisible on an
+   orange header and clashes on a lilac or plum one. Inside a header the
+   on-state inverts instead: black block, zone-coloured label. This is what
+   finally distinguishes the Library's Ships/Scenarios tabs, which render
+   `chip is-on` today with no global on-state to catch it. */
+.picker > header .chip.is-on,
+.picker > header .toggle-chip.is-on {
+  background: var(--ink-on-fill);
+  border-color: var(--ink-on-fill);
+  color: var(--zone);
+}
+
+/* And the off-state stays the plain dark pill it was. A chip riding a bright
+   header is the one place a chip does NOT need the tinted ground the panels
+   layer gives it (there the chip's problem is a --panel-2 chip on a --panel-2
+   block; here the ground is a saturated hue and any dark pill reads at a
+   glance). Restated explicitly, because the two treatments would otherwise
+   converge: a tinted off-state and an inverted on-state differ only by ink
+   hue, and "which tab am I on" would be carried by colour alone. */
+.picker > header .chip:not(.is-on) {
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+/* Footer: no rule across the top, 5px of ground instead. The checkbox that
+   sometimes shares this row ("Fight anyway — the scenario sets the force")
+   belongs at the left, opposite the action it qualifies. */
+.picker > footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  min-height: calc(var(--sp-10) + var(--gutter));
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--panel);
+  border: none;
+  border-top: var(--gutter) solid var(--bg);
+}
+
+.picker > footer .checkbox {
+  margin-right: auto;
+}
+
+/* The terminator. Every modal closes on a structural block, the same way the
+   frame's rail closes on its foot — and it costs no markup at all. */
+.picker::after {
+  content: "";
+  flex: 0 0 calc(var(--h-modal-foot) + var(--gutter));
+  background: var(--lc-plum-deep);
+  border-top: var(--gutter) solid var(--bg);
+  border-bottom-right-radius: calc(var(--h-modal-foot) / 2);
+}
+
+/* ── Zones ────────────────────────────────────────────────────────────────
+   One hue per modal, fixed by role, never positional (doc §1.8). The explicit
+   border-left-color is not redundant: three of these variants already set that
+   longhand at 0-2-0 in styles.css and would beat `.picker`'s 0-1-0 shorthand.
+   Order matters in one place only — `.ship-library` also carries `.theater`,
+   both at 0-2-0, so lilac must be written after plum to win the tie. */
+.picker.fleet-picker,
+.picker.builder,
+.picker.designer,
+.picker.online-panel,
+.picker.remote-panel,
+.picker.theater,
+.picker.ship-library,
+.picker.battle-summary,
+.picker.damage-choice,
+.picker.campaign-menu {
+  border-left-color: var(--zone);
+}
+
+.picker.fleet-picker {
+  --zone: var(--lc-orange);
+}
+
+/* Design & edit surfaces. `.designer` carries `.builder` too; same hue, so
+   the tie is harmless. */
+.picker.builder,
+.picker.designer {
+  --zone: var(--lc-peri);
+}
+
+/* Session and network. */
+.picker.online-panel,
+.picker.remote-panel {
+  --zone: var(--lc-sky);
+}
+
+/* Structure: the replay is the log made visible. */
+.picker.theater,
+.picker.campaign-menu {
+  --zone: var(--lc-plum);
+}
+
+/* Archive & browse. Must follow `.theater` — see the note above. */
+.picker.ship-library {
+  --zone: var(--lc-lilac);
+}
+
+/* Time and place: what happened, and how it ended. */
+.picker.battle-summary {
+  --zone: var(--lc-sand);
+}
+
+/* The one modal that opens because something went wrong keeps the rules red.
+   This is rules information reaching into the chrome, and it is the correct
+   direction for it to travel. */
+.picker.damage-choice {
+  --zone: var(--red);
+}
+
+/* Two `.picker` variants declare their header at a higher specificity than
+   `.picker > header` and would otherwise keep a gradient wash and a hue-tinted
+   title — sky-on-sky, which is invisible. */
+.picker.remote-panel > header {
+  background: var(--zone);
+  border-bottom: var(--gutter) solid var(--bg);
+}
+
+.picker.remote-panel > header h2 {
+  color: var(--ink-on-fill);
+}
+
+/* DamageChoicePrompt stacks a question over its explanation, so its header is
+   a block, not a flex row. Restated here because this file's `.picker > header`
+   ties it on specificity and would otherwise win on source order and put the
+   sentence beside the title. */
+.picker.damage-choice > header {
+  display: block;
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}
+
+.picker.damage-choice > header .hint {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--ink-on-fill);
+  font-size: var(--fs-body);
+}
+
+/* The campaign menu is rendered inline, with no backdrop, and scrolls itself.
+   The negative-margin header and the terminator are both safe there; the
+   bottom padding is not, because it would strand the terminator 16px above
+   the card's own edge. */
+.picker.campaign-menu {
+  padding-bottom: 0;
+}
+
+/* ══ 2. THE FORM-CONTROL SYSTEM ═════════════════════════════════════════════
+   The highest-value block in this file. `.field { font-size: .7rem }` plus the
+   global `input { font: inherit }` put every control in every modal at 9.8px,
+   with its label at the same size in the same face — which is most of why the
+   builder read as a spreadsheet dump. Controls are prose: 13px, --font-ui,
+   sentence case, tabular figures. Labels are chrome: 10px condensed uppercase
+   sand. The two stop being the same object.
+
+   The `:not()` chain excludes the four input types that own their rendering
+   (checkboxes and radios keep the native control, which is deliberate; range
+   is the replay scrubber; file is visually hidden behind a label) plus the two
+   inline controls that live inside a designer force chip and are restyled on
+   their own terms further down. Note the chain also lifts this rule's
+   specificity well past `.picker-controls input[type='search']`, `.builder-table
+   input` and `.remote-columns textarea`, all of which set their own sizes
+   today; that is intended, and no separate override for them is needed. */
+.picker
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="file"]
+  ):not([type="color"]):not(.chip-value),
+.picker select:not(.chip-select),
+.field
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="file"]
+  ):not([type="color"]):not(.chip-value),
+.field select:not(.chip-select) {
+  min-height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-reg);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--ink);
+  /* A text field is a recessed well, not an outlined box. Borderless is the
+     law; the ground change carries the affordance. */
+  background: var(--well);
+  border: none;
+  border-radius: var(--r-input);
+}
+
+/* A textarea has no fixed height, so it may not take the pill radius (doc
+   §4.1). It also keeps whatever face its region gave it — RemotePanel's
+   WebRTC blobs are monospace on purpose — so font-family is left alone here
+   and only the size, ground and geometry are set. */
+.picker textarea,
+.field textarea {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  background: var(--well);
+  border: none;
+  border-radius: var(--r-cell);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+/* The label above a control. Sand is "time and place, labels, derived
+   readouts" — the one hue that means *this names something*. Ten px condensed
+   caps is a different object from the 13px sentence-case value below it, which
+   is the whole point. */
+.field > span,
+.field > label > span {
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--lc-sand);
+}
+
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.field.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field.grow input,
+.field.grow select,
+.field.grow textarea {
+  width: 100%;
+}
+
+.field.tiny {
+  min-width: 0;
+}
+
+/* 76px holds three digits plus the spinner at 13px. Sized for the Inter
+   fallback, because --font-lcars resolves to it on most machines and no
+   layout in this system may depend on the condensing. */
+.field.tiny input,
+.field.tiny select {
+  width: 76px;
+}
+
+/* Two bugs in one: `.field.tiny.checkbox` inherited `.field`'s column
+   direction from one rule and `.checkbox`'s row direction from another, and
+   the 76px width above landed on the tick box itself and stretched it into a
+   letterbox. FleetPicker writes this combination three times. */
+.field.tiny.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.field.tiny input[type="checkbox"],
+.field.tiny input[type="radio"] {
+  width: auto;
+}
+
+/* Narrower still inside a builder table, where the column is the constraint
+   and three digits is the whole content. */
+.builder-table .field.tiny input,
+.builder-table .field.tiny select {
+  width: 58px;
+}
+
+/* In a builder row the label is usually WIDER than the 76px control it names
+   ("Stress rating", "Accel / phase"), because `.field` is a flex column and
+   sizes to its widest child. The result was a row of full-width caps over a
+   row of narrow pills at irregular gaps, so the label→control mapping was
+   only derivable from left edges and the head row read as one long sentence.
+
+   `min-width: 100%` lets the control grow to the width of its own label and
+   never below the 76px the digits need, so every field is exactly as wide as
+   the thing that names it. The label is never clipped or shrunk to make this
+   work — the control moves, which is the direction this system's density
+   rules allow. */
+.builder-row .field.tiny input:not([type="checkbox"]):not([type="radio"]),
+.builder-row .field.tiny select {
+  min-width: 100%;
+}
+
+/* The native tick box is the only genuinely native control left in the app and
+   it stays native — it just gets a real row, a 13px sentence-case label and a
+   target big enough to hit. Sentence case: this is prose, not a chrome label,
+   and `--font-lcars is ALWAYS uppercase, --font-ui is NEVER uppercase`. */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-row-dense);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-reg);
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.checkbox input[type="checkbox"] {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+/* A tick box whose meaning is currently unavailable is a control, and controls
+   are the one thing allowed to dim. Its label dims with it or the row reads as
+   half-live. */
+.checkbox:has(input:disabled) {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ── Control banks ────────────────────────────────────────────────────────
+   FleetPicker's bank holds fifteen controls and the library's holds three.
+   A flex row with a 220px floor gave the first a ragged four-line stack and
+   the second three items marooned on one line. An auto-fill grid gives both
+   an even lattice at every width, and `align-items: end` lands every control
+   on one baseline whether or not it has a label above it. */
+.picker-controls,
+.library-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  align-items: end;
+  column-gap: var(--sp-3);
+  row-gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--panel);
+  border: none;
+  border-bottom: var(--gutter) solid var(--bg);
+}
+
+.picker-controls .field,
+.library-controls .field {
+  /* Kills the 220px minimum, which fought the grid track for control of the
+     column width and won. */
+  min-width: 0;
+  margin: 0;
+}
+
+/* Fill the track — but never the tick box. The 76px rule above already had to
+   be kept off `input[type=checkbox]`, and writing `width: 100%` here without
+   the same exclusion re-introduced exactly the bug that rule fixed, seventy
+   lines later: in the fleet picker's bank the "Balanced points" tick was
+   stretched across its whole grid cell, so a 14px control drew as a letterbox
+   ~110px from its own label, and the squeezed label wrapped to two lines. The
+   exclusion is written into the selector rather than fixed with a later
+   override, so source order cannot re-break it a third time. */
+.picker-controls .field.tiny input:not([type="checkbox"]):not([type="radio"]),
+.picker-controls .field.tiny select,
+.library-controls .field.tiny input:not([type="checkbox"]):not([type="radio"]),
+.library-controls .field.tiny select,
+.picker-controls .field.inline input:not([type="checkbox"]):not([type="radio"]),
+.picker-controls .field.inline select,
+.library-controls .field.inline input:not([type="checkbox"]):not([type="radio"]),
+.library-controls .field.inline select {
+  width: 100%;
+}
+
+/* Two fields do not fit a 200px track, and the grid was capping them at one
+   each:
+
+     · `.field.grow` is the bank's search — "Filter roster (113 ships)" over a
+       113-hull list — and its whole contract is "this one takes the slack".
+       In a flex row it did; in the grid it lost `flex: 1 1 auto` and clipped
+       its own placeholder mid-word. A row of its own is what "takes the
+       slack" means in a grid.
+     · `.field.inline` carries its label BESIDE the control instead of above
+       it, so it needs roughly twice the width of a stacked field. At one track
+       the library's setup fields truncated to `https://….supaba` and
+       `sb_publishal` — the two strings a player has to paste and check.
+
+   Both are span rules, not width rules: the lattice still decides the widths,
+   and the narrow-window breakpoint below still applies. */
+.picker-controls .field.grow,
+.library-controls .field.grow {
+  grid-column: 1 / -1;
+}
+
+.picker-controls .field.inline,
+.library-controls .field.inline {
+  grid-column: span 2;
+}
+
+/* The library's Search button sits in its own track with no label above it. */
+.library-controls > button {
+  align-self: end;
+}
+
+/* The builder and designer share a toolbar rather than a control bank; it is a
+   run of buttons with one select at its head, so it stays a flex row and only
+   loses its hairline. */
+.builder-toolbar {
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--panel);
+  border: none;
+  border-bottom: var(--gutter) solid var(--bg);
+}
+
+/* "Saved." / "Deleted “Yorktown”." — a derived readout, which is sand's job.
+   It was orange, and orange is rationed to three roles per screen. */
+.builder-status {
+  margin-left: auto;
+  color: var(--lc-sand);
+  font-size: var(--fs-body);
+}
+
+/* ══ 3. HINTS AND THE ONE ERROR BLOCK ═══════════════════════════════════════ */
+
+/* A hint is a sentence, and a sentence is prose: 13px --font-ui at the body
+   line height. It was 9.8px, below this system's 10px floor, and it is the
+   most-used explanatory element in the app. The extra height is affordable:
+   every container it appears in — the modal bodies here, and `.control-column`
+   on the battle stage — is already a scroll container. */
+.hint {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-reg);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--ink-dim);
+}
+
+/* One error component, five presentations collapsed into it: a severity block
+   down the left edge, a wash of the same hue behind it, and the message in
+   full-strength ink. No glyph — LCARS states severity with a colour block and
+   a word, not a triangle. (`.fire-error`'s red on --panel already measured
+   6.11:1 and passed AA; this is consistency work, not a contrast fix.) */
+.fire-error,
+.online-error,
+.design-problems {
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: none;
+  border-left: var(--spine-inner) solid var(--sev, var(--danger));
+  border-radius: var(--r-cell);
+  background: color-mix(in srgb, var(--sev, var(--danger)) 12%, transparent);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* Must follow `.hint` to win the 0-2-0 over 0-1-0 by both specificity and
+   order; it is the same component as the block above. */
+.hint.is-error {
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: var(--spine-inner) solid var(--sev, var(--danger));
+  background: color-mix(in srgb, var(--sev, var(--danger)) 12%, transparent);
+  color: var(--ink);
+}
+
+/* Design problems are advice, not failure — the fleet picker shows them and
+   still lets the battle start. Warn, therefore, not danger. */
+.design-problems {
+  --sev: var(--warn);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  list-style: none;
+}
+
+/* The severity glyph goes. The block and the word carry it. */
+.design-problems li::before {
+  content: none;
+}
+
+/* Per-item severity is retained exactly — these are the rules colours and they
+   keep their meaning. The severity glyph this system does not use was the same
+   ▲ on both rows, so it never separated an error from a warning anyway; weight
+   does, and weight is a channel that survives being colour-blind or printed.
+   Two weights exist in this system and this is what the bold one is for. */
+.design-problems li.error {
+  color: var(--danger);
+  font-weight: var(--fw-bold);
+}
+
+.design-problems li.warning {
+  color: var(--warn);
+}
+
+/* ══ 4. THE SHIP ROSTER ═════════════════════════════════════════════════════
+   The longest list in the app and the one the eye actually runs down. It was
+   a stack of two-line, transparent, pill-shaped buttons with the whole row
+   turning sand on hover.
+
+   Note on height: the doc's §5.9 conversion would make this `flex: 1 1 auto;
+   max-height: none`. That needs `.fleet-body`'s auto grid track to stop
+   sizing to max-content, which cannot be checked without looking at it, and
+   getting it wrong clips the force lists in the next column. The vh cap
+   stays; the roster gains a floor instead, so a short window cannot collapse
+   it to nothing, and the ~29px the taller header and terminator cost is
+   absorbed by `.fleet-body`'s existing scroll container. */
+.roster {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: 46vh;
+  margin-top: var(--sp-2);
+  /* 2px so the dual focus ring on the first and last row is not cropped by
+     this scroller (doc §7). */
+  padding: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fleet-roster {
+  min-height: 0;
+}
+
+/* The faction band. It was a transparent sticky heading on the same ground as
+   the rows, so scrolled rows showed straight through it. Opaque block, black
+   ink, and it turns at half its own height on its free end. */
+.roster h4 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: var(--h-cap);
+  margin: var(--sp-3) 0 var(--gutter);
+  padding: 0 var(--sp-2);
+  background: var(--lc-peri);
+  color: var(--ink-on-fill);
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.roster > div:first-child h4 {
+  margin-top: 0;
+}
+
+/* One line per ship, name left and meta right, at the 30px scan pitch. Two
+   lines per ship halved how many hulls fit on screen and put the number you
+   are comparing on a different line from the name you are comparing it to.
+   The base `button` rule paints this element condensed, uppercase, pill-shaped
+   and outlined, so all four are restated. */
+.roster-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--sp-3);
+  width: 100%;
+  min-height: var(--h-row);
+  margin: 0 0 var(--gutter);
+  padding: 0 var(--sp-2);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-inner) solid transparent;
+  border-radius: var(--r-cell);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: var(--fw-reg);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  text-align: left;
+}
+
+/* Hover lights the ground and the spine. It used to repaint the entire row
+   sand, which made a hovered row look like a selected one. */
+.roster-row:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-left-color: var(--lc-sand);
+  color: var(--ink);
+}
+
+/* Already in your force. The rule exists and does not fire yet — FleetPicker
+   never adds the class — so it is written to be correct when the markup
+   catches up rather than deleted. */
+.roster-row.is-picked {
+  background: #241a06;
+  border-left-color: var(--lc-sand);
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+}
+
+.roster-row.is-picked .roster-meta {
+  color: var(--ink-2);
+}
+
+.roster-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  justify-self: end;
+  font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+/* Rarity, in both lists that show it. The five colours are rules information
+   and are not touched — the swatch takes `currentColor`, so it is the same
+   colour by construction and cannot drift. What it adds is a second,
+   non-colour channel: a hard 8px square, which is what a rarity mark looks
+   like on the printed Master Ship List. */
+.roster-meta em,
+.fleet-name em {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-stretch: condensed;
+  font-style: normal;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.roster-meta em::before,
+.fleet-name em::before {
+  content: "";
+  flex: none;
+  width: var(--sz-swatch);
+  height: var(--sz-swatch);
+  background: currentColor;
+  border-radius: var(--r-mark);
+}
+
+/* ══ 5. THE FORCE LISTS ═════════════════════════════════════════════════════ */
+
+/* The landmine from doc §10: `.fleet-side`'s `border-left` SHORTHAND is
+   written after `.picker-blue`/`.picker-red`'s colour longhand and at higher
+   specificity, so both force lists render plum today and the side colours
+   never appear at all. Splitting the shorthand into longhands and re-stating
+   the colour on the compound selector fixes it without depending on source
+   order. Side identity IS --blue/--red; the third side takes its own frozen
+   token so retuning --lc-plum can never repaint it. */
+.fleet-side {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--panel-2);
+  border: none;
+  border-left-width: var(--spine-panel);
+  border-left-style: solid;
+  border-left-color: var(--lc-plum-deep);
+  border-radius: var(--r-cell);
+}
+
+.fleet-side.picker-blue {
+  border-left-color: var(--side-blue);
+}
+
+.fleet-side.picker-red {
+  border-left-color: var(--side-red);
+}
+
+.fleet-side.picker-aurelian {
+  border-left-color: var(--side-aurelian-deep);
+}
+
+/* This header deliberately does NOT become a filled cap bar. Its `h3` is
+   painted in the side's own rules colour (styles.css:3137–3145) and a filled
+   cap would either hide that or force black ink over it. The side colour is
+   the information; the header is just the row it sits on. */
+.fleet-side > header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin-bottom: var(--sp-2);
+}
+
+.fleet-side > header h3 {
+  margin: 0;
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+}
+
+.fleet-total {
+  margin-right: auto;
+  font-size: var(--fs-micro);
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.fleet-empty {
+  margin: var(--sp-2) 0;
+  font-size: var(--fs-body);
+  color: var(--ink-mute);
+}
+
+.fleet-list {
+  margin: 0 0 var(--sp-2);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  /* Black between records, not a hairline and not zebra. */
+  gap: var(--gutter);
+}
+
+/* Same three-column language as the roster: controls, name, points. The
+   columns were 5.4rem / 1fr / 3rem, sized in rem against a face that may or
+   may not be condensed; these are px and sized for the Inter fallback. */
+.fleet-list li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-row);
+  padding: 0 var(--sp-2);
+  background: var(--panel);
+  border-radius: var(--r-cell);
+  font-size: var(--fs-body);
+}
+
+.fleet-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.fleet-count b {
+  min-width: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-name {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A column of points that reads as a column. */
+.fleet-points {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-bold);
+  color: var(--lc-sand);
+}
+
+/* ══ 6. THE LIBRARY ═════════════════════════════════════════════════════════
+   `ShipLibraryPanel` renders `<ShipList/>` as a fragment, so its children are
+   direct flex children of `.picker` — which is `overflow: hidden`. A library
+   longer than the viewport is therefore CLIPPED today, with no way to scroll
+   to the rest of it, and `.library-list` is an unstyled `<ul>` rendering fan
+   ships as bulleted paragraphs. Both are fixed here with no markup change:
+   the list becomes the modal's scroll region itself. */
+.picker.ship-library > .library-list,
+.picker.ship-library > .segment-help {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* A `.segment-help` promoted to be a modal's own body — the library's "no
+   library is configured" panel, the builder's and designer's publish dialog —
+   is not a panel inside a panel. It kept the 10px zone spine every one of
+   those panels wears on the battle stage, and that spine landed hard against
+   the modal's own 14px spine: two coloured stripes welded together, and in
+   the library's case two different hues (a lilac modal, an orange panel),
+   which is the one thing "one hue per modal" is there to prevent. The modal's
+   spine already names the zone, so the promoted panel does not carry a second
+   one. Its cap bar still bleeds left to the modal's edge and still turns. */
+.picker > .segment-help {
+  border-left: none;
+}
+
+.library-list {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+}
+
+/* A library entry is a record: what it is on the left, what you can do about
+   it on the right, and 5px of ground between it and the next one. */
+.library-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--h-row);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-panel) solid var(--lc-lilac);
+  border-radius: var(--r-cell);
+}
+
+.library-entry > div {
+  min-width: 0;
+}
+
+.library-entry strong {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+
+/* The meta run — faction, size, points, author, downloads — is written inline
+   after the name. Broken onto its own line it becomes a scannable second row
+   instead of a sentence the name disappears into. */
+.library-entry .hint {
+  display: block;
+  margin: var(--sp-half) 0 0;
+  font-size: var(--fs-micro);
+  line-height: var(--lh-ui);
+  color: var(--ink-dim);
+}
+
+.library-entry p.hint {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-mute);
+}
+
+.library-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gutter);
+}
+
+.library-tabs {
+  display: flex;
+  gap: var(--gutter);
+}
+
+/* ══ 7. THE MATCH BROWSER ═══════════════════════════════════════════════════ */
+
+.match-list {
+  margin: var(--sp-2) 0 0;
+  padding: 2px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Retires the bootstrap card: no 1px border, no 10px radius, no white wash.
+   Ground, spine and gutter carry it, exactly like every other record row. */
+.match-row {
+  display: grid;
+  gap: var(--sp-half);
+  width: 100%;
+  min-height: var(--h-row);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-inner) solid var(--line);
+  border-radius: var(--r-cell);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: var(--fw-reg);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  text-align: left;
+}
+
+.match-row:hover {
+  background: var(--panel-3);
+  border-left-color: var(--lc-sky);
+}
+
+.match-row.is-on {
+  background: #241a06;
+  border-left-color: var(--lc-orange);
+}
+
+.match-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+}
+
+/* A record never dims. The 0.72 opacity went; --ink-dim does the receding at
+   full strength and 9.1:1. */
+.match-meta {
+  font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  opacity: 1;
+}
+
+/* Whose move it is — the one fact a correspondence player scans this list
+   for. Sand, not orange: orange is rationed, and "who is on the clock" is
+   time-and-place information, which is sand's zone. */
+.match-turn {
+  font-style: normal;
+  font-weight: var(--fw-bold);
+  color: var(--lc-sand);
+}
+
+.browser-head {
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+}
+
+/* ══ 8. THE ONLINE LOBBY ════════════════════════════════════════════════════ */
+
+.online-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+
+.online-intro,
+.online-hint {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-dim);
+}
+
+.online-columns {
+  gap: var(--gutter);
+}
+
+.online-card {
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-panel) solid var(--lc-sky);
+  border-radius: var(--r-cell);
+}
+
+/* Host / join / browse are three different jobs; the second and third keep
+   their own hues so the column does not read as one undifferentiated block. */
+.online-card + .online-card,
+.online-columns > .online-card:last-child {
+  border-left-color: var(--lc-salmon);
+}
+
+.online-card.match-browser {
+  border-left-color: var(--lc-lilac);
+  margin-top: 0;
+}
+
+.online-card h3 {
+  margin: 0;
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+  color: var(--ink);
+}
+
+.online-card p {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-dim);
+}
+
+/* The match code is a datum to read aloud and type in: the largest numeral on
+   the screen, tabular, and sand rather than orange. */
+.online-code strong {
+  font-family: var(--font-lcars);
+  font-size: var(--fs-value);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-value);
+  color: var(--lc-sand);
+}
+
+/* Colour here is state, not decoration: warn while negotiating, and the
+   frozen green the moment the peers are connected. Both retained. */
+.online-phase {
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.online-sides {
+  gap: var(--gutter);
+}
+
+.online-invite input {
+  color: var(--ink);
+}
+
+/* ══ 9. THE BATTLE SUMMARY ══════════════════════════════════════════════════ */
+
+.summary-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  overflow-y: auto;
+}
+
+.summary-outcome {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-title);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-title);
+  text-transform: uppercase;
+  color: var(--lc-sand);
+}
+
+/* A record never dims: 0.85 opacity out, --ink-2 in. */
+.summary-line {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+  opacity: 1;
+}
+
+.summary-side {
+  margin-bottom: var(--sp-4);
+}
+
+/* The side's cap bar. Both sides take sand rather than their own rules colour
+   because the side name here is plain text with no side class on it to key
+   from — inventing one in CSS is not possible, and guessing would be worse
+   than a neutral bar. */
+.summary-side h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  height: var(--h-cap);
+  margin: 0 0 var(--gutter);
+  padding: 0 var(--sp-2);
+  background: var(--lc-sand);
+  color: var(--ink-on-fill);
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.summary-points {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-on-fill);
+  opacity: 1;
+}
+
+.summary-side table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+
+.summary-side th {
+  padding: 0 var(--sp-2) var(--sp-1) 0;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink-dim);
+  opacity: 1;
+}
+
+/* This IS one of the four places a border is legal: a printed-record table.
+   The hairline stays; it just uses the token instead of a one-off #1a2130. */
+.summary-side td {
+  height: var(--h-row-dense);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) 0;
+  border-top: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-side td em {
+  display: block;
+  font-style: normal;
+  font-size: var(--fs-micro);
+  color: var(--ink-mute);
+  opacity: 1;
+}
+
+/* A ship that is out of the battle. The row carries a danger rail and a
+   struck-through name, which are the two channels that say so; the inherited
+   0.55 dim from styles.css goes.
+
+   Measured, it had to: the dim composites over everything in the row, and the
+   per-ship detail line — `--ink-mute`, already the quietest ink in the system
+   — landed at 2.50:1 through it, against 5.79:1 in a row that survived. The
+   battle summary is the printed record of what happened, a destroyed ship is
+   the part of that record a player reads hardest, and a record never dims
+   (doc §0.5): opacity in this system means "this control is unavailable", and
+   nothing in a summary table is a control at all. */
+.summary-side tr.is-out td {
+  opacity: 1;
+}
+
+.summary-side tr.is-out td:first-child {
+  padding-left: var(--sp-2);
+  border-left: var(--spine-inner) solid var(--danger);
+}
+
+.summary-side tr.is-out td:first-child strong {
+  text-decoration: line-through;
+}
+
+/* ══ 10. THE REPLAY NARRATION ═══════════════════════════════════════════════ */
+
+.theater-narration {
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-panel) solid var(--lc-lilac);
+  border-radius: var(--r-cell);
+}
+
+.theater-narration h3 {
+  margin: 0;
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+  color: var(--ink);
+}
+
+.theater-narration ol {
+  gap: var(--gutter);
+  min-height: 120px;
+  /* 2px keeps the focus ring off the scroller's edge. */
+  padding: 2px;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-dim);
+  overscroll-behavior: contain;
+}
+
+.theater-narration li {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel);
+  border-left: var(--spine-inner) solid transparent;
+  border-radius: var(--r-cell);
+}
+
+/* The moment you are watching. It was a bare left rule with a negative
+   margin; as a lit row it is findable while the list scrolls itself. */
+.theater-narration li.is-current {
+  margin-left: 0;
+  padding-left: var(--sp-2);
+  background: #241a06;
+  border-left-color: var(--lc-orange);
+  color: var(--ink);
+}
+
+/* Colour-and-italic, not a fade: a quiet beat is still a record. */
+.theater-narration li.quiet {
+  opacity: 1;
+  color: var(--ink-mute);
+  font-style: italic;
+}
+
+.theater-narration li.quiet.is-current {
+  color: var(--ink-2);
+}
+
+/* ══ 11. THE DESIGNER'S FORCE LIST ══════════════════════════════════════════
+   Each entry is a `<span class="chip">` carrying a name and up to four live
+   controls — a starting-damage select, a points override, a fighter wing and
+   a delete. That is a row, not a chip, and as a wrapping run of pills it was
+   unreadable. One entry per line, spined in the designer's own hue. */
+.designer-force {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--gutter);
+  margin-top: var(--sp-2);
+}
+
+/* The ground is --panel, not --panel-2: these rows live inside a
+   `.builder-section`, which is itself --panel-2, and a row that is the same
+   colour as the block it sits in has no edge — only the 4px peri tick was
+   visible, so a list of ships read as a list of ticks. This is the same
+   nesting the force lists already use (`.fleet-list li` inside a --panel-2
+   `.fleet-side`): one step down for a record inside a raised block. */
+.designer-force .chip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gutter);
+  min-height: var(--h-row);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-inner) solid var(--lc-peri);
+  border-radius: var(--r-cell);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* The two inline controls inside a force entry keep a transparent ground —
+   they are annotations on the row, not fields in a form — but they stop
+   dimming. Opacity below 1 means "unavailable" and these are neither. */
+.picker .chip-select,
+.picker .chip-value {
+  min-height: var(--h-chip);
+  padding: 0 var(--sp-1);
+  background: none;
+  border: none;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  opacity: 1;
+}
+
+.picker .chip-value {
+  width: 64px;
+  border-bottom: 1px dotted currentColor;
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker .chip-select:hover,
+.picker .chip-select:focus,
+.picker .chip-value:hover,
+.picker .chip-value:focus {
+  color: var(--ink);
+  opacity: 1;
+}
+
+/* The delete control on a force entry was a ~10px glyph — under half the
+   minimum target and easy to miss and easy to hit by accident. Twenty square,
+   and it announces itself on hover by filling with the danger colour rather
+   than by un-dimming. */
+.chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--sz-chip-x);
+  height: var(--sz-chip-x);
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--r-pill);
+  color: var(--ink-dim);
+  font-size: var(--fs-label);
+  line-height: 1;
+  opacity: 1;
+}
+
+.chip-x:hover {
+  background: var(--danger);
+  color: var(--ink-on-fill);
+  opacity: 1;
+}
+
+/* The selected-terrain strip above the designer's props column. */
+.designer-selected {
+  gap: var(--sp-3);
+  min-height: var(--h-row);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-inner) solid var(--lc-sand);
+  border-radius: var(--r-cell);
+  font-size: var(--fs-body);
+}
+
+/* ══ 12. MOTION ═════════════════════════════════════════════════════════════
+   Chrome only, and only the two properties the system allows: opacity, and a
+   6px settle on the modal itself. Nothing scales, nothing on a play surface
+   moves, and no rules state ever transitions — a damage box must snap.
+   The fill mode is left at `none` on purpose, so if the animation is reduced
+   to 1ms the element lands on its own untransformed geometry. */
+@keyframes sfc-modal-backdrop {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sfc-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.roster-row,
+.match-row,
+.library-entry,
+.fleet-list li,
+.theater-narration li {
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    border-left-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+/* tokens.css carries the authoritative reduced-motion block and does so with
+   !important, so it wins wherever this file sits in the bundle. This is the
+   belt to its braces: the entrance is removed outright rather than run at
+   1ms, and every state above remains reachable — only the transition to it
+   is gone. */
+@media (prefers-reduced-motion: reduce) {
+  .picker,
+  .picker-backdrop {
+    animation: none;
+  }
+
+  .roster-row,
+  .match-row,
+  .library-entry,
+  .fleet-list li,
+  .theater-narration li {
+    transition: none;
+  }
+}
+
+/* ══ 13. NARROW WINDOWS ═════════════════════════════════════════════════════
+   The modals already stack their bodies below 1100px. Two things need to
+   follow them down: the control banks, whose 200px tracks would otherwise
+   leave a single ragged column, and the roster's viewport cap, which on a
+   short phone screen is worth less than simply letting the page scroll. */
+@media (max-width: 760px) {
+  .picker-backdrop {
+    padding: var(--sp-2);
+  }
+
+  .picker-controls,
+  .library-controls {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    padding: var(--sp-3);
+  }
+
+  .roster {
+    max-height: none;
+  }
+
+  .library-list {
+    padding: var(--sp-2);
+  }
+
+  .library-entry {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -2,6 +2,19 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './ui/App'
 import './ui/styles.css'
+/*
+ * The design system, as a layer over the original stylesheet: tokens first so
+ * the retuned values win, then one file per region of the screen. Keeping the
+ * layer separate from styles.css is what makes it reviewable and reversible —
+ * delete the six imports below and the app renders as it did before.
+ * See docs/ui-design-system.md for the spec they implement.
+ */
+import './ui/theme/tokens.css'
+import './ui/theme/chrome.css'
+import './ui/theme/title.css'
+import './ui/theme/panels.css'
+import './ui/theme/modals.css'
+import './ui/theme/campaign.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

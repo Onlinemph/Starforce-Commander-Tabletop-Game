@@ -1,0 +1,1188 @@
+/* StarForce Commander — the control-column panels.
+   ────────────────────────────────────────────────────────────────────────────
+   Region layer. Loaded after src/ui/styles.css and after tokens.css, so it is
+   an override: every rule here is written to land on markup that already
+   exists, without a single markup change.
+
+   What this file owns: the ship form, the command card, the combat panel,
+   damage control, the segment-help family (including the intel panel), the
+   battle log and the scenario brief — plus the marks the ship form is made of
+   (circles, boxes, dots, mounts) and the .chip that appears in all of them.
+
+   The problem it solves. This column is the densest thing on the screen: a
+   fifteen-row power table, a weapon block per weapon, four tables and a log,
+   stacked in a scrolling strip about 380px wide. Today every one of those
+   sub-parts is separated from the next by a 1px #2a3350 hairline and a 0.6rem
+   margin, and every panel announces itself with a 12px sand h3 that looks
+   exactly like the section heads inside it. There is no hierarchy — only a
+   uniform grey texture that you have to read your way through.
+
+   The fix is structural, not decorative, and it costs no density:
+
+     level 1  the panel        10px spine + a solid-hue cap bar, black ink
+     level 2  the section      4px sand tab + a --panel-2 bar, sand ink
+     level 3  the group        4px salmon tab (weapon blocks), no bar
+     level 4  the record       marks on the panel ground, no chrome at all
+
+   Each level is a different *kind* of thing, not a different shade of the same
+   thing, so the eye can skip a level it does not need. Nothing is hidden,
+   nothing moves behind a click, and the marks that carry game state — the
+   allocation circles, the damage boxes, the power dots, the mounts — keep
+   their colours exactly and get *bigger*, not smaller.
+
+   See docs/ui-design-system.md for the laws these rules implement. */
+
+/* ══ 1. THE PANEL ═════════════════════════════════════════════════════════════
+   Panel = a 10px spine in the panel's zone hue + a cap bar continuous with it.
+   That L is the frame's elbow at panel scale, and it is the whole difference
+   between an LCARS block and a coloured left border on a card.
+
+   --zone is set per panel below and is read by both the spine and the cap, so
+   a panel's identity is one declaration. The body is square: its height is not
+   fixed, and the radius law only turns a free end of a *fixed*-height bar. */
+
+.ship-form,
+.command-card,
+.combat-panel,
+.damage-control,
+.segment-help,
+.log,
+.scenario-brief {
+  --zone: var(--lc-lilac);
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-panel) solid var(--zone);
+  border-radius: var(--r-cell);
+  /* No padding-top: the cap bar sits flush against the panel's top edge and
+     supplies the rhythm itself. This is where the height budget's −5px per
+     panel comes from — the cap is louder than the old h3 and shorter. */
+  padding: 0 var(--sp-3) var(--sp-3);
+  box-shadow: var(--shadow-none);
+}
+
+/* Zone assignment. Fixed meanings, never positional, never cycled: sky is
+   session/intel, salmon is combat, peri is design/edit, plum is structure,
+   lilac is the archive and the record, orange is the current thing to do. */
+.ship-form {
+  --zone: var(--lc-lilac);
+}
+.command-card {
+  --zone: var(--lc-sky);
+}
+.combat-panel,
+.damage-control {
+  --zone: var(--lc-salmon);
+}
+.log {
+  --zone: var(--lc-plum);
+}
+.scenario-brief {
+  --zone: var(--lc-peri);
+}
+
+/* .segment-help is the base class for nine different panels. Its bare form —
+   the "here is what this segment is" card — is the one panel that legitimately
+   carries orange, because it *is* the current thing to do. The modifiers below
+   are not decoration: without them, the group rule above (which is later in
+   the cascade than styles.css's .intel-panel and .cloud-panel spine colours)
+   would flatten all nine to the same orange. */
+.segment-help {
+  --zone: var(--lc-orange);
+}
+.segment-help.cloak-panel {
+  --zone: var(--lc-plum);
+}
+.segment-help.abandon-panel,
+.segment-help.boarding-panel {
+  --zone: var(--lc-salmon);
+}
+.segment-help.scout-panel,
+.segment-help.intel-panel {
+  --zone: var(--lc-sky);
+}
+.segment-help.formation-panel,
+.segment-help.publish-dialog {
+  --zone: var(--lc-peri);
+}
+.segment-help.command-systems,
+.segment-help.flight-ops {
+  --zone: var(--lc-sand);
+}
+.segment-help.cloud-panel {
+  --zone: var(--lc-lilac);
+}
+
+/* The two expansion panels carried a hand-tuned top margin each; the column's
+   own gap is the only rhythm there should be. */
+.segment-help.scout-panel,
+.segment-help.formation-panel,
+.segment-help.command-systems {
+  margin-top: 0;
+}
+
+/* The panel above has no padding-top because its cap bar supplies the rhythm.
+   One consumer has no cap to supply it: ShipLibraryPanel's "no library is
+   configured" panel opens with a <p>, not an h3, so its first line of prose
+   was printed on the panel's very first pixel row. The padding is not a
+   special case bolted on — it is the rule the cap bar was standing in for,
+   restored wherever the cap is absent. */
+.segment-help:not(:has(> h3)) {
+  padding-top: var(--sp-3);
+}
+
+/* ── The cap bar ─────────────────────────────────────────────────────────────
+   Every one of these panels leads with an h3 (verified in all nine
+   segment-help consumers, the combat panel, the command card and damage
+   control), so the cap needs no new markup: the leading h3 *becomes* the cap.
+
+   It bleeds left by the panel's own padding so it touches the spine, and right
+   to the panel edge, and it turns only on its free end. The radius is written
+   as 11px rather than --r-free because a long title ("Offensive Fire —
+   Bellerophon" plus a status chip) may wrap to two lines; at 999px a wrapped
+   cap would read as a stadium instead of a bar. 11px is half of --h-cap, which
+   is what the law asks for at the height the bar is designed to be. */
+.combat-panel > h3:first-child,
+.command-card > h3:first-child,
+.damage-control > h3:first-child,
+.segment-help > h3:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 calc(-1 * var(--sp-3)) var(--sp-2) calc(-1 * var(--sp-3));
+  padding: 0 10px 0 var(--sp-3);
+  background: var(--zone);
+  color: var(--ink-on-fill);
+  border-radius: 0 11px 11px 0;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-cap);
+  text-transform: uppercase;
+}
+
+/* A status chip riding in a cap (damage control's "2 of 4 red dice assigned")
+   is knocked out of the bar rather than becoming a second grey row under the
+   title. chip-warn is excluded because its warn colour is a signal, and this
+   rule would otherwise outrank it on specificity.
+
+   It is knocked out to BLACK with the zone's own hue as ink, not washed with
+   translucent black. A 28% black wash was the first attempt and it made the
+   chip's contrast a lottery decided by which hue the panel happens to carry:
+   black ink measured 5.4:1 on orange and 7.3:1 on sand, but 3.29:1 on
+   --lc-plum, which is the cloak panel's zone and the log's — a fail at
+   --fs-micro, and the darkest hue is exactly where a wash has no room left.
+   The inversion has no such variance: every chrome hue is ≥5.6:1 on black
+   (plum, the darkest, is 5.6), it is the same move this system already makes
+   for an on-state chip riding a modal header, and the ground is --bg, which
+   is the one ground the whole system is built on. */
+.damage-control > h3:first-child > .chip:not(.chip-warn),
+.segment-help > h3:first-child > .chip:not(.chip-warn) {
+  flex: 0 0 auto;
+  background: var(--ink-on-fill);
+  color: var(--zone);
+  border-radius: var(--r-free);
+}
+
+/* ══ 2. THE SHIP FORM ═════════════════════════════════════════════════════════
+   The form is the printed ship record made interactive, and it is the longest
+   thing in the column — a player scrolls it constantly and needs to know at a
+   glance which hull they are looking at.
+
+   The first cut painted the whole header — name, class line AND the five
+   general-data figures — as one solid block of the zone hue, 94px tall. Three
+   things were wrong with that, and they compound:
+
+     · --lc-lilac is byte-for-byte --side-aurelian, the third side's identity
+       colour (doc §1.2, frozen). At 22px of cap bar that is the same quiet
+       zone mark every other panel wears; at 94px of solid fill it was the
+       largest colour field on the screen, carrying a Federation hull's name
+       in the Aurelian side's hue, a few hundred pixels from counters where
+       that hue means Aurelian. A protected colour must not be the loudest
+       surface in the layer.
+     · It was the panel's least volatile data — hull name, class, SIZE, ACCEL,
+       STRESS, DMG CTL, MAX SPD — rendered louder than the power dots, the
+       fifteen-row function table and the arming controls, all of which change
+       every segment and all of which sit on black.
+     · At 94px it pushed the weapons block, the one thing the Resource
+       Allocation segment exists to operate, off the first screen.
+
+   So the header leads with the panel's cap bar like every other panel: the
+   hull's name rides a 22px block of the zone hue, the class line reads as the
+   prose it is on the panel ground, and the five figures become label-over-
+   value cells in the same shape the intel panel already uses for the same
+   kind of information (§4). Nothing is removed and nothing moves behind a
+   click; measured, the header goes 94px → 86px and the block of frozen side
+   colour inside it goes 94px → 22px. */
+
+.ship-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin: 0 calc(-1 * var(--sp-3)) var(--sp-2);
+  padding: 0;
+  background: none;
+  color: var(--ink);
+}
+
+.ship-form-header > div {
+  flex: 1 0 100%;
+  min-width: 0;
+}
+
+/* The nameplate is the h2 alone: one bar, the hull's name, the same block
+   every other panel and section in this column leads with. It bleeds to the
+   spine on its attached end and turns on its free one at 11px — half of
+   --h-cap, which is the radius the law asks for at the height this bar is
+   designed to be. The class line does NOT ride it: "YORKTOWN I-class Heavy
+   Cruiser · Union of Federated Systems" wraps at this column width, and
+   carrying it on the fill doubled the height of the one block on the screen
+   painted in a frozen side colour. It is prose, so it reads as prose on the
+   panel ground. */
+.ship-form-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 0 var(--sp-1);
+  padding: 0 10px 0 var(--sp-3);
+  background: var(--zone);
+  color: var(--ink-on-fill);
+  border-radius: 0 11px 11px 0;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-title);
+  line-height: var(--lh-ui);
+  text-transform: uppercase;
+}
+
+/* .ship-class is shared with the intel panel, where it sits on --panel and
+   reads as the same prose it is here. It only needs the panel's own inset,
+   because the header it sits in bleeds past that inset to reach the spine.
+   The christening pencil and its input are not this file's classes, but they
+   are inside a ground this file changed: the pencil rides the nameplate, so it
+   takes the one ink a bright hue gets, and the input replaces the nameplate
+   while it is open, so it is given the well every text field in this system
+   sits in rather than being left transparent on a coloured bar. */
+.ship-class {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: var(--fs-body);
+  line-height: var(--lh-ui);
+}
+.ship-form-header .ship-class {
+  padding: 0 var(--sp-3);
+}
+.ship-form-header .rename-button {
+  color: var(--ink-on-fill);
+}
+.ship-form-header .rename-input {
+  min-height: var(--h-btn);
+  margin-bottom: var(--sp-1);
+  color: var(--ink);
+  background: var(--well);
+  border: none;
+  border-radius: var(--r-input);
+  padding: 0 var(--sp-3);
+}
+
+/* The five general-data figures, as label-over-value cells rather than a row
+   of dt/dd pairs reading as one run-on line. They take their own row under the
+   nameplate, on the panel ground, in exactly the shape the intel panel uses
+   for the same kind of fact — one language for "a labelled figure" across
+   both halves of the hidden-information rule. */
+.general-data {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: stretch;
+  gap: var(--gutter);
+  margin: 0;
+  padding: 0 var(--sp-3);
+  flex-wrap: wrap;
+}
+.general-data > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--sp-half) var(--sp-2);
+  background: var(--panel-2);
+  border-radius: var(--r-cell);
+}
+.general-data dt {
+  color: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--lh-ui);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.general-data dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-ui);
+  text-align: left;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────────
+   Level 2. The hairline goes; a 4px sand tab and a --panel-2 bar take its
+   place. Sand is "time and place, derived readouts, labels" — a section head
+   is a label, and using sand here rather than a second solid hue keeps the
+   panel cap the only saturated block in the panel.
+
+   The bar bleeds left to the spine like the cap does, so the panel's L and the
+   section's L stack on the same axis and the whole form reads as one column of
+   blocks rather than a list of indented paragraphs. */
+.form-section {
+  border-top: none;
+  margin: var(--sp-3) 0 0;
+  padding-top: 0;
+}
+.form-section > h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 0 var(--sp-2) calc(-1 * var(--sp-3));
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--panel-2);
+  border-left: var(--spine-inner) solid var(--lc-sand);
+  border-radius: 0 11px 11px 0;
+  color: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-cap);
+  text-transform: uppercase;
+}
+
+/* ══ 3. THE COMMAND CARD ══════════════════════════════════════════════════════
+   .cc-block is not in this file's class list, but it is the command card's
+   only interior structure and it carries the same 1px hairline the ship form
+   just lost. Leaving it would make one panel speak two languages about the
+   same relationship, so it is given the identical section treatment — scoped
+   under .command-card, so no .cc-block anywhere else is affected. */
+.command-card > .cc-block {
+  border-top: none;
+  margin: var(--sp-3) 0 0;
+  padding-top: 0;
+}
+.command-card > .cc-block > h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 0 var(--sp-2) calc(-1 * var(--sp-3));
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--panel-2);
+  border-left: var(--spine-inner) solid var(--lc-sand);
+  border-radius: 0 11px 11px 0;
+  color: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-cap);
+  text-transform: uppercase;
+}
+
+/* ══ 4. THE INTEL PANEL ═══════════════════════════════════════════════════════
+   This panel stands in for the ship form when the selected ship is the enemy's
+   (B1.9.1). It gets the cap and the sky zone from the rules above and nothing
+   else: it must not acquire the form's section language, because it must not
+   look like it is showing what it is deliberately withholding.
+
+   The one addition is the facts row, which is the same label-over-value cell
+   as the ship form's general data — same information shape, same rendering —
+   but on --panel-2, because here there is no bright ground to sit on. */
+.intel-facts {
+  display: flex;
+  align-items: stretch;
+  gap: var(--gutter);
+  margin: 0 0 var(--sp-2);
+  flex-wrap: wrap;
+}
+.intel-facts > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel-2);
+  border-radius: var(--r-cell);
+}
+.intel-facts dt {
+  color: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--lh-ui);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.intel-facts dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-ui);
+}
+
+/* ══ 5. CHIPS ═════════════════════════════════════════════════════════════════
+   Two things wear .chip today and they mean opposite things: a <span> that
+   states a fact ("3 of 5 power left") and a <button> you can press. Shape now
+   carries the difference — a flat tag for the fact, a full pill for the
+   control — so a player can tell what is pressable without hovering it.
+
+   .file-chip is excluded on purpose. It is a label-wrapped file input that
+   belongs to the topbar and modal region, and its own rule is being rewritten
+   there; excluding it leaves it exactly as it renders today rather than
+   half-converting it from two directions at once.
+
+   Colour is deliberately NOT declared on the base: styles.css already gives
+   the span --ink-dim and button.chip --ink, both correct, and declaring it
+   here at 0-2-0 would outrank .chip.chip-warn and silently kill a warning. */
+.chip:not(.file-chip) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gutter);
+  height: var(--h-chip);
+  padding: 0 10px;
+  background: var(--panel-2);
+  border: none;
+  border-radius: var(--r-cell);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-chip);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The pressable half. --h-chip is 22px against the old ~15–20px, which is the
+   point: these were below the hit-target floor. */
+button.chip:not(.file-chip),
+.chip[role='button']:not(.file-chip) {
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+/* :where(:not(.is-on)) costs no specificity and keeps a selected chip from
+   going grey the instant you point at it: this rule is 0-4-1 and every scoped
+   on-state in the app (.chip.arc.is-on, .fleet-side-tabs, .designer-tools,
+   .online-sides, .view-chips, a modal header's inverted chip) is 0-3-0, so
+   without the exclusion hover silently outranked all six. */
+button.chip:not(.file-chip):where(:not(.is-on)):hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: transparent;
+  color: var(--ink);
+}
+
+/* ── A pressable chip needs a ground of its own ──────────────────────────────
+   --panel-2 is the chip's ground AND the ground of half the blocks a chip sits
+   inside: a builder section, the cost panel, a force list's header, a designer
+   force entry. --panel-2 on --panel-2 is no edge at all, and the borderless
+   law took away the 1px --line ring that used to carry the affordance, so
+   "use 5", "+ reactor", "+ box", "printed force" and the off-state force tabs
+   all render as bare text floating on a panel. A control nobody can see is a
+   control nobody can use, which is the one thing this pass may not do.
+
+   The ground comes back as a knocked-back tint of the chip's own ink — the
+   move this file already makes for the warn, scout and danger chips, which is
+   why "remove" is the only chip on the builder screen that still reads as a
+   button. No second hue, no borrowed elevation step, no border.
+
+   Scope and specificity are deliberate. :where() contributes nothing, so the
+   selector lands at 0-2-1: it beats the base .chip block (0-2-0) and loses to
+   every scoped on-state (0-3-0) and to the cap-bar chips above (0-4-1). The
+   region list keeps it off the play surface, where .view-chips pills sit on
+   black and already read. Warn/scout/danger keep their signal grounds by not
+   matching at all rather than by winning a cascade race. */
+:where(.picker, .control-column)
+  button.chip:not(.file-chip):where(:not(.chip-warn, .chip-scout, .danger, .is-on)) {
+  background: color-mix(in srgb, var(--lc-sand) 16%, var(--panel-2));
+  color: var(--lc-sand);
+}
+:where(.picker, .control-column)
+  button.chip:not(.file-chip):where(:not(.chip-warn, .chip-scout, .danger, .is-on)):hover:not(
+    :disabled
+  ) {
+  background: color-mix(in srgb, var(--lc-sand) 28%, var(--panel-2));
+  color: var(--ink);
+}
+
+/* The warn chip loses its 1px ring to the borderless law, so the ground picks
+   the signal up instead — colour plus a tinted block, not colour alone. */
+.chip.chip-warn {
+  background: color-mix(in srgb, var(--warn) 18%, var(--panel-2));
+  color: var(--warn);
+}
+.chip.chip-scout {
+  background: color-mix(in srgb, var(--lc-sky) 16%, var(--panel-2));
+  color: var(--lc-sky);
+}
+.chip.danger {
+  background: color-mix(in srgb, var(--danger) 16%, var(--panel-2));
+  color: var(--danger);
+}
+
+/* An arc chip sits in a 2px grid in the builder, so its focus ring must not
+   overlap its neighbours' — the ring sits on the edge instead of outside it. */
+.chip.arc:focus-visible {
+  outline-offset: 0;
+}
+
+/* ══ 6. POWER SYSTEMS ═════════════════════════════════════════════════════════
+   Reactors, batteries and their damage boxes. These are records: they never
+   dim, they never animate, and their green means one thing — this point is
+   supplying power. */
+
+.reactor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.reactor-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.reactor-label {
+  margin-right: var(--sp-1);
+  color: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--lh-ui);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The grouping box around one reactor point's dot and its damage boxes. Its
+   old #0f141d ground was one JND from the panel, so the grouping it was drawing
+   did not visually exist; --well is a recess you can actually see. */
+.power-point {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-half);
+  padding: var(--sp-half) 6px;
+  background: var(--well);
+  border-radius: var(--r-pill);
+}
+
+/* A reactor point whose boxes are all crossed off. It used to fade to 0.3 —
+   1.8:1, a record you cannot read, and the one thing opacity is not allowed to
+   mean. Instead the socket goes black and the dot goes hollow, which is the
+   idiom this file already uses for a drained battery ("a vessel, not a
+   source"). :not(.bty) keeps the frozen battery rule strictly untouched, and
+   no *live* power indicator is repainted — only a dead one stops claiming to
+   be a source. */
+.power-point.is-dead {
+  opacity: 1;
+  background: var(--bg);
+}
+.power-point.is-dead .dot:not(.bty) {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink-mute);
+}
+
+/* 9px, with an inset black hairline so saturated green stops blooming into the
+   ground at this size. The hollow-vs-solid battery distinction in styles.css
+   is more specific and is left exactly as it is — do not fill both states. */
+.dot {
+  width: var(--sz-dot);
+  height: var(--sz-dot);
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* The printed damage box: 8×8, hard corners, never rounded, never hatched —
+   a 2px/3px 45° repeat inside eight pixels is moire and reads as dirt. The
+   faint fill is the difference between "an empty box" and "an outline". */
+.box {
+  width: var(--sz-box);
+  height: var(--sz-box);
+  border: 1px solid var(--ink-dim);
+  border-radius: var(--r-mark);
+  background: #0d1424;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.box.is-damaged {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ══ 7. THE FUNCTIONS TABLE ═══════════════════════════════════════════════════
+   Fifteen rows of label → circles → value, and the single highest-payoff fix
+   in this file is in it: see §8. Here the job is to make the three columns
+   read as three columns. */
+
+.functions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+
+/* A fixed gutter so the circles start on the same x in every row. 96px is
+   sized for the Inter fallback, not for Antonio — no webfont is loaded and
+   --font-lcars usually resolves to a face that does not condense at all. It is
+   a floor, not a cage: table layout still grows the column if a label needs
+   more, so nothing is ever clipped. */
+.functions th {
+  width: 96px;
+  min-width: 96px;
+  padding: 0 var(--sp-2) 0 0;
+  color: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-align: left;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 22px circle + 2px above and below = the 26px read-pitch row. */
+.functions td.circles {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: var(--sp-half) var(--sp-2) var(--sp-half) 0;
+  flex-wrap: wrap;
+}
+
+/* The derived value column. It was orange — fifteen accent-coloured numbers in
+   one table, which is most of why the accent meant nothing on this screen.
+   Sand is the hue for a derived readout, and the --panel-2 ground turns a row
+   of right-aligned digits into a column you can run your eye down. */
+.functions .line-value {
+  width: 40px;
+  padding: 0 var(--sp-2) 0 0;
+  background: var(--panel-2);
+  color: var(--lc-sand);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  vertical-align: middle;
+}
+
+/* ══ 8. RECORDS ARE NOT CONTROLS ══════════════════════════════════════════════
+   The single highest-payoff rule in the pass. `button:disabled { opacity:.32 }`
+   is global; the allocation circle is disabled whenever the game is not in the
+   Resource Allocation segment, and a mount is disabled whenever there are no
+   arming points to spend. That is most of every round — so for most of every
+   round the entire fifteen-row power table and every weapon mount rendered at
+   about 1.8:1, exactly when a player is *reading* them rather than setting
+   them.
+
+   A record is not a control. Dimming means "this control is unavailable" and
+   nothing else; a power level you cannot currently change is still a power
+   level you must be able to read. The global rule is untouched — this is a
+   narrow exemption for the two elements that are records wearing <button>. */
+
+.circle {
+  width: var(--sz-circle);
+  height: var(--sz-circle);
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    border-color var(--dur-hover) var(--ease);
+}
+
+/* Rules colours, unchanged: green filled, the free circle's dark-green well. */
+.circle.is-filled {
+  background: var(--green);
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  color: #07120b;
+  font-weight: var(--fw-bold);
+}
+.circle.is-free {
+  background: #0f3d22;
+  border-color: var(--green);
+  color: var(--green);
+  font-weight: var(--fw-bold);
+}
+
+/* The exemption. .circle.is-free is a <span> and was never dimmed, so today a
+   row reads as one bright green circle followed by a line of ghosts; this
+   removes that inconsistency at the same time. */
+.circle:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.circle:disabled:not(.is-filled):not(.is-free) {
+  border-color: var(--line);
+  color: var(--ink-mute);
+}
+
+/* A circle the ship cannot afford. Still a refusal, still plainly out of
+   reach, but at 0.55 with a dashed ring it is legible — 0.32 was not. In
+   practice this and :disabled never co-occur (the class is only written while
+   allocating, which is exactly when the button is enabled), but it is declared
+   after the exemption so the intent survives if that ever changes. */
+.circle.is-unaffordable {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+/* Hover is the one place the accent is spent transiently. The two exclusions
+   matter: without them, hovering a filled circle would repaint a rules colour,
+   and the free circle — which is a <span>, so :not(:disabled) matches it —
+   would grow a hover affordance for something that cannot be clicked. */
+.circle:hover:not(:disabled):not(.is-filled):not(.is-free) {
+  border-color: var(--lc-orange);
+  background: rgba(255, 156, 0, 0.12);
+}
+
+/* Circles sit 3px apart. A ring drawn 2px outside a 22px circle would collide
+   with its neighbour's, so this one sits on the edge instead. */
+.circle:focus-visible {
+  outline-offset: 0;
+}
+
+/* ══ 9. WEAPONS ═══════════════════════════════════════════════════════════════
+   Level 3 grouping: each weapon is one block with a 4px salmon tab. Salmon is
+   the combat hue, so the weapons inside the lilac record panel are marked as
+   the combat part of it without introducing a fourth kind of heading. */
+
+.weapon-block {
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-2);
+  border-left: var(--spine-inner) solid var(--lc-salmon);
+}
+.weapon-block:last-child {
+  margin-bottom: 0;
+}
+
+.weapon-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-chip);
+  margin-bottom: var(--sp-1);
+  flex-wrap: wrap;
+}
+.weapon-head > strong {
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+
+/* Traits are already stencil codes in the data ('HOMING 3', 'PARTCL', 'NoBAT'),
+   so they take the flat-tag shape: a label, not a target, square, no border. */
+.traits {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  background: var(--panel-2);
+  border-radius: var(--r-cell);
+  color: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+/* Blocks are separated by black, never by a hairline. */
+.mounts {
+  display: flex;
+  gap: var(--gutter);
+  flex-wrap: wrap;
+  margin: var(--sp-1) 0;
+}
+
+/* A mount is a record you can press: the arc rose, its arming circles and its
+   hit boxes, all printed on the sheet. Square, ~40×47, and it does not shrink
+   — that box is already at the hit-target floor.
+
+   The border stays 1px and transparent rather than being removed outright, so
+   that the damaged and degraded states can turn it on without the mount
+   changing size and reflowing the row. A transparent border is not a border in
+   the sense the borderless law means. */
+.mount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-half);
+  padding: var(--sp-1) 6px;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-cell);
+  color: var(--ink-dim);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tr-micro);
+  transition: background-color var(--dur-hover) var(--ease);
+}
+.mount:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: transparent;
+  color: var(--ink);
+}
+
+/* Source order is load-bearing between the next two rules: both are 0-2-0, so
+   the damaged state must come second to win. (Both already beat the global
+   button:disabled at 0-1-1 on specificity, whatever the order.) */
+.mount:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+/* Damage is a record state, so it does not fade — it fills, and here it really
+   does fill. Painting the damaged mount --panel-2 and trusting the hatch alone
+   was measured and does not work: --hatch-damage is black stripes at 45%, and
+   on a ground as dark as --panel-2 that is 1.10:1 — invisible. With the hatch
+   carrying nothing, "damaged" and "degraded" were separated by border colour
+   alone, red against amber, which is the one thing §7 forbids.
+
+   So the damaged mount takes the ground the state language asks for (doc §5.7:
+   damaged = a --danger ground, +hatch at ≥13px), mixed at the same 30% this
+   file already uses for the structure track's red band, which is the same rule
+   drawn on the same sheet. Fill-versus-no-fill is now the non-colour channel
+   between damaged and degraded, the hatch reads against the lighter ground,
+   and the mount's own marks stay legible on it (--ink-dim measures 5.6:1). */
+.mount.is-damaged {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--danger) 30%, var(--panel));
+  background-image: var(--hatch-damage);
+  border-color: var(--danger);
+}
+.mount.is-degraded {
+  background-color: var(--panel-2);
+  background-image: var(--hatch-degraded);
+  border-color: var(--warn);
+}
+
+/* The arming circles and the slow-arming diamond, scoped to the mount so no
+   other consumer of these marks is affected. The gate encodes rule E4.2.8 and
+   was set at 7px, which is below the legibility floor and indistinguishable
+   from a speck of dust. */
+.mount .arming {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.mount .circle-sm {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.mount .gate {
+  color: var(--warn);
+  font-size: var(--fs-micro);
+  line-height: 1;
+}
+.mount .hitboxes {
+  display: inline-flex;
+  gap: 1px;
+}
+
+/* .mount-arcs is in this region's class list but is verified dead — no
+   component renders it (see the design doc's dead-CSS list). No rule is
+   written for it here; the stale declaration should be deleted from
+   styles.css rather than overridden from this layer. */
+
+/* ══ 10. STRUCTURAL INTEGRITY ═════════════════════════════════════════════════
+   The structure track is the one place a damage box is big enough to carry a
+   hatch, so this is where the hatch belongs. --sz-box-structure is 13px, which
+   is also what makes the red band readable as a *band* rather than as a row of
+   boxes with a slightly different outline. */
+
+.structure {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.structure .box {
+  width: var(--sz-box-structure);
+  height: var(--sz-box-structure);
+}
+
+/* The red band becomes a fill, matching how the identical data is drawn in
+   ShipBuilder's .track-red. Today the same rule is shown two contradictory
+   ways in two views. Declared after .box so it wins on source order. */
+.structure-red {
+  background: color-mix(in srgb, var(--red) 30%, var(--panel));
+  border-color: var(--red);
+}
+.structure .box.is-damaged {
+  background-color: var(--danger);
+  background-image: var(--hatch-damage);
+  border-color: var(--danger);
+}
+
+/* The damage-control rating printed inside the track. It was orange; yellow is
+   the damage-control colour everywhere else in the app (.track-dc), and a tab
+   rather than bare text makes it read as part of the printed track. */
+.dc-marker {
+  display: inline-flex;
+  align-items: center;
+  height: var(--sz-box-structure);
+  padding: 0 var(--sp-1);
+  background: var(--yellow);
+  border-radius: var(--r-mark);
+  color: #241a00;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--sz-box-structure);
+}
+
+/* ══ 11. THE BATTLE LOG ═══════════════════════════════════════════════════════
+   The log's leading element is a <header>, not an h3, so the cap rule above
+   does not reach it — it gets its own, with the same geometry. The Compact /
+   Expand button rides inside the cap in a knocked-back well, which is also how
+   it stops being a second grey row stealing a line from the log itself. */
+
+.log > .log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 calc(-1 * var(--sp-3)) var(--sp-2) calc(-1 * var(--sp-3));
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--zone);
+  border-radius: 0 11px 11px 0;
+}
+.log > .log-head > h3 {
+  margin: 0;
+  color: var(--ink-on-fill);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-cap);
+  text-transform: uppercase;
+}
+/* Compact / Expand is the only control in this cap, and it was the least
+   readable thing on the battle screen: black ink on a 28% black wash over
+   --lc-plum measured 3.29:1 at rest and 2.08:1 on :hover — the state that
+   means "you are about to press this" was the one you could not read. It was
+   also pinned to 18px against --h-chip's 22, under a floor this system says
+   is never reduced.
+
+   Knocked out to black with the zone as ink it measures 5.6:1, it is the same
+   inversion the cap-status chip above takes, and it goes back to full chip
+   height. Hover then lights the ground the way every other control in the
+   system lights it, instead of darkening the one thing you are aiming at. */
+.log > .log-head > .chip {
+  background: var(--ink-on-fill);
+  color: var(--zone);
+}
+.log > .log-head > .chip:hover:not(:disabled) {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+
+/* Compact keeps its tighter bottom padding; the cap supplies the top. */
+.log.is-compact {
+  padding-top: 0;
+  padding-bottom: var(--sp-2);
+}
+
+.log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: var(--fs-body);
+}
+
+/* Entries are separated by black, not by a hairline — and the entry itself is
+   sentence-case prose at the body size, because it is prose. The extra 2px per
+   line over the old 10.4px hairline row buys back its own legibility. */
+.log li {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 0;
+  margin-bottom: var(--gutter);
+  border-bottom: none;
+  line-height: 1.35;
+}
+.log li:last-child {
+  margin-bottom: 0;
+}
+.log-latest {
+  margin: 0;
+  display: flex;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Round and segment: the column the eye runs down to find "when". Fixed width
+   so the messages align into a second column, and plum because the log is
+   structure. */
+.log-where {
+  flex-shrink: 0;
+  min-width: 112px;
+  color: var(--lc-plum);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-micro);
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+/* ══ 12. THE SCENARIO BRIEF ═══════════════════════════════════════════════════
+   A <details>. Its <summary> is both the panel's title and its only control,
+   so it becomes the cap bar — and it keeps a visible open/closed indicator,
+   because turning a summary into a flex container drops the native marker and
+   a title with no affordance is a feature nobody finds. The indicator is a
+   character swap, not a rotation: nothing in this region animates. */
+
+/* justify-content is flex-start, not space-between: the brief's cap runs the
+   full width of the stage, so space-between threw the ▾ marker ~960px away
+   from the label it belongs to and jammed it inside the bar's 11px corner,
+   where it reads as a rendering artifact rather than as the affordance that
+   opens the panel. Next to the title it is in reading order and it is the
+   obvious target. */
+.scenario-brief > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  min-height: var(--h-cap);
+  margin: 0 calc(-1 * var(--sp-3)) var(--sp-2) calc(-1 * var(--sp-3));
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--zone);
+  border-radius: 0 11px 11px 0;
+  color: var(--ink-on-fill);
+  cursor: pointer;
+  font-family: var(--font-lcars);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--h-cap);
+  list-style: none;
+  text-transform: uppercase;
+}
+.scenario-brief > summary::-webkit-details-marker {
+  display: none;
+}
+.scenario-brief > summary::after {
+  content: '▾';
+  flex: 0 0 auto;
+  font-size: var(--fs-micro);
+}
+.scenario-brief[open] > summary::after {
+  content: '▴';
+}
+
+/* Closed, the brief is just its cap — so it must not also carry the panel's
+   bottom padding, or it renders as a bar with an empty strip hanging off it. */
+.scenario-brief:not([open]) {
+  padding-bottom: 0;
+}
+.scenario-brief:not([open]) > summary {
+  margin-bottom: 0;
+}
+
+.scenario-brief dl {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body);
+}
+.scenario-brief dt {
+  color: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  line-height: var(--lh-ui);
+  text-transform: uppercase;
+}
+.scenario-brief dd {
+  margin: 0 0 var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.scenario-brief ul,
+.scenario-brief p {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.scenario-brief ul {
+  margin: 0 0 var(--sp-2);
+  padding-left: var(--sp-4);
+  color: var(--ink-2);
+}
+
+/* ══ 13. MOTION ═══════════════════════════════════════════════════════════════
+   The only transitions declared in this file are background-color, border-color
+   and color on hover, at 90ms — chrome feedback on things you are pointing at.
+   Nothing here scales, slides or moves, no rules state fades (a damage box
+   must snap, or the display is lying about the game), and tokens.css carries
+   the authoritative prefers-reduced-motion block that neutralises every one of
+   them. No state in this region is carried by motion alone. */

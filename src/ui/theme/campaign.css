@@ -1,0 +1,718 @@
+/* StarForce Commander — Border Command: the campaign console.
+   ────────────────────────────────────────────────────────────────────────────
+   Region layer. Loaded after src/ui/styles.css and src/ui/theme/tokens.css, so
+   it is an override layer: every rule here is written to beat the legacy one it
+   replaces on specificity or, where specificity is equal, on source order. It
+   owns .campaign-* and nothing else. Add
+
+       import './ui/theme/campaign.css'
+
+   to src/main.tsx after './ui/theme/tokens.css' or the file is inert.
+
+   The problem this file solves: the campaign console was the one screen that
+   never got the frame. A 2px orange rule under a run-on status sentence, a bare
+   SVG on a blue-ish wash, and a 320px column of 1px-outlined cards with orange
+   h3s — five of them, which is the accent ration blown four times over on the
+   calmest screen in the app. Nothing here removes a control; the whole pass is
+   ground, fill, gutter and type.
+
+   Two structural limits shaped the choices, and both are worth knowing before
+   editing:
+
+   1. CampaignApp.tsx is NOT in this agent's scope, so no markup could be added.
+      The doc's status strip (§5.12) wants five label-over-value cells; the
+      topbar carries one <span> holding one sentence. It is therefore styled as
+      a record block rather than faked with pseudo-content, and the sidebar's
+      empty state is built from :empty::before / :empty::after — the only way to
+      give a container that renders literally nothing a voice.
+   2. The four sidebar sections are all bare `.campaign-panel` with no modifier
+      class, and they appear CONDITIONALLY. :nth-of-type would therefore repaint
+      the wrong panel the moment a battle resolves or a unit is deselected —
+      exactly the failure the doc calls out for .builder-section. So the zone
+      hue is keyed off content with :has(), which is stable under any
+      combination of visible panels. Where :has() is unsupported every panel
+      falls back to the sand default, which is still coherent — no panel ever
+      loses its cap bar. */
+
+/* ══ 1. THE SHELL ═══════════════════════════════════════════════════════════ */
+
+.campaign-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0; /* the frame bleeds to the bezel, as .app does */
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ══ 2. THE TOPBAR — the frame's opening corner ═════════════════════════════
+
+   The battle screen builds its elbow from two elements: a rail stem in grid
+   cell 1/1 and a topbar in 1/2 that paints the arm and the concave fillet as
+   backgrounds. The campaign topbar has no rail beneath it and no stem element,
+   so the <strong> wordmark IS the stem: pulled up through the arm by a negative
+   margin, --rail-w wide, turning at --elbow-out. The identity that makes the
+   corner an elbow rather than a mitre still holds — outer 68 = inner 34 + arm
+   34 — and the fillet is the same radial-gradient cell, just offset to sit at
+   x = --rail-w instead of x = 0.
+
+   The bar keeps flex-wrap. Below roughly 700px the three controls drop to a
+   second line rather than running off the right edge; a control that cannot be
+   reached is a feature removed, and this pass removes nothing. */
+
+.campaign-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gutter);
+  min-height: var(--h-topbar-min);
+  padding: var(--arm-h) var(--stage-gutter) var(--sp-1) 0;
+  border: none; /* kills the legacy 2px orange rule — the arm replaces it */
+  background:
+    /* the 34px arm, full bleed */
+    linear-gradient(var(--lc-orange) 0 0) 0 0 / 100% var(--arm-h) no-repeat,
+    /* the concave fillet: a 34×34 cell whose circle is centred on its own
+       bottom-right corner, so the crescent between the arm's underside and the
+       wordmark block's right edge paints orange and sweeps away from it */
+      radial-gradient(
+        circle var(--elbow-in) at 100% 100%,
+        transparent 0 var(--elbow-in),
+        var(--lc-orange) var(--elbow-in)
+      )
+      var(--rail-w) var(--arm-h) / var(--elbow-in) var(--elbow-in) no-repeat,
+    linear-gradient(var(--panel) 0 0);
+}
+
+/* The wordmark block. It reads down-left at 11px condensed over three or four
+   short lines instead of across at one long line, because 104px is the width
+   the frame gives it and no layout in this system may depend on the condensing
+   actually being present. Black on orange is 10:1. */
+.campaign-topbar > strong {
+  display: flex;
+  flex: 0 0 var(--rail-w);
+  flex-direction: column;
+  align-self: stretch;
+  justify-content: flex-end;
+  /* rise through the arm so block and arm read as one continuous shape */
+  margin-top: calc(-1 * var(--arm-h));
+  margin-bottom: calc(-1 * var(--sp-1));
+  padding: var(--sp-2);
+  overflow: hidden;
+  color: var(--ink-on-fill);
+  font: var(--fw-bold) var(--fs-label) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  /* "STARFORCE:" is the longest token and measures ~77px at 11px in the Inter
+     fallback against 88px of content width, so it fits without the condensing.
+     The break rule is insurance for a wider fallback face, not the plan: a
+     clipped wordmark would be worse than a broken one. */
+  overflow-wrap: break-word;
+  background: var(--lc-orange);
+  /* The turn is --elbow-in, not --elbow-out. The outer radius is 68px against
+     a block only 104×74, so the corner's sweep cut across the first glyph of
+     "STARFORCE:" and clipped the S. The inner radius still reads as the same
+     elbow at this size and leaves the wordmark its full column. */
+  border-radius: var(--elbow-in) 0 0 0;
+}
+
+/* The status line. One <span>, one sentence — it cannot be split into the
+   doc's five cells without markup, so it is treated as what it actually is: a
+   record. Square corners, panel-2 ground, a sand inner spine (sand is time and
+   place: round, phase, score), sentence case in --font-ui at 13px. It is
+   deliberately NOT --r-free: its height is not fixed, it wraps, and the radius
+   law forbids a free-end turn on anything that can grow.
+
+   The left margin is load-bearing, not decoration: the fillet's crescent
+   occupies the 34×34 cell immediately right of the wordmark block, and this
+   block has an opaque ground. Starting the content column at exactly
+   --rail-w + --elbow-in keeps the sweep visible instead of painting over its
+   right half. (--gutter is subtracted because the flex gap already supplies
+   5px of it.) */
+.campaign-topbar > span {
+  flex: 1 1 260px;
+  align-self: stretch;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  margin: var(--sp-1) 0 var(--sp-1) calc(var(--elbow-in) - var(--gutter));
+  padding: var(--sp-1) var(--sp-3);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  background: var(--panel-2);
+  border-left: var(--spine-inner) solid var(--lc-sand);
+  border-radius: var(--r-cell);
+}
+
+/* The three controls. The block shape (square against the run, turned at the
+   free end) is the chrome shape from §4.3; hover no longer turns them orange,
+   which is what let the accent ration be spent on the one primary. */
+.campaign-topbar > button {
+  height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-label) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  background: var(--panel-2);
+  border: none;
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+.campaign-topbar > button:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--panel-3);
+}
+
+/* The one primary on this screen. "End phase" is the whole console's verb, and
+   it is the only orange control here — the frame and the engagement markers are
+   the other two of the three permitted roles. */
+.campaign-topbar > button.primary {
+  color: var(--ink-on-fill);
+  background: var(--lc-orange);
+  border-color: transparent;
+}
+
+.campaign-topbar > button.primary:hover:not(:disabled) {
+  color: var(--ink-on-fill);
+  background: var(--lc-sand);
+}
+
+/* Disabled means "unavailable", and only that. In online play the primary is
+   disabled while the other commander moves, and the label changes to say so —
+   the dim is a second channel, not the only one. */
+.campaign-topbar > button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ══ 3. THE BODY AND THE PLOT ═══════════════════════════════════════════════ */
+
+.campaign-body {
+  flex: 1;
+  display: flex;
+  gap: var(--gutter); /* 5px of ground, not a 1px line */
+  min-height: 0;
+  background: var(--bg);
+}
+
+/* The plot is a well, not a card: the darkest surface in the system. The light
+   on it is now drawn INSIDE the SVG (docs/campaign-plot.md §6.1), centred on
+   the plot's own ink extents in user space, so all this rule has to do is stop
+   the letterbox showing a different black.
+
+   The deleted radial — `ellipse 70% 60% at 50% 42%, rgba(74,52,102,.34)` — is
+   the "odd bright patch" in the base renders. It was centred on the ELEMENT
+   while the plot is centred on the letterboxed viewBox, so the two never
+   coincided and the glow sat over empty sky at the top left, one JND from the
+   --blue counters side A starts under. --void is the tactical map's .map-bg
+   exactly: at its edges the campaign plot is literally the colour of the
+   battle board. */
+.campaign-map {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: var(--void);
+  border-radius: var(--r-cell);
+}
+
+/* ══ 4. THE SIDEBAR ═════════════════════════════════════════════════════════
+
+   Black ground, no left border. The panels are blocks on the ground and the
+   5px gutter is what separates them, so the column reads as the rail's
+   right-hand twin rather than as a tray of cards. 2px of padding on the leading
+   edges keeps a focus ring from being cropped by the scroller. */
+
+.campaign-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--gutter);
+  width: 320px;
+  padding: var(--sp-half) var(--sp-2) var(--sp-3) var(--sp-half);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg);
+  border-left: none;
+}
+
+/* The terminator. Every column in this system closes; the rail closes with
+   .rail-cap, a modal with its ::after, and this is the same gesture at sidebar
+   scale. margin-top: auto pins it to the bottom when the column is short and
+   lets it follow the content when the column scrolls. */
+.campaign-sidebar:not(:empty)::after {
+  content: '';
+  flex: 0 0 var(--h-modal-foot);
+  margin-top: auto;
+  background: var(--lc-plum-deep);
+  border-radius: 0 0 var(--foot-out) 0;
+}
+
+/* ── The empty state ──────────────────────────────────────────────────────
+   With no engagement, no selected unit, no contact and no reinforcements, every
+   child of <aside> is a falsy expression and React renders nothing at all — so
+   the aside is genuinely :empty and the console showed a 320px black void next
+   to the plot. No markup could be added here, so the state is built from the
+   two pseudo-elements: ::before is the cap bar, ::after the prose. It is a
+   panel like any other, in plum-deep because it is structure, not data. */
+
+/* The empty column closes too. `:not(:empty)::after` above cannot help here —
+   :empty has already spent ::before on the cap bar and ::after on the prose,
+   and there is no third pseudo-element — so the closing block is drawn as the
+   column's own bottom border. That is not a new device: every panel in this
+   region wears its zone as a border-left, and this is that same rule turned
+   through 90°. Height, hue and turn are the ones the :not(:empty) terminator
+   uses, so the two states close identically and the sidebar stops ending in
+   raw ground below the STANDING BY panel. */
+.campaign-sidebar:empty {
+  padding-top: var(--sp-half);
+  border-bottom: var(--h-modal-foot) solid var(--lc-plum-deep);
+  border-bottom-right-radius: var(--foot-out);
+}
+
+.campaign-sidebar:empty::before {
+  content: 'STANDING BY';
+  display: block;
+  height: var(--h-cap);
+  padding: 0 var(--sp-3);
+  color: var(--ink-on-deep);
+  font: var(--fw-bold) var(--fs-label) / var(--h-cap) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  background: var(--lc-plum-deep);
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+}
+
+.campaign-sidebar:empty::after {
+  content: 'Nothing is waiting on you. Select one of your units on the plot to give it orders, or a contact to open its dossier. Battles waiting to be fought, and reinforcements on their way, appear here as they arrive.';
+  display: block;
+  padding: var(--sp-3);
+  color: var(--ink-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  background: var(--panel);
+  border-left: var(--spine-panel) solid var(--lc-plum-deep);
+  border-radius: var(--r-cell);
+}
+
+/* ══ 5. PANELS — spine plus cap bar ═════════════════════════════════════════ */
+
+.campaign-panel {
+  --zone: var(--lc-sand); /* the default is Reinforcements: a derived readout */
+  padding: 0 var(--sp-3) var(--sp-3);
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-panel) solid var(--zone);
+  border-radius: var(--r-cell);
+  box-shadow: var(--shadow-none);
+}
+
+/* Zone by content, never by position — see the note at the top of this file.
+   Each selector is 0-2-0 and the three sidebar cases are mutually exclusive, so
+   only the .campaign-online rule below needs to come last to win its tie. */
+.campaign-panel:has(> .campaign-battle) {
+  --zone: var(--lc-orange); /* battles waiting: the campaign's act-now */
+}
+
+.campaign-panel:has(> .campaign-dossier) {
+  --zone: var(--lc-sky); /* contact dossier: intel */
+}
+
+.campaign-panel:has(> .field) {
+  --zone: var(--lc-peri); /* unit orders: an edit surface */
+}
+
+/* Ties with :has(> .field) — the online panel is full of fields — and wins on
+   source order. Plum is structure: this is session plumbing, not the border. */
+.campaign-panel.campaign-online {
+  --zone: var(--lc-plum);
+}
+
+/* The cap bar. It is the panel's leading <h3>, pulled out over the spine and
+   the padding so the spine and the bar form one continuous L — the same turn as
+   the frame's elbow, at panel scale. The unit-orders panel titles itself with a
+   ship name, which can be long, so the bar ellipsises rather than wrapping and
+   pushing the panel body down. */
+.campaign-panel > h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--h-cap);
+  margin: 0 calc(-1 * var(--sp-3)) var(--sp-2) calc(-1 * var(--spine-panel));
+  padding: 0 10px 0 calc(var(--spine-panel) + var(--sp-3));
+  overflow: hidden;
+  color: var(--ink-on-fill);
+  font: var(--fw-bold) var(--fs-label) / var(--h-cap) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: var(--zone);
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+}
+
+/* Prose inside a panel is prose: sentence case, --font-ui, 13px. The legacy
+   .hint is 0.7rem — 9.8px — which is below the floor and is the reason the
+   endurance line and the speed-tier explanations read as fine print. */
+.campaign-panel > p,
+.campaign-panel .hint {
+  margin: 0 0 var(--sp-2);
+  color: var(--ink-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+.campaign-panel > p:last-child,
+.campaign-panel .hint:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Form controls ────────────────────────────────────────────────────────
+   The single highest-value type rule in the system, applied to this region.
+   .field carries font-size: 0.7rem and the global input rule is `font: inherit`,
+   so every select in the orders panel renders at 9.8px today — the same size as
+   its own label, in the same face, separated only by colour. Raising .field to
+   13px fixes the control through inheritance; the explicit rule below is belt
+   and braces and is written at 0-2-1 so it ties the global
+   `input:not([type=checkbox]):not([type=radio])` rule and wins on source
+   order. */
+.campaign-panel .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-half);
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body);
+}
+
+.campaign-panel .field > span {
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+.campaign-panel .field > input,
+.campaign-panel .field > select {
+  min-height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  background: var(--well);
+  border: none;
+  border-radius: var(--r-input);
+}
+
+/* Native checkboxes are retained — they are the only genuinely native control
+   in the app. They just stop being a 10px dim caption. */
+.campaign-panel .checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-row-dense);
+  margin: 0 0 var(--sp-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* ══ 6. BATTLES WAITING ═════════════════════════════════════════════════════
+
+   Each pending engagement is a record: a block on --panel-2 with a 4px orange
+   inner spine, separated from the next by 5px of ground. The legacy dotted /
+   1px hairline separators go; so does the first-of-type exception, which only
+   existed to undo the first hairline. */
+
+.campaign-battle {
+  margin: 0 0 var(--gutter);
+  padding: var(--sp-2) 10px;
+  background: var(--panel-2);
+  border: none;
+  border-left: var(--spine-inner) solid var(--lc-orange);
+  border-radius: var(--r-cell);
+}
+
+/* The legacy rule zeroes padding-top and margin-top on the first entry to
+   compensate for its removed border; restate both so every entry is identical. */
+.campaign-battle:first-of-type {
+  margin-top: 0;
+  padding-top: var(--sp-2);
+  border-top: none;
+}
+
+.campaign-battle:last-of-type {
+  margin-bottom: 0;
+}
+
+.campaign-battle > p {
+  margin: 0 0 var(--sp-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* The engagement id is the handle the player matches against the marker on the
+   plot, so it gets the label treatment rather than plain bold prose. */
+.campaign-battle > p > strong {
+  color: var(--lc-sand);
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+}
+
+/* ── Action runs ──────────────────────────────────────────────────────────
+   Up to five controls per engagement, plus the file loader. They stay five
+   visible controls: the run only changes their shape, wrapping onto as many
+   lines as it needs with 5px of ground between segments. */
+.campaign-battle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--gutter);
+  margin-top: var(--sp-2);
+}
+
+.campaign-battle-actions button,
+.campaign-battle-actions .title-load {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-label) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  background: var(--panel-2);
+  border: none;
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+.campaign-battle-actions button:hover:not(:disabled),
+.campaign-battle-actions .title-load:hover {
+  color: var(--ink);
+  background: var(--panel-3);
+}
+
+.campaign-battle-actions button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ── The region's two file loaders ────────────────────────────────────────
+   This region has two <label>s wrapping a file input: "Read back from a battle
+   save" in the engagement's action run above (CampaignApp.tsx:754) and "Load
+   campaign" in the launch menu of §8 (CampaignApp.tsx:421). styles.css:4749
+   hides both inputs with `display: none`, which takes them out of the tab
+   order — and a <label> is not focusable, so both controls are mouse-only.
+   "Load campaign" is the only way back into a saved campaign, so that is a
+   whole feature reachable by mouse alone.
+
+   Both are handled here, in one rule, because they are one defect: splitting
+   them across §6 and §8 is how the menu's copy came to be missed.
+
+   `display: block` is the load-bearing declaration and it is easy to leave out:
+   position / width / height / opacity / clip-path all lose to `display: none`,
+   which suppresses the box outright, so a clip rule that does not also reset
+   display is inert and the control stays exactly as unreachable as it was. The
+   labels take position: relative so the absolutely-positioned input is
+   contained rather than escaping to the nearest positioned ancestor, and
+   :focus-within moves the ring onto the label the user actually sees. Written
+   at 0-3-1 and 0-4-1 so both beat `.title-load input`.
+
+   Do not touch the accept attribute or the value reset in the component: the
+   reset is what allows the same file to be loaded twice. */
+.campaign-battle-actions .title-load,
+.picker.campaign-menu .title-load {
+  position: relative;
+  cursor: pointer;
+}
+
+.campaign-battle-actions .title-load input[type='file'],
+.picker.campaign-menu .title-load input[type='file'] {
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none; /* the label already forwards the click */
+}
+
+.campaign-battle-actions .title-load:focus-within,
+.picker.campaign-menu .title-load:focus-within {
+  outline: var(--focus-w) solid var(--focus-outer);
+  outline-offset: var(--focus-gap);
+  box-shadow: 0 0 0 var(--focus-gap) var(--focus-inner);
+}
+
+/* ══ 7. THE CONTACT DOSSIER ═════════════════════════════════════════════════
+
+   A printed record: a fixed label column, the value in full ink, rows at read
+   pitch separated by ground. The dotted 1px rule between rows is gone. */
+
+.campaign-dossier {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-body);
+}
+
+.campaign-dossier li {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  min-height: var(--h-row-dense);
+  margin-bottom: var(--gutter);
+  padding: 0 var(--sp-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  background: var(--panel-2);
+  border: none;
+  border-radius: var(--r-cell);
+}
+
+.campaign-dossier li:last-child {
+  margin-bottom: 0;
+}
+
+/* The attribute name is a chrome label; the value beside it is data. */
+.campaign-dossier li > span {
+  flex: 0 0 96px;
+  color: var(--ink-dim);
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+/* Stale intel. A record NEVER dims — opacity below 1 means "this control is
+   unavailable" and nothing else — so the legacy .55 fade goes and the state is
+   carried by receding ink plus the literal word. A player reading a dossier at
+   a glance can now tell a stale reading from a fresh one without comparing two
+   rows against each other. */
+.campaign-dossier li.stale {
+  opacity: 1;
+  color: var(--ink-mute);
+}
+
+.campaign-dossier li.stale::after {
+  content: 'STALE';
+  margin-left: auto;
+  padding: 0 var(--sp-1);
+  color: var(--ink-dim);
+  font: var(--fw-bold) var(--fs-micro) / 18px var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  background: var(--panel-3);
+  border-radius: var(--r-cell);
+}
+
+/* ══ 8. THE ONLINE PANEL AND THE CAMPAIGN MENU ══════════════════════════════ */
+
+/* The launch menu is rendered inline with no backdrop (CampaignApp.tsx:383,
+   :588), so it keeps its own scroll and its own max-height from styles.css —
+   this rule only repoints its identity onto the plum zone the doc assigns it
+   and puts its children on the lattice.
+
+   padding-bottom is 0 on purpose, and it is a fix rather than an omission: the
+   legacy rule carries 1rem of it (styles.css:4777), but modals.css adds
+   `.picker::after` as the terminator and padding sits OUTSIDE the last flex
+   child — so the 16px showed as a strip of panel ground BELOW the closing
+   block and this was the one modal in the app that did not close on it. The
+   last content row keeps its own --sp-1 bottom margin, so the terminator is
+   still not flush against the text. */
+.picker.campaign-menu {
+  --zone: var(--lc-plum);
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 92vw);
+  margin: var(--sp-12) auto;
+  padding-bottom: 0;
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-modal) solid var(--zone);
+  border-radius: var(--r-cell);
+}
+
+.picker.campaign-menu > .hint,
+.picker.campaign-menu > .checkbox,
+.picker.campaign-menu > .title-item,
+.picker.campaign-menu > .fire-error,
+.picker.campaign-menu > p,
+.picker.campaign-menu > button {
+  margin: var(--sp-1) var(--sp-4);
+}
+
+/* The online panel had no inset at all and ran flush into the modal's edges. */
+.picker.campaign-menu > .campaign-panel {
+  margin: var(--sp-2) var(--sp-4);
+}
+
+/* Prose in the menu is prose. */
+.picker.campaign-menu > p,
+.picker.campaign-menu > .hint {
+  color: var(--ink-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* ══ 9. MOTION ══════════════════════════════════════════════════════════════
+   Chrome only, and only colour. Nothing in this region scales, slides or moves;
+   the plot never animates at all. tokens.css carries the authoritative
+   prefers-reduced-motion block as the last rules in the last stylesheet, and it
+   reduces every transition declared above to 1ms — but state here is carried by
+   colour and by words, never by the transition, so nothing is lost when motion
+   is off. This block is a belt-and-braces repeat scoped to the region. */
+@media (prefers-reduced-motion: reduce) {
+  .campaign-topbar > button,
+  .campaign-battle-actions button,
+  .campaign-battle-actions .title-load {
+    transition: none;
+  }
+}

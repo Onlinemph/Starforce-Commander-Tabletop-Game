@@ -35,6 +35,17 @@
   --warn: #ffb020;
   --danger: #ff5c5c;
 
+  /* The third side (Expansion 5, Aurelian) as rules information in its own
+     right, rather than borrowing whichever chrome hue happened to match. The
+     theme layer retunes chrome; a side's identity must not move with it.
+     Defined here as well as in the theme's tokens so that deleting the theme
+     imports leaves this file self-sufficient. */
+  --side-aurelian: #cc99cc;
+  --side-aurelian-deep: #7d5ba6;
+  /* Referenced by the campaign map's SVG labels; the theme retunes both. */
+  --ink-mute: #7f8ca8;
+  --ink-on-fill: #000000;
+
   --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
   /* No webfonts: the site has to work offline and under a strict host. These
      are the condensed faces already present on common systems, in order. */
@@ -1079,7 +1090,7 @@ input:focus-visible {
   fill: var(--red);
 }
 .ship-aurelian .glyph-trim {
-  fill: var(--lc-lilac);
+  fill: var(--side-aurelian);
 }
 .glyph-glass {
   fill: #cfe3ff;
@@ -1186,7 +1197,7 @@ input:focus-visible {
   color: #ff6b6b;
 }
 .escape-pod.pod-aurelian {
-  color: #b57bff;
+  color: var(--side-aurelian);
 }
 .pod-label {
   fill: var(--ink-dim);
@@ -2227,9 +2238,12 @@ input:focus-visible {
 .picker-red {
   border-left-color: var(--red);
 }
-/* Expansion 5's third side gets the Aurelian purple. */
+/* Expansion 5's third side gets the Aurelian purple. It reads a FROZEN side
+   token, not the chrome plum it used to borrow: chrome hues are retuned by
+   the design system, and a side's identity is rules information that must not
+   move when the frame does. */
 .picker-aurelian {
-  border-left-color: var(--lc-plum);
+  border-left-color: var(--side-aurelian-deep);
 }
 
 .roster {
@@ -2568,7 +2582,7 @@ input:focus-visible {
   stroke: #ff6b6b;
 }
 .homing-aurelian .homing-counter {
-  stroke: #c78bff;
+  stroke: var(--side-aurelian);
 }
 .homing-art {
   /* Screen keeps the glow's edge from carrying a dark halo over the stars. */
@@ -3141,7 +3155,7 @@ button.chip:hover:not(:disabled) {
   color: var(--red);
 }
 .fleet-side.picker-aurelian > header h3 {
-  color: var(--lc-lilac);
+  color: var(--side-aurelian);
 }
 
 .fleet-side > header {

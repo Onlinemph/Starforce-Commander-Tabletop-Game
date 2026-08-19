@@ -1,0 +1,710 @@
+/* StarForce Commander — the title screen.
+   ────────────────────────────────────────────────────────────────────────────
+   Region layer. It must be imported AFTER src/ui/styles.css and after
+   src/ui/theme/tokens.css — `import './ui/theme/title.css'` in src/main.tsx,
+   below the tokens line — because several rules here rely on being later in
+   the cascade at equal specificity. That is the whole reason this file needs
+   no !important anywhere.
+
+   THE PROBLEM THIS FILE SOLVES
+   The front door was the one screen with no LCARS construction in it at all: a
+   centred stack of 14px-radius rounded rectangles, an orange wordmark, and no
+   frame. The battle console behind it is a framed instrument; the menu that
+   opens it looked like a settings dialog. So this screen now wears the same
+   frame as the console — orange elbow top-left, 104px rail down the side,
+   plum-deep foot closing the corner — and every menu entry is built the way an
+   LCARS list entry is built: a solid colour cell carrying a dead code, five
+   pixels of black, then a dark body whose free right end turns at half its own
+   height, with the label set against that turn.
+
+   WHAT IS DELIBERATELY *NOT* HERE
+   Per-row hues. Seven menu rows in seven colours is decorative variance on the
+   calmest screen in the app and it spends the accent ration on nothing (see the
+   design system, §10). Every entry wears the same sand; solid orange is spent
+   exactly once, on whichever entry is the primary action, so 'there is a battle
+   in progress, resume it' is visible from across the room. The frame is the
+   second orange role and there is no third.
+
+   SCOPE
+   Everything below is scoped under .title-screen or .title-menu. `.title-item`,
+   `.title-detail` and `.title-load` are also used by the campaign console's
+   inline menu (CampaignApp.tsx), which is another region's territory — nothing
+   here may leak into it. */
+
+/* ══ 1. THE SCREEN AND ITS FRAME ══════════════════════════════════════════ */
+
+.title-screen {
+  /* Locals, so the frame's proportions are stated once and the media queries
+     restate one value instead of a dozen. */
+  /* The column runs the full width of the frame. It used to be
+     `min(1040px, 100%)`, and because the screen is a stretch-aligned flex
+     column, a child narrower than the container is pinned to the cross-axis
+     START: at 1600px that put 1040px of content against the rail and left
+     433px — a quarter of the screen — of dead black down the right-hand side,
+     with the whole page reading as though it had been shoved into the corner.
+     Centring it would have traded that for a gap between the rail and the
+     content it is supposed to be the spine of. The frame bleeds to the bezel
+     everywhere else in this system (chrome.css §THE FRAME, doc §4.2); the menu
+     column now does too, so the wordmark, the cap bar and every row's free end
+     share one right edge with the arm above them and there is no slack left to
+     land anywhere. Prose keeps its own measure — .title-sub is capped at 84ch. */
+  --title-col: 100%;
+  --code-w: 56px; /* the leading colour cell on every row     */
+  --split: calc(var(--code-w) + var(--gutter)); /* cell + black gutter */
+  --title-stem: 148px; /* the orange half of the rail             */
+  --title-foot: 88px; /* the plum-deep block that closes it      */
+
+  position: relative;
+  /* z-index (not `isolation`) so this is a stacking context in every engine:
+     the frame pseudo-elements sit at z-index -1, which paints them above this
+     element's own starfield background but below all of its content. Without
+     the stacking context they would fall behind the opaque black that ends the
+     starfield stack and vanish. */
+  z-index: 0;
+
+  /* styles.css:525 sets `.app { height: 100vh }` above 1000px, and the title
+     screen carries the `app` class. Combined with centred flex content that
+     means a short window clips the top of the menu with no way to scroll to
+     it. Height auto + min-height 100vh lets the document scroll instead, which
+     is why no inner scroller is needed on .title-menu. */
+  height: auto;
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* the column hugs the frame, it is not centred */
+  justify-content: center;
+  /* `safe` keeps the overflow on the bottom edge only if the viewport is
+     shorter than the content; engines without it fall back to the line above. */
+  justify-content: safe center;
+  gap: var(--sp-5);
+
+  /* Clears the rail (104) plus air, and the elbow's full 68px outer turn. */
+  padding: calc(var(--elbow-out) + var(--sp-6)) var(--sp-6) var(--sp-8)
+    calc(var(--rail-w) + var(--sp-6));
+
+  /* The starfield is kept exactly as it was — eight CSS-only stars, no asset,
+     works offline under the CSP. The one change is the horizon glow, which was
+     #10142a: a navy wash under a system whose first law is that the ground is
+     #000000. It becomes a low-alpha tint of the structural hue instead, so the
+     ground still reads black and the only colour under the frame belongs to
+     the frame's own palette. */
+  background:
+    radial-gradient(1px 1px at 12% 22%, #cfd8ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 12%, #9fb2e8 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 74%, #e9edf7 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 84%, #8ea0d0 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 56%, #cfd8ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 44% 38%, #aebdf0 50%, transparent 51%),
+    radial-gradient(1px 1px at 8% 64%, #e9edf7 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 88%, #9fb2e8 50%, transparent 51%),
+    radial-gradient(
+      ellipse 90% 60% at 50% 110%,
+      rgba(74, 52, 102, 0.35) 0%,
+      transparent 62%
+    ),
+    var(--bg);
+}
+
+/* The rail: one straight 104px spine, orange stem at the top where the elbow
+   turns, plum-deep foot at the bottom where it closes, and the dashed filler
+   between them — the same 8-on/5-off rhythm the console rail uses, so the two
+   screens are recognisably the same instrument. (It was 22-on/5-off, which on
+   the console is the pitch of a real sequence row; see chrome.css. Here it
+   made 850px of the screen's left edge into 29 identical block-sized dashes
+   that invited being read as a list. A rib is a rib.) Painted as background layers on
+   a single pseudo-element because this screen has no rail markup to style and
+   none may be added from a stylesheet. Layers are listed front to back. */
+.title-screen::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 auto 0 0;
+  width: var(--rail-w);
+  pointer-events: none;
+  /* Radius law: the two free ends turn, everything between is square. Outer =
+     inner + arm on both corners (68 = 34 + 34 above, 40 = 20 + 20 below), and
+     the closing corner is deliberately the lighter of the two. */
+  border-radius: var(--elbow-out) 0 0 var(--foot-out);
+  /* Front to back: the two 5px black gutters, then the stem, then the foot,
+     then the dashed filler that runs between them, on the black ground. The
+     gutters are painted rather than left as gaps because a gap would show the
+     starfield through the rail. */
+  background:
+    linear-gradient(var(--bg) 0 0) 0 var(--title-stem) / 100% var(--gutter) no-repeat,
+    linear-gradient(var(--bg) 0 0) 0 calc(100% - var(--title-foot)) / 100% var(--gutter) no-repeat,
+    linear-gradient(var(--lc-orange) 0 0) 0 0 / 100% var(--title-stem) no-repeat,
+    linear-gradient(var(--lc-plum-deep) 0 0) 0 100% / 100% var(--title-foot) no-repeat,
+    repeating-linear-gradient(
+        180deg,
+        var(--lc-plum-deep) 0 var(--sp-2),
+        var(--bg) var(--sp-2) calc(var(--sp-2) + var(--gutter))
+      )
+      0 calc(var(--title-stem) + var(--gutter)),
+    var(--bg);
+}
+
+/* The arm and the concave fillet that joins it to the stem. Identity of the
+   elbow: outer = inner + arm, so a 34px arm over a 34px inner radius reads as
+   one continuous sweep rather than as a mitre. The fillet occupies x∈[0,34],
+   y∈[34,68] of this box; its circle is centred on that cell's bottom-right
+   corner, so everything farther than 34px from the centre paints orange — the
+   crescent arcing from (34,34) to (0,68). The arm's right end is square: the
+   frame bleeds to the bezel, it does not turn back on itself. */
+.title-screen::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: var(--rail-w); /* touches the stem — one shape, no seam */
+  right: 0;
+  height: var(--elbow-out);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--lc-orange) 0 0) 0 0 / 100% var(--arm-h) no-repeat,
+    radial-gradient(
+        circle var(--elbow-in) at 100% 100%,
+        transparent 0 var(--elbow-in),
+        var(--lc-orange) var(--elbow-in)
+      )
+      0 var(--arm-h) / var(--elbow-in) var(--elbow-in) no-repeat;
+}
+
+/* ══ 2. THE WORDMARK ══════════════════════════════════════════════════════ */
+
+/* Right-aligned, because the menu's labels are right-aligned against their own
+   turns: one strong vertical edge runs down the screen from the wordmark to the
+   last entry, and the codes run down the other side. */
+.title-hero {
+  display: grid;
+  justify-items: end;
+  width: var(--title-col);
+  text-align: right;
+}
+
+/* Two stacked words. No webfont is loaded, so --font-lcars usually resolves to
+   Inter or Arial Narrow and the wordmark has to carry its impact through weight
+   and size rather than through width; stacking the words is what keeps it
+   reading as a mark instead of as a long line of caps. `inline-size: min-content`
+   does the stacking without touching the markup — the box takes the width of the
+   longest word and the space between them becomes the break. */
+.title-hero h1 {
+  inline-size: min-content;
+  margin: 0;
+  font: var(--fw-bold) var(--fs-hero) / var(--lh-tight) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-hero);
+  text-transform: uppercase;
+  /* Sand, not orange. Orange has exactly two roles on this screen — the frame
+     and the one primary entry — and a 76px orange wordmark would drown the
+     second one. Sand is the labels-and-readouts hue and clears 14.1:1. */
+  color: var(--lc-sand);
+}
+
+.title-sub {
+  /* Wide enough that the strapline sets on one line under the mark at desktop
+     widths, and it wraps on its own below that. Sized in ch for the Inter
+     fallback, per the no-webfont rule — never in a fixed px column. */
+  max-width: 84ch;
+  margin: var(--sp-3) 0 0;
+  /* Sentence case in the UI face: this is prose, and prose is never condensed
+     caps. 17px because it is the one line of prose that has to hold its own
+     under a 76px mark. */
+  font: var(--fw-reg) var(--fs-title) / var(--lh-body) var(--font-ui);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--ink-2);
+}
+
+/* The cap bar that closes the hero and opens the menu column. A fixed-height
+   bar, so its free end turns at exactly half its height. The second `content`
+   declaration gives it an empty alt string so assistive tech skips it; engines
+   that do not parse the alt syntax keep the first declaration and simply
+   announce the digits.
+
+   `box-sizing` is the load-bearing line. styles.css:49 sets it through `*`,
+   and the universal selector does NOT match pseudo-elements — so this bar was
+   1040 + 12 = 1052px wide inside a 1040px grid, and `justify-items: end` on
+   .title-hero pushed all 12px of that overflow out to the LEFT. The one
+   element whose comment claims it establishes the column's vertical edge was
+   the only thing on the screen breaking it, at both widths (12px at desktop,
+   12px at 700px).
+
+   --fs-label, not --fs-code: this is a panel cap bar carrying a label, and
+   §5.1 sets cap bars at 11px. 9px is reserved for dead codes — "MAIN MENU" is
+   not one, and the bar is 22px tall with a full-width line to set it in. */
+.title-hero::after {
+  content: 'MAIN MENU · LCARS 47-0110';
+  content: 'MAIN MENU · LCARS 47-0110' / '';
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin-top: var(--sp-4);
+  padding-right: var(--sp-3);
+  height: var(--h-cap);
+  background: var(--lc-sand);
+  color: var(--ink-on-fill);
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  font: var(--fw-bold) var(--fs-label) / var(--h-cap) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  text-align: right;
+}
+
+/* ══ 3. THE MENU ══════════════════════════════════════════════════════════ */
+
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter); /* blocks are separated by black, never by a hairline */
+  width: var(--title-col);
+}
+
+/* The entry itself.
+
+   Anatomy, left to right: a solid --cell block 56px wide carrying the code,
+   5px of black, then the body in --fill with the label set against the free
+   right end, which turns at half the row's height. The gutter is painted as a
+   hard stop in the row's own background rather than as a grid gap, because a
+   grid gap would show the row's fill through it and the gutter has to be black.
+
+   --cell / --fill / --label-ink are the only things a state changes, so the
+   geometry is written once. .title-new is excluded: it is a wrapper, not a row
+   (see §3.3), and its inner .title-start takes this recipe instead. */
+.title-menu > .title-item:not(.title-new),
+.title-menu .title-start {
+  --cell: var(--lc-sand);
+  --fill: var(--panel-2);
+  --label-ink: var(--ink);
+  --detail-ink: var(--ink-dim);
+
+  display: grid;
+  grid-template-columns: var(--code-w) minmax(0, 1fr);
+  grid-template-areas:
+    'code label'
+    'code detail';
+  column-gap: var(--gutter);
+  row-gap: 0;
+  align-content: center;
+  /* Both explicit: styles.css:4681 sets align-items: flex-start for the old
+     flex layout, and justify-items is what right-aligns the label — which is
+     an anonymous grid item and cannot be selected, so text-align on the row
+     backs it up. */
+  align-items: center;
+  justify-items: end;
+  min-height: var(--h-menu-row);
+  padding: var(--sp-2) var(--sp-4) var(--sp-2) 0;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    var(--bg) 0 var(--split),
+    var(--fill) var(--split)
+  );
+  color: var(--label-ink);
+  border: none;
+  /* Left end square: these rows stack into a column and share one straight
+     edge, which is what the leading cells are for. Right end free, so it turns
+     at half the row's height — written as half the height token rather than as
+     --r-free because a row that has to grow for a two-line detail (phone
+     widths, mostly) would otherwise turn at half of *that*, and a 100px-tall
+     row with a 50px turn stops reading as a bar. At the standard 56px the two
+     forms are the same 28px to the pixel. */
+  border-radius: 0 calc(var(--h-menu-row) / 2) calc(var(--h-menu-row) / 2) 0;
+  font: var(--fw-bold) var(--fs-title) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-title);
+  text-transform: uppercase;
+  text-align: right;
+  text-decoration: none;
+  cursor: pointer;
+  /* No transition on the row: its state lives in a gradient, which does not
+     interpolate, and an LCARS block snaps anyway. The only animated property
+     on this screen is the button-run hover in §3.5. */
+}
+
+/* The leading colour cell. Bottom-aligned digits are the LCARS convention and
+   they line the codes up with the baseline of the label opposite.
+
+   The code is written twice: the plain string, then the same string with an
+   empty alt so assistive tech skips it rather than reading 'four seven dash oh
+   one one oh' into the button's name. An engine that does not parse the alt
+   syntax drops the second declaration at parse time and keeps the first. This
+   is also why the codes are literals and not a var() — a var() that resolves
+   to an unparseable value is invalid at *computed-value* time, which throws
+   the property back to `normal` and would delete the cell outright instead of
+   falling back to the earlier declaration. */
+.title-menu > .title-item:not(.title-new)::before,
+.title-menu .title-start::before {
+  content: '47-0000';
+  content: '47-0000' / '';
+  grid-area: code;
+  align-self: stretch;
+  justify-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 var(--sp-1) var(--sp-1) 0;
+  background: var(--cell);
+  color: var(--ink-on-fill);
+  font: var(--fw-bold) var(--fs-code) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* The codes themselves. Positional selectors are safe for this and only this:
+   the codes are deliberately meaningless — that is what a dead code is — so a
+   reordered or extended menu renumbers itself harmlessly, and anything without
+   a match keeps the 47-0000 default above. Nothing else in this file is keyed
+   to position, and no colour ever is. Entry 2's cell belongs to the Start
+   button inside the New-battle wrapper, not to the wrapper.
+
+   Each selector carries .title-item as well as the position so it matches the
+   0-3-0 of the rule above and wins on source order; entry 2's is 0-4-0 and
+   wins outright. */
+.title-menu > .title-item:nth-child(1)::before {
+  content: '47-0110';
+  content: '47-0110' / '';
+}
+.title-menu > .title-item:nth-child(2) .title-start::before {
+  content: '47-0224';
+  content: '47-0224' / '';
+}
+.title-menu > .title-item:nth-child(3)::before {
+  content: '47-0318';
+  content: '47-0318' / '';
+}
+.title-menu > .title-item:nth-child(4)::before {
+  content: '47-0442';
+  content: '47-0442' / '';
+}
+.title-menu > .title-item:nth-child(5)::before {
+  content: '47-0567';
+  content: '47-0567' / '';
+}
+.title-menu > .title-item:nth-child(6)::before {
+  content: '47-0631';
+  content: '47-0631' / '';
+}
+.title-menu > .title-item:nth-child(7)::before {
+  content: '47-0705';
+  content: '47-0705' / '';
+}
+
+/* The explanatory line under each label. Sentence case in the UI face — the
+   casing law gives uppercase to condensed chrome labels of three words or
+   fewer, and these are sentences.
+
+   Both selectors name their row: styles.css:4699 `button.primary .title-detail`
+   is 0-2-1 and would otherwise out-specify a bare `.title-menu .title-detail`
+   (0-2-0) and paint the primary's detail line its own brown. */
+.title-menu .title-item .title-detail,
+.title-menu .title-start .title-detail {
+  grid-area: detail;
+  margin: 0;
+  font: var(--fw-reg) var(--fs-body) / var(--lh-body) var(--font-ui);
+  font-stretch: normal;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--detail-ink);
+  text-align: right;
+}
+
+/* Hover and active are chrome states, so they lift the ground and nothing
+   else — no border, no glow, and above all no orange, which is spoken for.
+   Written with :not(:disabled) so this beats styles.css:111, which otherwise
+   ties on specificity and repaints the label orange. */
+.title-menu > .title-item:not(.title-new):hover:not(:disabled),
+.title-menu .title-start:hover:not(:disabled),
+.title-menu > .title-item:not(.title-new):focus-visible,
+.title-menu .title-start:focus-visible {
+  --fill: var(--panel-3);
+}
+
+/* ── 3.1 The primary ──────────────────────────────────────────────────────
+   Exactly one entry is primary at a time: 'Continue' when a battle is under
+   way, 'New battle' when one is not (App.tsx:272, :284). It is the only solid
+   orange on the screen apart from the frame, and it keeps the row's structure
+   — cell, black gutter, body — so it reads as the same kind of object shouting,
+   not as a different kind of object. Black ink on orange is 10.0:1.
+
+   Specificity: 0-3-0 here against `button.primary` (0-1-1) and
+   `button.primary .title-detail` (0-2-1) in styles.css, so both lose cleanly
+   without !important. */
+.title-menu > .title-item.primary,
+.title-menu .title-start.primary {
+  --cell: var(--lc-orange);
+  --fill: var(--lc-orange);
+  --label-ink: var(--ink-on-fill);
+  /* Not a token: the detail must recede *within* a bright fill, where the ink
+     scale (built for dark grounds) has nothing to say. 72% black on orange
+     still measures better than 6:1. */
+  --detail-ink: rgba(0, 0, 0, 0.72);
+}
+
+.title-menu > .title-item.primary:hover:not(:disabled),
+.title-menu .title-start.primary:hover:not(:disabled),
+.title-menu > .title-item.primary:focus-visible,
+.title-menu .title-start.primary:focus-visible {
+  --cell: var(--lc-sand);
+  --fill: var(--lc-sand);
+}
+
+/* ── 3.2 Disabled ─────────────────────────────────────────────────────────
+   Nothing in this menu is disabled today, but the law is worth honouring in
+   place: opacity below 1 means 'this control is unavailable' and never
+   anything else. */
+.title-menu > .title-item:not(.title-new):disabled,
+.title-menu .title-start:disabled {
+  opacity: 0.32;
+  cursor: not-allowed; /* must out-specify the recipe's cursor: pointer */
+}
+
+/* ── 3.3 New battle: a two-segment run ────────────────────────────────────
+   .title-new is a wrapper, not a row: it holds the Start button and the
+   scenario select, which are one segmented run separated by 5px of black. The
+   button takes the row recipe above (so it keeps the code cell and the sand
+   leading block); its right end goes square because the select is attached to
+   it, and the select — the last segment — carries the turn. */
+.title-menu .title-new {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 210px);
+  grid-template-areas: none;
+  column-gap: var(--gutter);
+  align-items: stretch;
+  min-height: var(--h-menu-row);
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.title-menu .title-new .title-start {
+  border-radius: 0; /* attached end — the select continues the run */
+}
+
+/* The select is a form control, so it takes the UI face at the body size and
+   is never uppercased: scenario names are names. It is also the one control
+   here that must not be pinned to a width — the old `max-width: 150px` cut
+   every scenario title. */
+.title-menu .title-new select {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  height: auto;
+  align-self: stretch;
+  padding: 0 var(--sp-3);
+  background: var(--panel-2);
+  color: var(--ink);
+  border: none;
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+  font: var(--fw-reg) var(--fs-body) / var(--lh-ui) var(--font-ui);
+  font-stretch: normal;
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.title-menu .title-new select:hover {
+  background: var(--panel-3);
+}
+
+/* ── 3.4 Load battle ──────────────────────────────────────────────────────
+   The entry is a <label> wrapping a file input. styles.css hides that input
+   with `display: none`, which takes it out of the tab order — and a <label> is
+   not focusable, so the whole control is mouse-only today. Clipping the input
+   instead keeps it hidden and focusable, and the ring is moved onto the label
+   with :focus-within so the row shows the focus, not a 1px ghost.
+
+   Scoped to .title-screen on purpose: the campaign console has its own
+   .title-load and it belongs to another region. */
+.title-screen .title-load {
+  position: relative;
+  cursor: pointer;
+}
+
+.title-screen .title-load input[type='file'] {
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none; /* the label already forwards the click */
+}
+
+/* The same dual ring tokens.css puts on real controls: light outer band, black
+   inner band filling the offset, so it is visible on the panel ground and on a
+   bright fill alike. */
+.title-screen .title-load:focus-within {
+  outline: var(--focus-w) solid var(--focus-outer);
+  outline-offset: var(--focus-gap);
+  box-shadow: 0 0 0 var(--focus-gap) var(--focus-inner);
+}
+
+/* ── 3.5 The workshop run ─────────────────────────────────────────────────
+   Ship builder, Scenario designer and Library are tools, not ways into a
+   battle, so they sit in one segmented run under the entries rather than as
+   three more full rows. The run gets its own leading cell in periwinkle — the
+   design-and-edit hue — aligned to the same 56px column as the codes above, so
+   the group reads as a fourth kind of thing without inventing a fourth kind of
+   shape. Segments are divided by 5px of black; the last one carries the turn. */
+.title-menu .title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--gutter);
+  margin-top: var(--sp-2);
+}
+
+.title-menu .title-row::before {
+  content: '47-0812';
+  content: '47-0812' / '';
+  flex: 0 0 var(--code-w);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 var(--sp-1) var(--sp-1) 0;
+  background: var(--lc-peri);
+  color: var(--ink-on-fill);
+  font: var(--fw-bold) var(--fs-code) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.title-menu .title-row > button {
+  height: var(--h-btn);
+  padding: 0 var(--sp-4);
+  background: var(--panel-2);
+  color: var(--lc-sand);
+  border: none;
+  border-radius: 0; /* interior segment: both ends attached */
+  font: var(--fw-bold) var(--fs-label) / var(--h-btn) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+.title-menu .title-row > button:last-child {
+  border-radius: 0 var(--r-free) var(--r-free) 0;
+}
+
+/* 0-4-1, so it beats styles.css:111 `button:hover:not(:disabled)` (0-2-1) and
+   the label stays sand instead of turning orange — the accent is spent. */
+.title-menu .title-row > button:hover:not(:disabled) {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+
+/* ══ 4. THE NOTE AND THE FOOTING ══════════════════════════════════════════ */
+
+/* One error component across the app: a severity spine, a 12% wash of the same
+   hue, square corners, no glyph. This one is a warning — it reports why a save
+   file would not load — so it takes --warn. */
+.title-screen .title-note {
+  width: var(--title-col);
+  margin: 0;
+  padding: var(--sp-2) 10px;
+  border: none;
+  border-left: var(--spine-inner) solid var(--warn);
+  border-radius: var(--r-cell);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--ink);
+  font: var(--fw-reg) var(--fs-body) / var(--lh-body) var(--font-ui);
+  letter-spacing: var(--tr-none);
+}
+
+/* The attribution line. Its `opacity: .8` is gone: 12px at 3.4:1 failed AA, and
+   a muted ink at full opacity does the receding job legally. Under this system
+   opacity below 1 means 'unavailable' and this line is not a control. */
+.title-screen .title-footing {
+  width: var(--title-col);
+  margin: 0;
+  font: var(--fw-reg) var(--fs-body) / var(--lh-body) var(--font-ui);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  color: var(--ink-mute);
+  opacity: 1;
+}
+
+/* ══ 5. RESPONSIVE ════════════════════════════════════════════════════════ */
+
+/* 1000px is the console's own stacking breakpoint, and the title screen honours
+   it so the two screens change shape at the same width. Below it the elbow has
+   nowhere to turn: the rail steps aside and the arm flattens into a cap bar
+   across the top, exactly as the console's does. Nothing is removed — the menu
+   is the same list of the same entries, top to bottom. */
+@media (max-width: 1000px) {
+  .title-screen {
+    padding: calc(var(--arm-h) + var(--sp-5)) var(--sp-4) var(--sp-6);
+    gap: var(--sp-4);
+  }
+
+  .title-screen::before {
+    display: none;
+  }
+
+  .title-screen::after {
+    left: 0;
+    height: var(--arm-h);
+    background: var(--lc-orange);
+  }
+}
+
+/* Phone width. The run wraps, the New-battle row becomes two stacked segments
+   — the plain vertical list the screen must always be able to fall back to —
+   and both segments regain their free-end turn now that nothing is attached to
+   their right. Every control keeps its full height; nothing is hidden and
+   nothing shrinks below its hit target. */
+@media (max-width: 700px) {
+  /* --code-w stays 56px here: a seven-character code needs every pixel of it
+     in the Inter fallback, and narrowing the cell clipped the leading digits. */
+  .title-menu .title-new {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--gutter);
+  }
+
+  .title-menu .title-new .title-start {
+    border-radius: 0 calc(var(--h-menu-row) / 2) calc(var(--h-menu-row) / 2) 0;
+  }
+
+  .title-menu .title-new select {
+    /* A fixed-height bar again, so 999px still resolves to half its height. */
+    min-height: var(--h-btn);
+    /* The select is a segment of its own now; indent it to the same column the
+       row bodies start in, so the black gutter still runs straight down. */
+    margin-left: var(--split);
+    width: auto;
+  }
+
+  .title-menu .title-row > button {
+    flex: 1 1 auto;
+  }
+}
+
+/* ══ 6. MOTION ════════════════════════════════════════════════════════════
+   The only animated property on this screen is the hover cross-fade on the
+   workshop run; the menu rows snap. tokens.css already carries the
+   authoritative reduced-motion block, and this restates the one case it covers
+   here so the file is honest on its own. */
+@media (prefers-reduced-motion: reduce) {
+  .title-menu .title-row > button {
+    transition: none;
+  }
+}

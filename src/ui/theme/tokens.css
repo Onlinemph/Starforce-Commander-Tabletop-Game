@@ -1,0 +1,452 @@
+/* StarForce Commander — design system foundation layer.
+   ────────────────────────────────────────────────────────────────────────────
+   Loaded AFTER src/ui/styles.css, so every value here overrides the legacy
+   :root. This file defines tokens and element-level base rhythm ONLY. No
+   component class is styled here; the region files do that.
+
+   The system in one paragraph: LCARS is colour blocks joined by turns on a
+   true black ground, not outlined boxes on navy. Ground is #000000 and the
+   5px gutter between blocks is 5px of that same black. A free end of a bar
+   turns at half its own height (border-radius: 0 999px 999px 0 on a fixed
+   height does exactly that); an attached end is square. There are no borders
+   in the chrome — four named exceptions only. Every bright hue carries #000
+   ink. Weights are 400 and 700, nothing between. Rules-information colour
+   (side blue/red, die colours, damage states, the Aurelian third side) is
+   frozen: chrome never borrows it and this pass never repaints it.
+
+   See docs/ui-design-system.md for the full spec, the component recipes and
+   the do-not-touch list. */
+
+:root {
+  /* ══ 1. RULES INFORMATION — FROZEN ════════════════════════════════════════
+     These carry game state. Values, hues and meanings are unchanged from the
+     original stylesheet and must never be retuned, harmonised or borrowed by
+     chrome. Side identity DOES use --blue/--red — that IS their meaning. */
+  --blue: #5aa9ff; /* side identity (blue force), blue die   — 8.6:1 on #000 */
+  --red: #ff5c5c; /* side identity (red force), red die     — 6.9:1 on #000 */
+  --green: #46c46f; /* power, arming, filled circle, is-linked — 9.4:1 on #000 */
+  --yellow: #ffc94a; /* yellow die, damage-control marker                     */
+  --warn: #ffb020; /* degraded, caution, slow-arming gate                    */
+  --danger: #ff5c5c; /* destroyed, shield down, excess damage                  */
+  --accent: var(--lc-orange); /* the primary action — orange, unchanged        */
+
+  /* The third side (Expansion 5, Aurelian) is rules information too, and it
+     currently rides on two chrome token names (--lc-lilac for the counter
+     trim and roster header, --lc-plum for the fleet-picker spine). These two
+     tokens freeze that identity so chrome may be retuned without repainting a
+     side. styles.css must be repointed onto them — see the doc, §"Required
+     first edits". --side-aurelian is the exact original --lc-lilac value and
+     --side-aurelian-deep the exact original --lc-plum value. */
+  --side-blue: var(--blue);
+  --side-red: var(--red);
+  --side-aurelian: #cc99cc;
+  --side-aurelian-deep: #7d5ba6;
+
+  /* Two tokens the stylesheet references but never defined, so they fell back
+     to a second gold (#ffb851) and a second red (#ff4d4d) sitting a few hex
+     points from tokens that already existed. Defined as aliases here; the
+     duplicates disappear with no markup change. */
+  --lc-gold: var(--lc-sand);
+  --lc-red: var(--red);
+
+  /* ══ 2. CHROME HUES ═══════════════════════════════════════════════════════
+     Seven hues, each with one fixed meaning (see the zone table in the doc).
+     Applied as solid blocks with #000 ink — never as an outline, never
+     positionally, never cycled. Three values change from the original, each
+     for a stated defect; the rest are the identity and are untouched. */
+  --lc-orange: #ff9c00; /* frame · current segment · THE one primary   10.0:1 */
+  --lc-sand: #ffcc66; /* time & place, derived readouts, labels      14.1:1 */
+  --lc-lilac: #cc99cc; /* FROZEN — also the Aurelian counter trim      9.0:1 */
+  --lc-peri: #9c9cff; /* design & edit surfaces                       8.6:1 */
+  --lc-sky: #57c8d4; /* CHANGED #79b8ff — was 12 units from --blue   10.6:1 */
+  --lc-salmon: #ff8fa3; /* CHANGED #ff7b6b — was a desaturated --red    9.7:1 */
+  --lc-plum: #9a72c9; /* CHANGED #7d5ba6 — 3.8:1 under its own ink    5.6:1 */
+  --lc-plum-deep: #4a3466; /* the original plum, kept as a dark ground       */
+
+  /* ══ 3. GROUND, SURFACES, EDGES ═══════════════════════════════════════════
+     Black is the ground and the gutter. Panel grounds sit a hair above it so
+     a block reads as a block, not as a card: there is no elevation ramp, no
+     bevel, no sheen, no light source. */
+  --bg: #000000; /* the ground, and the 5px gutter between blocks   */
+  --stage: #05060b; /* the near-void behind the stage, where wanted    */
+  --panel: #0a0c12; /* panel ground                                    */
+  --panel-2: #141826; /* row / chip / control rest inside a panel        */
+  --panel-3: #1f2438; /* hover / selected row — the only lit state       */
+  --well: #05070d; /* recessed well: map ground, text input interior  */
+  --void: #010206; /* deep space behind a map — .map/.map-bg's value  */
+
+  /* Borders exist in exactly four places (is-linked, is-degraded, is-down,
+     and the printed-record tables). --line is for those and nothing else. */
+  --line: #2a3350;
+  --edge: var(--line); /* back-compat alias */
+
+  --backdrop: rgba(0, 0, 0, 0.82);
+
+  /* ══ 4. INK ═══════════════════════════════════════════════════════════════ */
+  --ink: #e9edf7; /* values, prose, primary labels      16.7:1 on --panel */
+  --ink-2: #c3cce0; /* secondary prose                    12.1:1 on --panel */
+  --ink-dim: #9fabc6; /* labels, captions, meta              8.5:1 on --panel */
+  --ink-mute: #7f8ca8; /* receding captions, 10px floor       5.8:1 on --panel */
+
+  /* One ink on colour. Measured against --ink-on-fill, every bright chrome hue
+     and both side colours clear 5.6:1 — the ramp runs sand 14.1, yellow 13.7,
+     warn 11.5, sky 10.6, orange 10.0, salmon 9.7, green 9.4, lilac 9.0, peri
+     8.6, blue 8.6, red 6.9, plum 5.6 — so there is one token and no chance of
+     the wrong one. Plum is the floor and it is the only hue with no headroom
+     left: a wash laid OVER plum drops black ink below AA (a 28% black scrim
+     lands at 3.3:1), so a cap-bar chip on the plum zone must earn its
+     separation from shape or ink, never from darkening the zone. */
+  --ink-on-fill: #000000;
+  --lc-ink: var(--ink-on-fill);
+  --ink-on-deep: var(--ink); /* on --lc-plum-deep — 9.1:1 */
+
+  /* ══ 5. FACING SUB-PALETTE ════════════════════════════════════════════════
+     One facing key across the whole app: the ship form's shield rows, the
+     shields table column heads and the ArcRose all use these and nothing
+     else. Chrome hues, not rules colours. */
+  --face-f: var(--lc-sand); /* fore      */
+  --face-s: var(--lc-peri); /* starboard */
+  --face-a: var(--lc-lilac); /* aft       */
+  --face-p: var(--lc-sky); /* port      */
+
+  /* ══ 6. TYPE ══════════════════════════════════════════════════════════════
+     Root stays 14px — changing it reflows every hand-tuned rem in the file.
+     Sizes are px and exact. No webfonts: --font-lcars frequently resolves to
+     Inter or Arial Narrow, so no layout may depend on the condensing and
+     nothing may be faked with transform: scaleX(). */
+  --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-lcars: 'Antonio', 'Oswald', 'Roboto Condensed', 'Arial Narrow',
+    'Helvetica Neue Condensed', 'Liberation Sans Narrow', var(--font-ui);
+
+  /* Seven steps. Nine is reserved for dead codes and nothing else. */
+  --fs-hero: clamp(44px, 7.2vw, 76px); /* title-screen wordmark        */
+  --fs-datum: 34px; /* the round number in the elbow            */
+  --fs-value: 24px; /* rail block values, large numerals        */
+  --fs-title: 17px; /* screen / modal titles, brand             */
+  --fs-body: 13px; /* prose, values, EVERY form control        */
+  --fs-label: 11px; /* chrome labels, chips, th, section heads  */
+  --fs-micro: 10px; /* micro captions, sub-labels               */
+  --fs-code: 9px; /* dead codes only (.foot-code, stencils)   */
+
+  /* Two weights. Arial Narrow and Liberation Sans Narrow ship 400/700 only;
+     asking for 500 or 600 gets a synthesised weight that smears at 10-11px. */
+  --fw-reg: 400;
+  --fw-bold: 700;
+
+  /* Tracking scales inversely with size. */
+  --tr-micro: 0.1em; /* 9-11px  */
+  --tr-label: 0.08em; /* 12-13px */
+  --tr-title: 0.06em; /* 17px    */
+  --tr-value: 0.04em; /* 24px+   */
+  --tr-hero: 0.02em; /* display */
+  --tr-none: 0;
+
+  --lh-solid: 1; /* numerals                    */
+  --lh-tight: 1.05; /* display and large numerals  */
+  --lh-ui: 1.2; /* condensed caps labels, rows */
+  --lh-body: 1.45; /* prose                       */
+
+  /* ══ 7. SPACING LATTICE ═══════════════════════════════════════════════════
+     4px base. 2px is legal only between marks of 12px or less (dice, damage
+     boxes, power dots). 5px is the block gutter and is 5px of pure black. */
+  --sp-half: 2px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --gutter: 5px; /* black between blocks and between record rows */
+  --stage-gutter: 12px; /* one value, so topbar/stage/footer register  */
+
+  /* ══ 8. STANDARD HEIGHTS ══════════════════════════════════════════════════
+     Every one is a multiple of 2 and lands the 4px lattice at its boundaries.
+     Nothing here is ever reduced: these are also the hit-target floors. */
+  --h-btn: 28px;
+  --h-chip: 22px;
+  --h-cap: 22px; /* panel cap bar                       */
+  --h-row: 30px; /* scan-pitch list row                 */
+  --h-row-dense: 26px; /* read-pitch table row                */
+  --h-menu-row: 56px; /* title-screen menu row               */
+  --h-modal-header: 40px;
+  --h-modal-foot: 20px; /* the terminator that closes a modal  */
+  --h-rail-block: 46px;
+  --h-rail-row: 22px; /* sequence phase / segment row        */
+  --h-topbar-min: 74px; /* = --arm-h 34 + 40 of content        */
+  --h-seg-run: 28px;
+
+  /* Marks and small targets. */
+  --sz-circle: 22px; /* allocation circle                   */
+  --sz-box: 8px; /* printed damage box                  */
+  --sz-box-structure: 13px; /* structural integrity box            */
+  --sz-dot: 9px; /* power / battery dot                 */
+  --sz-chip-x: 20px; /* the delete control on a force entry */
+  --sz-swatch: 8px; /* rarity / side swatch                */
+
+  /* ══ 9. GEOMETRY ══════════════════════════════════════════════════════════
+     The radius law: half the height on a FREE end, 0 on an ATTACHED end,
+     nothing else. 999px on a fixed-height element resolves to exactly half
+     its height, so --r-free IS the law rather than an approximation of it.
+     Never put --r-free on a container whose height is not fixed. */
+  --r-cell: 0; /* records: rail blocks, table cells, damage boxes */
+  --r-mark: 0; /* dice, hit boxes, swatches — square              */
+  --r-free: 999px; /* the free end of a fixed-height bar             */
+  --r-pill: var(--r-free); /* play-surface control, both ends free   */
+  --r-input: var(--r-free);
+
+  /* Shorthands for the three shape classes (see doc §Geometry). */
+  --shape-chrome: 0 var(--r-free) var(--r-free) 0; /* chrome bar / control  */
+  --shape-pill: var(--r-free); /* play-surface control  */
+  --shape-cell: 0; /* record                */
+
+  /* The frame. outer = inner + arm must hold, or the elbow reads as a mitre. */
+  --rail-w: 104px;
+  --arm-h: 34px; /* the topbar's orange arm            */
+  --elbow-out: 68px; /* = --elbow-in + --arm-h             */
+  --elbow-in: 34px; /* the concave fillet radius          */
+  --foot-arm: 20px; /* the closing arm, deliberately light */
+  --foot-out: 40px; /* = --foot-in + --foot-arm           */
+  --foot-in: 20px;
+
+  /* Spines. Three widths, no others. */
+  --spine-modal: 14px;
+  --spine-panel: 10px;
+  --spine-inner: 4px;
+
+  /* ══ 10. ELEVATION ════════════════════════════════════════════════════════
+     LCARS has no light source. There is no bevel, no sheen and no depth ramp.
+     The single shadow in the system exists because a modal must separate from
+     its backdrop; everything else uses ground and fill. */
+  --shadow-none: none;
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.8);
+
+  /* ══ 11. FOCUS ════════════════════════════════════════════════════════════
+     A dual ring: light outer, dark inner filling the offset gap. Visible on
+     black, on --panel, and on solid orange, where a single orange ring is
+     invisible. One rule, no per-element opt-in. */
+  --focus-outer: #f2f5ff;
+  --focus-inner: #000000;
+  --focus-w: 2px;
+  --focus-gap: 2px;
+
+  /* ══ 12. MOTION ═══════════════════════════════════════════════════════════
+     Chrome only. Nothing scales, nothing slides, nothing on the play surface
+     moves, and no rules state ever fades — a damage box must snap. */
+  --dur-hover: 90ms;
+  --dur-base: 160ms;
+  --dur-modal: 120ms;
+  --dur-flash: 220ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ══ 13. NON-COLOUR SECOND CHANNELS ═══════════════════════════════════════
+     Colour is never the only carrier of a state. The hatch is legible only at
+     13px and up — never put it inside the 8px damage box, where a 2px/3px
+     repeat turns to moire.
+
+     A HATCH ONLY CARRIES A STATE IF IT SEPARATES FROM ITS GROUND, and both of
+     these are weaker than they look. Measured, so the next editor does not have
+     to re-derive it:
+
+     --hatch-damage darkens, so it needs a LIT ground. On --danger it measures
+     2.63:1 against the fill — the texture reading it was tuned for, and the
+     reason .structure .box.is-damaged is its proper home. It cannot be the
+     second channel on a dark ground at ANY alpha: even a fully opaque black
+     stripe on --panel-2 tops out at 1.66:1. A damaged state on panel ground
+     must therefore take a fill first and wear the hatch second, which is what
+     .mount.is-damaged now does (a --danger mix, panels.css).
+
+     --hatch-degraded lightens, and on --panel-2 it measures 1.51:1: it is not
+     doing the job this section claims for it. Do not fix that by raising the
+     alpha. The consumer, .mount.is-degraded, carries its own label in --ink-dim
+     at --fs-micro, and that label sits ON the stripe: 0.246 is the highest
+     alpha that keeps it at 4.5:1, and 0.246 only buys 1.70:1 of texture. A
+     two-band relief (--warn up, black down) was measured too and tops out at
+     1.9:1 band-to-band. There is no value of this token that is both a
+     perceivable texture and safe under 10px ink on this ground — the ceiling is
+     structural, not a tuning miss.
+
+     So the degraded mount's non-colour channel is NOT the hatch and must not be
+     asked to be. It has to come from the same place damaged got its: a fill, or
+     a shape, applied in panels.css. Until it does, the hatch stays at 0.2 as a
+     faint tint that costs nothing and claims nothing. */
+  --hatch-damage: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.45) 0 2px,
+    transparent 2px 5px
+  );
+  --hatch-degraded: repeating-linear-gradient(
+    45deg,
+    rgba(255, 176, 32, 0.2) 0 2px,
+    transparent 2px 6px
+  );
+
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+/* ══ BASE ═══════════════════════════════════════════════════════════════════
+   Element-level rhythm only. Anything with a class belongs to a region file. */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headings are chrome: condensed, uppercase, 700, tracked inversely to size.
+   Only font properties are set — display, colour and layout stay wherever the
+   region file put them. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--font-lcars);
+  font-weight: var(--fw-bold);
+  font-stretch: condensed;
+  text-transform: uppercase;
+  line-height: var(--lh-ui);
+}
+
+h1,
+h2 {
+  font-size: var(--fs-title);
+  letter-spacing: var(--tr-title);
+}
+
+h3 {
+  font-size: var(--fs-body);
+  letter-spacing: var(--tr-label);
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+}
+
+p {
+  margin: 0 0 var(--sp-2);
+  line-height: var(--lh-body);
+}
+
+small {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tr-micro);
+  color: var(--ink-mute);
+}
+
+strong,
+b {
+  font-weight: var(--fw-bold);
+}
+
+/* Digits are read in columns everywhere in this app. */
+b,
+strong,
+td,
+dd,
+output,
+time,
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas,
+    monospace;
+  font-size: var(--fs-body);
+  border-radius: var(--r-cell);
+}
+
+kbd {
+  padding: 0 var(--sp-1);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+hr {
+  height: var(--gutter);
+  margin: var(--sp-2) 0;
+  border: 0;
+  background: var(--bg);
+}
+
+::selection {
+  background: var(--lc-orange);
+  color: var(--ink-on-fill);
+}
+
+/* Scrollbars are structure, so they take the structural hue rather than the
+   host's default light thumb on a black ground. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lc-plum-deep) transparent;
+}
+
+/* ── Focus ────────────────────────────────────────────────────────────────
+   Real element selectors (0-1-1), not :where(), so these beat the legacy
+   single-orange rings in styles.css on source order. The dark inner band
+   fills the offset gap: on a light block the ring reads dark-then-light, on
+   black it reads light-then-dark. */
+button:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+a:focus-visible,
+textarea:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-w) solid var(--focus-outer);
+  outline-offset: var(--focus-gap);
+  box-shadow: 0 0 0 var(--focus-gap) var(--focus-inner);
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────
+   This is NOT the last stylesheet: main.tsx imports the five region files
+   after tokens.css, so source order alone would lose to anything they declare
+   later. The !important on the four properties below is what makes this block
+   authoritative regardless of load order — do not remove it on the assumption
+   that this file loads last. (Each region restates its own reduced-motion
+   block as belt and braces; those are redundant, not the mechanism.)
+
+   Every effect the three earlier blocks in styles.css suppress is suppressed
+   here too, and every state stays reachable — only its transition is removed.
+   Nothing in this system carries information by motion alone. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .fx-layer {
+    display: none;
+  }
+
+  .ship[data-damage='crippled'] {
+    animation: none;
+  }
+
+  .map-mover,
+  .shield-fill {
+    transition: none;
+  }
+}

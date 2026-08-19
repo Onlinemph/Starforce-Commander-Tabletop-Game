@@ -1,0 +1,1163 @@
+/* StarForce Commander — the battle screen's frame.
+   ────────────────────────────────────────────────────────────────────────────
+   Region layer, loaded after src/ui/styles.css and src/ui/theme/tokens.css.
+   It owns the chrome that wraps the play surface and nothing inside it: the
+   elbow, the rail, the stage shell, the foot, the topbar and its controls, the
+   two-column layout, the sequence bar, the map control strip and the ship tabs.
+   Every value here comes from tokens.css; no colour, size or radius is
+   invented in this file.
+
+   Four things were wrong with the frame and this file fixes those four:
+
+   1. The corner was a mitre, not an elbow. A 24px `border-top` cannot carry an
+      inner radius, so the vertical stub and the horizontal bar met at a hard
+      diagonal join. The arm and its concave fillet are now painted as
+      backgrounds on .topbar, which is the only way to get outer = inner + arm
+      (68 = 34 + 34) out of two separate grid cells.
+
+   2. The topbar was thirteen identical 29px pills in one undifferentiated run,
+      with the wordmark crushed against them and a lone `margin-left:auto`
+      throwing everything to the right. They are now six named zones, each led
+      by a 4px spine in its zone hue, separated by 12px of black instead of the
+      5px that separates members of the same zone. No control moved, hid, or
+      grew a click.
+
+   3. The rail was a colour-cycled stack with a ~500px void under it and an
+      orange cap at the bottom that spent the accent a fourth time. It is now
+      one straight 104px spine of square records, a plum-deep striped filler
+      that owns the void, and a light closing corner.
+
+   4. The empty orange block at top-left had no job. It is now the head of the
+      status column: it carries the column's name and its bottom-left is square
+      so the rail reads as continuing out of it.
+
+   Two facts constrain everything below.
+
+   `.app` is also the title screen's root (`div.app.title-screen`), and
+   `.title-screen` is declared at styles.css:4632 — later in source than
+   `.app`. Every `.app` rule here is therefore written `.app:not(.title-screen)`
+   so the frame's grid never lands on the front door's flex column.
+
+   styles.css puts its responsive overrides for these classes inside media
+   queries, and a media query adds no specificity. Because this file is later
+   in source, a plain `.topbar` rule here would silently win at 900px too. Both
+   breakpoints are therefore restated at the bottom of this file; that block is
+   load-bearing, not tidy-up. */
+
+/* ══ THE FRAME ══════════════════════════════════════════════════════════════
+   The grid bleeds to the bezel. The 10px/12px page padding it used to carry
+   was 22px of stage height spent on a margin nobody could see against a black
+   ground, and on an LCARS console the frame is supposed to touch the edge.
+   The header row stays minmax(74px, auto) — 34px of arm plus 40px of content,
+   which is exactly the minimum it had before the arm existed. It must never
+   become a fixed height: below about 1180px the run wraps, and a control that
+   has run off the edge is a control nobody can reach. */
+
+.app:not(.title-screen) {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: minmax(var(--h-topbar-min), auto) minmax(0, 1fr);
+  column-gap: var(--gutter);
+  row-gap: 0;
+  padding: 0;
+  background: var(--bg);
+}
+
+/* The stem of the command elbow. Its top-left turns by --elbow-out; its
+   bottom-left is square because the rail below continues the same edge, and
+   the 5px of negative right margin carries the orange across the column gutter
+   so the stem and the topbar's arm are one shape rather than two blocks that
+   happen to touch.
+
+   That bridge may only run as deep as the corner it is bridging. The stem is
+   as tall as the topbar row (74px and up); the fillet it joins ends at
+   --elbow-out (68px), below which the topbar is panel ground and the rail
+   below is 104px wide. A flat `background: var(--lc-orange)` on the
+   109px-wide box therefore left a 5px orange tab hanging in the gutter for the
+   rest of the row, and the frame's left spine visibly stepped in by 5px where
+   it stopped. Painted as two layers instead: the 104px stem full height, and
+   the 5px bridge only for the 68px the crescent occupies — at x = 104..109 the
+   fillet's left edge is orange from y=0 to y=68 and nothing below it, so the
+   two now agree exactly. */
+.lcars-elbow {
+  grid-area: 1 / 1;
+  margin-right: calc(-1 * var(--gutter));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 var(--sp-2) var(--sp-1) 0;
+  background:
+    linear-gradient(var(--lc-orange) 0 0) 100% 0 / var(--gutter) var(--elbow-out)
+      no-repeat,
+    linear-gradient(var(--lc-orange) 0 0) 0 0 / calc(100% - var(--gutter)) 100%
+      no-repeat;
+  border-radius: var(--elbow-out) 0 0 0;
+  color: var(--ink-on-fill);
+}
+
+/* The block's purpose: it names the column beneath it. The element is
+   `aria-hidden` in App.tsx and the rail's own blocks are labelled, so this is
+   decoration that orients the eye and is never announced twice.
+
+   (The design system would rather this block carried the round number at
+   --fs-datum. That needs markup — the div is empty — so it is left as a
+   follow-up rather than faked here.) */
+.lcars-elbow::after {
+  content: 'STATUS';
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+}
+
+/* ══ THE RAIL ═══════════════════════════════════════════════════════════════
+   One straight 104px spine. Every interior block is a record, so every
+   interior block is square; only the two ends of the frame turn. The 5px
+   top padding is the gutter between the elbow and the first block — without
+   it the orange stem and the orange round block merge into one mass. */
+
+.lcars-rail {
+  grid-area: 2 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  padding: var(--gutter) 0 0;
+  min-height: 0;
+}
+
+/* The void under the sequence list — around 500px on a 1080p screen — becomes
+   the rail's most characteristic feature and costs no markup: a striped filler
+   generated on the rail itself, ordered between the list and the closing cap.
+
+   The pitch is deliberately NOT the row pitch any more. At 22px bars on 5px of
+   black the filler was the same height, the same gutter, the same width and
+   the same hue as the spent sequence rows five pixels above it, so ~420px of
+   decoration read as fifteen unlabelled phases — the eye counts blocks before
+   it reads them. A 8/5 rib cannot be mistaken for a record: no row in this
+   system is 8px tall. Same hue, same column, same idea; only the rhythm says
+   "texture" instead of "content".
+
+   Bottom-anchored (`background-position` bottom, `repeat-y`) so the tile grid
+   ends flush with the foot of the filler. Anchored at the top, a repeating
+   gradient in a flex-grown box cuts its last bar at whatever height the box
+   happens to be, which put a half-height sliver immediately above the closing
+   cap — exactly where the frame is supposed to look finished. The cut is now
+   at the top, against the black gutter under the sequence list, where a short
+   rib is just another rib. */
+.lcars-rail::after {
+  content: '';
+  order: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  background-image: linear-gradient(
+    180deg,
+    var(--lc-plum-deep) 0 var(--sp-2),
+    transparent var(--sp-2)
+  );
+  background-size: 100% calc(var(--sp-2) + var(--gutter));
+  background-position: left bottom;
+  background-repeat: repeat-y;
+}
+
+/* The 4px inset is not cosmetic and it is shared with .rail-sequence li below:
+   it is the widest label column a 104px rail can offer, and "ENGINEERING" —
+   the longest phase name in the game — needs 97px of it in the Inter fallback
+   (measured; §2.1 says size for that fallback, not for Antonio). At the old
+   8px right inset the row had 92px and the phase you are standing in rendered
+   "ENGINEERI…" in every round of every game. Both the blocks and the rows are
+   right-aligned against the same edge, so both move together or the rail's one
+   strong vertical edge frays. */
+.rail-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  min-height: var(--h-rail-block);
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-cell);
+  color: var(--ink-on-fill);
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  text-align: right;
+}
+
+.rail-block b {
+  font: var(--fw-bold) var(--fs-value) / var(--lh-solid) var(--font-ui);
+  letter-spacing: var(--tr-value);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 8.4px to 10px, and the 0.72 opacity is gone: under this system opacity below
+   1 means "this control is unavailable" and nothing else, so a permanent
+   0.72 on a record's label was saying something it did not mean. Black on a
+   bright hue at 10px is legible without it. The ellipsis machinery is what
+   stops "CONFEDERATE STRIKE GROUP" stretching the 104px rail — it is restated
+   here rather than left to be inherited from a rule this one overrides. */
+.rail-block span {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  opacity: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* The accent ration: orange appears in three roles per screen — the frame, the
+   current segment, and the one primary control. The round block was a fourth.
+   Round and phase are both "time and place", which is sand, so the two read as
+   one datum pair at the head of the rail and the corner keeps the orange to
+   itself. The class name is now historical; renaming it is a markup change. */
+.rail-orange {
+  background: var(--lc-sand);
+}
+.rail-sand {
+  background: var(--lc-sand);
+}
+/* The side-count blocks. These take chrome hues from a positional cycle in
+   App.tsx (`tones = ['sky','salmon','lilac']`) rather than from each side's own
+   rules colour — a known defect that needs the markup to carry the side. The
+   retuned sky (teal) and salmon (rose) at least no longer read as --blue and
+   --red sitting next to the counters they are not. */
+.rail-sky {
+  background: var(--lc-sky);
+}
+.rail-salmon {
+  background: var(--lc-salmon);
+}
+.rail-lilac {
+  background: var(--lc-lilac);
+}
+
+/* `flex: 0 1 auto` is load-bearing. At `1 1 auto` the list claimed the whole
+   void and the filler above had nothing to fill; grow 0 hands the slack to the
+   filler, shrink 1 keeps five phases plus six open segments scrolling instead
+   of being cut off. */
+.rail-sequence {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Right inset 4px to match .rail-block; left inset 0, because the text is
+   right-aligned and the left edge is only ever the point the ellipsis machinery
+   clips at — spending 4px there bought nothing and cost a phase name. 104 − 4
+   = 100px of label column against ENGINEERING's 97px. The ellipsis stays as
+   the safety net for a fallback face wider still. */
+.rail-sequence li {
+  min-height: var(--h-rail-row);
+  padding: 0 var(--sp-1) 0 0;
+  border-radius: var(--r-cell);
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  line-height: var(--h-rail-row);
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+
+/* Three states that have to survive being read out of the corner of the eye,
+   and none of them may use opacity — these rows are records of where the turn
+   has got to, not controls. Three states, three grounds, and the same three at
+   both levels of the outline so the language is learned once:
+
+     done   --lc-plum-deep ground, --ink-on-deep  (9.1:1) — behind you
+     ahead  --panel-2 ground,      --ink-dim      (8.6:1) — not yet
+     now    --lc-sand / --lc-orange ground, black ink     — the only lit row
+
+   What was here before rendered "already happened" and "hasn't happened yet"
+   on the SAME transparent ground: `.seq-phase.is-ahead` and
+   `.seq-segment.is-done` were both bare black, separated only by --ink-dim vs
+   --ink-mute — two inks one step apart, at 10-11px, read sideways. And the ink
+   on the spent-phase block was --ink-mute on --lc-plum-deep, which measures
+   3.15:1 and fails AA outright. Giving "ahead" the standard off/unset ground
+   (§5.7) separates the two states by ground rather than by a hairline of ink,
+   and it takes the outline cue out of the argument entirely — hence the
+   `box-shadow: none` that still kills styles.css:288's 1px inset ring. */
+.seq-phase {
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+  margin-top: var(--sp-1);
+  background: var(--lc-plum);
+  color: var(--ink-on-fill);
+}
+.seq-phase:first-child {
+  margin-top: 0;
+}
+.seq-phase.is-done {
+  opacity: 1;
+  background: var(--lc-plum-deep);
+  color: var(--ink-on-deep);
+}
+.seq-phase.is-ahead {
+  background: var(--panel-2);
+  color: var(--ink-dim);
+  box-shadow: none;
+}
+.seq-phase.is-now {
+  background: var(--lc-sand);
+  color: var(--ink-on-fill);
+}
+
+/* Segments are quieter than their phase and stepped in from the free edge —
+   the rail is right-aligned, so "indented" means more room on the right. */
+.seq-segment {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tr-micro);
+  padding-right: var(--sp-4);
+  background: var(--panel-2);
+  color: var(--ink-dim);
+}
+/* Same three grounds as the phase above it — a spent segment is spent in
+   exactly the sense a spent phase is, and drawing the two differently was what
+   left DELAYED sitting on --panel-2 among transparent siblings looking like a
+   stuck hover state. The level is carried by size and indent, not by inventing
+   a fourth ground. */
+.seq-segment.is-done {
+  opacity: 1;
+  background: var(--lc-plum-deep);
+  color: var(--ink-on-deep);
+}
+.seq-segment.is-now {
+  background: var(--lc-orange);
+  color: var(--ink-on-fill);
+  font-weight: var(--fw-bold);
+}
+
+/* The closing corner, deliberately lighter than the opening one: the eye lands
+   top-left, the bottom only has to close the frame. arm 20 · inner 20 ·
+   outer 40, in plum-deep rather than the orange it used to be. */
+.rail-cap {
+  order: 2;
+  margin-top: auto;
+  min-height: 64px;
+  height: auto;
+  background: var(--lc-plum-deep);
+  border-radius: 0 0 0 var(--foot-out);
+}
+
+/* ══ THE STAGE AND ITS FOOT ═════════════════════════════════════════════════
+   --stage-gutter is one value used by the stage's left inset, the topbar's
+   padding and the foot, so the three finally register with each other; they
+   were 10px, 12px and 0. */
+
+.lcars-stage {
+  grid-area: 2 / 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--gutter) var(--stage-gutter) 0;
+  min-width: 0;
+}
+
+/* The foot is the horizontal arm of the closing elbow, so it bleeds back
+   through the stage's left inset to butt against the rail's cap across the
+   same 5px gutter the rest of the frame uses. 20px minimum, growing when the
+   credit line wraps; the old 2px plum rule plus a 12px stub plus 10px of
+   padding came to nearly 40px of chrome to say the same thing. */
+.lcars-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  /* An explicit min-height replaces the flex default of min-height:auto, which
+     is what was stopping the stage's `overflow: hidden` from squeezing this
+     row into nothing on a short window. `flex: 0 0 auto` puts that protection
+     back — the slack belongs to .layout, which has a basis of 0. */
+  flex: 0 0 auto;
+  min-height: var(--foot-arm);
+  margin-left: calc(-1 * var(--stage-gutter));
+  padding: 0 var(--sp-3) 0 0;
+  border: none;
+  border-radius: var(--shape-chrome);
+  background: var(--lc-plum-deep);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-ui);
+}
+
+/* Still rendered by App.tsx (an empty aria-hidden <span>), so it cannot be
+   deleted from here — but §4.3 is explicit that the closing corner *is* the
+   cap, and a 46×20px pale-violet nub at the head of the arm, matching the
+   width of nothing else on screen and carrying nothing, read as a fragment
+   left behind rather than as a block. Inventing a job for it did not give it
+   one. It keeps its box and its 46px — it is not hidden, not shrunk, and it
+   still holds the credit line clear of the corner — it simply stops being a
+   second colour inside a single arm. Delete the markup and this rule together
+   when App.tsx is next open. */
+.foot-cap {
+  align-self: stretch;
+  width: 46px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: var(--r-cell);
+  background: none;
+}
+
+/* A dead code — the one thing in the system allowed below 10px. */
+.foot-code {
+  margin-left: auto;
+  font: var(--fw-bold) var(--fs-code) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ══ THE TOPBAR ═════════════════════════════════════════════════════════════
+   The arm and the concave fillet are backgrounds rather than a border, which
+   is the whole trick: a border cannot be given an inner radius, so the old
+   `border-top: 24px` met the stem at a mitre no matter what radius the stem
+   carried.
+
+   Read the fillet layer. It is a 34×34 cell sitting at x∈[0,34], y∈[34,68].
+   Its circle is centred on that cell's own bottom-right corner, so everything
+   within 34px of (34,68) is transparent and everything beyond it is orange:
+   the crescent between the arm's underside and the stem's right edge, arcing
+   from (34,34) to (0,68). That crescent is the LCARS sweep, and it is why
+   outer (68) must equal inner (34) plus arm (34). */
+
+.topbar {
+  grid-area: 1 / 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gutter);
+  padding: var(--arm-h) var(--stage-gutter) var(--sp-1);
+  border: none;
+  border-top-right-radius: var(--elbow-in);
+  background:
+    linear-gradient(var(--lc-orange) 0 0) 0 0 / 100% var(--arm-h) no-repeat,
+    radial-gradient(
+        circle var(--elbow-in) at 100% 100%,
+        transparent 0 var(--elbow-in),
+        var(--lc-orange) var(--elbow-in)
+      )
+      0 var(--arm-h) / var(--elbow-in) var(--elbow-in) no-repeat,
+    linear-gradient(var(--panel) 0 0);
+}
+
+/* The wordmark carries its weight through size, not width — no webfont is
+   loaded, so --font-lcars is Arial Narrow at best and Inter at worst, and
+   nothing here may depend on the condensing. */
+.brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  margin-right: var(--sp-2);
+  min-width: 0;
+}
+.brand h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+  letter-spacing: var(--tr-title);
+  line-height: var(--lh-ui);
+  color: var(--lc-sand);
+}
+.brand .subtitle {
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  white-space: nowrap;
+}
+
+/* ── The control run ──────────────────────────────────────────────────────
+   Every control in the bar is a chrome block: one height, one ground, square
+   where it is attached to its neighbour. Hover no longer turns a control
+   orange — that was spending the accent thirteen times in one bar — and the
+   1px navy outline every control wore is gone, because in this system
+   structure is carried by ground and gutter, not by edges. */
+.topbar > button,
+.topbar > label.file-chip,
+.topbar > label.checkbox,
+.topbar > label.field {
+  height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  border: none;
+  border-radius: var(--r-cell);
+  background: var(--panel-2);
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-label) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+.topbar > label.file-chip,
+.topbar > label.checkbox,
+.topbar > label.field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  flex-direction: row;
+}
+
+.topbar > button:hover:not(:disabled),
+.topbar > label.file-chip:hover,
+.topbar > label.checkbox:hover {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+
+/* .primary is 0-1-1 in styles.css and would lose to the 0-2-0 rule above, so
+   the one orange control in the bar has to be restated at 0-3-0. */
+.topbar > button.primary {
+  background: var(--lc-orange);
+  color: var(--ink-on-fill);
+}
+.topbar > button.primary:hover:not(:disabled) {
+  background: var(--lc-sand);
+  color: var(--ink-on-fill);
+}
+
+/* `.is-linked` is one of the four places in this system where a border is
+   legal: it is a live wire, and green is a rules colour saying so. A real
+   border rather than an inset shadow, so the focus ring can use box-shadow
+   without erasing it. */
+.topbar > button.is-linked {
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+
+/* ── The six zones ────────────────────────────────────────────────────────
+   Thirteen controls in a row all look like one thing. They are six, and the
+   zone hues are the fixed ones from the system's hue table — navigation and
+   session are both sky, setup is sand, learning and browsing lilac, design
+   peri, and the record/file group plum:
+
+     1  Menu                                            sky
+     2  Scenario · Coordinated Fire · Choose forces      sand
+     3  Tutorial · Library                               lilac
+     4  Ship builder · Scenario designer · Rematch       peri
+     5  Remote play · Online                             sky
+     6  Save · Report · Replay · Summary · Load file     plum
+
+   A zone is led by a 4px spine in its hue and opened by 12px of black; members
+   of the same zone are separated by the standard 5px. Nothing is coloured in,
+   so the bar does not become a rainbow and the accent ration is untouched.
+
+   THESE ARE POSITIONAL SELECTORS AND THEY ARE THE ONE FRAGILE THING IN THIS
+   FILE. `:nth-of-type` counts <button> children of .topbar in DOM order:
+   1 Menu · 2 Choose forces · 3 Tutorial · 4 Library · 5 Ship builder ·
+   6 Scenario designer · 7 Rematch · 8 Remote play · 9 Online · then
+   BattleMenu's 10 Save file · 11 Report · 12 Replay · 13 Summary. None of the
+   thirteen is conditionally rendered, so the count is stable today — but ADD
+   OR REORDER A TOPBAR BUTTON AND THESE NUMBERS MUST BE UPDATED WITH IT. If
+   they are ever wrong the bar still works and still reads; the spines simply
+   land in the wrong places, so this degrades rather than breaks. The
+   long-term fix is a `data-zone` attribute in App.tsx. */
+.topbar > button:nth-of-type(1),
+.topbar > label.field,
+.topbar > button:nth-of-type(3),
+.topbar > button:nth-of-type(5),
+.topbar > button:nth-of-type(8),
+.topbar > button:nth-of-type(10) {
+  margin-left: var(--sp-3);
+  border-left: var(--spine-inner) solid var(--zone, var(--lc-sand));
+  padding-left: var(--sp-2);
+}
+.topbar > button:nth-of-type(1) {
+  --zone: var(--lc-sky);
+}
+.topbar > label.field {
+  --zone: var(--lc-sand);
+}
+.topbar > button:nth-of-type(3) {
+  --zone: var(--lc-lilac);
+}
+.topbar > button:nth-of-type(5) {
+  --zone: var(--lc-peri);
+}
+.topbar > button:nth-of-type(8) {
+  --zone: var(--lc-sky);
+}
+.topbar > button:nth-of-type(10) {
+  --zone: var(--lc-plum);
+}
+
+/* The free end of each zone turns; everything inside a zone stays square, so a
+   zone reads as one segmented run rather than as N separate lozenges. Menu is
+   a zone of one, so it is both leader and tail. */
+.topbar > button:nth-of-type(1),
+.topbar > button:nth-of-type(2),
+.topbar > button:nth-of-type(4),
+.topbar > button:nth-of-type(7),
+.topbar > button:nth-of-type(9),
+.topbar > label.file-chip {
+  border-radius: var(--shape-chrome);
+}
+
+/* The lone `margin-left: auto` on the scenario field was the bar's whole
+   hierarchy: brand and Menu at the left, eleven controls thrown to the right
+   and wrapping from there. The run now reads left to right out of the
+   wordmark and wraps by filling lines. */
+.topbar > label.field {
+  margin-left: var(--sp-3);
+}
+
+/* 9.8px controls in a 9.8px label of the same face, told apart only by colour,
+   is most of why this bar read as a spreadsheet. The label is a 10px condensed
+   cap in sand; the control itself is 13px of the UI face, which is the one
+   size every form control in the app takes. */
+.topbar > label.field > span {
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--lc-sand);
+}
+/* Full --h-btn, not --h-btn minus 8. tokens.css:158 says of the standard
+   heights "nothing here is ever reduced: these are also the hit-target
+   floors", and this was the one rule that reduced one — a 20px scenario
+   select, under the 24px minimum, in a bar where every sibling control is
+   28px. It fills the label's own height now, which is also what makes the
+   pair read as one segmented control rather than as a control adrift in a
+   pill. */
+.topbar > label.field select {
+  height: var(--h-btn);
+  max-width: 15rem;
+  padding: 0 var(--sp-2);
+  border: none;
+  border-radius: var(--r-input);
+  background: var(--well);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-reg);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+}
+
+/* The checkbox itself stays native — it is the only genuinely native control
+   in the app and it is the right one. */
+.topbar > label.checkbox input[type='checkbox'] {
+  margin: 0;
+  accent-color: var(--lc-orange);
+}
+
+/* "Load file" is a <label class="chip file-chip">, and `.chip` (styles.css:1368)
+   beat `.file-chip` (:400) on source order at equal specificity, so it rendered
+   at 9.8px/20px in a row of 11.5px/29px neighbours. `label.file-chip` is 0-1-1
+   and settles it without touching either of them.
+
+   This is also the recipe for the file chips that live OUTSIDE the topbar —
+   the builder's "Upload counter art", the designer's "Load a scenario file",
+   the theater's and the campaign's read-backs. The topbar's own is fully
+   described by the `.topbar > label.file-chip` rules above (0-2-1), which
+   out-specify every declaration here, so the two can differ without fighting.
+
+   Hence --r-pill rather than --shape-chrome. --shape-chrome is the topbar
+   recipe — a block attached to a spine at its left end — and this control also
+   lives in the builder and designer toolbars, where every neighbour is a
+   free-standing pill. Wearing a square left end among them made the
+   least-used action in the row the only oddly-shaped thing in it, which reads
+   as the loudest. Ink and size stay --lc-sand / --fs-label: those are what the
+   toolbar's own buttons use (§5.2), sampled and confirmed, and 28px is the hit
+   target §3.2 raised this control to — nothing here is ever reduced. */
+label.file-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-label) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+label.file-chip:hover {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+
+/* `display: none` takes an input out of the tab order and a <label> is not
+   focusable, so every "load a file" control in the app was mouse-only. Clipped
+   rather than hidden, the input keeps its place in the tab order, and the
+   label wears the ring on its behalf. The `accept` attribute and the
+   `e.target.value = ''` reset in the components are untouched — that reset is
+   what allows the same file to be loaded twice.
+
+   `display: block` is the load-bearing declaration and it was missing:
+   styles.css:419 `.file-chip input { display: none }` is 0-1-1 and this rule
+   is 0-2-1, so it out-specifies it on every property it actually declares —
+   and it declared everything except the one that was taking the control out of
+   the tab order. Without it the four remaining file loaders (topbar "Load
+   file", ShipBuilder "Upload counter art", ScenarioDesigner "Load a scenario
+   file", ReplayTheater, CampaignApp's read-back) still computed `display:none`,
+   0x0, unfocusable — i.e. the fix this block exists for never took effect.
+   `position: relative` on the label is what keeps the clipped input inside its
+   own control rather than absolutely positioned against some distant ancestor,
+   which is what makes focus scrolling land on the right thing. */
+.file-chip input[type='file'] {
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  pointer-events: none; /* the label already forwards the click */
+}
+.file-chip:focus-within {
+  outline: var(--focus-w) solid var(--focus-outer);
+  outline-offset: var(--focus-gap);
+  box-shadow: 0 0 0 var(--focus-gap) var(--focus-inner);
+}
+
+/* A setting that holds rather than an action that fires, so its box stays
+   visible and its on-state is filled. (Used by ReplayTheater's "highlights
+   only"; it belongs to this file because it is the same chrome block.) */
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--h-btn);
+  padding: 0 var(--sp-3);
+  border: none;
+  border-radius: var(--shape-chrome);
+  background: var(--panel-2);
+  color: var(--lc-sand);
+  font: var(--fw-bold) var(--fs-label) / 1 var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+.toggle-chip:hover {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+.toggle-chip.is-on {
+  background: var(--lc-orange);
+  color: var(--ink-on-fill);
+}
+.toggle-chip input {
+  margin: 0;
+  accent-color: var(--lc-orange);
+}
+/* A control may dim; this is the one thing opacity is allowed to mean. */
+.toggle-chip:has(input:disabled) {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* The status note BattleMenu writes after a save or a load. */
+.topbar > .hint {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--ink-dim);
+}
+
+/* ══ THE LAYOUT ═════════════════════════════════════════════════════════════
+   Column widths are unchanged — the map column's floor and the control
+   column's band were tuned against the ship form and are not this pass's
+   business. Only the rhythm changes: 8px of black between blocks in a column,
+   which is the lattice step nearest the 0.75rem it replaces and hands two or
+   three pixels back to the board. */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(380px, 460px);
+  gap: var(--sp-2);
+}
+
+.map-column,
+.control-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* ══ THE SEQUENCE BAR ═══════════════════════════════════════════════════════
+   A panel: a spine at the standard 10px, and a square body, because the bar
+   wraps and the radius law only lets a fixed-height element turn. Sand is
+   "time and place", which is exactly what this bar is. */
+
+.sequence-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  /* Same reason as the foot: an explicit min-height opts out of
+     min-height:auto, so the bar has to be told not to shrink. */
+  flex: 0 0 auto;
+  min-height: var(--h-row);
+  background: var(--panel);
+  border: none;
+  border-left: var(--spine-panel) solid var(--lc-sand);
+  border-radius: var(--r-cell);
+}
+
+/* A side nobody is commanding is a safety warning, and it keeps its
+   `order: -1; flex: 1 0 100%` — it stays ahead of everything on the bar
+   because every result after it is worthless. Only its box changes, onto the
+   system's one error shape: a spine and a wash, no outline, no glyph. */
+.sequence-bar .unattended {
+  border: none;
+  border-left: var(--spine-inner) solid var(--warn);
+  border-radius: var(--r-cell);
+  padding: var(--sp-2) var(--sp-2);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  text-transform: none;
+  letter-spacing: var(--tr-none);
+}
+
+/* Round and phase are one datum pair; the round is the anchor and gets the
+   title step, the phase sits under it at label size. Both sand — a phase is
+   as much "where you are" as the round is. */
+.sequence-bar .round,
+.sequence-bar .phase {
+  font-family: var(--font-lcars);
+  font-stretch: condensed;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  color: var(--lc-sand);
+}
+.sequence-bar .round {
+  font-size: var(--fs-title);
+  letter-spacing: var(--tr-title);
+  line-height: var(--lh-ui);
+  font-variant-numeric: tabular-nums;
+}
+.sequence-bar .phase {
+  font-size: var(--fs-label);
+  letter-spacing: var(--tr-micro);
+  line-height: var(--lh-ui);
+}
+
+.sequence-bar .segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gutter);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* These <li> wore the exact topbar-button treatment — a bordered pill — on a
+   thing nobody can click. As flat tags the false affordance disappears and the
+   one that is current is the only one shaped and coloured like a state. */
+.sequence-bar .segments li {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-chip);
+  padding: 0 var(--sp-2);
+  border: none;
+  border-radius: var(--r-cell);
+  background: var(--panel-2);
+  color: var(--ink-dim);
+  font: var(--fw-bold) var(--fs-micro) / var(--h-chip) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  transition: background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+/* The second of orange's three roles: the segment the game is actually on. */
+.sequence-bar .segments li.is-current {
+  background: var(--lc-orange);
+  color: var(--ink-on-fill);
+}
+
+/* ══ THE MAP CONTROL STRIP ══════════════════════════════════════════════════
+   View, arcs, rings, ruler, sound and the ship tabs were six loose runs
+   floating on the black between the board and the log. Given a ground and a
+   sky spine — sky is navigation and intel, which is what every control in the
+   strip does — it reads as the board's own console. It costs 8px of stage
+   height, paid for several times over by the 22px the page padding gave back. */
+
+.map-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel);
+  border-left: var(--spine-inner) solid var(--lc-sky);
+  border-radius: var(--r-cell);
+}
+
+.map-controls > label.checkbox {
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--h-chip);
+  font: var(--fw-bold) var(--fs-label) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.map-controls > label.checkbox input[type='checkbox'] {
+  margin: 0;
+  accent-color: var(--lc-orange);
+}
+
+.view-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gutter);
+  font-size: var(--fs-label);
+  color: var(--ink-dim);
+}
+/* The "Viewing" caption only — the locked-side chip and the trailing hint are
+   spans too, and the old `.view-chips > span` caught all three. */
+.view-chips > span:not(.chip):not(.hint) {
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--lc-sand);
+}
+/* A control that lives on the play surface is a pill: both ends free. */
+.view-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--h-chip);
+  padding: 0 var(--sp-3);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  color: var(--ink);
+  font: var(--fw-bold) var(--fs-micro) / var(--h-chip) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  transition: background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+.view-chips button.chip:hover {
+  background: var(--panel-3);
+}
+/* Sand, not sky. This chip sits inches from the counters and says which side's
+   view you are in; in chrome-sky it was one hue away from saying "the blue
+   force", which is rules information it has no right to speak. Sand is "you
+   are here", which is what it actually means. */
+.view-chips .chip.is-on {
+  background: var(--lc-sand);
+  border-color: transparent;
+  color: var(--ink-on-fill);
+  font-weight: var(--fw-bold);
+}
+.view-chips .hint {
+  margin: 0;
+  font-size: var(--fs-micro);
+  color: var(--ink-mute);
+}
+
+/* ── Ship tabs ────────────────────────────────────────────────────────────
+   Play-surface controls, so pills. The hull name is sentence case in the UI
+   face — it is a proper noun, and uppercase belongs to the condensed chrome
+   labels — over its condition in 10px caps, up from 8.96px. */
+/* No `margin-left: auto`. The strip wraps, and on a 1600px stage the tabs
+   wrapped to a second line that was still thrown to the right edge while the
+   view chips sat at the left one — a coloured, spined container with ~720px of
+   empty black between two rows aligned to opposite edges, which is the same
+   defect the topbar's lone `margin-left: auto` caused and which is fixed the
+   same way: the run reads left to right out of the controls before it and
+   wraps by filling lines. */
+.ship-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gutter);
+  margin-left: 0; /* explicit: styles.css:1227 sets `auto` at equal specificity */
+}
+
+.ship-tab {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+  min-height: var(--h-row);
+  padding: var(--sp-half) var(--sp-3);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-ui);
+  letter-spacing: var(--tr-none);
+  text-transform: none;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+.ship-tab:hover:not(:disabled) {
+  background: var(--panel-3);
+  color: var(--ink);
+}
+.ship-tab em {
+  font: var(--fw-bold) var(--fs-micro) / var(--lh-ui) var(--font-lcars);
+  font-stretch: condensed;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--ink-dim);
+}
+.ship-tab.is-current {
+  background: var(--lc-sand);
+  color: var(--ink-on-fill);
+}
+.ship-tab.is-current em {
+  color: var(--ink-on-fill);
+}
+/* Out of action. The strike-through is the non-colour channel and it stays —
+   it survives greyscale and a colour-blind eye, and it takes the condition
+   line with it because the hull name is a bare text node with no element of
+   its own to scope it to.
+
+   The dim does not stay. Under §0.5 opacity below 1 means one thing, "this
+   control is unavailable", and this tab is live: it selects a ship you still
+   have to read the form of. It also composited the tab's 10px condition line
+   down to 3.21:1, below AA, which is a poor way to report that a hull is out
+   of action. --ink-mute at full opacity recedes legally (5.3:1 on --panel-2)
+   and the strike still carries the state. Scoped off .is-current so the
+   selected tab keeps black-on-sand. */
+.ship-tab.is-out {
+  text-decoration: line-through;
+}
+.ship-tab.is-out:not(.is-current),
+.ship-tab.is-out:not(.is-current) em {
+  color: var(--ink-mute);
+}
+
+/* ══ BREAKPOINTS ════════════════════════════════════════════════════════════
+   Restated, not re-invented. styles.css declares these overrides inside media
+   queries, and a media query contributes nothing to specificity — so every
+   rule above, being later in source, would win at 900px as well. The
+   behaviour below is the behaviour styles.css already documented; only the
+   numbers are moved onto tokens. */
+
+/* Below this the elbow has nowhere to turn: it flattens into a cap bar over a
+   stacked header, the rail steps aside, and the page scrolls as a document. */
+@media (max-width: 1000px) {
+  .app:not(.title-screen) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--sp-4) auto minmax(0, 1fr);
+    column-gap: 0;
+    padding: 0;
+  }
+  .lcars-elbow {
+    grid-area: 1 / 1;
+    margin-right: 0;
+    padding: 0;
+    /* Flat again: with no gutter to bridge there is no second layer to draw,
+       and the two-layer stem above would otherwise leave the last 5px of the
+       cap bar keyed to a 68px block. */
+    background: var(--lc-orange);
+    border-radius: var(--r-free) var(--r-free) 0 0;
+  }
+  /* The column it names is not on screen at this width. */
+  .lcars-elbow::after {
+    content: none;
+  }
+  .lcars-rail {
+    display: none;
+  }
+  .topbar {
+    grid-area: 2 / 1;
+    padding: var(--sp-2) var(--stage-gutter);
+    border-top-right-radius: 0;
+    background: var(--panel);
+  }
+  .lcars-stage {
+    grid-area: 3 / 1;
+    padding: var(--gutter) var(--stage-gutter) 0;
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Above it the stage is exactly the viewport and each column scrolls inside
+   itself, so the board keeps its height and the log stays pinned under it
+   instead of sitting below the fold. */
+@media (min-width: 1001px) {
+  .app:not(.title-screen) {
+    height: 100vh;
+    min-height: 0;
+  }
+  .lcars-stage {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .layout {
+    flex: 1 1 0;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .map-column,
+  .control-column {
+    min-height: 0;
+  }
+}
+
+/* ══ REDUCED MOTION ═════════════════════════════════════════════════════════
+   tokens.css carries the authoritative block and its declarations are
+   !important, so it governs regardless of which of the two files loads last.
+   This is here so the region is self-contained if it is ever lifted out: the
+   only motion introduced above is colour cross-fading on hover and on state
+   changes, and every one of those states is fully legible standing still. */
+@media (prefers-reduced-motion: reduce) {
+  .topbar > button,
+  .topbar > label.file-chip,
+  .topbar > label.checkbox,
+  .topbar > label.field,
+  label.file-chip,
+  .toggle-chip,
+  .rail-sequence li,
+  .sequence-bar .segments li,
+  .view-chips .chip,
+  .ship-tab {
+    transition: none;
+  }
+}
