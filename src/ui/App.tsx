@@ -321,7 +321,7 @@ export function App() {
           </button>
 
           <button type="button" className="title-item" onClick={() => setScreen('campaign')}>
-            Border Command
+            StarForce: Border Command
             <span className="title-detail">
               The operational campaign — hunt contacts on the border, fight the battles here
             </span>

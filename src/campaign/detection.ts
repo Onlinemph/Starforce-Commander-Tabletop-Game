@@ -17,7 +17,7 @@
 import { registerCustomForms, FILE_FORMS, SHIP_FORMS, shipFormById } from '../data/ships'
 import type { ShipForm } from '../engine/types'
 import { hexDistance, hexNeighbors, terrainAt } from './hexmap'
-import { unitDamageBand } from './logistics'
+import { effectiveSpeedTier, unitDamageBand } from './logistics'
 import { operationalStats, type OperationalStats } from './stats'
 import {
   CONTACT_ATTRIBUTES,
@@ -31,6 +31,7 @@ import {
   type Hex,
   type Infrastructure,
   type Side,
+  type SpeedTier,
   type TerrainKind,
   type Unit,
 } from './types'
@@ -63,6 +64,8 @@ function statsFor(formId: string): OperationalStats {
 export function unitProfile(unit: Unit): {
   signature: number
   sensorRating: number
+  /** Rating at each sensor power setting, index = power 0/1/2 (stats.ts). */
+  sensorRatings: [number, number, number]
   sciences: number
   cloakCapable: boolean
 } {
@@ -73,9 +76,13 @@ export function unitProfile(unit: Unit): {
    * two points of signature and cannot hold a cloak at all.
    */
   const band = unitDamageBand(unit)
+  const wound = band === 'damaged' ? 1 : 0
+  const ratingAt = (power: 0 | 1 | 2) =>
+    Math.max(1, Math.max(...all.map((s) => s.sensorRatings[power])) - wound)
   return {
     signature: Math.max(...all.map((s) => s.signature)) + (band === 'crippled' ? 2 : 0),
-    sensorRating: Math.max(1, Math.max(...all.map((s) => s.sensorRating)) - (band === 'damaged' ? 1 : 0)),
+    sensorRating: ratingAt(2),
+    sensorRatings: [ratingAt(0), ratingAt(1), ratingAt(2)],
     sciences: Math.max(...all.map((s) => s.sciences)),
     cloakCapable: all.every((s) => s.cloak) && band !== 'crippled',
   }
@@ -92,11 +99,14 @@ export function unitIsCloaked(unit: Unit): boolean {
 
 export interface ScanPosture {
   signature: number
+  /** At the posture's own power setting — the form's 0/1/2-power value. */
   sensorRating: number
   moved: boolean
   cloaked: boolean
   formation: 'close' | 'standard' | 'wide'
   sensorPower: 0 | 1 | 2
+  /** The tier being made: maximum and emergency running light a ship up. */
+  speedTier: SpeedTier
   terrain: TerrainKind
 }
 
@@ -131,6 +141,10 @@ export function detectionChance(
   if (target.terrain === 'system') bands += 1
   if (target.terrain === 'dust') bands -= 1
   if (target.cloaked) bands -= 1
+  // Flogged drives glow (the designer's note: maximum and emergency speed
+  // make you much easier to detect). PROVISIONAL until his sensor equations.
+  if (target.speedTier === 'maximum') bands += 1
+  if (target.speedTier === 'emergency') bands += 2
 
   if (searcher.moved) bands -= 1
   if (searcher.sensorPower === 0) bands -= 1
@@ -149,14 +163,19 @@ export function detectionChance(
 
 function postureOf(map: CampaignMap, unit: Unit): ScanPosture {
   const p = unitProfile(unit)
+  // A dry tank caps the sensors at zero power (6.4).
+  const power = unit.endurance > 0 ? unit.order.sensorPower : 0
   return {
     signature: p.signature,
-    sensorRating: p.sensorRating,
+    // The rating at the power actually set: the form's own 0/1/2-power
+    // sensor values are the acuity, and the power band shifts below remain
+    // the emission/attention side of the same dial.
+    sensorRating: p.sensorRatings[power],
     moved: unit.movedLastOwnPhase,
     cloaked: unitIsCloaked(unit),
     formation: unit.order.formation,
-    // A dry tank caps the sensors at zero power (6.4).
-    sensorPower: unit.endurance > 0 ? unit.order.sensorPower : 0,
+    sensorPower: power,
+    speedTier: effectiveSpeedTier(unit),
     terrain: terrainAt(map, unit.hex),
   }
 }
@@ -462,6 +481,7 @@ const LISTENING_POST_POSTURE: ScanPosture = {
   cloaked: false,
   formation: 'standard',
   sensorPower: 1,
+  speedTier: 'hold',
   terrain: 'deep',
 }
 
@@ -538,9 +558,9 @@ export function contactCollapsed(contact: ContactRecord): boolean {
 export function reckonedHex(contact: ContactRecord, state: CampaignState): Hex {
   if (!contact.course || !contact.observedMoving) return contact.estimatedHex
   const elapsed =
-    (state.round - contact.lastScan.round) * 12 + (state.phase - contact.lastScan.phase)
-  // One hex per own phase at cruise = one hex per two table phases.
-  const steps = Math.max(0, Math.floor(elapsed / 2))
+    (state.round - contact.lastScan.round) * 16 + (state.phase - contact.lastScan.phase)
+  // Reckon at a typical cruise of four hexes a round: one per four table phases.
+  const steps = Math.max(0, Math.floor(elapsed / 4))
   return {
     q: contact.estimatedHex.q + contact.course.q * steps,
     r: contact.estimatedHex.r + contact.course.r * steps,

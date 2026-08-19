@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { GameSetup, SavedGame } from '../data/savedGame'
 import { loadCampaign, newCampaign, saveCampaign } from '../campaign/file'
 import { battleFileFor, hashText, readback } from '../campaign/handoff'
-import { damageBand } from '../campaign/logistics'
+import { damageBand, unitSpeedTiers } from '../campaign/logistics'
 import { quickResolve } from '../campaign/quickResolve'
 import { LAUNCH_SCENARIOS } from '../campaign/scenarios'
 import { soloOrders } from '../campaign/solo'
@@ -27,6 +27,7 @@ import {
   type Intervention,
   type PhaseMove,
   type Side,
+  type SpeedTier,
   type StandingOrder,
 } from '../campaign/types'
 import { viewFor } from '../campaign/views'
@@ -197,7 +198,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     return (
       <div className="picker campaign-menu">
         <header>
-          <h2>Border Command</h2>
+          <h2>StarForce: Border Command</h2>
           <button type="button" onClick={onExit}>Back</button>
         </header>
         <p className="hint">
@@ -294,7 +295,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
         <div className="handoff-card">
           <h2>Commander {side}</h2>
           <p>
-            Round {file.state.round}, phase {file.state.phase} of 12 is yours. Nobody else should be
+            Round {file.state.round}, phase {file.state.phase} of 16 is yours. Nobody else should be
             looking at the screen.
           </p>
           <button type="button" className="primary" onClick={() => setMode('console')}>
@@ -326,9 +327,9 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   return (
     <div className="campaign-shell">
       <header className="campaign-topbar">
-        <strong>Border Command</strong>
+        <strong>StarForce: Border Command</strong>
         <span>
-          Commander {side} — round {file.state.round}, phase {file.state.phase}/12 · VP {view!.vp.A}
+          Commander {side} — round {file.state.round}, phase {file.state.phase}/16 · VP {view!.vp.A}
           –{view!.vp.B} {soloB && '· solo'}
         </span>
         <button type="button" onClick={() => downloadText('campaign.json', saveCampaign(file))}>
@@ -349,7 +350,10 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           onClickHex={(hex: Hex) => {
             // A map click with a unit selected appends a waypoint.
             if (unit && order) {
-              editOrder(unit.id, { waypoints: [...order.waypoints, hex], speed: 'cruise' })
+              editOrder(unit.id, {
+                waypoints: [...order.waypoints, hex],
+                ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+              })
             }
           }}
           onClickUnit={(id) => {
@@ -438,9 +442,17 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
               </p>
               <label className="field">
                 <span>Speed</span>
-                <select value={order.speed} onChange={(e) => editOrder(unit.id, { speed: e.target.value as 'cruise' | 'hold' })}>
-                  <option value="cruise">Cruise</option>
+                <select
+                  value={order.speed}
+                  onChange={(e) => editOrder(unit.id, { speed: e.target.value as SpeedTier })}
+                >
                   <option value="hold">Hold</option>
+                  <option value="cruise">Cruise ({unitSpeedTiers(unit).cruise}/round)</option>
+                  <option value="max-cruise">Max cruise ({unitSpeedTiers(unit).maxCruise}/round)</option>
+                  <option value="maximum">Maximum ({unitSpeedTiers(unit).maximum}/round) — thirsty, loud</option>
+                  <option value="emergency">
+                    Emergency ({unitSpeedTiers(unit).emergency}/round) — risks the drives
+                  </option>
                 </select>
               </label>
               <label className="field">
@@ -495,13 +507,23 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                   <>
                     <button
                       type="button"
-                      onClick={() => editOrder(unit.id, { mission: { type: 'intercept', contactId: contact.id }, speed: 'cruise' })}
+                      onClick={() =>
+                        editOrder(unit.id, {
+                          mission: { type: 'intercept', contactId: contact.id },
+                          ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+                        })
+                      }
                     >
                       Intercept contact
                     </button>
                     <button
                       type="button"
-                      onClick={() => editOrder(unit.id, { mission: { type: 'shadow', contactId: contact.id }, speed: 'cruise' })}
+                      onClick={() =>
+                        editOrder(unit.id, {
+                          mission: { type: 'shadow', contactId: contact.id },
+                          ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+                        })
+                      }
                     >
                       Shadow contact
                     </button>

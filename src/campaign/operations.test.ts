@@ -4,6 +4,7 @@ import { battleFileFor, hashText, readback } from './handoff'
 import { playBattle, playedBattleFile } from '../engine/selfPlay'
 import { quickResolve, temperamentOf } from './quickResolve'
 import { unitIsCloaked } from './detection'
+import { unitSpeedTiers } from './logistics'
 import { LAUNCH_SCENARIOS, raidOnDeltaVideus } from './scenarios'
 import { resolvePhase, type DetectionContext } from './turn'
 import { viewFor } from './views'
@@ -34,7 +35,7 @@ function pass(file: CampaignFile, battles?: PhaseMove['battles']): void {
 }
 
 function passRound(file: CampaignFile): void {
-  for (let i = 0; i < 12; i++) pass(file)
+  for (let i = 0; i < 16; i++) pass(file)
 }
 
 function opsFile(over: Partial<Parameters<typeof blankScenario>[0]> = {}): CampaignFile {
@@ -105,6 +106,34 @@ describe('endurance (6.4)', () => {
     expect(b.endurance).toBe(b.enduranceMax - 1)
   })
 
+  it('the flogged tiers drink: maximum and emergency running burn the tank', () => {
+    const file = opsFile()
+    const a = () => file.state.units.find((u) => u.id === 'a-1')!
+    a().order.speed = 'maximum'
+    const start = a().endurance
+    passRound(file)
+    expect(a().endurance).toBe(start - 4) // baseline 1 + maximum's 3
+
+    const emergency = opsFile()
+    const e = () => emergency.state.units.find((u) => u.id === 'a-1')!
+    e().order.speed = 'emergency'
+    const eStart = e().endurance
+    passRound(emergency)
+    expect(e().endurance).toBe(eStart - 6) // baseline 1 + emergency's 5
+  })
+
+  it('a dry tank caps the speed at cruise — the limp home', () => {
+    const file = opsFile()
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    a.order.speed = 'emergency'
+    a.endurance = 0
+    // Effective tier reads cruise: the burn is base-only and no wear rolls.
+    passRound(file)
+    const after = file.state.units.find((u) => u.id === 'a-1')!
+    expect(after.endurance).toBe(0)
+    expect(after.ships[0].scars).toBeUndefined()
+  })
+
   it('a dry tank grounds the cloak (6.4)', () => {
     const file = opsFile()
     const b = file.state.units.find((u) => u.id === 'b-1')!
@@ -112,6 +141,33 @@ describe('endurance (6.4)', () => {
     expect(unitIsCloaked(b)).toBe(true)
     b.endurance = 0
     expect(unitIsCloaked(b)).toBe(false)
+  })
+})
+
+describe('emergency wear (the designer: ships can break down at this speed)', () => {
+  it('sustained emergency running eventually marks the drives, and the wear slows the ship', () => {
+    const file = opsFile()
+    const a = () => file.state.units.find((u) => u.id === 'a-1')!
+    const fresh = unitSpeedTiers(a())
+    a().order.speed = 'emergency'
+    // Deterministic under the campaign stream: run rounds until the odds
+    // land (an outpost keeps the tank wet so emergency stays effective).
+    file.state.infrastructure.push({
+      id: 'a-depot',
+      side: 'A',
+      kind: 'outpost',
+      hex: { q: 4, r: 8 },
+      destroyed: false,
+    })
+    let wore = false
+    for (let round = 0; round < 20 && !wore; round++) {
+      passRound(file)
+      a().order.speed = 'emergency' // battle results never reset it; keep the throttle down
+      wore = (a().ships[0].scars?.ftl ?? 0) > 0
+    }
+    expect(wore).toBe(true)
+    const slowed = unitSpeedTiers(a())
+    expect(slowed.maximum).toBeLessThan(fresh.maximum)
   })
 })
 

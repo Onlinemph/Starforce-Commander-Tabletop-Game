@@ -1,4 +1,4 @@
-# Border Command — implementation notes
+# StarForce: Border Command — implementation notes
 
 The operational campaign layer (`src/campaign/`), built to the Border Command
 design doc v0.3. This file records what each build phase shipped, the decisions
@@ -173,6 +173,50 @@ build Phase 5's server is what removes that trust.
   through the real resolver, battles included.
 - The campaign autosaves to the browser and travels as JSON (Save /
   Load campaign); the finished screen names the winner and offers the file.
+
+## The fine-tuning pass (designer feedback, 2026-08)
+
+The name is now **StarForce: Border Command**, per the designer. Three of his
+notes were concrete enough to ship; the rest are recorded below as pending.
+
+- **The 16-phase movement schedule** (`schedule.ts`): a round is sixteen
+  phases, A odd / B even, and a unit's speed in hexes-a-round decides WHICH
+  of its side's eight phases it steps in — his table, reproduced row for row
+  by a test. The implementation encodes the table's generating order (phases
+  join at 8, 4, 2, 6, 7, 3, 5, 1 as speed climbs), which also answers his
+  "some ships could move twice in a phase" note: past speed eight the order
+  wraps, and the extra hexes land as doubled phases. Slow terrain still costs
+  two movement credits per hex. Detection stays a sweep after every phase —
+  sixteen a round now. Dead-reckoning extrapolates at a typical cruise of
+  four (one hex per four table phases).
+- **Speed tiers off the ship form** (`stats.ts`, his formulas verbatim):
+  cruise = FTL circles + 1; max cruise = FTL circles × 2; maximum = max
+  cruise + SIF; emergency = maximum + 1. "FTL circles" are the FTL DRV
+  function line's green circles — the reading under which his "a Yorktown
+  has 9" comes out exactly true (3 × 2 + SIF 3), and "most ships have a 4"
+  cruising holds across the roster (both are pinned tests). Orders name the
+  tier, the hull supplies the number; the slowest ship sets a unit's pace,
+  and marked FTL DRV boxes bite the circles proportionally (a shot-out
+  drive limps at cruise 1) — that scar coupling is provisional.
+- **Speed costs** (provisional numbers, his design intent): max cruise +1
+  endurance a round, maximum +3, emergency +5 over the baseline; a dry tank
+  caps the speed at cruise. Maximum reads one detection band easier to find,
+  emergency two ("makes you much easier to detect"). Emergency running rolls
+  a one-in-six per hull per round for drive wear — FTL box first, sublight
+  when the FTL track is full, then the frame ("ships can take damage or
+  breakdown at this speed").
+- **Sensor power stats in detection**: the searcher's rating now reads the
+  form's own 0-power / 1-power / 2-power SENSOR values (H2.2.1's ladder) at
+  the power the standing order sets, plus the scout and CMND bonuses —
+  "Sensor Ratings, zero power sensor points, 1 Power and 2 power sensor
+  point stats" as he listed them. The power setting's band shift remains as
+  the emission side of the same dial. Cloak, CMND and SCNC already fed the
+  derivation (Phase 1).
+
+Pending from the designer, hooks left clean: the endurance formula (quarters
++ cargo + size class — `endurance` still derives from size class alone until
+it lands), and his sensor equations (the band arithmetic and the provisional
+speed/burn numbers above are the placeholders they will replace).
 
 ## Where the doc met the data (Part 12 material)
 

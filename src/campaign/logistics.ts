@@ -16,13 +16,14 @@
 
 import { shipFormById } from '../data/ships'
 import { hexEquals } from './hexmap'
-import { operationalStats } from './stats'
+import { ftlCirclesOf, operationalStats, sifOf, speedTiersOf, type SpeedTiers } from './stats'
 import { scarsAreEmpty, type ShipScars } from '../engine/shipState'
 import {
   DEFAULT_REPAIR_QUEUE,
   type CampaignState,
   type RepairCategory,
   type ShipRecord,
+  type SpeedTier,
   type Unit,
 } from './types'
 
@@ -181,6 +182,69 @@ export function repairTick(state: CampaignState): void {
 }
 
 // ---------------------------------------------------------------------------
+// Speed (5.4, per the designer's fine-tuning note) — see stats.ts SpeedTiers
+// ---------------------------------------------------------------------------
+
+/**
+ * One hull's speed ladder with its scars aboard: each marked FTL DRV box
+ * takes a proportional bite out of the drive circles (rounded up — a hit
+ * slows a ship, it does not strand it), and a drive shot out entirely leaves
+ * the hull limping at cruise 1. Provisional coupling until the designer's
+ * FTL damage rules land.
+ */
+export function shipSpeedTiers(record: ShipRecord): SpeedTiers {
+  const form = shipFormById(record.formId)
+  if (!form) return speedTiersOf(0, 0)
+  let circles = ftlCirclesOf(form)
+  const boxes = form.ftlDriveBoxes
+  const marked = record.scars?.ftl ?? 0
+  if (boxes > 0 && marked > 0) {
+    circles = Math.ceil((circles * Math.max(0, boxes - marked)) / boxes)
+  }
+  return speedTiersOf(circles, sifOf(form))
+}
+
+/** The slowest hull sets the unit's pace, tier by tier (3.1's logic again). */
+export function unitSpeedTiers(unit: Unit): SpeedTiers {
+  const all = unit.ships.map(shipSpeedTiers)
+  const min = (pick: (t: SpeedTiers) => number) => Math.min(...all.map(pick))
+  return {
+    cruise: min((t) => t.cruise),
+    maxCruise: min((t) => t.maxCruise),
+    maximum: min((t) => t.maximum),
+    emergency: min((t) => t.emergency),
+  }
+}
+
+/**
+ * The tier a unit is actually making: its ordered tier, except that a dry
+ * tank caps everything at cruise — the limp home (6.4's spirit; provisional
+ * until the designer's endurance formula lands).
+ */
+export function effectiveSpeedTier(unit: Unit): SpeedTier {
+  if (unit.order.speed === 'hold') return 'hold'
+  if (enduranceEmpty(unit)) return 'cruise'
+  return unit.order.speed
+}
+
+/** The ordered tier as hexes a round, for the movement schedule. */
+export function orderedSpeed(unit: Unit): number {
+  const tier = effectiveSpeedTier(unit)
+  if (tier === 'hold') return 0
+  const tiers = unitSpeedTiers(unit)
+  switch (tier) {
+    case 'cruise':
+      return tiers.cruise
+    case 'max-cruise':
+      return tiers.maxCruise
+    case 'maximum':
+      return tiers.maximum
+    case 'emergency':
+      return tiers.emergency
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Endurance (6.4) — fuel, supplies, ammo and spares as one pooled number
 // ---------------------------------------------------------------------------
 
@@ -211,16 +275,30 @@ export function enduranceEmpty(unit: Unit): boolean {
 }
 
 /**
+ * The extra tank burn for a round spent at each speed tier: cruise is the
+ * efficient pace the base point already covers; max cruise costs one more;
+ * maximum and emergency are the designer's "hideously inefficient" — numbers
+ * PROVISIONAL until his endurance formula (quarters/cargo/size) lands.
+ */
+export const SPEED_BURN: Record<SpeedTier, number> = {
+  hold: 0,
+  cruise: 0,
+  'max-cruise': 1,
+  maximum: 3,
+  emergency: 5,
+}
+
+/**
  * The round tick's endurance pass (6.4): one point a round, one more for any
- * cloaked running, one more for sensors held at full power — then the depots
- * refill whoever ends the round alongside one. Sprint costs join when the
- * FTL rules replace the 5.4 placeholder.
+ * cloaked running, one more for sensors held at full power, plus the speed
+ * tier's burn — then the depots refill whoever ends the round alongside one.
  */
 export function enduranceTick(state: CampaignState): void {
   for (const unit of state.units) {
     let burn = 1
     if (unit.cloakedThisRound) burn += 1
     if (unit.order.sensorPower === 2) burn += 1
+    burn += SPEED_BURN[effectiveSpeedTier(unit)]
     unit.endurance = Math.max(0, unit.endurance - burn)
     unit.cloakedThisRound = false
     if (canResupplyAt(state, unit)) unit.endurance = unit.enduranceMax

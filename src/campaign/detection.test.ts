@@ -23,8 +23,23 @@ const posture = (over: Partial<ScanPosture> = {}): ScanPosture => ({
   cloaked: false,
   formation: 'standard',
   sensorPower: 1,
+  speedTier: 'cruise',
   terrain: 'deep',
   ...over,
+})
+
+describe('flogged drives glow: speed tiers in the bands', () => {
+  it('a target at maximum reads one band closer, at emergency two', () => {
+    const still = posture({ moved: false })
+    const base = detectionChance(CURVE, 3, still, posture())!
+    const maximum = detectionChance(CURVE, 3, still, posture({ speedTier: 'maximum' }))!
+    const emergency = detectionChance(CURVE, 3, still, posture({ speedTier: 'emergency' }))!
+    expect(maximum).toBeGreaterThan(base)
+    expect(emergency).toBeGreaterThan(maximum)
+    // Whole columns, per the band arithmetic.
+    expect(maximum).toBeCloseTo(detectionChance(CURVE, 2, still, posture())!)
+    expect(emergency).toBeCloseTo(detectionChance(CURVE, 1, still, posture())!)
+  })
 })
 
 describe('the band arithmetic (4.2, 4.3) — the worked round fragment', () => {
@@ -381,6 +396,10 @@ describe('missions steer by the estimate, never the truth (5.3)', () => {
         },
       ],
     })
+    // Cruise moves in own phases 2/4/6/8 — table phase 3 is the hunter's
+    // first scheduled step (schedule.ts).
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 3, side: 'A', interventions: [] })
     const hunter = file.state.units.find((u) => u.id === 'a-1')!
     const truth = file.state.units.find((u) => u.id === 'b-1')!.hex
     expect(hexDistance(hunter.hex, believed)).toBeLessThan(hexDistance({ q: 8, r: 4 }, believed))

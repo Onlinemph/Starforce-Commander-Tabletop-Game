@@ -50,7 +50,7 @@ describe('the campaign file', () => {
       side: 'A',
       interventions: [{ type: 'set-waypoints', unitId: 'a-patrol', waypoints: [{ q: 12, r: 8 }] }],
     })
-    for (let i = 0; i < 17; i++) pass(file)
+    for (let i = 0; i < 21; i++) pass(file)
 
     expect(file.state.round).toBe(2)
     expect(file.state.phase).toBe(7)
@@ -79,25 +79,30 @@ describe('the campaign file', () => {
     expect(back.futureField).toEqual({ fromVersion: 9, note: 'round-trips' })
   })
 
-  it('a unit auto-steps one hex toward its waypoint each own phase, and only its own', () => {
+  it('a unit steps toward its waypoint on its scheduled phases, and only then', () => {
     const file = newCampaign(scenario(), 'c-test-4')
     const start: Hex = { q: 5, r: 10 }
+    // Cruise 4 (FTL 3 + 1) moves in own phases 2/4/6/8 — table phases
+    // 3/7/11/15 for side A. Phase 1 belongs to speed-8 sprinters only.
     file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 1,
       side: 'A',
       interventions: [{ type: 'set-waypoints', unitId: 'a-patrol', waypoints: [{ q: 9, r: 8 }] }],
     })
-    const after1 = file.state.units.find((u) => u.id === 'a-patrol')!
-    expect(hexDistance(after1.hex, { q: 9, r: 8 })).toBeLessThan(hexDistance(start, { q: 9, r: 8 }))
+    expect(file.state.units.find((u) => u.id === 'a-patrol')!.hex).toEqual(start)
 
-    // B's phase does not move A's unit.
-    const held = structuredClone(after1.hex)
+    // B's phase does not move A's unit either.
     file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
-    expect(file.state.units.find((u) => u.id === 'a-patrol')!.hex).toEqual(held)
+    expect(file.state.units.find((u) => u.id === 'a-patrol')!.hex).toEqual(start)
+
+    // Phase 3 is a cruise phase: one hex closer.
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 3, side: 'A', interventions: [] })
+    const after3 = file.state.units.find((u) => u.id === 'a-patrol')!
+    expect(hexDistance(after3.hex, { q: 9, r: 8 })).toBe(hexDistance(start, { q: 9, r: 8 }) - 1)
   })
 
-  it('nebula and dust cost two phases per hex (2.2)', () => {
+  it('nebula and dust cost two movement credits per hex (2.2)', () => {
     const file = newCampaign(scenario(), 'c-test-5')
     // A nebula hex with a clear doorstep beside it — placing the patrol there
     // by hand and ordering it in isolates the entry cost from pathing.
@@ -108,24 +113,32 @@ describe('the campaign file', () => {
     const unit = file.state.units.find((u) => u.id === 'a-patrol')!
     const doorstep = { q: slow.q + 1, r: slow.r }
     unit.hex = doorstep
+    // Phases 1–3: the cruise phase at 3 spends its credit entering the nebula
+    // and owes the second (2.2).
     file.state = resolvePhase(ctxOf(file), file.state, {
       round: 1,
       phase: 1,
       side: 'A',
       interventions: [{ type: 'set-waypoints', unitId: 'a-patrol', waypoints: [{ q: slow.q, r: slow.r }] }],
     })
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
+    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 3, side: 'A', interventions: [] })
     let at = file.state.units.find((u) => u.id === 'a-patrol')!
     expect(at.hex).toEqual({ q: slow.q, r: slow.r })
     expect(at.moveDebt).toBe(1)
 
-    // Its next own phase is spent paying the debt, not moving on.
-    file.state = resolvePhase(ctxOf(file), file.state, { round: 1, phase: 2, side: 'B', interventions: [] })
-    file.state = resolvePhase(ctxOf(file), file.state, {
-      round: 1,
-      phase: 3,
-      side: 'A',
-      interventions: [{ type: 'set-waypoints', unitId: 'a-patrol', waypoints: [{ q: slow.q + 2, r: slow.r }] }],
-    })
+    // Its next movement phase (7) is spent paying the debt, not moving on.
+    for (const phase of [4, 5, 6, 7]) {
+      file.state = resolvePhase(ctxOf(file), file.state, {
+        round: 1,
+        phase,
+        side: sideToMove(phase),
+        interventions:
+          phase === 7
+            ? [{ type: 'set-waypoints', unitId: 'a-patrol', waypoints: [{ q: slow.q + 2, r: slow.r }] }]
+            : [],
+      })
+    }
     at = file.state.units.find((u) => u.id === 'a-patrol')!
     expect(at.hex).toEqual({ q: slow.q, r: slow.r })
     expect(at.moveDebt).toBe(0)
@@ -151,7 +164,7 @@ describe('the campaign file', () => {
 
   it('the clock ends the campaign at the round limit', () => {
     const file = newCampaign(blankScenario({ rounds: 1, forces: { A: [], B: [] } }), 'c-test-7')
-    for (let i = 0; i < 12; i++) pass(file)
+    for (let i = 0; i < 16; i++) pass(file)
     expect(file.state.finished).toBe(true)
     expect(() =>
       resolvePhase(ctxOf(file), file.state, { round: 2, phase: 1, side: 'A', interventions: [] }),

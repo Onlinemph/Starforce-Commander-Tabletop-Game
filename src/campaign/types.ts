@@ -79,10 +79,20 @@ export type Formation = 'close' | 'standard' | 'wide'
  * a phase resolve with zero decisions. Changing any of this is an intervention
  * — a journal entry; the auto-steps the orders produce are derived.
  */
+/**
+ * The speed the order asks for, named in the designer's tiers rather than a
+ * number so the same order means the same thing aboard any hull: what
+ * 'cruise' IS in hexes a round is the unit's own derived stat (stats.ts
+ * SpeedTiers). Cruise is efficient; max cruise less so; maximum and emergency
+ * burn the tanks hard and light the ship up on enemy scopes, and emergency
+ * running risks the drives themselves.
+ */
+export type SpeedTier = 'hold' | 'cruise' | 'max-cruise' | 'maximum' | 'emergency'
+
 export interface StandingOrder {
-  /** Ordered path; the unit steps one hex toward waypoints[0] each own phase. */
+  /** Ordered path; the unit steps toward waypoints[0] on its scheduled phases. */
   waypoints: Hex[]
-  speed: 'cruise' | 'hold'
+  speed: SpeedTier
   /** Passive-scan power setting: 0 quiet, 1 normal, 2 loud-and-sharp (4.3). */
   sensorPower: 0 | 1 | 2
   cloaked: boolean
@@ -308,12 +318,14 @@ export type Intervention =
   | { type: 'set-repair-priority'; unitId: string; queue: RepairCategory[] }
 
 /**
- * One journal entry: one side's phase (5.1). A moves in odd phases, B in even.
+ * One journal entry: one side's phase (5.1). A moves the odd phases, B the
+ * even, and a unit's speed decides which of its side's eight phases it
+ * actually steps in (schedule.ts).
  * Auto-steps are derived from standing orders and are NOT journalled.
  */
 export interface PhaseMove {
   round: number
-  /** 1–12. */
+  /** 1–16 (schedule.ts ROUND_PHASES). */
   phase: number
   side: Side
   interventions: Intervention[]
@@ -368,7 +380,7 @@ export interface PendingEngagement {
 
 export interface CampaignState {
   round: number
-  /** The phase about to be resolved, 1–12. */
+  /** The phase about to be resolved, 1–16. */
   phase: number
   /** Copied from the scenario at creation so the resolver can end the clock. */
   roundLimit: number

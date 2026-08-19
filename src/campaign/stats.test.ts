@@ -29,6 +29,15 @@ describe('the derivation covers the roster', () => {
       expect(s.endurance, form.id).toBeGreaterThanOrEqual(4)
       expect(s.endurance, form.id).toBeLessThanOrEqual(8)
       expect(s.combatValue, form.id).toBe(form.pointValue)
+      // The speed ladder is ordered and starts at a real crawl or better.
+      expect(s.speeds.cruise, form.id).toBeGreaterThanOrEqual(1)
+      expect(s.speeds.maxCruise, form.id).toBeGreaterThanOrEqual(s.speeds.cruise)
+      expect(s.speeds.maximum, form.id).toBeGreaterThanOrEqual(s.speeds.maxCruise)
+      expect(s.speeds.emergency, form.id).toBe(s.speeds.maximum + 1)
+      // Sensor power buys acuity, never sells it.
+      expect(s.sensorRatings[0], form.id).toBeLessThanOrEqual(s.sensorRatings[1])
+      expect(s.sensorRatings[1], form.id).toBeLessThanOrEqual(s.sensorRatings[2])
+      expect(s.sensorRatings[2], form.id).toBe(s.sensorRating)
     }
   })
 
@@ -73,29 +82,45 @@ describe('sanity anchors (3.1.1)', () => {
     expect(stats('union-hermes-i-class-scout')).toEqual({
       signature: 3,
       sensorRating: 8,
+      sensorRatings: [4, 5, 8],
       sciences: 4,
       endurance: 5,
       cloak: false,
       ftlRating: 1,
+      speeds: { cruise: 4, maxCruise: 6, maximum: 10, emergency: 11 },
       combatValue: 21,
     })
     expect(stats('union-union-iii-class-dreadnought')).toEqual({
       signature: 10,
       sensorRating: 9,
+      sensorRatings: [5, 7, 9],
       sciences: 4,
       endurance: 8,
       cloak: false,
       ftlRating: 3,
+      speeds: { cruise: 6, maxCruise: 10, maximum: 12, emergency: 13 },
       combatValue: 158.5,
     })
     expect(stats('vallari-v-7c-raider-class-battlecruiser')).toEqual({
       signature: 4,
       sensorRating: 6,
+      sensorRatings: [2, 4, 6],
       sciences: 2,
       endurance: 6,
       cloak: false,
       ftlRating: 2,
+      speeds: { cruise: 4, maxCruise: 6, maximum: 9, emergency: 10 },
       combatValue: 25,
     })
+  })
+
+  it("the designer's own speed examples come out true", () => {
+    // "a Yorktown has 9" for Maximum Speed (FTL circles ×2 + SIF), and
+    // "most ships have a 4" for cruising (FTL circles + 1).
+    const yorktown = stats('union-yorktown-i-class-heavy-cruiser').speeds
+    expect(yorktown).toEqual({ cruise: 4, maxCruise: 6, maximum: 9, emergency: 10 })
+    const cruises = canon.map((f) => operationalStats(f).speeds.cruise)
+    const atFour = cruises.filter((c) => c === 4).length
+    expect(atFour).toBeGreaterThan(canon.length / 2)
   })
 })

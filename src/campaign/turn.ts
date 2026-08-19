@@ -26,10 +26,14 @@ import {
 } from './detection'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
-import { enduranceTick, repairTick, wingTick } from './logistics'
+import { effectiveSpeedTier, enduranceTick, orderedSpeed, repairTick, wingTick } from './logistics'
+import { hexesThisPhase, ROUND_PHASES } from './schedule'
+import { shipFormById } from '../data/ships'
+import type { ShipScars } from '../engine/shipState'
 import { deliveryTick, settleWinner } from './scoring'
 import {
   DEFAULT_REPAIR_QUEUE,
+  nextRandom,
   sideToMove,
   type BattleRecord,
   type CampaignState,
@@ -190,48 +194,49 @@ function currentDestination(state: CampaignState, unit: Unit): Hex | null {
 }
 
 /**
- * One unit's auto-step (5.2): a hex toward its destination, unless holding or
- * paying off slow terrain. `movedLastOwnPhase` and `course` are recorded here
- * because the detection bands and dead-reckoning read them (4.3, 4.4).
+ * One unit's auto-movement for one of its own phases (5.2): the 16-phase
+ * schedule grants `credits` hexes this phase — usually zero or one, two for
+ * very fast ships — and each credit either pays off slow terrain or steps a
+ * hex toward the destination. `movedLastOwnPhase` and `course` are recorded
+ * here because the detection bands and dead-reckoning read them (4.3, 4.4);
+ * "moved" means the drive is hot — a ship in transit between its scheduled
+ * phases is under way, not holding still, however many hexes this particular
+ * phase granted it.
  */
-function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit): void {
-  if (unit.order.speed === 'hold') {
+function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credits: number): void {
+  if (orderedSpeed(unit) === 0) {
     unit.movedLastOwnPhase = false
     unit.course = null
     return
   }
-  if (unit.moveDebt > 0) {
-    unit.moveDebt -= 1
-    unit.movedLastOwnPhase = true // the drive is hot mid-transit
-    return
+  for (let i = 0; i < credits; i++) {
+    if (unit.moveDebt > 0) {
+      unit.moveDebt -= 1 // the second phase a nebula hex costs (2.2)
+      continue
+    }
+    const target = currentDestination(state, unit)
+    if (!target) break
+    const next = hexStepToward(unit.hex, target)
+    // The map edge is a wall, not a suggestion: a waypoint (or a reckoned
+    // contact position) beyond it holds the unit at the border rather than
+    // walking it off the board.
+    if (hexEquals(next, unit.hex) || !inBounds(next, ctx.map.width, ctx.map.height)) break
+    unit.course = { q: next.q - unit.hex.q, r: next.r - unit.hex.r }
+    unit.hex = next
+    // Nebula and dust cost two movement credits per hex (2.2): the second is owed.
+    unit.moveDebt = entryCost(terrainAt(ctx.map, next)) - 1
   }
-  const target = currentDestination(state, unit)
-  if (!target) {
-    unit.movedLastOwnPhase = false
-    unit.course = null
-    return
-  }
-  const next = hexStepToward(unit.hex, target)
-  // The map edge is a wall, not a suggestion: a waypoint (or a reckoned
-  // contact position) beyond it holds the unit at the border rather than
-  // walking it off the board.
-  if (hexEquals(next, unit.hex) || !inBounds(next, ctx.map.width, ctx.map.height)) {
-    unit.movedLastOwnPhase = false
-    unit.course = null
-    return
-  }
-  unit.course = { q: next.q - unit.hex.q, r: next.r - unit.hex.r }
-  unit.hex = next
-  unit.movedLastOwnPhase = true
-  // Nebula and dust cost two phases per hex (2.2): the second is owed.
-  unit.moveDebt = entryCost(terrainAt(ctx.map, next)) - 1
+  const underway = unit.moveDebt > 0 || currentDestination(state, unit) !== null
+  unit.movedLastOwnPhase = underway
+  if (!underway) unit.course = null
 }
 
 /**
  * Resolve one side's phase: interventions first (they are the journal entry),
- * then that side's auto-steps, then EVERYONE's passive scans (4.1) — twelve
- * detection sweeps a round is the design's heartbeat. Phase 12 additionally
- * runs the round tick (5.1).
+ * then that side's scheduled movement (schedule.ts — a unit's speed decides
+ * which of its side's eight phases it steps in), then EVERYONE's passive
+ * scans (4.1) — sixteen detection sweeps a round is the design's heartbeat.
+ * The final phase additionally runs the round tick (5.1).
  */
 export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: PhaseMove): CampaignState {
   if (state.finished) throw new PhaseError('The campaign is over.')
@@ -262,7 +267,8 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
 
   for (const intervention of move.interventions) applyIntervention(next, intervention, move.side)
   for (const unit of next.units) {
-    if (unit.side === move.side) stepUnit(ctx, next, unit)
+    if (unit.side !== move.side) continue
+    stepUnit(ctx, next, unit, hexesThisPhase(orderedSpeed(unit), unit.side, next.phase))
   }
 
   runDetection(ctx, next)
@@ -274,7 +280,7 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     if (unitIsCloaked(unit)) unit.cloakedThisRound = true
   }
 
-  if (next.phase === 12) {
+  if (next.phase === ROUND_PHASES) {
     /*
      * The round tick (5.1), in a fixed order the tests pin: the fog fades,
      * the crews work, the tanks drain and refill, the wings rearm, the
@@ -284,6 +290,7 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
      */
     decayContacts(next)
     repairTick(next)
+    emergencyWearTick(next)
     enduranceTick(next)
     wingTick(next)
     convoyBeaconStep(ctx, next)
@@ -305,6 +312,45 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
 }
 
 /**
+ * Emergency running wears the ship (the designer's note: ships can take
+ * damage or break down at emergency speed). At the round tick, each hull in a
+ * unit that spent the round at emergency rolls the campaign stream: a one in
+ * six marks an FTL DRV box; with the FTL track full the sublight drive takes
+ * it, and with both full the frame itself does. PROVISIONAL odds until his
+ * FTL rules land. Fixed iteration order — units then ships, in state order —
+ * so the stream replays.
+ */
+function emergencyWearTick(state: CampaignState): void {
+  for (const unit of state.units) {
+    if (effectiveSpeedTier(unit) !== 'emergency') continue
+    for (const ship of unit.ships) {
+      if (nextRandom(state.rng) >= 1 / 6) continue
+      const form = shipFormById(ship.formId)
+      if (!form) continue
+      const scars = (ship.scars ??= blankScars())
+      if (scars.ftl < form.ftlDriveBoxes) scars.ftl += 1
+      else if ((scars.systems['__sublight'] ?? 0) < form.sublight.driveBoxes) {
+        scars.systems['__sublight'] = (scars.systems['__sublight'] ?? 0) + 1
+      } else scars.structure += 1
+    }
+  }
+}
+
+function blankScars(): ShipScars {
+  return {
+    structure: 0,
+    reactors: {},
+    batteries: [],
+    ftl: 0,
+    systems: {},
+    scout: 0,
+    shieldGenerator: 0,
+    armor: { F: 0, S: 0, A: 0, P: 0 },
+    mounts: {},
+  }
+}
+
+/**
  * The beacon chains (6.3): a convoy that ends the round beside an intact
  * friendly jump beacon rides it one hex further along its route — the +1 hex
  * a round that makes scheduled shipping worth escorting and beacons worth
@@ -320,6 +366,6 @@ function convoyBeaconStep(ctx: DetectionContext, state: CampaignState): void {
         i.kind === 'jump-beacon' &&
         hexDistance(i.hex, unit.hex) <= 1,
     )
-    if (chained) stepUnit(ctx, state, unit)
+    if (chained) stepUnit(ctx, state, unit, 1)
   }
 }
