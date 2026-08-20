@@ -324,6 +324,12 @@ export function resolveVolley(
     if (!canBearOn(mountDef.arcs, firingArcs)) {
       return { ok: false, reason: `${weapon.name} mount ${selection.mountIndex + 1} cannot bear on the target.` }
     }
+    if (state.firedSegment) {
+      // A mount speaks once a phase (E6.2 Step 6). Full fire empties its
+      // circles anyway; this is what stops a low-power shot's leftovers from
+      // speaking twice inside a split opportunity (rules reading 2).
+      return { ok: false, reason: `${weapon.name} mount ${selection.mountIndex + 1} has already fired this phase (E6.2 Step 6).` }
+    }
 
     const selected = selectBracket(weapon, effective, lowSpeed)
     if (!selected) {
@@ -368,10 +374,12 @@ export function resolveVolley(
     toDischarge.push({ weapon, index: selection.mountIndex, circles: circlesUsed })
   }
 
-  // Step 6: erase arming circles for the mounts that fired (E6.2 Step 6).
+  // Step 6: erase arming circles for the mounts that fired (E6.2 Step 6),
+  // and mark each as having spoken this phase.
   for (const entry of toDischarge) {
     const state = attacker.mounts[entry.weapon.id][entry.index]
     state.armed = Math.max(0, state.armed - entry.circles)
+    state.firedSegment = true
     if (entry.weapon.mounts[entry.index].ammo !== undefined) state.ammoUsed += 1
   }
 

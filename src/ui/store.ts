@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import {
   buildGame,
+  CURRENT_RULES_VERSION,
   parseSavedGame,
   replayGame,
   withEmbeddedForms,
@@ -504,7 +505,10 @@ export function lockOptionalRules(): boolean {
 
 /** Start a fresh battle from a setup. Custom designs are embedded into it. */
 export function newGame(next: GameSetup): void {
-  setup = withEmbeddedForms(next)
+  // Fresh battles are stamped with the current rules reading; saves carry
+  // their own stamp so old journals keep replaying under the reading they
+  // were fought with (savedGame.ts).
+  setup = withEmbeddedForms({ ...next, rulesVersion: next.rulesVersion ?? CURRENT_RULES_VERSION })
   journal = []
   game = buildGame(setup)
   aiMemo = createAiMemo()

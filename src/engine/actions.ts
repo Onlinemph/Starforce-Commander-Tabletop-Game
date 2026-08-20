@@ -88,7 +88,7 @@ import {
   type GameState,
 } from './game'
 import { setScoutAssignment, setScoutSensorActive } from './scouting'
-import { sensorFunctionCap, sensorPointsAvailable, type ShipState } from './shipState'
+import { sensorFunctionCap, sensorPointsAvailable, shipHasFireLeft, type ShipState } from './shipState'
 import type { Maneuver, Segment, ShieldSide, SystemKind, TurnDirection } from './types'
 import type { ScoutFunction } from './types'
 import type { SmallCraftKind } from './smallCraft'
@@ -311,6 +311,10 @@ function shipById(game: GameState, id: string): ShipState | null {
  */
 function maybeFlushTieGroup(game: GameState): FlushedVolley[] | undefined {
   if (game.pendingVolleys.length === 0) return undefined
+  // An open fire opportunity may still add volleys to the hold — reveal
+  // nothing until it closes (the switchboard closes it on the next foreign
+  // action, or the captain's own pass).
+  if (game.openFireShip !== null) return undefined
   const pending = new Set(game.pendingVolleys.map((h) => h.attackerId))
   const groups = firingOrder(game.ships, (s) => tacticalScanOf(game, s))
   const settled = groups.every(
@@ -352,7 +356,40 @@ export function applyAction(game: GameState, action: GameAction): ActionOutcome 
   return outcome
 }
 
+/**
+ * Why a derelict may not take this order, or null. Rules reading 2 only: a
+ * derelict "allocates nothing" (E11.2.4) and the same silence covers the
+ * helm, the repair parties and the gun crews — the played game that found
+ * this had a derelict wearing a hard turn and a repaired phaser. Reading 1
+ * keeps the old permissiveness so old journals replay unchanged.
+ */
+function derelictRefusal(game: GameState, ship: ShipState | null, what: string): string | null {
+  if (game.rulesVersion < 2 || !ship) return null
+  if (ship.destroyed) return `${ship.name} is destroyed.`
+  if (ship.derelict) return `${ship.name} is a derelict — ${what} (E11.2.4).`
+  return null
+}
+
 function resolveAction(game: GameState, action: GameAction): ActionOutcome {
+  /*
+   * A split fire opportunity (rules reading 2) is CONTIGUOUS: the moment any
+   * action that is not the opportunity-holder's next volley arrives, the
+   * window closes — and any tie-group reveal it was holding up lands here,
+   * exactly where the old one-volley engine landed it, so journals recorded
+   * under either reading replay to the same states. Damage-choice scripting
+   * is exempt because it is the paperwork OF the next volley, not a turn
+   * taken by anyone.
+   */
+  if (
+    game.openFireShip !== null &&
+    !(action.type === 'fire-volley' && action.attackerId === game.openFireShip) &&
+    action.type !== 'queue-damage-choices' &&
+    action.type !== 'stage-damage-action' &&
+    action.type !== 'resolve-staged-action'
+  ) {
+    game.openFireShip = null
+    maybeFlushTieGroup(game)
+  }
   switch (action.type) {
     case 'queue-damage-choices':
       // The captain's decisions, made before the cards come out (E8.4.1).
@@ -556,6 +593,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'arm-mount': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      const adrift = derelictRefusal(game, ship, 'nobody is arming its guns')
+      if (adrift) return said(adrift)
       return said(armMount(ship, action.weaponId, action.mountIndex)?.message ?? null)
     }
 
@@ -575,6 +614,8 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'damage-control': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      const adrift = derelictRefusal(game, ship, 'no repair parties answer')
+      if (adrift) return said(adrift)
       const noCrew = damageControlRefusal(ship)
       if (noCrew) return said(noCrew)
       const messages: string[] = []
@@ -594,6 +635,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'plot-maneuver': {
       const card = game.orders[action.shipId]
       if (!card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, shipById(game, action.shipId), 'the helm answers nobody')
+        if (adrift) return said(adrift)
+      }
       // H6.8.5(3): a ship feeling its way through the dark keeps it simple.
       // While cloaked and undetected only straight, slide, easy and standard
       // are available; anything sharper waits until it is back on the map.
@@ -615,6 +660,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
       if (!ship || !card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'the helm answers nobody')
+        if (adrift) return said(adrift)
+      }
       // Cut to the per-phase limit and the round's unspent points (C1.2.3,
       // C1.2.5) as it is plotted — the card must never promise a speed change
       // the drive has not paid for.
@@ -625,6 +674,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'plot-turn-rate': {
       const card = game.orders[action.shipId]
       if (!card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, shipById(game, action.shipId), 'the helm answers nobody')
+        if (adrift) return said(adrift)
+      }
       card.turnRate = action.rate === null ? undefined : Math.max(0, Math.round(action.rate))
       return ok
     }
@@ -632,6 +685,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'plot-half-slide': {
       const card = game.orders[action.shipId]
       if (!card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, shipById(game, action.shipId), 'the helm answers nobody')
+        if (adrift) return said(adrift)
+      }
       card.halfSlide = action.on || undefined
       return ok
     }
@@ -640,6 +697,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
       if (!ship || !card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'the helm answers nobody')
+        if (adrift) return said(adrift)
+      }
       // Nothing to shut down when the drive is already off (C3.8.4).
       if (action.on && ship.emergencyStopPhases > 0) {
         return said(`${ship.name} is already stopped (C3.8.2).`)
@@ -677,6 +738,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const ship = shipById(game, action.shipId)
       const card = game.orders[action.shipId]
       if (!ship || !card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'its sensors are dark')
+        if (adrift) return said(adrift)
+      }
       /*
        * Two separate limits, and both bind (H2.2).
        *
@@ -708,6 +773,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'plot-shield': {
       const card = game.orders[action.shipId]
       if (!card) return said('No command card for that ship.')
+      {
+        const adrift = derelictRefusal(game, shipById(game, action.shipId), 'its shields are gone with the power')
+        if (adrift) return said(adrift)
+      }
       card.shieldsDown = card.shieldsDown.includes(action.side)
         ? card.shieldsDown.filter((s) => s !== action.side)
         : [...card.shieldsDown, action.side]
@@ -718,6 +787,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'set-max-system': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'nothing aboard answers')
+        if (adrift) return said(adrift)
+      }
       setMaxSystem(game, ship, action.kind)
       return ok
     }
@@ -726,6 +799,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'its shields are gone with the power')
+        if (adrift) return said(adrift)
+      }
       return said(setShieldDown(game, ship, action.side, action.down))
     }
     case 'tractor-lock': {
@@ -733,6 +810,10 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (wrong) return wrong
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      {
+        const adrift = derelictRefusal(game, ship, 'no power feeds its tractors')
+        if (adrift) return said(adrift)
+      }
       const result = attemptTractorLock(game, ship, action.targetId, action.beams)
       return said(
         result.refusal ??
@@ -802,7 +883,11 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
             g.some((s) => !game.firedThisSegment.has(s.id)),
           )
       const tied =
-        tieGroup !== undefined && tieGroup.length > 1 && tieGroup.some((s) => s.id === attacker.id)
+        (tieGroup !== undefined && tieGroup.length > 1 && tieGroup.some((s) => s.id === attacker.id)) ||
+        // A split opportunity is one declaration: if the first volley is being
+        // held for a simultaneous reveal, every later volley of the same
+        // opportunity holds with it (H2.4.2).
+        game.pendingVolleys.some((h) => h.attackerId === attacker.id)
       const terrain = cloudModifiers(game, attacker, target)
       const result = resolveVolley(
         {
@@ -836,6 +921,18 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (!result.ok) return said(result.reason)
 
       game.firedThisSegment.add(attacker.id)
+      /*
+       * Rules reading 2: the opportunity stays open while the ship has a
+       * charged mount that has not spoken — it may declare further volleys at
+       * OTHER targets back-to-back (each mount once, E6.2 Step 6). Never
+       * under H4, whose step machine is explicit that a ship makes one
+       * attack (H4.1.1), and never under reading 1, where old journals'
+       * refused second volleys must stay refused.
+       */
+      game.openFireShip =
+        game.rulesVersion >= 2 && !game.coordinatedFire && shipHasFireLeft(attacker)
+          ? attacker.id
+          : null
       if (game.coordinatedFire && !inGroup) recordAttack(game, attacker, target)
       const dice = result.records.flatMap((r) => r.rolls.map((d) => d.face)).join(' ')
       const announcement =

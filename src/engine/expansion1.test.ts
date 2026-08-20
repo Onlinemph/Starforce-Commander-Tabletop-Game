@@ -303,7 +303,10 @@ describe('scout fleet support (H3.4, H3.5)', () => {
     }
 
     const unaided = resolveVolley(request, ctx(), new Rng(4))
+    // Rearm for the aided shot as a fresh phase would: circles back, and the
+    // once-a-phase mark (E6.2 Step 6) cleared with the segment.
     consort.mounts[phaser.id][0].armed = phaser.mounts[0].armingCircles
+    consort.mounts[phaser.id][0].firedSegment = false
     const aided = resolveVolley(
       { ...request, scoutSupport: scoutSupportFor(consort, enemy, ships) },
       ctx(),

@@ -243,6 +243,8 @@ export const AURELIAN_RAID: Scenario = {
 
 export interface SetupOptions {
   seed?: number
+  /** Engine rules reading; old journals replay under 1 (savedGame.ts). */
+  rulesVersion?: number
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
   /** E11.2 / E11.3 / E11.4–E11.6 optional rules, off by default. */
@@ -1275,6 +1277,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     scenario,
     ships,
     seed: options.seed,
+    rulesVersion: options.rulesVersion ?? 1,
     coordinatedFire: options.coordinatedFire ?? false,
     optionalBatteries: options.optionalBatteries ?? false,
     readyGate: options.readyGate ?? false,

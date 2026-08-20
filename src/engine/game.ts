@@ -557,6 +557,17 @@ export interface GameState {
    */
   firedThisSegment: Set<string>
   /**
+   * The ship whose fire opportunity is still open (rules reading 2): it has
+   * fired at least one volley this Combat Segment and may declare more at
+   * OTHER targets, each mount speaking once (E6.2 Step 6). The opportunity is
+   * contiguous — the moment any other ship acts, or its captain passes, the
+   * window closes. Null whenever nobody mid-opportunity, and never set under
+   * reading 1 or the H4 step machine (H4.1.1 is explicit: one attack).
+   */
+  openFireShip: string | null
+  /** Engine rules reading the battle was created under (savedGame.ts). */
+  rulesVersion: number
+  /**
    * Volleys rolled but not yet landed: ships with tied Tactical Scans fire
    * simultaneously and their damage takes effect simultaneously (H2.4.2), so
    * a tie group's damage is held here until the whole group has fired or
@@ -705,6 +716,8 @@ export function createGame(args: {
   scenario: Scenario
   ships: ShipState[]
   seed?: number
+  /** Engine rules reading; old journals replay under 1 (savedGame.ts). */
+  rulesVersion?: number
   options?: DestructionOptions
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
@@ -747,12 +760,14 @@ export function createGame(args: {
     rng,
     log: [],
     firedThisSegment: new Set(),
+    openFireShip: null,
     pendingVolleys: [],
     damageScript: [],
     stagedAction: null,
     shieldHitsSeen: {},
     shieldChangedThisPhase: new Set(),
     command,
+    rulesVersion: args.rulesVersion ?? 1,
     coordinatedFire: args.coordinatedFire ?? false,
     optionalBatteries: args.optionalBatteries ?? false,
     readyGate: args.readyGate ?? false,
@@ -1360,6 +1375,11 @@ export function tacticalScanOf(game: GameState, ship: ShipState): number {
  * only the one-opportunity check applies here.
  */
 export function firingOrderRefusal(game: GameState, attacker: ShipState): string | null {
+  // Rules reading 2: the opportunity is one CONTIGUOUS turn at the guns, not
+  // one volley — a ship mid-opportunity may keep declaring volleys at other
+  // targets until it passes or anyone else acts (the switchboard closes the
+  // window on the next foreign action).
+  if (game.openFireShip === attacker.id) return null
   if (game.firedThisSegment.has(attacker.id)) {
     return `${attacker.name} has already fired or passed this phase — one opportunity per combat phase (E6.2 Step 1).`
   }
@@ -1856,6 +1876,10 @@ function runSegmentExit(game: GameState): void {
       for (const ship of activeShips(game)) {
         const card = game.orders[ship.id]
         if (!card) continue
+        // A derelict has no power for its sensors either (E11.2.4) — its card,
+        // if anyone wrote on it, never lands. Rules reading 2 only, so old
+        // journals replay unchanged.
+        if (game.rulesVersion >= 2 && ship.derelict) continue
         // Trimmed on the way across: the card was written a segment ago and
         // the sensors may have been shot since (H2.2.2, H2.2.3).
         ship.sensors = clampSensors(ship, card.sensors)
@@ -1952,6 +1976,14 @@ function runSegmentExit(game: GameState): void {
       }
       releaseHeldMissiles(game, report.broken)
       game.firedThisSegment.clear()
+      game.openFireShip = null
+      // Each mount speaks once per phase (E6.2 Step 6); the new phase clears
+      // the record along with the ships' own fired-or-passed marks.
+      for (const ship of game.ships) {
+        for (const group of Object.values(ship.mounts)) {
+          for (const mount of group) mount.firedSegment = false
+        }
+      }
       // Attack markers are removed once all firing is complete (H4.3.1), and
       // the next phase starts the firing sequence again at step 1.
       game.attackedThisPhase.clear()

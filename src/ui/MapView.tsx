@@ -1416,7 +1416,7 @@ function ShipToken({
     return green > 0 ? `${blue}+${green}` : `${blue}`
   }
 
-  const hurt = damageLevel(ship)
+  const hurt = ship.derelict && !ship.destroyed ? 'derelict' : damageLevel(ship)
 
   return (
     <g
@@ -1436,7 +1436,7 @@ function ShipToken({
           Marine strength is hidden information, so a redacted counter keeps it. */}
       <title>
         {`${ship.name} — ${ship.form.name}\n` +
-          `speed ${ship.speed} · heading ${Math.round(ship.placement.heading)}° · ${damageLevel(ship)}\n` +
+          `speed ${ship.speed} · heading ${Math.round(ship.placement.heading)}° · ${ship.derelict && !ship.destroyed ? 'derelict' : damageLevel(ship)}\n` +
           `stress ${ship.stressMarkers}` +
           (redacted ? '' : ` · marines ${ship.marineSquads}`) +
           (cloaked ? '\nCLOAKED — visible only to you' : '') +

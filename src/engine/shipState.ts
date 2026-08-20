@@ -33,6 +33,13 @@ export interface MountState {
   damage: number
   /** Ammunition triangles expended (F1.2.2). */
   ammoUsed: number
+  /**
+   * Fired during the current Combat Segment. A mount speaks once a phase
+   * (E6.2 Step 6) — full fire erases its circles anyway, but a low-power
+   * shot (E3.4) leaves some, and a split opportunity (rules reading 2) must
+   * not let those circles speak twice. Cleared with the segment.
+   */
+  firedSegment?: boolean
 }
 
 export interface ShipState {
@@ -922,4 +929,20 @@ export function beginRound(ship: ShipState): void {
     for (const state of states) state.armedThisRound = 0
   }
   ship.armingForfeited = {}
+}
+
+/**
+ * Whether the ship still has a charged mount that has not spoken this phase —
+ * the question that decides if a fire opportunity stays open (rules reading 2)
+ * after a volley. Bearing is deliberately not checked here: only the captain
+ * knows whether the leftover guns have a target, so the window stays open and
+ * "done firing" closes it.
+ */
+export function shipHasFireLeft(ship: ShipState): boolean {
+  for (const group of Object.values(ship.mounts)) {
+    for (const mount of group) {
+      if (mount.armed > 0 && !mount.firedSegment) return true
+    }
+  }
+  return false
 }

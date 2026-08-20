@@ -17,7 +17,8 @@
  */
 
 import { shipFormById } from '../data/ships'
-import { parseSavedGame, replayGame, withEmbeddedForms, type GameSetup, type SavedGame } from '../data/savedGame'
+import {
+  CURRENT_RULES_VERSION, parseSavedGame, replayGame, withEmbeddedForms, type GameSetup, type SavedGame } from '../data/savedGame'
 import type { CustomScenario } from '../data/scenarios'
 import { victoryPoints } from '../engine/game'
 import { MAX_FLIGHT_SIZE } from '../engine/fighters'
@@ -168,6 +169,9 @@ export function battleFileFor(
   const setup = withEmbeddedForms({
     scenarioId: scenario.id,
     seed: 0, // overwritten below from the campaign stream position
+    // Both consoles derive this file with the same build, so stamping the
+    // current rules reading keeps the derivation deterministic AND current.
+    rulesVersion: CURRENT_RULES_VERSION,
     customScenario: scenario,
   }) as CampaignBattleSetup
   // Seeded from the engagement identity, not Date.now(): both consoles derive

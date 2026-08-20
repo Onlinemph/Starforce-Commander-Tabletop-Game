@@ -20,9 +20,24 @@ import {
  * where two browsers exchanging actions stay in step without a server.
  */
 
+/**
+ * The engine's rules reading, stamped on a battle at creation.
+ *
+ * A battle file is a journal, and the journal records refused actions too —
+ * so a fix that turns yesterday's refusal into today's success would rewrite
+ * every old battle it replays. Version 2 is the playtest batch from the
+ * Union III vs four Yorktowns game: a ship's fire opportunity may be split
+ * across several volleys at different targets (each mount once a phase), and
+ * derelicts are locked out of helm orders, repairs and arming. Files without
+ * the stamp replay under reading 1, exactly as they were fought.
+ */
+export const CURRENT_RULES_VERSION = 2
+
 export interface GameSetup {
   scenarioId: string
   seed: number
+  /** Engine rules reading (see CURRENT_RULES_VERSION). Absent = 1. */
+  rulesVersion?: number
   coordinatedFire?: boolean
   /** Optional batteries (B2.5): stored power spendable mid-round. */
   optionalBatteries?: boolean
@@ -87,6 +102,7 @@ export function buildGame(setup: GameSetup): GameState {
   setEmbeddedScenario(setup.customScenario ?? null)
   return startScenario(setup.scenarioId, {
     seed: setup.seed,
+    rulesVersion: setup.rulesVersion ?? 1,
     coordinatedFire: setup.coordinatedFire ?? false,
     optionalBatteries: setup.optionalBatteries ?? false,
     readyGate: setup.readyGate ?? false,

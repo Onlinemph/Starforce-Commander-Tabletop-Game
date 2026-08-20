@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   firingOrder,
   selectBracket,
@@ -77,6 +77,9 @@ export function CombatPanel({ game, attacker }: Props) {
   const holdingStep = game.coordinatedFire ? firingStepRefusal(game) : null
 
   const alreadyFired = game.firedThisSegment.has(attacker.id)
+  // Rules reading 2: after firing, the ship's opportunity stays open for more
+  // volleys at OTHER targets until it passes or anyone else acts.
+  const windowOpen = game.openFireShip === attacker.id
   // The engine's own gate, so the button and the refusal can never disagree.
   const orderRefusal = firingOrderRefusal(game, attacker)
   const mayFire = game.coordinatedFire
@@ -122,6 +125,29 @@ export function CombatPanel({ game, attacker }: Props) {
     ? shieldsFacing(attacker.placement.position, target.placement.position, target.placement.heading)
     : []
 
+  /*
+   * Weapons picked for one target must not ride silently into a volley at the
+   * next: the played game's report has the exact failure — select weapons,
+   * switch target, FIRE, and the whole volley refuses because one mount
+   * cannot bear. Selection follows the target instead.
+   */
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0 || !target) return prev
+      const next = new Set(
+        [...prev].filter((key) => {
+          const [weaponId, indexStr] = key.split('|')
+          const weapon = attacker.form.weapons.find((w) => w.id === weaponId)
+          const mount = weapon?.mounts[Number(indexStr)]
+          return mount ? canBearOn(mount.arcs, targetArcs) : false
+        }),
+      )
+      return next.size === prev.size ? prev : next
+    })
+    // Re-evaluated when the target (or the attacker under it) changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.id, attacker.id])
+
   const toggleMount = (key: string) =>
     setSelected((prev) => {
       const next = new Set(prev)
@@ -132,10 +158,20 @@ export function CombatPanel({ game, attacker }: Props) {
 
   const fire = async () => {
     if (!target) return
-    const mounts: MountSelection[] = [...selected].map((key) => {
-      const [weaponId, indexStr] = key.split('|')
-      return { weaponId, mountIndex: Number(indexStr) }
-    })
+    const mounts: MountSelection[] = [...selected]
+      .map((key) => {
+        const [weaponId, indexStr] = key.split('|')
+        return { weaponId, mountIndex: Number(indexStr) }
+      })
+      // The pruning effect keeps the selection honest, but the volley is the
+      // record — filter once more so a stale key can never refuse the lot.
+      .filter(({ weaponId, mountIndex }) => {
+        const weapon = attacker.form.weapons.find((w) => w.id === weaponId)
+        const mount = weapon?.mounts[mountIndex]
+        const state = attacker.mounts[weaponId]?.[mountIndex]
+        return mount && state && !state.firedSegment && canBearOn(mount.arcs, targetArcs)
+      })
+    if (mounts.length === 0) return
 
     // One action carries the whole volley: the handler re-derives every
     // modifier from game state, resolves it, and journals the intent.
@@ -173,6 +209,11 @@ export function CombatPanel({ game, attacker }: Props) {
           {!mayFire && (
             <span className="chip chip-warn">
               {alreadyFired ? 'Already fired or passed this phase' : 'Not this ship\u2019s turn to fire'}
+            </span>
+          )}
+          {windowOpen && (
+            <span className="chip">
+              Opportunity open — fire remaining weapons at another target, or Done firing
             </span>
           )}
         </div>
@@ -342,7 +383,8 @@ export function CombatPanel({ game, attacker }: Props) {
             const bears = target ? canBearOn(mount.arcs, targetArcs) : false
             const bracket =
               target && effective !== null ? selectBracket(weapon, effective, target.speed === 0) : null
-            const disabled = !ready || !bears || !bracket
+            const spent = state.firedSegment === true
+            const disabled = !ready || !bears || !bracket || spent
 
             return (
               <button
@@ -352,7 +394,9 @@ export function CombatPanel({ game, attacker }: Props) {
                 disabled={disabled}
                 onClick={() => toggleMount(key)}
                 title={
-                  !ready
+                  spent
+                    ? 'Already fired this phase (E6.2 Step 6)'
+                    : !ready
                     ? 'Not armed'
                     : !bears
                       ? `Cannot bear (arcs ${mount.arcs.join('/')})`
@@ -405,10 +449,12 @@ export function CombatPanel({ game, attacker }: Props) {
           // Passing can land another ship's held volley (H2.4.2), which is
           // damage, which may be a question for its captain. An early pass is
           // allowed — it only gives up the right to see higher volleys first.
-          disabled={alreadyFired}
+          // While a split opportunity is open the same action reads as "done
+          // firing": it closes the window and lets any held reveal land.
+          disabled={alreadyFired && !windowOpen}
           onClick={() => void dispatchWithChoices({ type: 'pass-fire', shipId: attacker.id })}
         >
-          Pass
+          {windowOpen ? 'Done firing' : 'Pass'}
         </button>
       </div>
 

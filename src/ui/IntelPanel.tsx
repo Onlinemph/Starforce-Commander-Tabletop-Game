@@ -55,7 +55,7 @@ export function IntelPanel({
         </div>
         <div>
           <dt>Damage</dt>
-          <dd>{ship.destroyed ? 'destroyed' : damageLevel(ship)}</dd>
+          <dd>{ship.destroyed ? 'destroyed' : ship.derelict ? 'derelict' : damageLevel(ship)}</dd>
         </div>
       </dl>
 
