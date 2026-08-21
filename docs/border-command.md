@@ -247,8 +247,59 @@ notes were concrete enough to ship; the rest are recorded below as pending.
 
 Pending from the designer, hooks left clean: the endurance formula (quarters
 + cargo + size class — `endurance` still derives from size class alone until
-it lands), and his sensor equations (the band arithmetic and the provisional
-speed/burn numbers above are the placeholders they will replace).
+it lands).
+
+## The sensor model (designer's spreadsheet briefing, 2026-08)
+
+His sensor equations arrived as a Copilot-written briefing plus a
+spreadsheet, and `src/campaign/sensorModel.ts` implements them: five separate
+checks — initial detection, intelligence, track retention, reacquisition,
+false contacts — never substituted for one another, every coefficient in one
+configurable structure (`SENSOR_MODEL`, overridable per scenario via
+`tuning.sensorModel`), and a factors log on every reading. The calibration
+anchor is his own worked table: a passive Yorktown II searching for a V-7D
+reads 90/70/50/30/10/3.5/1.225% per scan at ranges 0–6, and the approach
+sequence 4,3,3,2,2,1,1,0 compounds to 99.90% by 1 − Π(1 − pᵢ). Both are
+pinned tests, along with the rest of his §17 validation list (25 tests).
+
+Formulas implemented exactly as briefed: scout +25%/pt detection and +20%/pt
+intelligence, CMND +5%/+15% only without a scout block; power multiplier
+MAX(0.5, 0.75 + 0.25 × power/85); size multiplier MAX(0.10, 1 + 0.15 ×
+(size − 4)); civilians ×3 final; damage +5 points per full 20, inside range
+6; searcher active ×2 detection / ×1.5 intelligence at ranges 0–2; target
+active = +7 signature speed, additive; intelligence ×2 at ranges 0–1;
+searcher speed 10+ past range 1 ×0.10 detection / ×0.05 intelligence;
+retention 85% ±range-change +10%×intel clamped [5,99]; reacquisition
+MAX(fresh+10, 50%+adj+20%×intel) clamped [5,95]; ghosts 0.5% per passive
+scan, 0.1% active.
+
+**The workbook itself arrived empty** — a SHIP DATA header block, none of
+the `Sensor Model` sheet cells the briefing cites (B58/B60/B94/B96, E35…)
+— so the pieces that lived only there are PROVISIONAL stand-ins shaped to
+the prose (marked in the config): the two searcher speed curves, the
+intelligence base curve, terrain, cloak, formation and ship-count factors,
+the active-sensor long-range "smaller bonuses", and a single calibration
+normalizer standing in for the base capability formula. Send the real
+workbook and those constants get replaced cell for cell.
+
+The campaign sweep (`detection.ts`) now runs the model with explicit track
+states per contact — detected / tracked / track-lost / reacquired — a lost
+track keeping its last-known picture, ghosts spawning as contacts whose
+target id matches no unit (they fade like any cold trail, and only the
+umpire knows). Two structural rules survive from the doc on top of the
+model: a same-hex scan always finds an uncloaked hull (4.3 — engagement and
+ambush logic stand on it), and no retention or reacquisition roll happens
+past a tracking horizon (default 8 hexes, configurable) so the 5% floor
+cannot hold a track on a target half a map away. Active Sensors is a
+standing order (checkbox in the console) separate from the power setting.
+
+From his orders list, still to build: task forces, Shadow as a first-class
+order (intercept exists; shadow-at-2-hexes is a mission type away), Attack
+Nearest / Attack Specified with speed caps, Raid / Assault system orders,
+Avoid Contact, AI civilian shipping between planets and bases, and the
+formation deep-think he deferred. Quick Resolve already covers his
+"auto-resolve battles" item; ship entry via the builder covers "add ships"
+(campaign scenarios take any form id, custom forms embed in the file).
 
 ## Where the doc met the data (Part 12 material)
 

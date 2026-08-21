@@ -95,6 +95,13 @@ export interface StandingOrder {
   speed: SpeedTier
   /** Passive-scan power setting: 0 quiet, 1 normal, 2 loud-and-sharp (4.3). */
   sensorPower: 0 | 1 | 2
+  /**
+   * Active Sensors order (designer's orders list): a separate dial from the
+   * power setting. Active mode sharpens the searcher's own detection and
+   * intelligence — strongly inside range 2 — and makes the emitter itself
+   * read +7 signature speed on every enemy scope (sensorModel.ts §5–6).
+   */
+  activeSensors?: boolean
   cloaked: boolean
   formation: Formation
   /**
@@ -212,14 +219,31 @@ export interface ContactEntry {
   stale: boolean
 }
 
+/**
+ * The designer's contact states (briefing §13): a track is gained, held phase
+ * to phase, lost, and — knowing the signature now — reacquired more easily
+ * than it was first found. 'undetected' is the absence of a record; a
+ * collapsed record (three quiet rounds) reads as undetected again.
+ */
+export type TrackState = 'detected' | 'tracked' | 'track-lost' | 'reacquired'
+
 export interface ContactRecord {
   /** Opaque (`ct-<side>-<seq>`): a contact id that named its target unit
    *  would hand the enemy's order of battle to any client that read it. */
   id: string
   /** The side doing the seeing. */
   side: Side
-  /** True unit this record shadows — umpire-only. */
+  /** True unit this record shadows — umpire-only. A false contact shadows
+   *  nothing: its target id (`phantom-<seq>`) matches no unit, ever. */
   targetUnitId: string
+  /**
+   * Track state (briefing §13). Absent on records from before the sensor
+   * model landed — read those as 'tracked', which is what the old sweep's
+   * successful-scan-only records were.
+   */
+  track?: TrackState
+  /** Range at the last scan attempt, for retention's range-change adjustment. */
+  lastRange?: number
   attributes: Partial<Record<ContactAttribute, ContactEntry>>
   /** Where the viewer believes it is; exact when scanned this phase. */
   estimatedHex: Hex
@@ -308,6 +332,12 @@ export interface CampaignScenario {
     detectionCurve: readonly number[]
     misinformationBase: number
     falseContacts: boolean
+    /**
+     * Overrides for the sensor model's coefficients (sensorModel.ts) — the
+     * designer's "keep all coefficients in a configurable data structure",
+     * per scenario so a tuning pass is data, not a source change.
+     */
+    sensorModel?: Record<string, unknown>
   }
 }
 

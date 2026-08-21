@@ -12,7 +12,10 @@ import { sideToMove, type CampaignFile, type PhaseMove } from './types'
  * anywhere in the JSON, it is a leak, whatever field it hides in.
  */
 
-function fogFile(curve: readonly number[]): CampaignFile {
+const BLIND = { detection: 0, retention: 0, reacquisition: 0 }
+const CERTAIN = { detection: 1, intelligence: 1, retention: 1 }
+
+function fogFile(sensor: Record<string, number>): CampaignFile {
   const scenario = blankScenario({
     mapSeed: 9,
     mapWidth: 20,
@@ -43,7 +46,12 @@ function fogFile(curve: readonly number[]): CampaignFile {
       { id: 'b-outpost', side: 'B', kind: 'outpost', hex: { q: 16, r: 2 } },
       { id: 'b-ears', side: 'B', kind: 'listening-post', hex: { q: 12, r: 4 } },
     ],
-    tuning: { detectionCurve: curve, misinformationBase: 0, falseContacts: false },
+    tuning: {
+      detectionCurve: [],
+      misinformationBase: 0,
+      falseContacts: false,
+      sensorModel: { override: sensor },
+    },
   })
   return newCampaign(scenario, 'c-views')
 }
@@ -63,7 +71,7 @@ function pass(file: CampaignFile): void {
 
 describe('what never crosses the wall', () => {
   it('an undetected enemy is absent from the view, bytes and all', () => {
-    const file = fogFile([0, 0, 0, 0, 0, 0]) // nobody sees anything
+    const file = fogFile(BLIND) // nobody sees anything
     for (let i = 0; i < 6; i++) pass(file)
     const view = viewFor(file.map, file.state, 'A')
     const bytes = JSON.stringify(view)
@@ -76,7 +84,7 @@ describe('what never crosses the wall', () => {
   })
 
   it('umpire fields never serialize: no truth flags, no target unit ids', () => {
-    const file = fogFile([1, 1, 1, 1, 1, 1]) // everyone sees everything
+    const file = fogFile(CERTAIN) // everyone sees everything
     for (let i = 0; i < 8; i++) pass(file)
     expect(file.state.contacts.length).toBeGreaterThan(0)
     for (const side of ['A', 'B'] as const) {
@@ -88,7 +96,7 @@ describe('what never crosses the wall', () => {
   })
 
   it('a contact id is opaque — it does not name the unit it shadows', () => {
-    const file = fogFile([1, 1, 1, 1, 1, 1])
+    const file = fogFile(CERTAIN)
     pass(file)
     const view = viewFor(file.map, file.state, 'A')
     expect(view.contacts.length).toBeGreaterThan(0)
@@ -99,8 +107,8 @@ describe('what never crosses the wall', () => {
   })
 
   it('a lie reads exactly like the truth: same shape, no tell', () => {
-    const honest = fogFile([1, 1, 1, 1, 1, 1])
-    const lying = fogFile([1, 1, 1, 1, 1, 1])
+    const honest = fogFile(CERTAIN)
+    const lying = fogFile(CERTAIN)
     lying.scenario.tuning.misinformationBase = 1
     for (let i = 0; i < 6; i++) {
       pass(honest)
@@ -118,14 +126,14 @@ describe('what never crosses the wall', () => {
   })
 
   it('enemy infrastructure is on the charts — except listening posts (3.4)', () => {
-    const file = fogFile([0, 0, 0, 0, 0, 0])
+    const file = fogFile(BLIND)
     const view = viewFor(file.map, file.state, 'A')
     expect(view.knownEnemyInfrastructure.map((i) => i.id)).toEqual(['b-outpost'])
     expect(JSON.stringify(view)).not.toContain('b-ears')
   })
 
   it('the view is a copy: bending it does not bend the truth', () => {
-    const file = fogFile([1, 1, 1, 1, 1, 1])
+    const file = fogFile(CERTAIN)
     pass(file)
     const view = viewFor(file.map, file.state, 'A')
     view.units[0].hex.q = 99
@@ -137,7 +145,7 @@ describe('what never crosses the wall', () => {
 
 describe('what the wall shows honestly', () => {
   it('a contact scanned this phase sits at its true hex, unflagged', () => {
-    const file = fogFile([1, 1, 1, 1, 1, 1])
+    const file = fogFile(CERTAIN)
     // First sighting past range two lands ±1 and estimated (4.4); the second
     // fix is a hard one, so two passes earn the true, unflagged position.
     pass(file)
@@ -150,7 +158,7 @@ describe('what the wall shows honestly', () => {
   })
 
   it('an unscanned contact is dead-reckoned along its observed course, flagged', () => {
-    const file = fogFile([0, 0, 0, 0, 0, 0])
+    const file = fogFile(BLIND)
     file.state.contacts.push({
       id: 'ct-A-1',
       side: 'A',
@@ -172,7 +180,7 @@ describe('what the wall shows honestly', () => {
   })
 
   it('a collapsed contact keeps only its existence (4.4)', () => {
-    const file = fogFile([0, 0, 0, 0, 0, 0])
+    const file = fogFile(BLIND)
     file.state.contacts.push({
       id: 'ct-A-2',
       side: 'A',
@@ -196,7 +204,7 @@ describe('what the wall shows honestly', () => {
   })
 
   it('both sides read the same public scoreboard and the same map', () => {
-    const file = fogFile([1, 1, 1, 1, 1, 1])
+    const file = fogFile(CERTAIN)
     pass(file)
     const a = viewFor(file.map, file.state, 'A')
     const b = viewFor(file.map, file.state, 'B')

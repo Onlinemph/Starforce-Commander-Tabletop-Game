@@ -1,106 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { detectionChance, reckonedHex, trueAttribute, unitProfile, type ScanPosture } from './detection'
+import { reckonedHex, trueAttribute, unitProfile } from './detection'
 import { blankScenario, newCampaign } from './file'
 import { hexDistance } from './hexmap'
 import { resolvePhase, PhaseError, type DetectionContext } from './turn'
 import { sideToMove, type CampaignFile, type ContactAttribute, type PhaseMove } from './types'
 
 /**
- * Detection (Part 4): the band arithmetic against the doc's own worked
- * example (Appendix A), then the fog itself — the ladder, the lies, the
- * decay — made deterministic by turning the tuning dials the scenario
- * carries for exactly this purpose (10.3): a curve of certainties instead
- * of chances, a misinformation rate of always or never.
+ * Detection under the designer's sensor model (sensorModel.ts, which carries
+ * its own §17 validation suite): here the fog itself — track states, the
+ * ladder, the lies, the decay, the ghosts — made deterministic by the model's
+ * own override dial (10.3): probabilities of always or never instead of
+ * chances, a misinformation rate of always or never.
  */
-
-const CURVE = [0.95, 0.85, 0.75, 0.45, 0.25, 0.02]
-const CERTAIN = [1, 1, 1, 1, 1, 1]
-
-const posture = (over: Partial<ScanPosture> = {}): ScanPosture => ({
-  signature: 5,
-  sensorRating: 6,
-  moved: true,
-  cloaked: false,
-  formation: 'standard',
-  sensorPower: 1,
-  speedTier: 'cruise',
-  terrain: 'deep',
-  ...over,
-})
-
-describe('flogged drives glow: speed tiers in the bands', () => {
-  it('a target at maximum reads one band closer, at emergency two', () => {
-    const still = posture({ moved: false })
-    const base = detectionChance(CURVE, 3, still, posture())!
-    const maximum = detectionChance(CURVE, 3, still, posture({ speedTier: 'maximum' }))!
-    const emergency = detectionChance(CURVE, 3, still, posture({ speedTier: 'emergency' }))!
-    expect(maximum).toBeGreaterThan(base)
-    expect(emergency).toBeGreaterThan(maximum)
-    // Whole columns, per the band arithmetic.
-    expect(maximum).toBeCloseTo(detectionChance(CURVE, 2, still, posture())!)
-    expect(emergency).toBeCloseTo(detectionChance(CURVE, 1, still, posture())!)
-  })
-})
-
-describe('the band arithmetic (4.2, 4.3) — the worked round fragment', () => {
-  it('phase 5: a held-still target at range five is off-curve — no roll', () => {
-    expect(detectionChance(CURVE, 5, posture({ moved: false }), posture({ moved: false }))).toBeNull()
-  })
-
-  it('phase 6: a searcher that moved scans range four at two percent', () => {
-    expect(detectionChance(CURVE, 4, posture({ moved: true }), posture())).toBeCloseTo(0.02)
-  })
-
-  it('phase 6: sensors at two power treat range five as range four', () => {
-    expect(detectionChance(CURVE, 5, posture({ moved: false, sensorPower: 2 }), posture())).toBeCloseTo(0.25)
-  })
-
-  it('phase 7: the still picket keeps reading twenty-five percent', () => {
-    expect(detectionChance(CURVE, 4, posture({ moved: false }), posture())).toBeCloseTo(0.45 - 0.2, 9)
-  })
-})
-
-describe('the band arithmetic — gates and stacks', () => {
-  it('same hex always detects, unless the target is cloaked', () => {
-    expect(detectionChance(CURVE, 0, posture(), posture())).toBe(1)
-    expect(detectionChance(CURVE, 0, posture(), posture({ cloaked: true }))).not.toBe(1)
-  })
-
-  it('a cloaked target is a range-two problem, and harder even there', () => {
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ cloaked: true }))).toBeNull()
-    // Range 2, cloak −1 band → column 3.
-    expect(detectionChance(CURVE, 2, posture({ moved: false }), posture({ cloaked: true }))).toBeCloseTo(0.45)
-  })
-
-  it('nebula hides its occupants beyond range two and blinds them outward', () => {
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ terrain: 'nebula' }))).toBeNull()
-    // Searcher inside scans outward at −2 bands: range 2 reads as range 4.
-    expect(detectionChance(CURVE, 2, posture({ moved: false, terrain: 'nebula' }), posture())).toBeCloseTo(0.25)
-  })
-
-  it('loud hulls, wide formations and star systems all give a band away', () => {
-    const base = detectionChance(CURVE, 3, posture({ moved: false }), posture())!
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ signature: 9 }))!).toBeGreaterThan(base)
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ formation: 'wide' }))!).toBeGreaterThan(base)
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ terrain: 'system' }))!).toBeGreaterThan(base)
-    expect(detectionChance(CURVE, 3, posture({ moved: false }), posture({ signature: 2 }))!).toBeLessThan(base)
-  })
-
-  it('a cloaked searcher pays two bands for its own silence', () => {
-    const open = detectionChance(CURVE, 2, posture({ moved: false }), posture())!
-    const dark = detectionChance(CURVE, 2, posture({ moved: false, cloaked: true }), posture())!
-    expect(dark).toBeLessThan(open)
-    // Two bands off a range-2 look: the roll reads the range-4 column.
-    expect(dark).toBeCloseTo(0.25)
-  })
-})
 
 // ---------------------------------------------------------------------------
 // The fog in motion: contacts, the ladder, lies, decay
 // ---------------------------------------------------------------------------
 
+const BLIND = { detection: 0, retention: 0, reacquisition: 0 }
+
 function duelFile(over: {
-  curve?: readonly number[]
+  /** Flat probability overrides; unset = certain scans within sensor reach. */
+  sensor?: { detection?: number; intelligence?: number; retention?: number; reacquisition?: number }
+  falseContacts?: boolean
   misinformation?: number
   aShips?: string[]
   bShips?: string[]
@@ -135,15 +57,18 @@ function duelFile(over: {
       ],
     },
     tuning: {
-      detectionCurve: over.curve ?? CERTAIN,
+      detectionCurve: [],
       misinformationBase: over.misinformation ?? 0,
-      falseContacts: false,
+      falseContacts: over.falseContacts ?? false,
+      sensorModel: {
+        override: { detection: 1, intelligence: 1, retention: 1, ...over.sensor },
+      },
     },
   })
   const file = newCampaign(scenario, 'c-det')
   // Clean space for these tests: the generated map is free to put a nebula
-  // under a carefully-chosen range, and the terrain bands have their own
-  // tests against detectionChance directly.
+  // under a carefully-chosen range, and terrain's probability effects have
+  // their own tests in sensorModel.test.ts.
   file.map.terrain = []
   return file
 }
@@ -186,9 +111,6 @@ describe('contact records climb the ladder (4.4)', () => {
   })
 
   it('identification waits for range three or a scout block (4.4)', () => {
-    // The V-7C is loud enough to stay on-curve while holding still at range
-    // four; the default V-6L is signature-quiet and slips off the end — which
-    // is the band arithmetic working, not the ladder.
     const far = duelFile({ bHex: { q: 12, r: 4 }, bShips: ['vallari-v-7c-raider-class-battlecruiser'] }) // range 4
     for (let i = 0; i < 24; i++) pass(far)
     const blocked = contactOf(far, 'A')!
@@ -251,6 +173,68 @@ describe('misinformation (4.5)', () => {
   })
 })
 
+describe('track states (briefing §13)', () => {
+  it('a scan gains a track, a held scan keeps it, a failed retention loses it', () => {
+    const file = duelFile({})
+    pass(file)
+    expect(contactOf(file, 'A')!.track).toBe('detected')
+    pass(file)
+    expect(contactOf(file, 'A')!.track).toBe('tracked')
+
+    // Retention turns impossible: the next sweep drops the track but keeps
+    // the record — last-known picture, not amnesia.
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.retention = 0
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.reacquisition = 0
+    pass(file)
+    const lost = contactOf(file, 'A')!
+    expect(lost.track).toBe('track-lost')
+    expect(lost.attributes.exists).toBeDefined()
+  })
+
+  it('a lost track is reacquired, not re-detected: detection zero, reacquisition certain', () => {
+    const file = duelFile({})
+    pass(file)
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.retention = 0
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.reacquisition = 0
+    pass(file)
+    expect(contactOf(file, 'A')!.track).toBe('track-lost')
+
+    // Fresh detection stays impossible; only the reacquisition path is open.
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.detection = 0
+    ;(file.scenario.tuning.sensorModel as { override: Record<string, number> }).override.reacquisition = 1
+    pass(file)
+    expect(contactOf(file, 'A')!.track).toBe('reacquired')
+    pass(file)
+    expect(contactOf(file, 'A')!.track).toBe('track-lost') // retention still 0
+  })
+})
+
+describe('false contacts (briefing §14)', () => {
+  it('a certain ghost appears, shadows no unit, and cannot be reacquired', () => {
+    const file = duelFile({ falseContacts: true, sensor: BLIND })
+    ;(file.scenario.tuning.sensorModel as Record<string, unknown>).falseContactPassive = 1
+    pass(file)
+    const ghosts = file.state.contacts.filter((c) => c.targetUnitId.startsWith('phantom-'))
+    expect(ghosts.length).toBeGreaterThan(0)
+    const ghost = ghosts[0]
+    expect(ghost.attributes.exists?.value).toBe('yes')
+    expect(ghost.attributes.exists?.truthful).toBe(false) // umpire-only marker
+    expect(file.state.units.some((u) => u.id === ghost.targetUnitId)).toBe(false)
+
+    // Never scannable again: it goes quiet and collapses like any cold trail.
+    ;(file.scenario.tuning.sensorModel as Record<string, unknown>).falseContactPassive = 0
+    while (file.state.round < 5) pass(file)
+    const faded = file.state.contacts.find((c) => c.id === ghost.id)!
+    expect(faded.unscannedRounds).toBeGreaterThanOrEqual(3)
+  })
+
+  it('no ghosts when the scenario keeps the dial off', () => {
+    const file = duelFile({ falseContacts: false })
+    for (let i = 0; i < 16; i++) pass(file)
+    expect(file.state.contacts.some((c) => c.targetUnitId.startsWith('phantom-'))).toBe(false)
+  })
+})
+
 describe('contact decay (4.4)', () => {
   it('an unscanned contact goes stale, drifts, and collapses after three rounds', () => {
     const file = duelFile({})
@@ -271,7 +255,7 @@ describe('contact decay (4.4)', () => {
 
 describe('infrastructure sensors (3.4)', () => {
   it('a fleet base auto-contacts anything uncloaked within four hexes', () => {
-    const file = duelFile({ curve: [0, 0, 0, 0, 0, 0] }) // ships see nothing
+    const file = duelFile({ sensor: BLIND }) // ships see nothing
     file.state.infrastructure.push({
       id: 'base-a',
       side: 'A',
@@ -290,7 +274,7 @@ describe('infrastructure sensors (3.4)', () => {
 
   it('a cloaked hull slips the radar picket', () => {
     const file = duelFile({
-      curve: [0, 0, 0, 0, 0, 0],
+      sensor: BLIND,
       bShips: ['aurelian-corvus-i-class-destroyer'],
     })
     file.state.units.find((u) => u.id === 'b-1')!.order.cloaked = true
@@ -385,7 +369,7 @@ describe('dead reckoning stays on the chart', () => {
 
 describe('missions steer by the estimate, never the truth (5.3)', () => {
   it('an intercept closes on where the contact was believed to be', () => {
-    const file = duelFile({ curve: [0, 0, 0, 0, 0, 0] })
+    const file = duelFile({ sensor: BLIND })
     // The umpire pencils in a contact whose estimate is WRONG on purpose:
     // the raider is east, the estimate is south-west.
     const believed = { q: 4, r: 8 }

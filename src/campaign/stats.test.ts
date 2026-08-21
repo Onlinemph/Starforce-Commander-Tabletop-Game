@@ -89,6 +89,12 @@ describe('sanity anchors (3.1.1)', () => {
       ftlRating: 1,
       speeds: { cruise: 4, maxCruise: 6, maximum: 10, emergency: 11 },
       combatValue: 21,
+      actualPower: 55.46666666666667,
+      sizeClass: 3,
+      scoutSensors: 3,
+      commandBoxes: 0,
+      sensorValues: [2, 3, 6],
+      sciencesRaw: 2,
     })
     expect(stats('union-union-iii-class-dreadnought')).toEqual({
       signature: 10,
@@ -100,6 +106,12 @@ describe('sanity anchors (3.1.1)', () => {
       ftlRating: 3,
       speeds: { cruise: 6, maxCruise: 10, maximum: 12, emergency: 13 },
       combatValue: 158.5,
+      actualPower: 259.2839881133813,
+      sizeClass: 7,
+      scoutSensors: 0,
+      commandBoxes: 5,
+      sensorValues: [4, 6, 8],
+      sciencesRaw: 4,
     })
     expect(stats('vallari-v-7c-raider-class-battlecruiser')).toEqual({
       signature: 4,
@@ -111,6 +123,12 @@ describe('sanity anchors (3.1.1)', () => {
       ftlRating: 2,
       speeds: { cruise: 4, maxCruise: 6, maximum: 9, emergency: 10 },
       combatValue: 25,
+      actualPower: 93.25429727095296,
+      sizeClass: 4,
+      scoutSensors: 0,
+      commandBoxes: 0,
+      sensorValues: [2, 4, 6],
+      sciencesRaw: 2,
     })
   })
 

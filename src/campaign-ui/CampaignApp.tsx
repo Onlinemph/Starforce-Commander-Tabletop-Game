@@ -835,6 +835,14 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                   <option value={2}>Full power (2)</option>
                 </select>
               </label>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={order.activeSensors ?? false}
+                  onChange={(e) => editOrder(unit.id, { activeSensors: e.target.checked })}
+                />
+                Active sensors — sharp inside range 2, but every enemy scope hears the ping
+              </label>
               <label className="field">
                 <span>Formation</span>
                 <select

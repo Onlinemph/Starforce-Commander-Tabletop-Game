@@ -61,6 +61,21 @@ export interface OperationalStats {
   speeds: SpeedTiers
   /** Printed point value, verbatim: VP and force-building only (3.1). */
   combatValue: number
+  /**
+   * The sensor-model inputs the designer's briefing names directly
+   * (sensorModel.ts): TOTAL ACTUAL POWER from the costing model, size class,
+   * the Scout Sensor block's rating (0–5), the CMND box count, and the raw
+   * SENS/SNCS values — raw because the model applies its own scout and
+   * command bonuses, and the folded ratings above already include them.
+   */
+  actualPower: number
+  sizeClass: number
+  scoutSensors: number
+  commandBoxes: number
+  /** SENSOR line value at power 0/1/2, no scout/command folded in. */
+  sensorValues: [number, number, number]
+  /** SCNC boxes alone, no scout bonus, unclamped. */
+  sciencesRaw: number
 }
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
@@ -155,5 +170,15 @@ export function operationalStats(form: ShipForm): OperationalStats {
     ftlRating: form.ftlDriveBoxes,
     speeds: speedTiersOf(ftlCirclesOf(form), sifOf(form)),
     combatValue: form.pointValue,
+    actualPower: pointValue(form).actualPower,
+    sizeClass: form.sizeClass,
+    scoutSensors: form.scoutSensor?.sensors ?? 0,
+    commandBoxes: systemBoxes(form, 'CMND'),
+    sensorValues: ([0, 1, 2] as const).map((p) => sensorValueAt(form, p)) as [
+      number,
+      number,
+      number,
+    ],
+    sciencesRaw: systemBoxes(form, 'SCNC'),
   }
 }

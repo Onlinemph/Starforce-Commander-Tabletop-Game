@@ -16,8 +16,19 @@
 
 import { registerCustomForms, FILE_FORMS, SHIP_FORMS, shipFormById } from '../data/ships'
 import type { ShipForm } from '../engine/types'
-import { hexDistance, hexNeighbors, terrainAt } from './hexmap'
-import { effectiveSpeedTier, unitDamageBand } from './logistics'
+import { hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
+import { orderedSpeed, unitDamageBand } from './logistics'
+import {
+  detectionProbability,
+  falseContactChance,
+  intelligenceProbability,
+  reacquisitionProbability,
+  resolveSensorModel,
+  retentionProbability,
+  type ScanGeometry,
+  type SensorActor,
+  type SensorModelConfig,
+} from './sensorModel'
 import { operationalStats, type OperationalStats } from './stats'
 import {
   CONTACT_ATTRIBUTES,
@@ -31,8 +42,8 @@ import {
   type Hex,
   type Infrastructure,
   type Side,
-  type SpeedTier,
   type TerrainKind,
+  type TrackState,
   type Unit,
 } from './types'
 
@@ -94,90 +105,65 @@ export function unitIsCloaked(unit: Unit): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// The band arithmetic (4.2, 4.3)
+// Actors for the sensor model (sensorModel.ts — the designer's briefing)
 // ---------------------------------------------------------------------------
 
-export interface ScanPosture {
-  signature: number
-  /** At the posture's own power setting — the form's 0/1/2-power value. */
-  sensorRating: number
-  moved: boolean
-  cloaked: boolean
-  formation: 'close' | 'standard' | 'wide'
-  sensorPower: 0 | 1 | 2
-  /** The tier being made: maximum and emergency running light a ship up. */
-  speedTier: SpeedTier
-  terrain: TerrainKind
+/** Terrain levels the orders doc names: a system is 1, a nebula 2. */
+function terrainLevelOf(kind: TerrainKind): number {
+  switch (kind) {
+    case 'nebula':
+      return 2
+    case 'system':
+    case 'dust':
+      return 1
+    default:
+      return 0
+  }
 }
 
 /**
- * The per-scan probability for one (searcher, target) pair, or null when no
- * roll happens at all. Bands move the roll whole columns along the curve —
- * plus-bands one column closer, minus-bands one farther — and a stack that
- * walks off the long end of the curve is a scan that simply cannot succeed,
- * which is the worked example's own arithmetic (Appendix A: a held-still
- * target at range five is off-curve, not merely unlikely).
+ * A unit as the sensor model's actor: the briefing's §2 variable lists read
+ * off the fleet's forms, folded the way units fold — as loud as the loudest
+ * hull, as sharp as the best raw SENS value, as big as the biggest hull.
+ * Battle scars keep their old provisional meaning on the searching side (a
+ * damaged unit searches one point worse); on the target side damage is the
+ * §11 signature, on the briefing's own 20-points-per-band scale.
  */
-export function detectionChance(
-  curve: readonly number[],
-  range: number,
-  searcher: ScanPosture,
-  target: ScanPosture,
-): number | null {
-  const ceiling = curve.length - 1
-  if (range > ceiling) return null
-  // Hard gates before any arithmetic: a cloaked or nebula-shrouded target is
-  // a range-2 problem however good the searcher (2.2, 4.3).
-  if (target.cloaked && range > 2) return null
-  if (target.terrain === 'nebula' && range > 2) return null
-  // Same hex always detects, unless the target is cloaked (4.3).
-  if (range === 0 && !target.cloaked) return 1
-
-  let bands = 0 // positive = easier to detect (columns toward range zero)
-  if (target.signature >= 8) bands += 1
-  if (target.signature <= 3) bands -= 1
-  if (!target.moved) bands -= 1
-  if (target.formation === 'wide') bands += 1
-  if (target.terrain === 'system') bands += 1
-  if (target.terrain === 'dust') bands -= 1
-  if (target.cloaked) bands -= 1
-  // Flogged drives glow (the designer's note: maximum and emergency speed
-  // make you much easier to detect). PROVISIONAL until his sensor equations.
-  if (target.speedTier === 'maximum') bands += 1
-  if (target.speedTier === 'emergency') bands += 2
-
-  if (searcher.moved) bands -= 1
-  if (searcher.sensorPower === 0) bands -= 1
-  if (searcher.sensorPower === 2) bands += 1
-  if (searcher.sensorRating >= 8) bands += 1
-  if (searcher.sensorRating <= 3) bands -= 1
-  if (searcher.formation === 'close') bands -= 1
-  if (searcher.formation === 'wide') bands += 1
-  if (searcher.cloaked) bands -= 2 // cloaked ships are very limited detectors
-  if (searcher.terrain === 'nebula') bands -= 2 // scanning outward through it
-
-  const column = range - bands
-  if (column > ceiling) return null
-  return curve[Math.max(0, column)]
-}
-
-function postureOf(map: CampaignMap, unit: Unit): ScanPosture {
-  const p = unitProfile(unit)
+function unitActor(map: CampaignMap, unit: Unit): SensorActor {
+  const all = unit.ships.map((s) => statsFor(s.formId))
+  const band = unitDamageBand(unit)
   // A dry tank caps the sensors at zero power (6.4).
   const power = unit.endurance > 0 ? unit.order.sensorPower : 0
+  const wound = band === 'damaged' || band === 'crippled' ? 1 : 0
   return {
-    signature: p.signature,
-    // The rating at the power actually set: the form's own 0/1/2-power
-    // sensor values are the acuity, and the power band shifts below remain
-    // the emission/attention side of the same dial.
-    sensorRating: p.sensorRatings[power],
-    moved: unit.movedLastOwnPhase,
+    sensorValue: Math.max(1, Math.max(...all.map((s) => s.sensorValues[power])) - wound),
+    scoutSensors: Math.max(...all.map((s) => s.scoutSensors)),
+    command: Math.max(...all.map((s) => s.commandBoxes)),
+    sciences: Math.max(...all.map((s) => s.sciencesRaw)),
+    actualPower: Math.max(...all.map((s) => s.actualPower)),
+    sizeClass: Math.max(...all.map((s) => s.sizeClass)),
+    speed: unit.movedLastOwnPhase ? orderedSpeed(unit) : 0,
+    active: (unit.order.activeSensors ?? false) && unit.endurance > 0,
     cloaked: unitIsCloaked(unit),
+    unitType: unit.kind === 'convoy' ? 'civilian' : 'military',
+    damage: band === 'crippled' ? 40 : band === 'damaged' ? 20 : 0,
     formation: unit.order.formation,
-    sensorPower: power,
-    speedTier: effectiveSpeedTier(unit),
-    terrain: terrainAt(map, unit.hex),
+    shipCount: unit.ships.length,
+    terrain: terrainLevelOf(terrainAt(map, unit.hex)),
   }
+}
+
+/** Summed terrain levels of the hexes strictly between two positions (§15). */
+function interveningTerrain(map: CampaignMap, from: Hex, to: Hex): number {
+  let total = 0
+  let at = from
+  for (let guard = 0; guard < 64; guard++) {
+    if (hexEquals(at, to)) break
+    at = hexStepToward(at, to)
+    if (hexEquals(at, to)) break
+    total += terrainLevelOf(terrainAt(map, at))
+  }
+  return total
 }
 
 // ---------------------------------------------------------------------------
@@ -366,21 +352,18 @@ function newContact(state: CampaignState, side: Side, targetId: string, hex: Hex
 }
 
 /**
- * One successful scan lands: position updates to truth (creation fuzzes ±1
- * beyond range two — 4.4), then the ladder climbs. Sciences three or better
- * resolves two rungs per success; a rung already resolved *falsely* is
- * re-rolled by any success at closer range than the lie was bought at, truth
- * replacing it on a clean roll (4.5).
+ * A successful detection (or retention, or reacquisition) lands: position
+ * updates to truth (a first sighting past range two lands ±1 — 4.4), the
+ * track state advances (briefing §13), and 'exists' resolves — detection
+ * alone says something is there, whatever intelligence later makes of it.
  */
-function landScan(
-  ctx: DetectionContext,
+function landDetection(
   state: CampaignState,
   side: Side,
-  searcherSciences: number,
-  searcherScout: boolean,
   target: Unit,
   range: number,
-): void {
+  prevTrack: TrackState | null,
+): { contact: ContactRecord; existsWasNew: boolean } {
   let contact = findContact(state, side, target.id)
   const firstScan = !contact
   if (!contact) contact = newContact(state, side, target.id, target.hex)
@@ -398,10 +381,38 @@ function landScan(
   contact.unscannedRounds = 0
   contact.course = target.course ? { ...target.course } : null
   contact.observedMoving = target.movedLastOwnPhase
+  contact.track = prevTrack === null ? 'detected' : prevTrack === 'track-lost' ? 'reacquired' : 'tracked'
 
+  const existsWasNew = !contact.attributes.exists
+  if (existsWasNew) {
+    // Presence is never a lie for a real unit (4.5).
+    contact.attributes.exists = { value: 'yes', truthful: true, resolvedAtRange: range, stale: false }
+  }
+  return { contact, existsWasNew }
+}
+
+/**
+ * A successful intelligence check climbs the ladder (§12 — a separate roll
+ * from detection: detected is not identified). Sciences three or better
+ * resolves two rungs per success; the scan that first resolved 'exists'
+ * already spent one of them. A rung resolved *falsely* is re-rolled by any
+ * success at closer range than the lie was bought at, truth replacing it on
+ * a clean roll (4.5).
+ */
+function landIntel(
+  ctx: DetectionContext,
+  state: CampaignState,
+  searcherSciences: number,
+  searcherScout: boolean,
+  target: Unit,
+  range: number,
+  contact: ContactRecord,
+  existsWasNew: boolean,
+): void {
   const ladder = ladderFor(target)
   const targetTerrain = terrainAt(ctx.map, target.hex)
-  let rungs = searcherSciences >= 3 ? 2 : 1
+  let rungs = (searcherSciences >= 3 ? 2 : 1) - (existsWasNew ? 1 : 0)
+  if (rungs <= 0) return
 
   // Corrections first: a lie bought at longer range is re-examined by this
   // closer look, and the re-roll spends this scan's rung (4.5).
@@ -448,21 +459,32 @@ function landScan(
 }
 
 /** Infrastructure that scans (3.4). Listening posts roll; the rest radiate certainty. */
-function infrastructureSweep(ctx: DetectionContext, state: CampaignState, station: Infrastructure): void {
+function infrastructureSweep(
+  ctx: DetectionContext,
+  state: CampaignState,
+  station: Infrastructure,
+  cfg: SensorModelConfig,
+): void {
   if (station.destroyed) return
-  const curve = ctx.scenario.tuning.detectionCurve
   for (const target of state.units) {
     if (target.side === station.side) continue
     const range = hexDistance(station.hex, target.hex)
     const cloaked = unitIsCloaked(target)
     if (station.kind === 'jump-beacon') continue
     if (station.kind === 'listening-post') {
-      // Passive 3 (3.4): the standard curve, hard-capped at three hexes, from
-      // a station that never moves and never radiates.
+      // Passive 3 (3.4): the sensor model from a fixed, silent station,
+      // hard-capped at three hexes.
       if (range > 3) continue
-      const p = detectionChance(curve, range, LISTENING_POST_POSTURE, postureOf(ctx.map, target))
-      if (p !== null && nextRandom(state.rng) < p) {
-        landScan(ctx, state, station.side, 0, false, target, range)
+      const geom: ScanGeometry = {
+        range,
+        interveningTerrain: interveningTerrain(ctx.map, station.hex, target.hex),
+      }
+      const det = detectionProbability(LISTENING_POST_ACTOR, unitActor(ctx.map, target), geom, cfg)
+      if (det.p > 0 && (det.p >= 1 || nextRandom(state.rng) < det.p)) {
+        const existing = findContact(state, station.side, target.id)
+        const prev = existing && !contactCollapsed(existing) ? (existing.track ?? 'tracked') : null
+        const landed = landDetection(state, station.side, target, range, prev)
+        landed.contact.lastRange = range
       }
       continue
     }
@@ -474,15 +496,22 @@ function infrastructureSweep(ctx: DetectionContext, state: CampaignState, statio
   }
 }
 
-const LISTENING_POST_POSTURE: ScanPosture = {
-  signature: 1,
-  sensorRating: 5,
-  moved: false,
+/** A fixed watchstation: reference-grade ears, nothing else (3.4). */
+const LISTENING_POST_ACTOR: SensorActor = {
+  sensorValue: 6,
+  scoutSensors: 0,
+  command: 0,
+  sciences: 0,
+  actualPower: 0,
+  sizeClass: 3,
+  speed: 0,
+  active: false,
   cloaked: false,
+  unitType: 'military',
+  damage: 0,
   formation: 'standard',
-  sensorPower: 1,
-  speedTier: 'hold',
-  terrain: 'deep',
+  shipCount: 1,
+  terrain: 0,
 }
 
 /** A radar-certain fix: exists and true position, nothing else, no lies. */
@@ -501,31 +530,116 @@ function landScanCertain(state: CampaignState, side: Side, target: Unit): void {
 }
 
 /**
- * The passive sweep after one phase's movement (4.1): both sides, every unit,
- * fixed iteration order so the rng stream replays — sides A then B, searchers
- * in state order, targets in state order, infrastructure after the fleet.
+ * The sweep after one phase's movement (4.1, briefing §1): both sides, every
+ * unit, fixed iteration order so the rng stream replays — sides A then B,
+ * searchers in state order, targets in state order, infrastructure after the
+ * fleet, the searcher's false-contact roll after its targets.
+ *
+ * Per (searcher, target) pair the briefing's five checks stay separate:
+ * a cold pair rolls DETECTION; a held track rolls RETENTION (and goes
+ * track-lost on a miss, keeping its last-known picture); a lost track rolls
+ * REACQUISITION, floored above a fresh search because the searcher knows the
+ * signature now. Any success lands a position fix, and INTELLIGENCE then
+ * rolls on its own to climb the attribute ladder — detected is not
+ * identified.
  */
 export function runDetection(ctx: DetectionContext, state: CampaignState): void {
-  const curve = ctx.scenario.tuning.detectionCurve
+  const cfg = resolveSensorModel(ctx.scenario.tuning.sensorModel)
   for (const side of ['A', 'B'] as const) {
     for (const searcher of state.units) {
       if (searcher.side !== side) continue
-      const sp = postureOf(ctx.map, searcher)
+      const actor = unitActor(ctx.map, searcher)
       const profile = unitProfile(searcher)
-      const scout = searcher.ships.some((s) => (shipFormById(s.formId)?.scoutSensor?.sensors ?? 0) > 0)
+      const scout = actor.scoutSensors > 0
       for (const target of state.units) {
         if (target.side === side) continue
         const range = hexDistance(searcher.hex, target.hex)
-        const p = detectionChance(curve, range, sp, postureOf(ctx.map, target))
-        if (p === null) continue
-        if (p >= 1 || nextRandom(state.rng) < p) {
-          landScan(ctx, state, side, profile.sciences, scout, target, range)
+        const geom: ScanGeometry = {
+          range,
+          interveningTerrain: interveningTerrain(ctx.map, searcher.hex, target.hex),
         }
+        const targetActor = unitActor(ctx.map, target)
+        const det = detectionProbability(actor, targetActor, geom, cfg)
+        const intel = intelligenceProbability(actor, targetActor, geom, cfg)
+
+        const existing = findContact(state, side, target.id)
+        const track: TrackState | null =
+          existing && !contactCollapsed(existing) ? (existing.track ?? 'tracked') : null
+
+        // 4.3's floor survives the model: a same-hex scan always finds an
+        // uncloaked hull — engagement logic (7.1) is built on co-located
+        // units knowing each other, and ambush stays a cloak's privilege.
+        const pointBlank = range === 0 && !targetActor.cloaked
+
+        let held = false
+        if (pointBlank) {
+          held = true
+        } else if (track === null) {
+          // Initial detection (§3): a zero-probability scan rolls no dice.
+          held = det.p > 0 && (det.p >= 1 || nextRandom(state.rng) < det.p)
+        } else if (range > cfg.trackingMaxRange) {
+          // Beyond the tracking horizon the picture just goes cold: no roll,
+          // a held track is lost, a lost one stays lost.
+          existing!.track = 'track-lost'
+        } else if (track === 'track-lost') {
+          const p = reacquisitionProbability(det.p, existing!.lastRange ?? range, range, intel.p, cfg)
+          held = nextRandom(state.rng) < p
+        } else {
+          const p = retentionProbability(existing!.lastRange ?? range, range, intel.p, cfg)
+          held = nextRandom(state.rng) < p
+          if (!held) existing!.track = 'track-lost'
+        }
+        if (existing) existing.lastRange = range
+        if (!held) continue
+
+        const landed = landDetection(state, side, target, range, track)
+        landed.contact.lastRange = range
+        // Intelligence is its own check (§12): the ladder climbs only when
+        // it lands — a certain read (p ≥ 1) spends no die.
+        if (intel.p > 0 && (intel.p >= 1 || nextRandom(state.rng) < intel.p)) {
+          landIntel(ctx, state, profile.sciences, scout, target, range, landed.contact, landed.existsWasNew)
+        }
+      }
+      // §14: the scan that saw something that was never there.
+      if (ctx.scenario.tuning.falseContacts) {
+        const p = falseContactChance(actor.active, cfg)
+        if (nextRandom(state.rng) < p) spawnFalseContact(ctx, state, side, searcher)
       }
     }
     for (const station of state.infrastructure) {
-      if (station.side === side) infrastructureSweep(ctx, state, station)
+      if (station.side === side) infrastructureSweep(ctx, state, station, cfg)
     }
+  }
+}
+
+/**
+ * A false contact (§14): a ghost penciled in a few hexes out, indistinct and
+ * never scannable again — it goes stale, drifts nowhere, and collapses like
+ * any contact nobody can reacquire. Its target id matches no unit, so no
+ * engagement, mission or battle can ever make it real; 'exists' is marked
+ * untruthful for the umpire's eyes only.
+ */
+function spawnFalseContact(
+  ctx: DetectionContext,
+  state: CampaignState,
+  side: Side,
+  searcher: Unit,
+): void {
+  const distance = 2 + nextInt(state.rng, 4)
+  let hex = { ...searcher.hex }
+  for (let i = 0; i < distance; i++) {
+    const options = hexNeighbors(hex).filter((h) => inBounds(h, ctx.map.width, ctx.map.height))
+    if (options.length === 0) break
+    hex = options[nextInt(state.rng, options.length)]
+  }
+  const contact = newContact(state, side, `phantom-${side}-${state.contactSeq}`, hex)
+  contact.track = 'detected'
+  contact.positionEstimated = true
+  contact.attributes.exists = {
+    value: 'yes',
+    truthful: false,
+    resolvedAtRange: distance,
+    stale: false,
   }
 }
 

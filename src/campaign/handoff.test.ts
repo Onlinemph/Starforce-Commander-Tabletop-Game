@@ -25,10 +25,11 @@ import type { ShipScars } from '../engine/shipState'
  * test is about engagement logic, the campaign stream everywhere else.
  */
 
-const CERTAIN = [1, 1, 1, 1, 1, 1]
+const CERTAIN = { detection: 1, intelligence: 1, retention: 1 }
+const BLIND = { detection: 0, retention: 0, reacquisition: 0 }
 
 function warFile(over: {
-  curve?: readonly number[]
+  sensor?: Record<string, number>
   aHex?: { q: number; r: number }
   bHex?: { q: number; r: number }
   aShips?: string[]
@@ -62,7 +63,12 @@ function warFile(over: {
         },
       ],
     },
-    tuning: { detectionCurve: over.curve ?? CERTAIN, misinformationBase: 0, falseContacts: false },
+    tuning: {
+      detectionCurve: [],
+      misinformationBase: 0,
+      falseContacts: false,
+      sensorModel: { override: over.sensor ?? CERTAIN },
+    },
   })
   const file = newCampaign(scenario, 'c-war')
   file.map.terrain = [] // clean space; terrain translation is tested directly
@@ -102,7 +108,7 @@ describe('engagement triggering (7.1)', () => {
 
   it('a cloaked hull nobody has found passes silently — or springs an ambush', () => {
     const silent = warFile({
-      curve: [0, 0, 0, 0, 0, 0],
+      sensor: BLIND,
       bShips: ['aurelian-corvus-i-class-destroyer'],
       bOrder: { cloaked: true, engagement: 'silent' },
       bHex: { q: 8, r: 4 }, // same hex from the start
@@ -112,7 +118,7 @@ describe('engagement triggering (7.1)', () => {
     expect(silent.state.pendingBattles).toHaveLength(0)
 
     const ambush = warFile({
-      curve: [0, 0, 0, 0, 0, 0],
+      sensor: BLIND,
       bShips: ['aurelian-corvus-i-class-destroyer'],
       bOrder: { cloaked: true, engagement: 'fight' },
       bHex: { q: 8, r: 4 },
@@ -291,7 +297,7 @@ function scarred(): ShipScars {
 
 describe('repair queues (3.2)', () => {
   function hospitalFile() {
-    const file = warFile({ curve: [0, 0, 0, 0, 0, 0], bHex: { q: 18, r: 0 } })
+    const file = warFile({ sensor: BLIND, bHex: { q: 18, r: 0 } })
     const ship = file.state.units.find((u) => u.id === 'a-1')!.ships[0]
     ship.scars = scarred()
     return { file, ship }
@@ -406,7 +412,7 @@ describe('the wall holds through a battle (the leak tests, Part 7 edition)', () 
 
   it('an ambush victim sees the engagement, not the ambusher', () => {
     const file = warFile({
-      curve: [0, 0, 0, 0, 0, 0],
+      sensor: BLIND,
       bShips: ['aurelian-corvus-i-class-destroyer'],
       bOrder: { cloaked: true, engagement: 'fight' },
       bHex: { q: 8, r: 4 },
@@ -423,7 +429,7 @@ describe('the wall holds through a battle (the leak tests, Part 7 edition)', () 
   })
 
   it('scars stay private: your hulls wear theirs, the enemy sees a band at most', () => {
-    const file = warFile({ curve: [0, 0, 0, 0, 0, 0] })
+    const file = warFile({ sensor: BLIND })
     const a = file.state.units.find((u) => u.id === 'a-1')!
     a.ships[0].scars = scarred()
     const enemyView = viewFor(file.map, file.state, 'B')
