@@ -95,6 +95,7 @@ describe('sanity anchors (3.1.1)', () => {
       commandBoxes: 0,
       sensorValues: [2, 3, 6],
       sciencesRaw: 2,
+      sensBoxes: 3,
     })
     expect(stats('union-union-iii-class-dreadnought')).toEqual({
       signature: 10,
@@ -112,6 +113,7 @@ describe('sanity anchors (3.1.1)', () => {
       commandBoxes: 5,
       sensorValues: [4, 6, 8],
       sciencesRaw: 4,
+      sensBoxes: 4,
     })
     expect(stats('vallari-v-7c-raider-class-battlecruiser')).toEqual({
       signature: 4,
@@ -129,6 +131,7 @@ describe('sanity anchors (3.1.1)', () => {
       commandBoxes: 0,
       sensorValues: [2, 4, 6],
       sciencesRaw: 2,
+      sensBoxes: 3,
     })
   })
 

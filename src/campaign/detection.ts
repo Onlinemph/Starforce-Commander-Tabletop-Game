@@ -21,6 +21,7 @@ import { orderedSpeed, unitDamageBand } from './logistics'
 import {
   detectionProbability,
   falseContactChance,
+  formationNumber,
   intelligenceProbability,
   reacquisitionProbability,
   resolveSensorModel,
@@ -122,32 +123,32 @@ function terrainLevelOf(kind: TerrainKind): number {
 }
 
 /**
- * A unit as the sensor model's actor: the briefing's §2 variable lists read
+ * A unit as the sensor model's actor: the workbook's yellow input table read
  * off the fleet's forms, folded the way units fold — as loud as the loudest
- * hull, as sharp as the best raw SENS value, as big as the biggest hull.
- * Battle scars keep their old provisional meaning on the searching side (a
- * damaged unit searches one point worse); on the target side damage is the
- * §11 signature, on the briefing's own 20-points-per-band scale.
+ * hull, as sharp as the best SENS rating, as big as the biggest hull. On the
+ * target side damage is the sheet's points scale (E49's 20-points-per-band
+ * reading of the campaign damage bands).
  */
 function unitActor(map: CampaignMap, unit: Unit): SensorActor {
   const all = unit.ships.map((s) => statsFor(s.formId))
   const band = unitDamageBand(unit)
-  // A dry tank caps the sensors at zero power (6.4).
-  const power = unit.endurance > 0 ? unit.order.sensorPower : 0
-  const wound = band === 'damaged' || band === 'crippled' ? 1 : 0
   return {
-    sensorValue: Math.max(1, Math.max(...all.map((s) => s.sensorValues[power])) - wound),
+    sens: Math.max(...all.map((s) => s.sensBoxes)),
     scoutSensors: Math.max(...all.map((s) => s.scoutSensors)),
     command: Math.max(...all.map((s) => s.commandBoxes)),
     sciences: Math.max(...all.map((s) => s.sciencesRaw)),
     actualPower: Math.max(...all.map((s) => s.actualPower)),
+    sp0: Math.max(...all.map((s) => s.sensorValues[0])),
+    sp1: Math.max(...all.map((s) => s.sensorValues[1])),
+    sp2: Math.max(...all.map((s) => s.sensorValues[2])),
     sizeClass: Math.max(...all.map((s) => s.sizeClass)),
     speed: unit.movedLastOwnPhase ? orderedSpeed(unit) : 0,
+    // A dry tank cannot feed an active sweep (6.4).
     active: (unit.order.activeSensors ?? false) && unit.endurance > 0,
     cloaked: unitIsCloaked(unit),
     unitType: unit.kind === 'convoy' ? 'civilian' : 'military',
     damage: band === 'crippled' ? 40 : band === 'damaged' ? 20 : 0,
-    formation: unit.order.formation,
+    formation: formationNumber(unit.order.formation, unit.ships.length),
     shipCount: unit.ships.length,
     terrain: terrainLevelOf(terrainAt(map, unit.hex)),
   }
@@ -496,20 +497,23 @@ function infrastructureSweep(
   }
 }
 
-/** A fixed watchstation: reference-grade ears, nothing else (3.4). */
+/** A fixed watchstation: the workbook's baseline ship, bolted down (3.4). */
 const LISTENING_POST_ACTOR: SensorActor = {
-  sensorValue: 6,
+  sens: 3,
   scoutSensors: 0,
   command: 0,
-  sciences: 0,
-  actualPower: 0,
+  sciences: 3,
+  actualPower: 100,
+  sp0: 2,
+  sp1: 4,
+  sp2: 6,
   sizeClass: 3,
   speed: 0,
   active: false,
   cloaked: false,
   unitType: 'military',
   damage: 0,
-  formation: 'standard',
+  formation: 0,
   shipCount: 1,
   terrain: 0,
 }

@@ -76,6 +76,8 @@ export interface OperationalStats {
   sensorValues: [number, number, number]
   /** SCNC boxes alone, no scout bonus, unclamped. */
   sciencesRaw: number
+  /** SENS system boxes — the workbook's "Sensor Rating (SENS)", baseline 3. */
+  sensBoxes: number
 }
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
@@ -180,5 +182,6 @@ export function operationalStats(form: ShipForm): OperationalStats {
       number,
     ],
     sciencesRaw: systemBoxes(form, 'SCNC'),
+    sensBoxes: systemBoxes(form, 'SENS'),
   }
 }

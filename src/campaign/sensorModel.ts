@@ -1,185 +1,209 @@
 /**
- * The designer's sensor model (Border Command briefing, August 2026).
+ * The designer's sensor model — his Sensor Model workbook, cell for cell
+ * (StarForce_Commander_Sensor_Model.xlsx, August 2026).
  *
- * Implements the detection / intelligence / track-retention / reacquisition /
- * false-contact mathematics from the spreadsheet briefing, faithfully and
- * separately — five checks, never substituted for one another (§1, §13). The
- * calibration anchor is his own worked table: a passive YORKTOWN II searching
- * for a V-7D reads 90 / 70 / 50 / 30 / 10 / 3.5 / 1.225 % per scan at ranges
- * 0–6, and the approach sequence 4,3,3,2,2,1,1,0 compounds to 99.90% by the
- * cumulative rule 1 − Π(1 − pᵢ) (§3). Every other matchup scales off that
- * anchor by the briefing's stated factors.
+ * Five separate checks, never substituted for one another (briefing §1, §13):
+ * initial detection (B60), intelligence (B96), track retention (B106),
+ * reacquisition (B107) and false contacts (B108). The equations are his
+ * "intentionally provisional playtest equations" (sheet A98), implemented
+ * exactly — including the parts a fresh design might question — so his
+ * calibration work survives the port and the next tuning pass happens in
+ * one configurable structure instead of a spreadsheet diff.
  *
- * Two kinds of coefficient live in SENSOR_MODEL, and the distinction matters:
- *  - EXACT — a formula the briefing states in full (scout/command bonuses,
- *    power and size multipliers, the civilian ×3, the damage points, active
- *    sensor multipliers, retention/reacquisition, false-contact rates).
- *  - PROVISIONAL — behavior the briefing describes but whose exact numbers
- *    live in workbook cells that did not arrive (the file received carried
- *    only a SHIP DATA header): the two speed curves (B58/B94), the
- *    intelligence base curve (B96), terrain, cloak, formation. Shapes follow
- *    the briefing's prose ("gentle 0–3, moderate 4–6, severe 7+"); the
- *    numbers are stand-ins awaiting the real Sensor Model sheet.
+ * The shape of a detection roll (B60):
  *
- * All of it is data (§16): a scenario overrides any coefficient through
- * `tuning.sensorModel`, and no probability is computed from anything but the
- * config plus the two actors — deterministic, seedable, loggable.
+ *   p = clamp01( σ(5·((capability − difficulty) − 0.35))
+ *                · rangeFactor · environment · searcherSpeed · targetSpeed
+ *                · powerSignature · sizeSignature · activeBonus
+ *                · highSpeedPenalty · civilian
+ *                + damageBonus )
+ *
+ * where capability is a weighted sum of the searcher's SENS, ACTUAL POWER,
+ * SP1/SP2/SP0 sensor points, active status and SNCS (B54), scaled by the
+ * scout-or-command factor (E33); and difficulty is an additive stack of the
+ * target's cloak, terrain, formation, ship count and a whisper of its own
+ * SENS (B55). Intelligence (B96) is the same skeleton with its own weights,
+ * gentler range curve, steeper speed penalty, and a ×2 inside range 1.
+ *
+ * The workbook's own worked example — Yorktown II (SENS 3, power 122,
+ * SP 2/4/6, SNCS 4, speed 2, passive) searching a V-2P Raider (power 61,
+ * size 2, speed 2) at range 2 — computes detection 0.515470552703701 and
+ * intelligence 0.18991849618949763, and the tests pin those digits.
+ *
+ * Every coefficient sits in SENSOR_MODEL, overridable per scenario through
+ * `tuning.sensorModel` (top-level shallow merge: override a section object
+ * whole). Two footnotes for the designer, implemented verbatim and flagged:
+ *  - Intelligence difficulty includes 0.06 × (damage + 1) with damage on
+ *    the same 0–100 points scale detection uses (INT(damage/20) there), so
+ *    20 points of damage adds 1.26 difficulty and intelligence on a damaged
+ *    hull collapses. If damage there was meant as a small band (0/1/2), the
+ *    fix is one coefficient.
+ *  - Formation (0 single … 3 wide) raises difficulty, so a WIDE formation
+ *    is the hardest to detect — the orders doc says wide is a little easier.
  */
 
-import { shipFormById } from '../data/ships'
-import { operationalStats } from './stats'
 import type { Formation } from './types'
 
 // ---------------------------------------------------------------------------
-// Actors — the briefing's §2 variable lists, in one shape for either role
+// Actors — the sheet's yellow input table, one shape for either role
 // ---------------------------------------------------------------------------
 
 export interface SensorActor {
-  /** SENS value at the current power setting (the SP0/SP1/SP2 ladder). */
-  sensorValue: number
-  /** Scout Sensors rating 0–5 (§7). */
+  /** Sensor Rating (SENS) — the printed rating, baseline 3 (sheet B8). */
+  sens: number
+  /** Scout Sensors rating 0–5 (B7). */
   scoutSensors: number
-  /** CMND box count (§7) — counts only when scoutSensors is 0. */
+  /** Command Systems (CMND) boxes (B19) — counts only without a scout. */
   command: number
-  /** SNCS boxes — intelligence quality (§12). */
+  /** Sciences (SNCS) boxes (B18). */
   sciences: number
-  /** TOTAL ACTUAL POWER from the costing model (§8). */
+  /** Total Actual Power (B9), baseline 85. */
   actualPower: number
-  sizeClass: number
-  /** Hexes per campaign round. May exceed 10 (§4). */
+  /** The 0/1/2-power sensor points, all three static stats (B15/B12/B13). */
+  sp0: number
+  sp1: number
+  sp2: number
+  /** Hexes per campaign round; baseline scanning speed 4, may exceed 10. */
   speed: number
-  /** Active sensor mode (§5, §6) — a dial separate from the power setting. */
+  /** Sensor Mode: false = Passive, true = Active (B14). */
   active: boolean
   cloaked: boolean
   unitType: 'military' | 'civilian'
-  /** Structure damage on the briefing's 0–100 points scale (§11). */
+  /** Structure damage on the sheet's points scale (C23; detection E49). */
   damage: number
-  formation: Formation
+  /** Formation number: 0 Single, 1 Close, 2 Medium, 3 Wide (C22). */
+  formation: number
+  sizeClass: number
   shipCount: number
-  /** Terrain level occupied: 0 clear, 1 system, 2 nebula (orders doc). */
+  /** Terrain level occupied: 0 none, 1 system, 2 nebula (B16/C26). */
   terrain: number
 }
 
 export interface ScanGeometry {
   range: number
-  /** Summed terrain levels of hexes between the two ships (§15). */
+  /** Summed terrain levels of hexes between the ships (B17). */
   interveningTerrain: number
 }
 
 // ---------------------------------------------------------------------------
-// Coefficients (§16: one configurable structure)
+// Coefficients (§16: one configurable structure, mirroring the sheet)
 // ---------------------------------------------------------------------------
 
-/** A piecewise speed curve: index = speed, last entry decays by `beyondStep`. */
-export interface SpeedCurve {
-  values: readonly number[]
-  /** Multiplier (searcher) or increment (target) per speed point past the table. */
-  beyondStep: number
+/** B54/B90: weight per searcher stat; each stat is divided by its baseline. */
+export interface CapabilityWeights {
+  sens: number
+  power: number
+  sp1: number
+  sp2: number
+  sp0: number
+  /** × (activeStatus + 1) — active mode nudges capability itself. */
+  activeMode: number
+  sciences: number
+}
+
+/** B55/B91: additive difficulty stack; most terms read × (input + 1). */
+export interface DifficultyWeights {
+  base: number
+  cloak: number
+  terrain: number
+  formation: number
+  /** × shipCount, straight. */
+  shipCount: number
+  /** × (targetSENS / sensBaseline) — E52/E86's whisper. */
+  targetSensor: number
+  /** Intelligence only: × (damage + 1), verbatim from B91. */
+  damage: number
 }
 
 export interface SensorModelConfig {
-  /** EXACT (§3): per-scan detection by range for the calibration pair. */
-  detectionRangeCurve: readonly number[]
-  /** EXACT (§3): each hex past the curve multiplies by this (10→3.5→1.225%). */
-  beyondCurveFalloff: number
-  /** PROVISIONAL (B96 missing): intelligence base by range. */
-  intelRangeCurve: readonly number[]
-  /** EXACT (§12): intelligence ×2 inside this range, capped at 100%. */
-  intelCloseRange: number
-  intelCloseMultiplier: number
-  /** PROVISIONAL (B58): searcher speed → detection multiplier. */
-  searcherSpeedDetection: SpeedCurve
-  /** PROVISIONAL (B94): searcher speed → intelligence multiplier (steeper). */
-  searcherSpeedIntel: SpeedCurve
-  /** EXACT (§4): at searcher speed ≥ this and range > 1, extra reductions. */
-  highSpeedThreshold: number
-  highSpeedDetectionFactor: number
-  highSpeedIntelFactor: number
-  /** PROVISIONAL (B59/B95): target signature-speed → multiplier. */
-  targetSpeedSignature: SpeedCurve
+  /** The stat baselines every capability term divides by (sheet notes). */
+  baselines: { sens: number; power: number; sp1: number; sp2: number; sp0: number; sciences: number }
+  detectionCapability: CapabilityWeights
+  detectionDifficulty: DifficultyWeights
+  intelCapability: CapabilityWeights
+  intelDifficulty: DifficultyWeights
+  /** σ(gain × ((capability − difficulty) − offset)) — B60/B96. */
+  detectionSigmoid: { gain: number; offset: number }
+  intelSigmoid: { gain: number; offset: number }
+  /** B56: stepped by range 0–4, then × falloff per hex, floored. */
+  detectionRangeSteps: readonly number[]
+  detectionRangeFalloff: number
+  detectionRangeFloor: number
+  /** B92: 1 − slope × range through 4, then base × ratio^(r−4), floored. */
+  intelRangeSlope: number
+  intelRangeBeyondBase: number
+  intelRangeBeyondRatio: number
+  intelRangeFloor: number
+  /** B57/B93: MAX(floor, 1 − a×terrainA − b×between). */
+  detectionEnvironment: { terrainA: number; between: number; floor: number }
+  intelEnvironment: { terrainA: number; between: number; floor: number }
+  /** B58/B94: gentle 0–3, moderate 4–6, severe 7+ (base × ratio^(s−6)). */
+  searcherSpeedDetection: { gentleSlope: number; moderateSlope: number; severeBase: number; severeRatio: number; floor: number }
+  searcherSpeedIntel: { gentleSlope: number; moderateSlope: number; severeBase: number; severeRatio: number; floor: number }
+  /** The gentle curves start at this value at speed 0 (1.15 − slope×s). */
+  searcherSpeedIdle: number
+  /** B59/B95: 0.7+0.1s / 1+0.2(s−3) / 1.6×1.5^(s−6); s = speed (+7 active). */
+  targetSpeed: { lowBase: number; lowSlope: number; midSlope: number; highBase: number; highRatio: number }
   /** EXACT (§5): active target reads +7 signature speed — additive. */
   targetActiveSpeedBonus: number
-  /** EXACT (§6): searcher active multipliers inside range 2. */
+  /** E40/E74: searcher active multipliers inside range 2; nothing beyond. */
   searcherActiveCloseRange: number
   searcherActiveDetection: number
   searcherActiveIntel: number
-  /** PROVISIONAL (§6): the "smaller bonuses" at ranges 3–6. */
-  searcherActiveLongDetection: number
-  searcherActiveLongIntel: number
-  /** EXACT (§7): per-point conditional bonuses. */
+  /** E33/E66: scout per point, else command per point. */
   scoutDetectionPerPoint: number
   scoutIntelPerPoint: number
   commandDetectionPerPoint: number
   commandIntelPerPoint: number
-  /** PROVISIONAL: linear sensor-value scaling around this reference. */
-  referenceSensorValue: number
-  /** PROVISIONAL (§7): "very small" target-sensor difficulty, per point. */
-  targetSensorPenaltyPerPoint: number
-  targetSensorPenaltyFloor: number
-  /** EXACT (§8): max(floor, base + slope × power / powerRef). */
+  /** E35/E69: MAX(floor, base + slope × power / powerBaseline). */
   powerFloor: number
   powerBase: number
   powerSlope: number
-  powerReference: number
-  /** EXACT (§9): max(floor, 1 + slope × (sizeClass − pivot)). */
+  /** E45/E79: MAX(floor, 1 + slope × (sizeClass − pivot)). */
   sizeFloor: number
   sizeSlope: number
   sizePivot: number
-  /** EXACT (§10): civilian targets, applied to the final probability. */
+  /** E51/E85: civilian targets, multiplying the final probability. */
   civilianMultiplier: number
-  /** EXACT (§11): +points × INT(damage / step), additive, within range 6. */
+  /** E49: +points × INT(damage / step), additive, within range 6. */
   damageBonusPerStep: number
   damageStep: number
   damageMaxRange: number
-  /** PROVISIONAL (§12): intelligence bonus per SNCS box. */
-  sciencesIntelPerPoint: number
-  /** PROVISIONAL (§15): multipliers by terrain level [clear, system, nebula]. */
-  targetTerrain: readonly number[]
-  searcherTerrain: readonly number[]
-  /** PROVISIONAL (§15): per summed intervening terrain level. */
-  interveningTerrainStep: number
-  /** PROVISIONAL (§15): substantial, never zero. */
-  cloakDetection: number
-  cloakIntel: number
-  /** PROVISIONAL (orders doc): formation effects, both roles. */
-  searcherFormationClose: number
-  searcherFormationWide: number
-  targetFormationClose: number
-  targetFormationWide: number
-  /** PROVISIONAL: more hulls are louder, per ship past the first. */
-  shipCountStep: number
-  /** EXACT (§13): retention. */
+  /** B60/B96 tails: at searcher speed ≥ threshold and range > 1. */
+  highSpeedThreshold: number
+  highSpeedDetectionFactor: number
+  highSpeedIntelFactor: number
+  /** §12: intelligence ×2 inside this range, capped at 100%. */
+  intelCloseRange: number
+  intelCloseMultiplier: number
+  /** B106: retention. */
   retentionBase: number
   retentionCloserBonus: number
   retentionFartherPerHex: number
   retentionIntelWeight: number
   retentionMin: number
   retentionMax: number
-  /** EXACT (§13): reacquisition. */
+  /** B107: reacquisition. */
   reacquisitionBase: number
   reacquisitionFreshBonus: number
   reacquisitionIntelWeight: number
   reacquisitionMin: number
   reacquisitionMax: number
-  /** EXACT (§14): false contacts per scan. */
+  /** B108: false contacts per scan. */
   falseContactPassive: number
   falseContactActive: number
   /**
-   * PROVISIONAL: beyond this range no retention or reacquisition roll
-   * happens at all — a held track goes cold, a lost one stays lost. The
-   * briefing's retention formula presumes tracking ranges ("mostly 0–6");
-   * without a horizon its 5% floor would hold tracks on targets half a map
-   * away, forever, five percent at a time.
+   * PROVISIONAL (not in the sheet): beyond this range no retention or
+   * reacquisition roll happens at all — a held track goes cold, a lost one
+   * stays lost. Without a horizon the 5% floors would hold tracks on
+   * targets half a map away, forever, five percent at a time.
    */
   trackingMaxRange: number
-  /** Calibration pair — the normalizer pins this matchup to the range curve. */
-  calibrationSearcher: string
-  calibrationTarget: string
   /**
-   * Playtest/debug dial (§16's logging spirit): flat probabilities that
-   * replace the computed ones. Detection and intelligence overrides apply
-   * within range `damageMaxRange` and read 0 beyond it — "certain within
-   * sensor reach" — which is also what deterministic integration tests pin.
+   * Playtest/debug dial: flat probabilities replacing the computed ones.
+   * Detection and intelligence overrides apply within `damageMaxRange` and
+   * read 0 beyond it — "certain within sensor reach" — which is also what
+   * deterministic integration tests pin.
    */
   override?: {
     detection?: number
@@ -190,43 +214,37 @@ export interface SensorModelConfig {
 }
 
 export const SENSOR_MODEL: SensorModelConfig = {
-  detectionRangeCurve: [0.9, 0.7, 0.5, 0.3, 0.1],
-  beyondCurveFalloff: 0.35,
-  intelRangeCurve: [0.5, 0.4, 0.28, 0.17, 0.06],
-  intelCloseRange: 1,
-  intelCloseMultiplier: 2,
-  searcherSpeedDetection: {
-    values: [1, 0.98, 0.96, 0.93, 0.87, 0.8, 0.72, 0.6, 0.48, 0.36, 0.25],
-    beyondStep: 0.9,
-  },
-  searcherSpeedIntel: {
-    values: [1, 0.96, 0.92, 0.87, 0.78, 0.68, 0.58, 0.45, 0.33, 0.22, 0.15],
-    beyondStep: 0.85,
-  },
-  highSpeedThreshold: 10,
-  highSpeedDetectionFactor: 0.1,
-  highSpeedIntelFactor: 0.05,
-  targetSpeedSignature: {
-    values: [1, 1.03, 1.06, 1.1, 1.18, 1.26, 1.35, 1.5, 1.65, 1.8, 1.95],
-    beyondStep: 0.15,
-  },
+  baselines: { sens: 3, power: 85, sp1: 4, sp2: 6, sp0: 2, sciences: 3 },
+  detectionCapability: { sens: 0.25, power: 0.18, sp1: 0.12, sp2: 0.1, sp0: 0.08, activeMode: 0.05, sciences: 0.07 },
+  detectionDifficulty: { base: 0.48, cloak: 0.15, terrain: 0.08, formation: 0.06, shipCount: 0.04, targetSensor: 0.01, damage: 0 },
+  intelCapability: { sens: 0.22, power: 0.14, sp1: 0.1, sp2: 0.08, sp0: 0.03, activeMode: 0.04, sciences: 0.22 },
+  intelDifficulty: { base: 0.29, cloak: 0.18, terrain: 0.15, formation: 0.1, shipCount: 0.05, targetSensor: 0.01, damage: 0.06 },
+  detectionSigmoid: { gain: 5, offset: 0.35 },
+  intelSigmoid: { gain: 5, offset: 0.2 },
+  detectionRangeSteps: [6.004904, 4.670481, 3.336058, 2.001635, 0.667212],
+  detectionRangeFalloff: 0.35,
+  detectionRangeFloor: 0.01,
+  intelRangeSlope: 0.12,
+  intelRangeBeyondBase: 0.52,
+  intelRangeBeyondRatio: 0.3,
+  intelRangeFloor: 0.005,
+  detectionEnvironment: { terrainA: 0.1, between: 0.12, floor: 0.15 },
+  intelEnvironment: { terrainA: 0.12, between: 0.15, floor: 0.1 },
+  searcherSpeedDetection: { gentleSlope: 0.05, moderateSlope: 0.1, severeBase: 0.7, severeRatio: 0.45, floor: 0.001 },
+  searcherSpeedIntel: { gentleSlope: 0.05, moderateSlope: 0.15, severeBase: 0.55, severeRatio: 0.35, floor: 0.0005 },
+  searcherSpeedIdle: 1.15,
+  targetSpeed: { lowBase: 0.7, lowSlope: 0.1, midSlope: 0.2, highBase: 1.6, highRatio: 1.5 },
   targetActiveSpeedBonus: 7,
   searcherActiveCloseRange: 2,
   searcherActiveDetection: 2,
   searcherActiveIntel: 1.5,
-  searcherActiveLongDetection: 1.15,
-  searcherActiveLongIntel: 1.1,
   scoutDetectionPerPoint: 0.25,
   scoutIntelPerPoint: 0.2,
   commandDetectionPerPoint: 0.05,
   commandIntelPerPoint: 0.15,
-  referenceSensorValue: 6,
-  targetSensorPenaltyPerPoint: 0.005,
-  targetSensorPenaltyFloor: 0.9,
   powerFloor: 0.5,
   powerBase: 0.75,
   powerSlope: 0.25,
-  powerReference: 85,
   sizeFloor: 0.1,
   sizeSlope: 0.15,
   sizePivot: 4,
@@ -234,17 +252,11 @@ export const SENSOR_MODEL: SensorModelConfig = {
   damageBonusPerStep: 0.05,
   damageStep: 20,
   damageMaxRange: 6,
-  sciencesIntelPerPoint: 0.1,
-  targetTerrain: [1, 0.6, 0.35],
-  searcherTerrain: [1, 0.85, 0.6],
-  interveningTerrainStep: 0.8,
-  cloakDetection: 0.12,
-  cloakIntel: 0.12,
-  searcherFormationClose: 0.8,
-  searcherFormationWide: 1.25,
-  targetFormationClose: 0.85,
-  targetFormationWide: 1.15,
-  shipCountStep: 0.05,
+  highSpeedThreshold: 10,
+  highSpeedDetectionFactor: 0.1,
+  highSpeedIntelFactor: 0.05,
+  intelCloseRange: 1,
+  intelCloseMultiplier: 2,
   retentionBase: 0.85,
   retentionCloserBonus: 0.1,
   retentionFartherPerHex: 0.1,
@@ -259,8 +271,6 @@ export const SENSOR_MODEL: SensorModelConfig = {
   falseContactPassive: 0.005,
   falseContactActive: 0.001,
   trackingMaxRange: 8,
-  calibrationSearcher: 'union-yorktown-ii-class-heavy-cruiser',
-  calibrationTarget: 'vallari-v-7d-raider-class-battlecruiser',
 }
 
 /** A scenario's overrides merged over the defaults (tuning.sensorModel). */
@@ -269,104 +279,118 @@ export function resolveSensorModel(overrides?: Record<string, unknown>): SensorM
   return { ...SENSOR_MODEL, ...overrides } as SensorModelConfig
 }
 
+/** Formation as the sheet numbers it: 0 Single, 1 Close, 2 Medium, 3 Wide. */
+export function formationNumber(formation: Formation, shipCount: number): number {
+  if (shipCount <= 1) return 0
+  return formation === 'close' ? 1 : formation === 'wide' ? 3 : 2
+}
+
 // ---------------------------------------------------------------------------
-// Pieces
+// Pieces — each one a named cell
 // ---------------------------------------------------------------------------
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
+const sigmoid = (x: number) => 1 / (1 + Math.exp(-x))
 
-/** The range curve with its beyond-the-table falloff (§3). */
-function rangeBase(curve: readonly number[], falloff: number, range: number): number {
-  const r = Math.max(0, Math.round(range))
-  if (r < curve.length) return curve[r]
-  return curve[curve.length - 1] * falloff ** (r - (curve.length - 1))
-}
-
-/** Searcher speed curves multiply; the tail decays by beyondStep per point. */
-function searcherSpeedFactor(curve: SpeedCurve, speed: number): number {
-  const s = Math.max(0, Math.round(speed))
-  if (s < curve.values.length) return curve.values[s]
-  const last = curve.values[curve.values.length - 1]
-  return Math.max(0.01, last * curve.beyondStep ** (s - (curve.values.length - 1)))
-}
-
-/** Target signature speed grows; the tail adds beyondStep per point (§5). */
-function targetSpeedFactor(curve: SpeedCurve, speed: number): number {
-  const s = Math.max(0, Math.round(speed))
-  if (s < curve.values.length) return curve.values[s]
-  const last = curve.values[curve.values.length - 1]
-  return last + curve.beyondStep * (s - (curve.values.length - 1))
-}
-
-/** §7: scout points, or command points only when there is no scout block. */
+/** E33 / E66: scout points, or command points only when there is no scout. */
 function scoutCommandFactor(actor: SensorActor, scoutPer: number, commandPer: number): number {
   if (actor.scoutSensors > 0) return 1 + scoutPer * actor.scoutSensors
   return 1 + commandPer * actor.command
 }
 
-function terrainLevel(levels: readonly number[], level: number): number {
-  return levels[Math.max(0, Math.min(levels.length - 1, Math.round(level)))]
+/** B54 / B90: the weighted searcher capability sum. */
+function capability(
+  s: SensorActor,
+  w: CapabilityWeights,
+  base: SensorModelConfig['baselines'],
+  scoutFactor: number,
+): number {
+  const raw =
+    w.sens * (s.sens / base.sens) +
+    w.power * (s.actualPower / base.power) +
+    w.sp1 * (s.sp1 / base.sp1) +
+    w.sp2 * (s.sp2 / base.sp2) +
+    w.sp0 * (s.sp0 / base.sp0) +
+    w.activeMode * ((s.active ? 1 : 0) + 1) +
+    w.sciences * (s.sciences / base.sciences)
+  return raw * scoutFactor
+}
+
+/** B55 / B91: the additive target difficulty stack. */
+function difficulty(t: SensorActor, w: DifficultyWeights, sensBaseline: number): number {
+  return (
+    w.base +
+    w.cloak * ((t.cloaked ? 1 : 0) + 1) +
+    w.terrain * (t.terrain + 1) +
+    w.formation * (t.formation + 1) +
+    w.shipCount * t.shipCount +
+    // Intelligence only in the sheet (B91); detection carries weight 0 here.
+    w.damage * (t.damage + 1) +
+    w.targetSensor * (t.sens / sensBaseline)
+  )
+}
+
+/** B56: the stepped detection range factor with its steep tail. */
+function detectionRangeFactor(cfg: SensorModelConfig, range: number): number {
+  const r = Math.max(0, Math.round(range))
+  const steps = cfg.detectionRangeSteps
+  if (r < steps.length) return steps[r]
+  return Math.max(
+    cfg.detectionRangeFloor,
+    steps[steps.length - 1] * cfg.detectionRangeFalloff ** (r - (steps.length - 1)),
+  )
+}
+
+/** B92: intelligence declines gently through 4, steeply past it. */
+function intelRangeFactor(cfg: SensorModelConfig, range: number): number {
+  const r = Math.max(0, Math.round(range))
+  if (r <= 4) return 1 - cfg.intelRangeSlope * r
+  return Math.max(cfg.intelRangeFloor, cfg.intelRangeBeyondBase * cfg.intelRangeBeyondRatio ** (r - 4))
+}
+
+/** B57 / B93: the searcher's own environment. */
+function environmentFactor(
+  env: { terrainA: number; between: number; floor: number },
+  searcher: SensorActor,
+  geom: ScanGeometry,
+): number {
+  return Math.max(env.floor, 1 - env.terrainA * searcher.terrain - env.between * geom.interveningTerrain)
+}
+
+/** B58 / B94: gentle 0–3, moderate 4–6, severe 7+. */
+function searcherSpeedFactor(
+  cfg: SensorModelConfig,
+  curve: { gentleSlope: number; moderateSlope: number; severeBase: number; severeRatio: number; floor: number },
+  speed: number,
+): number {
+  const s = Math.max(0, speed)
+  if (s <= 3) return cfg.searcherSpeedIdle - curve.gentleSlope * s
+  if (s <= 6) return 1 - curve.moderateSlope * (s - 3)
+  return Math.max(curve.floor, curve.severeBase * curve.severeRatio ** (s - 6))
+}
+
+/** B59 / B95: signature speed = target speed + 7 when active. */
+function targetSpeedFactor(cfg: SensorModelConfig, target: SensorActor): number {
+  const t = cfg.targetSpeed
+  const s = Math.max(0, target.speed) + (target.active ? cfg.targetActiveSpeedBonus : 0)
+  if (s <= 3) return t.lowBase + t.lowSlope * s
+  if (s <= 6) return 1 + t.midSlope * (s - 3)
+  return t.highBase * t.highRatio ** (s - 6)
+}
+
+/** E35 / E69: the target's power signature. */
+function powerFactor(cfg: SensorModelConfig, target: SensorActor): number {
+  return Math.max(cfg.powerFloor, cfg.powerBase + cfg.powerSlope * (target.actualPower / cfg.baselines.power))
+}
+
+/** E45 / E79: the target's size signature. */
+function sizeFactor(cfg: SensorModelConfig, target: SensorActor): number {
+  return Math.max(cfg.sizeFloor, 1 + cfg.sizeSlope * (target.sizeClass - cfg.sizePivot))
 }
 
 // ---------------------------------------------------------------------------
-// Calibration (§3): the anchor pair reads the range table exactly
-// ---------------------------------------------------------------------------
-
-/** An actor from a ship form, at a stated posture — also the test fixture. */
-export function actorFromForm(
-  formId: string,
-  opts: Partial<Omit<SensorActor, 'sensorValue'>> & { sensorPower?: 0 | 1 | 2 } = {},
-): SensorActor {
-  const form = shipFormById(formId)
-  if (!form) throw new Error(`No such form: ${formId}`)
-  const stats = operationalStats(form)
-  const power = opts.sensorPower ?? 1
-  return {
-    // Raw values: the model applies its own scout and command bonuses (§7),
-    // so the folded ratings would count them twice.
-    sensorValue: stats.sensorValues[power],
-    scoutSensors: opts.scoutSensors ?? stats.scoutSensors,
-    command: opts.command ?? stats.commandBoxes,
-    sciences: opts.sciences ?? stats.sciencesRaw,
-    actualPower: opts.actualPower ?? stats.actualPower,
-    sizeClass: opts.sizeClass ?? stats.sizeClass,
-    speed: opts.speed ?? 0,
-    active: opts.active ?? false,
-    cloaked: opts.cloaked ?? false,
-    unitType: opts.unitType ?? 'military',
-    damage: opts.damage ?? 0,
-    formation: opts.formation ?? 'standard',
-    shipCount: opts.shipCount ?? 1,
-    terrain: opts.terrain ?? 0,
-  }
-}
-
-/**
- * The one number standing in for the missing workbook's base capability
- * constant: whatever the factor product comes to for the calibrated passive
- * Yorktown II vs V-7D pair (both at speed 0, clear space), divide it out —
- * so that pair reads the §3 range table exactly, and everything else scales
- * relative to it by the briefing's own factors.
- */
-const normalizers = new WeakMap<SensorModelConfig, { detection: number; intel: number }>()
-
-function calibration(cfg: SensorModelConfig): { detection: number; intel: number } {
-  let cached = normalizers.get(cfg)
-  if (cached) return cached
-  const searcher = actorFromForm(cfg.calibrationSearcher)
-  const target = actorFromForm(cfg.calibrationTarget)
-  const geom: ScanGeometry = { range: 3, interveningTerrain: 0 }
-  cached = {
-    detection: 1 / rawDetectionFactors(searcher, target, geom, cfg),
-    intel: 1 / rawIntelFactors(searcher, target, geom, cfg),
-  }
-  normalizers.set(cfg, cached)
-  return cached
-}
-
-// ---------------------------------------------------------------------------
-// Detection (§3–§11)
+// Detection (B60) and intelligence (B96)
 // ---------------------------------------------------------------------------
 
 export interface SensorReading {
@@ -375,40 +399,7 @@ export interface SensorReading {
   factors: Record<string, number>
 }
 
-/** The non-range factor product — normalized against the calibration pair. */
-function rawDetectionFactors(
-  searcher: SensorActor,
-  target: SensorActor,
-  geom: ScanGeometry,
-  cfg: SensorModelConfig,
-): number {
-  let f = 1
-  f *= searcher.sensorValue / cfg.referenceSensorValue
-  f *= scoutCommandFactor(searcher, cfg.scoutDetectionPerPoint, cfg.commandDetectionPerPoint)
-  f *= searcherSpeedFactor(cfg.searcherSpeedDetection, searcher.speed)
-  f *= terrainLevel(cfg.searcherTerrain, searcher.terrain)
-  if (searcher.formation === 'close') f *= cfg.searcherFormationClose
-  if (searcher.formation === 'wide') f *= cfg.searcherFormationWide
-  if (searcher.cloaked) f *= cfg.cloakDetection // scanning from under a cloak is muffled too
-
-  const signatureSpeed = target.speed + (target.active ? cfg.targetActiveSpeedBonus : 0)
-  f *= targetSpeedFactor(cfg.targetSpeedSignature, signatureSpeed)
-  f *= Math.max(cfg.powerFloor, cfg.powerBase + (cfg.powerSlope * target.actualPower) / cfg.powerReference)
-  f *= Math.max(cfg.sizeFloor, 1 + cfg.sizeSlope * (target.sizeClass - cfg.sizePivot))
-  f *= Math.max(
-    cfg.targetSensorPenaltyFloor,
-    1 - cfg.targetSensorPenaltyPerPoint * target.sensorValue,
-  )
-  f *= terrainLevel(cfg.targetTerrain, target.terrain)
-  f *= cfg.interveningTerrainStep ** Math.max(0, geom.interveningTerrain)
-  if (target.cloaked) f *= cfg.cloakDetection
-  if (target.formation === 'close') f *= cfg.targetFormationClose
-  if (target.formation === 'wide') f *= cfg.targetFormationWide
-  f *= 1 + cfg.shipCountStep * Math.max(0, target.shipCount - 1)
-  return f
-}
-
-/** Per-scan detection probability (§3), factors logged. */
+/** Per-scan detection probability — cell B60, term for term. */
 export function detectionProbability(
   searcher: SensorActor,
   target: SensorActor,
@@ -420,72 +411,51 @@ export function detectionProbability(
     const p = geom.range <= cfg.damageMaxRange ? clamp01(flat) : 0
     return { p, factors: { override: p } }
   }
-  const base = rangeBase(cfg.detectionRangeCurve, cfg.beyondCurveFalloff, geom.range)
-  let p = base * rawDetectionFactors(searcher, target, geom, cfg) * calibration(cfg).detection
 
-  const factors: Record<string, number> = { base }
-  // §6: active sensors double detection inside range 2, smaller bonus beyond.
-  if (searcher.active) {
-    const bonus =
-      geom.range <= cfg.searcherActiveCloseRange
-        ? cfg.searcherActiveDetection
-        : cfg.searcherActiveLongDetection
-    p *= bonus
-    factors.searcherActive = bonus
+  const scoutFactor = scoutCommandFactor(searcher, cfg.scoutDetectionPerPoint, cfg.commandDetectionPerPoint)
+  const cap = capability(searcher, cfg.detectionCapability, cfg.baselines, scoutFactor)
+  const diff = difficulty(target, cfg.detectionDifficulty, cfg.baselines.sens)
+  const gate = sigmoid(cfg.detectionSigmoid.gain * (cap - diff - cfg.detectionSigmoid.offset))
+  const factors: Record<string, number> = {
+    capability: cap,
+    difficulty: diff,
+    gate,
+    range: detectionRangeFactor(cfg, geom.range),
+    environment: environmentFactor(cfg.detectionEnvironment, searcher, geom),
+    searcherSpeed: searcherSpeedFactor(cfg, cfg.searcherSpeedDetection, searcher.speed),
+    targetSpeed: targetSpeedFactor(cfg, target),
+    power: powerFactor(cfg, target),
+    size: sizeFactor(cfg, target),
   }
-  // §4: a searcher tearing along at 10+ hears almost nothing past range 1.
+
+  let p = gate * factors.range * factors.environment * factors.searcherSpeed * factors.targetSpeed * factors.power * factors.size
+
+  // E40: active sensors double detection inside range 2; nothing beyond
+  // (the small long-range benefit lives in the capability term above).
+  if (searcher.active && geom.range <= cfg.searcherActiveCloseRange) {
+    p *= cfg.searcherActiveDetection
+    factors.searcherActive = cfg.searcherActiveDetection
+  }
+  // B60's tail: a searcher tearing along at 10+ hears little past range 1.
   if (searcher.speed >= cfg.highSpeedThreshold && geom.range > 1) {
     p *= cfg.highSpeedDetectionFactor
     factors.highSpeed = cfg.highSpeedDetectionFactor
   }
-  // §11: damage points are additive percentage points, inside range 6.
-  if (geom.range <= cfg.damageMaxRange) {
-    const bonus = cfg.damageBonusPerStep * Math.floor(target.damage / cfg.damageStep)
-    p += bonus
-    if (bonus > 0) factors.damageBonus = bonus
-  }
-  // §10: civilians are three times as findable, applied to the final number.
+  // E51: civilians are three times as findable — inside the product.
   if (target.unitType === 'civilian') {
     p *= cfg.civilianMultiplier
     factors.civilian = cfg.civilianMultiplier
   }
+  // E49: damage points are additive, inside range 6, after everything else.
+  if (geom.range <= cfg.damageMaxRange) {
+    const bonus = cfg.damageBonusPerStep * Math.floor(Math.max(0, target.damage) / cfg.damageStep)
+    p += bonus
+    if (bonus > 0) factors.damageBonus = bonus
+  }
   return { p: clamp01(p), factors }
 }
 
-// ---------------------------------------------------------------------------
-// Intelligence (§12) — a separate check: detected is not identified
-// ---------------------------------------------------------------------------
-
-function rawIntelFactors(
-  searcher: SensorActor,
-  target: SensorActor,
-  geom: ScanGeometry,
-  cfg: SensorModelConfig,
-): number {
-  let f = 1
-  f *= searcher.sensorValue / cfg.referenceSensorValue
-  f *= scoutCommandFactor(searcher, cfg.scoutIntelPerPoint, cfg.commandIntelPerPoint)
-  f *= 1 + cfg.sciencesIntelPerPoint * searcher.sciences
-  f *= searcherSpeedFactor(cfg.searcherSpeedIntel, searcher.speed)
-  f *= terrainLevel(cfg.searcherTerrain, searcher.terrain)
-  if (searcher.formation === 'close') f *= cfg.searcherFormationClose
-  if (searcher.formation === 'wide') f *= cfg.searcherFormationWide
-  if (searcher.cloaked) f *= cfg.cloakIntel
-
-  const signatureSpeed = target.speed + (target.active ? cfg.targetActiveSpeedBonus : 0)
-  f *= targetSpeedFactor(cfg.targetSpeedSignature, signatureSpeed)
-  f *= Math.max(cfg.powerFloor, cfg.powerBase + (cfg.powerSlope * target.actualPower) / cfg.powerReference)
-  f *= Math.max(cfg.sizeFloor, 1 + cfg.sizeSlope * (target.sizeClass - cfg.sizePivot))
-  f *= terrainLevel(cfg.targetTerrain, target.terrain)
-  f *= cfg.interveningTerrainStep ** Math.max(0, geom.interveningTerrain)
-  if (target.cloaked) f *= cfg.cloakIntel
-  if (target.formation === 'close') f *= cfg.targetFormationClose
-  if (target.formation === 'wide') f *= cfg.targetFormationWide
-  f *= 1 + cfg.shipCountStep * Math.max(0, target.shipCount - 1)
-  return f
-}
-
-/** Per-scan intelligence probability (§12), factors logged. */
+/** Per-scan intelligence probability — cell B96, term for term. */
 export function intelligenceProbability(
   searcher: SensorActor,
   target: SensorActor,
@@ -497,26 +467,37 @@ export function intelligenceProbability(
     const p = geom.range <= cfg.damageMaxRange ? clamp01(flat) : 0
     return { p, factors: { override: p } }
   }
-  const base = rangeBase(cfg.intelRangeCurve, cfg.beyondCurveFalloff, geom.range)
-  let p = base * rawIntelFactors(searcher, target, geom, cfg) * calibration(cfg).intel
 
-  const factors: Record<string, number> = { base }
-  if (searcher.active) {
-    const bonus =
-      geom.range <= cfg.searcherActiveCloseRange
-        ? cfg.searcherActiveIntel
-        : cfg.searcherActiveLongIntel
-    p *= bonus
-    factors.searcherActive = bonus
+  const scoutFactor = scoutCommandFactor(searcher, cfg.scoutIntelPerPoint, cfg.commandIntelPerPoint)
+  const cap = capability(searcher, cfg.intelCapability, cfg.baselines, scoutFactor)
+  const diff = difficulty(target, cfg.intelDifficulty, cfg.baselines.sens)
+  const gate = sigmoid(cfg.intelSigmoid.gain * (cap - diff - cfg.intelSigmoid.offset))
+  const factors: Record<string, number> = {
+    capability: cap,
+    difficulty: diff,
+    gate,
+    range: intelRangeFactor(cfg, geom.range),
+    environment: environmentFactor(cfg.intelEnvironment, searcher, geom),
+    searcherSpeed: searcherSpeedFactor(cfg, cfg.searcherSpeedIntel, searcher.speed),
+    targetSpeed: targetSpeedFactor(cfg, target),
+    power: powerFactor(cfg, target),
+    size: sizeFactor(cfg, target),
+  }
+
+  let p = gate * factors.range * factors.environment * factors.searcherSpeed * factors.targetSpeed * factors.power * factors.size
+
+  if (searcher.active && geom.range <= cfg.searcherActiveCloseRange) {
+    p *= cfg.searcherActiveIntel
+    factors.searcherActive = cfg.searcherActiveIntel
+  }
+  // B96: point-blank analysis is twice as productive.
+  if (geom.range <= cfg.intelCloseRange) {
+    p *= cfg.intelCloseMultiplier
+    factors.closeRange = cfg.intelCloseMultiplier
   }
   if (searcher.speed >= cfg.highSpeedThreshold && geom.range > 1) {
     p *= cfg.highSpeedIntelFactor
     factors.highSpeed = cfg.highSpeedIntelFactor
-  }
-  // §12: point-blank analysis is twice as productive, capped at 100%.
-  if (geom.range <= cfg.intelCloseRange) {
-    p *= cfg.intelCloseMultiplier
-    factors.closeRange = cfg.intelCloseMultiplier
   }
   if (target.unitType === 'civilian') {
     p *= cfg.civilianMultiplier
@@ -526,7 +507,7 @@ export function intelligenceProbability(
 }
 
 // ---------------------------------------------------------------------------
-// Track maintenance (§13) — never a substitute for fresh detection
+// Track maintenance (B103–B108) — never a substitute for fresh detection
 // ---------------------------------------------------------------------------
 
 function rangeChangeAdjustment(
@@ -540,7 +521,7 @@ function rangeChangeAdjustment(
   return 0
 }
 
-/** §13: hold the track this scan. More intelligence in hand holds it better. */
+/** B106: hold the track this scan. More intelligence in hand holds it better. */
 export function retentionProbability(
   previousRange: number,
   currentRange: number,
@@ -562,7 +543,7 @@ export function retentionProbability(
 }
 
 /**
- * §13: pick a lost track back up. Always easier than a cold search — the
+ * B107: pick a lost track back up. Always easier than a cold search — the
  * searcher knows the signature now — so the fresh-detection chance plus ten
  * points is the floor under the formula, both clamped to [5%, 95%].
  */
@@ -591,10 +572,10 @@ export function reacquisitionProbability(
 }
 
 // ---------------------------------------------------------------------------
-// False contacts (§14) and the cumulative rule (§3)
+// False contacts (B108) and the cumulative rule (§3)
 // ---------------------------------------------------------------------------
 
-/** §14: ghosts per scan — passive space hears more of them than active. */
+/** B108: ghosts per scan — passive space hears more of them than active. */
 export function falseContactChance(active: boolean, cfg: SensorModelConfig = SENSOR_MODEL): number {
   return active ? cfg.falseContactActive : cfg.falseContactPassive
 }

@@ -251,36 +251,39 @@ it lands).
 
 ## The sensor model (designer's spreadsheet briefing, 2026-08)
 
-His sensor equations arrived as a Copilot-written briefing plus a
-spreadsheet, and `src/campaign/sensorModel.ts` implements them: five separate
-checks — initial detection, intelligence, track retention, reacquisition,
-false contacts — never substituted for one another, every coefficient in one
-configurable structure (`SENSOR_MODEL`, overridable per scenario via
-`tuning.sensorModel`), and a factors log on every reading. The calibration
-anchor is his own worked table: a passive Yorktown II searching for a V-7D
-reads 90/70/50/30/10/3.5/1.225% per scan at ranges 0–6, and the approach
-sequence 4,3,3,2,2,1,1,0 compounds to 99.90% by 1 − Π(1 − pᵢ). Both are
-pinned tests, along with the rest of his §17 validation list (25 tests).
+His sensor equations arrived as a Copilot-written briefing plus the Sensor
+Model workbook, and `src/campaign/sensorModel.ts` implements the workbook
+cell for cell: five separate checks — initial detection (B60), intelligence
+(B96), track retention (B106), reacquisition (B107), false contacts (B108)
+— never substituted for one another, every coefficient in one configurable
+structure (`SENSOR_MODEL`, overridable per scenario via
+`tuning.sensorModel`), and a factors log on every reading.
 
-Formulas implemented exactly as briefed: scout +25%/pt detection and +20%/pt
-intelligence, CMND +5%/+15% only without a scout block; power multiplier
-MAX(0.5, 0.75 + 0.25 × power/85); size multiplier MAX(0.10, 1 + 0.15 ×
-(size − 4)); civilians ×3 final; damage +5 points per full 20, inside range
-6; searcher active ×2 detection / ×1.5 intelligence at ranges 0–2; target
-active = +7 signature speed, additive; intelligence ×2 at ranges 0–1;
-searcher speed 10+ past range 1 ×0.10 detection / ×0.05 intelligence;
-retention 85% ±range-change +10%×intel clamped [5,99]; reacquisition
-MAX(fresh+10, 50%+adj+20%×intel) clamped [5,95]; ghosts 0.5% per passive
-scan, 0.1% active.
+The equation's shape: a logistic gate σ(5·((capability − difficulty) −
+offset)) — capability a weighted sum of the searcher's SENS, ACTUAL POWER,
+SP1/SP2/SP0 sensor points, active status and SNCS, scaled by the
+scout-or-command factor (+25%/pt or +5%/pt detection, +20%/+15%
+intelligence); difficulty an additive stack of the target's cloak, terrain,
+formation, ship count and a whisper of its SENS — multiplied by a stepped
+range factor (steep ×0.35/hex past range 4), the searcher and target
+piecewise speed curves (target active = +7 signature speed), an environment
+factor for the searcher's own and intervening terrain, the power signature
+MAX(0.5, 0.75 + 0.25 × power/85), the size signature MAX(0.10, 1 + 0.15 ×
+(size − 4)), active ×2/×1.5 inside range 2, the 10+-speed tails
+(×0.10/×0.05 past range 1), civilians ×3, and detection's additive damage
+points (+5 per full 20 inside range 6). The golden anchor is the sheet's
+own worked example — Yorktown II vs V-2P Raider at range 2 — pinned to the
+cached cell values (detection 0.515470552703701, intelligence
+0.18991849618949763, retention 0.8689918496189497), plus the rest of his
+§17 validation list (32 tests). The SENS rating reads the forms' SENS
+system boxes (Yorktown II = 3, exactly the sheet's baseline).
 
-**The workbook itself arrived empty** — a SHIP DATA header block, none of
-the `Sensor Model` sheet cells the briefing cites (B58/B60/B94/B96, E35…)
-— so the pieces that lived only there are PROVISIONAL stand-ins shaped to
-the prose (marked in the config): the two searcher speed curves, the
-intelligence base curve, terrain, cloak, formation and ship-count factors,
-the active-sensor long-range "smaller bonuses", and a single calibration
-normalizer standing in for the base capability formula. Send the real
-workbook and those constants get replaced cell for cell.
+Two cells implemented verbatim and FLAGGED for the designer (each is one
+coefficient to change): B91 adds 0.06 × (damage + 1) to intelligence
+difficulty with damage on the points scale, so 20 points of damage all but
+shuts off intelligence on a wounded hull; and B55's 0.06 × (formation + 1)
+makes a WIDE formation the hardest to detect, where his orders doc says
+wide should be a little easier.
 
 The campaign sweep (`detection.ts`) now runs the model with explicit track
 states per contact — detected / tracked / track-lost / reacquired — a lost
