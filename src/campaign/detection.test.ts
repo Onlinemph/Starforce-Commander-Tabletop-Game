@@ -124,16 +124,40 @@ describe('contact records climb the ladder (4.4)', () => {
     expect(contactOf(near, 'A')!.attributes.shipClass?.value).toBe('V-7C RAIDER-class Battlecruiser')
   })
 
-  it('a close formation keeps its count until range one (6.2)', () => {
+  it("a close formation reads as one target: its count comes only through the 25% peek (6.2)", () => {
     const file = duelFile({
       bShips: ['vallari-v-6l-savage-class-light-cruiser', 'vallari-v-6l-savage-class-light-cruiser'],
       bFormation: 'close',
       bHex: { q: 10, r: 4 }, // range 2
     })
-    for (let i = 0; i < 24; i++) pass(file)
+    // Two certain scans climb four rungs — exists, bearing, size, speed —
+    // and the ladder now stands at the count gate.
+    pass(file)
+    pass(file)
+    expect(contactOf(file, 'A')!.attributes.speed).toBeDefined()
+    expect(contactOf(file, 'A')!.attributes.count).toBeUndefined()
+
+    // The peek is a 25% roll per scan: many more phases and it lands, and
+    // the ladder moves on past it.
+    for (let i = 0; i < 40; i++) pass(file)
     const contact = contactOf(file, 'A')!
-    expect(contact.attributes.count).toBeUndefined()
-    expect(contact.attributes.speed).toBeDefined() // the ladder stopped at the gate
+    expect(contact.attributes.count).toBeDefined()
+    expect(contact.attributes.count?.value).toBe('2')
+    expect(contact.attributes.faction).toBeDefined()
+  })
+
+  it('close formation risks a collision — a structure scar on a random hull', () => {
+    const file = duelFile({
+      bShips: ['vallari-v-6l-savage-class-light-cruiser', 'vallari-v-6l-savage-class-light-cruiser'],
+      bFormation: 'close',
+    })
+    ;(file.scenario.tuning.sensorModel as Record<string, unknown>).closeFormationCollision = 1
+    pass(file) // A's phase: B does not roll
+    const before = file.state.units.find((u) => u.id === 'b-1')!
+    expect(before.ships.every((s) => (s.scars?.structure ?? 0) === 0)).toBe(true)
+    pass(file) // B's phase: the certain accident happens
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    expect(b.ships.some((s) => (s.scars?.structure ?? 0) > 0)).toBe(true)
   })
 })
 

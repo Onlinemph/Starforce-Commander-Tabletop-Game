@@ -278,12 +278,33 @@ cached cell values (detection 0.515470552703701, intelligence
 §17 validation list (32 tests). The SENS rating reads the forms' SENS
 system boxes (Yorktown II = 3, exactly the sheet's baseline).
 
-Two cells implemented verbatim and FLAGGED for the designer (each is one
-coefficient to change): B91 adds 0.06 × (damage + 1) to intelligence
-difficulty with damage on the points scale, so 20 points of damage all but
-shuts off intelligence on a wounded hull; and B55's 0.06 × (formation + 1)
-makes a WIDE formation the hardest to detect, where his orders doc says
-wide should be a little easier.
+Two cells were flagged to the designer and are now resolved by his rulings:
+
+- **B91's damage term, fixed as approved.** The sheet added 0.06 ×
+  (damage + 1) to intelligence difficulty with damage on the 0–100 points
+  scale — one band of damage (20 points) added 1.26 difficulty and shut
+  intelligence off entirely, backwards for a game where damaged ships are
+  supposed to be easier to read. The term now reads damage in the same
+  20-point bands as detection's E49: 0.06 × (INT(damage/20) + 1). An
+  undamaged hull still contributes exactly the sheet's 0.06, so the golden
+  worked-example cells pin unchanged; each band of damage now costs a
+  noticeable but survivable slice of intelligence (≈×0.74 per band through
+  the sigmoid) instead of all of it.
+
+- **Formations, redesigned to his spec: two types.** *Standard* is the
+  default — every ship in the unit scans. *Close Formation* (2+ ships)
+  flies tight enough to read as ONE target: the difficulty stack counts a
+  single hull, the formation step (0.06 × (formation + 1), formation now
+  0 = Standard / 1 = Close) adds on top — so the disguise is strictly
+  better than actually being one ship — and only the lead ship (best SENS
+  aboard, its stats whole, not a committee of best-of-each) works the
+  scopes while searching. The true ship count resolves only through a
+  25%-per-scan peek at the count rung of the intelligence ladder
+  (`closeFormationCountChance`), and formation-keeping carries a
+  0.25%-per-own-phase collision risk (`closeFormationCollision`) that
+  marks one structure box on a random hull — surfacing through the normal
+  damage bands and repair queue. 'Wide' survives only in old files and
+  reads as Standard.
 
 The campaign sweep (`detection.ts`) now runs the model with explicit track
 states per contact — detected / tracked / track-lost / reacquired — a lost
@@ -299,8 +320,10 @@ standing order (checkbox in the console) separate from the power setting.
 From his orders list, still to build: task forces, Shadow as a first-class
 order (intercept exists; shadow-at-2-hexes is a mission type away), Attack
 Nearest / Attack Specified with speed caps, Raid / Assault system orders,
-Avoid Contact, AI civilian shipping between planets and bases, and the
-formation deep-think he deferred. Quick Resolve already covers his
+Avoid Contact, AI civilian shipping between planets and bases, and —
+per his note — **specific speed orders**: setting an exact speed in hexes a
+round rather than a named tier, with civilian ships limited to speeds 1–3
+depending on the merchant hull. Quick Resolve already covers his
 "auto-resolve battles" item; ship entry via the builder covers "add ships"
 (campaign scenarios take any form id, custom forms embed in the file).
 

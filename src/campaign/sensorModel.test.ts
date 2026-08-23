@@ -258,14 +258,19 @@ describe('damage signature (E49)', () => {
     expect(detect(s, { ...t, damage: 40 }, 7)).toBeCloseTo(detect(s, t, 7), 10)
   })
 
-  it('VERBATIM, flagged for the designer: B91 makes intelligence collapse on a damaged hull', () => {
-    // Intelligence difficulty adds 0.06 × (damage + 1) with damage on the
-    // same points scale detection divides by 20 — so 20 points of damage
-    // adds 1.26 difficulty and the sigmoid shuts. Implemented as the sheet
-    // computes it; one coefficient to change if damage there meant a band.
+  it("damage nudges intelligence difficulty by bands — the designer's B91 fix", () => {
+    // The sheet's raw-points term (0.06 × (damage + 1)) shut intelligence
+    // off at one band of damage; per his ruling it now reads the same
+    // 20-point bands as E49: 0.06 × (INT(damage/20) + 1). One band costs a
+    // noticeable but survivable slice, and undamaged still contributes the
+    // sheet's exact 0.06 — the golden cells above stand.
     const s = yorktownII()
     const t = v2pRaider()
-    expect(intel(s, { ...t, damage: 20 }, 2)).toBeLessThan(0.05 * intel(s, t, 2))
+    const base = intel(s, t, 2)
+    const wounded = intel(s, { ...t, damage: 20 }, 2)
+    expect(wounded).toBeLessThan(base)
+    expect(wounded).toBeGreaterThan(0.5 * base)
+    expect(intel(s, { ...t, damage: 40 }, 2)).toBeLessThan(wounded)
   })
 })
 
@@ -327,22 +332,24 @@ describe('cloak, terrain and formation (B55, B57, B91, B93)', () => {
     expect(detectionProbability(s, t, geom(3, 2)).p).toBeLessThan(base)
   })
 
-  it('VERBATIM, flagged for the designer: B55 makes a WIDE formation the hardest to find', () => {
-    // The sheet adds 0.06 × (formation + 1) to difficulty, so 3 = Wide is
-    // the most difficult target — the orders doc says wide should be a
-    // little easier. Implemented as the sheet computes it.
+  it("a close formation is harder to find than the single ship it imitates — the redesign", () => {
+    // Two formations now: Standard (0) and Close (1). A close group reads
+    // as ONE hull in the ship-count term (the campaign integration sets
+    // shipCount 1) and its formation step adds difficulty on top — so the
+    // disguise is strictly better than actually being one ship.
     const s = yorktownII()
     const t = v2pRaider()
-    expect(detect(s, { ...t, formation: 3, shipCount: 3 }, 3)).toBeLessThan(
-      detect(s, { ...t, formation: 0, shipCount: 3 }, 3),
+    expect(detect(s, { ...t, formation: 1, shipCount: 1 }, 3)).toBeLessThan(
+      detect(s, { ...t, formation: 0, shipCount: 1 }, 3),
     )
   })
 
-  it('formation numbering follows the orders doc', () => {
+  it('formation numbering after the redesign: standard 0, close 1, wide is legacy', () => {
     expect(formationNumber('standard', 1)).toBe(0) // single ship
+    expect(formationNumber('close', 1)).toBe(0) // close needs company
     expect(formationNumber('close', 3)).toBe(1)
-    expect(formationNumber('standard', 3)).toBe(2)
-    expect(formationNumber('wide', 3)).toBe(3)
+    expect(formationNumber('standard', 3)).toBe(0)
+    expect(formationNumber('wide', 3)).toBe(0) // old files read as standard
   })
 })
 

@@ -846,12 +846,11 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
               <label className="field">
                 <span>Formation</span>
                 <select
-                  value={order.formation}
-                  onChange={(e) => editOrder(unit.id, { formation: e.target.value as 'close' | 'standard' | 'wide' })}
+                  value={order.formation === 'close' ? 'close' : 'standard'}
+                  onChange={(e) => editOrder(unit.id, { formation: e.target.value as 'close' | 'standard' })}
                 >
-                  <option value="close">Close — hide the count</option>
-                  <option value="standard">Standard</option>
-                  <option value="wide">Wide — search line</option>
+                  <option value="standard">Standard — every ship scans</option>
+                  <option value="close">Close — read as one target, lead ship scans, slight collision risk</option>
                 </select>
               </label>
               <label className="field">

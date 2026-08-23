@@ -32,14 +32,19 @@
  *
  * Every coefficient sits in SENSOR_MODEL, overridable per scenario through
  * `tuning.sensorModel` (top-level shallow merge: override a section object
- * whole). Two footnotes for the designer, implemented verbatim and flagged:
- *  - Intelligence difficulty includes 0.06 × (damage + 1) with damage on
- *    the same 0–100 points scale detection uses (INT(damage/20) there), so
- *    20 points of damage adds 1.26 difficulty and intelligence on a damaged
- *    hull collapses. If damage there was meant as a small band (0/1/2), the
- *    fix is one coefficient.
- *  - Formation (0 single … 3 wide) raises difficulty, so a WIDE formation
- *    is the hardest to detect — the orders doc says wide is a little easier.
+ * whole). Two departures from the workbook's literal cells, both by the
+ * designer's ruling on the flagged footnotes:
+ *  - B91's intelligence-difficulty damage term read 0.06 × (damage + 1)
+ *    with damage on the 0–100 points scale detection divides by 20 — one
+ *    band of damage shut intelligence off entirely. FIXED per his go-ahead
+ *    by reading damage in the same 20-point bands as detection's E49:
+ *    0.06 × (INT(damage/20) + 1). Undamaged still contributes exactly the
+ *    sheet's 0.06, so the golden worked-example cells still pin.
+ *  - Formations are now two, per his redesign: Standard (0, the default —
+ *    every ship scans) and Close (1 — the unit reads as ONE target, only
+ *    the lead ship scans, the true count resolves only through a 25%-per-
+ *    scan peek, and formation-keeping carries a 0.25%-per-phase collision
+ *    risk). 'Wide' in an old file reads as Standard.
  */
 
 import type { Formation } from './types'
@@ -111,7 +116,10 @@ export interface DifficultyWeights {
   shipCount: number
   /** × (targetSENS / sensBaseline) — E52/E86's whisper. */
   targetSensor: number
-  /** Intelligence only: × (damage + 1), verbatim from B91. */
+  /**
+   * Intelligence only: × (INT(damage / damageStep) + 1) — B91 with the
+   * designer-approved band reading, so damage nudges rather than shuts.
+   */
   damage: number
 }
 
@@ -193,6 +201,14 @@ export interface SensorModelConfig {
   falseContactPassive: number
   falseContactActive: number
   /**
+   * Close formation (the designer's redesign): the chance per scan that the
+   * count of a close formation can even be peeked at — "a 25% chance that a
+   * detection can be attempted on each additional ship beyond the first" —
+   * and the small per-phase risk of two hulls flying that tight touching.
+   */
+  closeFormationCountChance: number
+  closeFormationCollision: number
+  /**
    * PROVISIONAL (not in the sheet): beyond this range no retention or
    * reacquisition roll happens at all — a held track goes cold, a lost one
    * stays lost. Without a horizon the 5% floors would hold tracks on
@@ -270,6 +286,8 @@ export const SENSOR_MODEL: SensorModelConfig = {
   reacquisitionMax: 0.95,
   falseContactPassive: 0.005,
   falseContactActive: 0.001,
+  closeFormationCountChance: 0.25,
+  closeFormationCollision: 0.0025,
   trackingMaxRange: 8,
 }
 
@@ -279,10 +297,14 @@ export function resolveSensorModel(overrides?: Record<string, unknown>): SensorM
   return { ...SENSOR_MODEL, ...overrides } as SensorModelConfig
 }
 
-/** Formation as the sheet numbers it: 0 Single, 1 Close, 2 Medium, 3 Wide. */
+/**
+ * Formation as the difficulty stack numbers it, after the designer's
+ * redesign: 0 Standard (the default — a single ship is always Standard),
+ * 1 Close. 'Wide' survives only in old files and reads as Standard.
+ */
 export function formationNumber(formation: Formation, shipCount: number): number {
   if (shipCount <= 1) return 0
-  return formation === 'close' ? 1 : formation === 'wide' ? 3 : 2
+  return formation === 'close' ? 1 : 0
 }
 
 // ---------------------------------------------------------------------------
@@ -318,15 +340,22 @@ function capability(
 }
 
 /** B55 / B91: the additive target difficulty stack. */
-function difficulty(t: SensorActor, w: DifficultyWeights, sensBaseline: number): number {
+function difficulty(
+  t: SensorActor,
+  w: DifficultyWeights,
+  sensBaseline: number,
+  damageStep: number,
+): number {
   return (
     w.base +
     w.cloak * ((t.cloaked ? 1 : 0) + 1) +
     w.terrain * (t.terrain + 1) +
     w.formation * (t.formation + 1) +
     w.shipCount * t.shipCount +
-    // Intelligence only in the sheet (B91); detection carries weight 0 here.
-    w.damage * (t.damage + 1) +
+    // Intelligence only (B91); detection carries weight 0 here. Damage reads
+    // in the same 20-point bands as E49 — the designer's fix for the sheet's
+    // raw-points term, which shut intelligence off at one band of damage.
+    w.damage * (Math.floor(Math.max(0, t.damage) / damageStep) + 1) +
     w.targetSensor * (t.sens / sensBaseline)
   )
 }
@@ -414,7 +443,7 @@ export function detectionProbability(
 
   const scoutFactor = scoutCommandFactor(searcher, cfg.scoutDetectionPerPoint, cfg.commandDetectionPerPoint)
   const cap = capability(searcher, cfg.detectionCapability, cfg.baselines, scoutFactor)
-  const diff = difficulty(target, cfg.detectionDifficulty, cfg.baselines.sens)
+  const diff = difficulty(target, cfg.detectionDifficulty, cfg.baselines.sens, cfg.damageStep)
   const gate = sigmoid(cfg.detectionSigmoid.gain * (cap - diff - cfg.detectionSigmoid.offset))
   const factors: Record<string, number> = {
     capability: cap,
@@ -470,7 +499,7 @@ export function intelligenceProbability(
 
   const scoutFactor = scoutCommandFactor(searcher, cfg.scoutIntelPerPoint, cfg.commandIntelPerPoint)
   const cap = capability(searcher, cfg.intelCapability, cfg.baselines, scoutFactor)
-  const diff = difficulty(target, cfg.intelDifficulty, cfg.baselines.sens)
+  const diff = difficulty(target, cfg.intelDifficulty, cfg.baselines.sens, cfg.damageStep)
   const gate = sigmoid(cfg.intelSigmoid.gain * (cap - diff - cfg.intelSigmoid.offset))
   const factors: Record<string, number> = {
     capability: cap,

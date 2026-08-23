@@ -24,6 +24,7 @@ import {
   unitProfile,
   type DetectionContext,
 } from './detection'
+import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
 import { effectiveSpeedTier, enduranceTick, orderedSpeed, repairTick, wingTick } from './logistics'
@@ -33,6 +34,7 @@ import type { ShipScars } from '../engine/shipState'
 import { deliveryTick, settleWinner } from './scoring'
 import {
   DEFAULT_REPAIR_QUEUE,
+  nextInt,
   nextRandom,
   sideToMove,
   type BattleRecord,
@@ -272,6 +274,7 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     if (unit.side !== move.side) continue
     stepUnit(ctx, next, unit, hexesThisPhase(orderedSpeed(unit), unit.side, next.phase))
   }
+  closeFormationTick(ctx, next, move.side)
 
   runDetection(ctx, next)
   checkEngagements(ctx, next)
@@ -311,6 +314,29 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     next.phase += 1
   }
   return next
+}
+
+/**
+ * Formation-keeping has teeth (the designer's close-formation redesign):
+ * hulls flying tight enough to read as one target run a tiny risk of
+ * touching — a quarter of one percent per own phase, configurable through
+ * `tuning.sensorModel.closeFormationCollision`. A collision marks one
+ * structure box on a random hull of the unit; the scar surfaces through the
+ * ordinary damage bands and repair queue, like any other wound. Rolled only
+ * on the unit's own side's phases, fixed iteration order, so the campaign
+ * stream replays.
+ */
+function closeFormationTick(ctx: DetectionContext, state: CampaignState, side: Side): void {
+  const cfg = resolveSensorModel(ctx.scenario.tuning.sensorModel)
+  if (cfg.closeFormationCollision <= 0) return
+  for (const unit of state.units) {
+    if (unit.side !== side) continue
+    if (unit.order.formation !== 'close' || unit.ships.length < 2) continue
+    if (nextRandom(state.rng) >= cfg.closeFormationCollision) continue
+    const ship = unit.ships[nextInt(state.rng, unit.ships.length)]
+    const scars = (ship.scars ??= blankScars())
+    scars.structure += 1
+  }
 }
 
 /**

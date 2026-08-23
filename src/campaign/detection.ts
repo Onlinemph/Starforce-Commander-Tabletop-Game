@@ -1,17 +1,17 @@
 /**
  * Detection — the heart of the game (design doc Part 4).
  *
- * Submarine-style: after every phase's movement, EVERY unit on the table makes
- * a passive scan against every enemy unit, both sides, twelve sweeps a round.
- * Doyle's per-scan curve is steep in range and hard-capped at five hexes; the
- * modifier stack shifts the roll by whole columns ("bands") so his shape
- * survives tuning; and what a scan earns is not a blip but an attribute — one
- * rung of a graded ladder, each rung independently capable of being a lie.
+ * Submarine-style: after every phase's movement, EVERY unit on the table
+ * makes a scan against every enemy unit, both sides, sixteen sweeps a round.
+ * The probabilities are the designer's sensor model (sensorModel.ts — his
+ * workbook, cell for cell); this module is the campaign around it: track
+ * states per contact, the attribute ladder a separate intelligence roll
+ * climbs one rung at a time — each rung independently capable of being a
+ * lie — ghosts from false-contact rolls, and the decay of a picture nobody
+ * refreshes.
  *
  * Everything here runs on the umpire's side of the wall. Player-facing code
- * sees the results only through `views.ts`, and the one number this module
- * exports for UI use — `detectionChance` — is a function of things a player
- * at a physical table could see anyway (their own posture, a bearing, range).
+ * sees the results only through `views.ts`.
  */
 
 import { registerCustomForms, FILE_FORMS, SHIP_FORMS, shipFormById } from '../data/ships'
@@ -122,25 +122,44 @@ function terrainLevelOf(kind: TerrainKind): number {
   }
 }
 
+/** Close formation with company: the redesign's special rules apply (6.2). */
+function inCloseFormation(unit: Unit): boolean {
+  return unit.order.formation === 'close' && unit.ships.length > 1
+}
+
 /**
  * A unit as the sensor model's actor: the workbook's yellow input table read
  * off the fleet's forms, folded the way units fold — as loud as the loudest
  * hull, as sharp as the best SENS rating, as big as the biggest hull. On the
  * target side damage is the sheet's points scale (E49's 20-points-per-band
  * reading of the campaign damage bands).
+ *
+ * The designer's close formation bends both roles: searching, only the lead
+ * ship works its scopes (best SENS aboard; ITS stats, not a committee's), and
+ * as a target the group reads as ONE contact — ship count 1 in the difficulty
+ * stack, the truth findable only through the count rung's 25% peek.
  */
-function unitActor(map: CampaignMap, unit: Unit): SensorActor {
+function unitActor(map: CampaignMap, unit: Unit, role: 'searcher' | 'target'): SensorActor {
   const all = unit.ships.map((s) => statsFor(s.formId))
   const band = unitDamageBand(unit)
+  const close = inCloseFormation(unit)
+  // The lead scanner: the hull with the best SENS rating, whole.
+  const scanners =
+    role === 'searcher' && close
+      ? [all.reduce((best, s) => (s.sensBoxes > best.sensBoxes ? s : best))]
+      : all
   return {
-    sens: Math.max(...all.map((s) => s.sensBoxes)),
-    scoutSensors: Math.max(...all.map((s) => s.scoutSensors)),
-    command: Math.max(...all.map((s) => s.commandBoxes)),
-    sciences: Math.max(...all.map((s) => s.sciencesRaw)),
-    actualPower: Math.max(...all.map((s) => s.actualPower)),
-    sp0: Math.max(...all.map((s) => s.sensorValues[0])),
-    sp1: Math.max(...all.map((s) => s.sensorValues[1])),
-    sp2: Math.max(...all.map((s) => s.sensorValues[2])),
+    sens: Math.max(...scanners.map((s) => s.sensBoxes)),
+    scoutSensors: Math.max(...scanners.map((s) => s.scoutSensors)),
+    command: Math.max(...scanners.map((s) => s.commandBoxes)),
+    sciences: Math.max(...scanners.map((s) => s.sciencesRaw)),
+    actualPower:
+      role === 'searcher'
+        ? Math.max(...scanners.map((s) => s.actualPower))
+        : Math.max(...all.map((s) => s.actualPower)),
+    sp0: Math.max(...scanners.map((s) => s.sensorValues[0])),
+    sp1: Math.max(...scanners.map((s) => s.sensorValues[1])),
+    sp2: Math.max(...scanners.map((s) => s.sensorValues[2])),
     sizeClass: Math.max(...all.map((s) => s.sizeClass)),
     speed: unit.movedLastOwnPhase ? orderedSpeed(unit) : 0,
     // A dry tank cannot feed an active sweep (6.4).
@@ -149,7 +168,8 @@ function unitActor(map: CampaignMap, unit: Unit): SensorActor {
     unitType: unit.kind === 'convoy' ? 'civilian' : 'military',
     damage: band === 'crippled' ? 40 : band === 'damaged' ? 20 : 0,
     formation: formationNumber(unit.order.formation, unit.ships.length),
-    shipCount: unit.ships.length,
+    // "Appear as 1 Target": the difficulty stack counts one hull.
+    shipCount: close && role === 'target' ? 1 : unit.ships.length,
     terrain: terrainLevelOf(terrainAt(map, unit.hex)),
   }
 }
@@ -213,24 +233,16 @@ export function trueAttribute(unit: Unit, attr: ContactAttribute): string {
 }
 
 /**
- * The ladder for one target: `count` climbs a rung for a wide formation and
- * hides behind range one for a close one (6.2); identification needs range
- * three or a scout block (4.4). Returns the rungs in resolution order plus a
- * per-rung gate.
+ * The ladder for one target, in resolution order. Identification needs range
+ * three or a scout block (4.4); a close formation's count hides behind its
+ * own probabilistic gate, rolled at climb time (the designer's 25% peek).
  */
-function ladderFor(target: Unit): ContactAttribute[] {
-  const base = [...CONTACT_ATTRIBUTES]
-  if (target.order.formation === 'wide') {
-    const i = base.indexOf('count')
-    base.splice(i, 1)
-    base.splice(i - 1, 0, 'count')
-  }
-  return base
+function ladderFor(): ContactAttribute[] {
+  return [...CONTACT_ATTRIBUTES]
 }
 
-function rungGate(target: Unit, attr: ContactAttribute, range: number, searcherScout: boolean): boolean {
+function rungGate(attr: ContactAttribute, range: number, searcherScout: boolean): boolean {
   if ((attr === 'shipClass' || attr === 'shipName') && range > 3 && !searcherScout) return false
-  if (attr === 'count' && target.order.formation === 'close' && range > 1) return false
   return true
 }
 
@@ -409,8 +421,9 @@ function landIntel(
   range: number,
   contact: ContactRecord,
   existsWasNew: boolean,
+  cfg: SensorModelConfig,
 ): void {
-  const ladder = ladderFor(target)
+  const ladder = ladderFor()
   const targetTerrain = terrainAt(ctx.map, target.hex)
   let rungs = (searcherSciences >= 3 ? 2 : 1) - (existsWasNew ? 1 : 0)
   if (rungs <= 0) return
@@ -443,7 +456,16 @@ function landIntel(
       contact.attributes[attr]!.stale = false
       continue
     }
-    if (!rungGate(target, attr, range, searcherScout)) break
+    if (!rungGate(attr, range, searcherScout)) break
+    // A close formation reads as one target (6.2, the designer's redesign):
+    // each scan has only a 25% chance to peek past the lead hull and count.
+    if (
+      attr === 'count' &&
+      inCloseFormation(target) &&
+      nextRandom(state.rng) >= cfg.closeFormationCountChance
+    ) {
+      break
+    }
     rungs -= 1
     const truth = trueAttribute(target, attr)
     const never = attr === 'exists' // presence is never false (4.5)
@@ -480,7 +502,7 @@ function infrastructureSweep(
         range,
         interveningTerrain: interveningTerrain(ctx.map, station.hex, target.hex),
       }
-      const det = detectionProbability(LISTENING_POST_ACTOR, unitActor(ctx.map, target), geom, cfg)
+      const det = detectionProbability(LISTENING_POST_ACTOR, unitActor(ctx.map, target, 'target'), geom, cfg)
       if (det.p > 0 && (det.p >= 1 || nextRandom(state.rng) < det.p)) {
         const existing = findContact(state, station.side, target.id)
         const prev = existing && !contactCollapsed(existing) ? (existing.track ?? 'tracked') : null
@@ -552,7 +574,7 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
   for (const side of ['A', 'B'] as const) {
     for (const searcher of state.units) {
       if (searcher.side !== side) continue
-      const actor = unitActor(ctx.map, searcher)
+      const actor = unitActor(ctx.map, searcher, 'searcher')
       const profile = unitProfile(searcher)
       const scout = actor.scoutSensors > 0
       for (const target of state.units) {
@@ -562,7 +584,7 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
           range,
           interveningTerrain: interveningTerrain(ctx.map, searcher.hex, target.hex),
         }
-        const targetActor = unitActor(ctx.map, target)
+        const targetActor = unitActor(ctx.map, target, 'target')
         const det = detectionProbability(actor, targetActor, geom, cfg)
         const intel = intelligenceProbability(actor, targetActor, geom, cfg)
 
@@ -601,7 +623,7 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
         // Intelligence is its own check (§12): the ladder climbs only when
         // it lands — a certain read (p ≥ 1) spends no die.
         if (intel.p > 0 && (intel.p >= 1 || nextRandom(state.rng) < intel.p)) {
-          landIntel(ctx, state, profile.sciences, scout, target, range, landed.contact, landed.existsWasNew)
+          landIntel(ctx, state, profile.sciences, scout, target, range, landed.contact, landed.existsWasNew, cfg)
         }
       }
       // §14: the scan that saw something that was never there.
