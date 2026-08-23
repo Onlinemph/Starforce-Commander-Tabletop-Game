@@ -35,6 +35,7 @@ import {
   effectiveSpeedTier,
   orderSpeedCap,
   orderedSpeed,
+  unitSpeedCap,
   unitSpeedTiers,
 } from '../campaign/logistics'
 import { shipFormById } from '../data/ships'
@@ -815,7 +816,15 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 <span>Speed</span>
                 <select
                   value={order.speed}
-                  onChange={(e) => editOrder(unit.id, { speed: e.target.value as SpeedTier })}
+                  onChange={(e) => {
+                    const speed = e.target.value as SpeedTier
+                    // Lowering the tier reins the throttle in with it.
+                    const cap = orderSpeedCap(unit, { ...order, speed })
+                    editOrder(unit.id, {
+                      speed,
+                      ...(order.exactSpeed != null && order.exactSpeed > cap ? { exactSpeed: cap } : {}),
+                    })
+                  }}
                 >
                   <option value="hold">Hold</option>
                   <option value="cruise">Cruise ({unitSpeedTiers(unit).cruise}/round)</option>
@@ -831,20 +840,31 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 <input
                   type="number"
                   min={0}
-                  max={orderSpeedCap(unit, order)}
+                  max={unitSpeedCap(unit)}
                   step={1}
                   value={order.exactSpeed ?? ''}
-                  placeholder={
-                    order.speed === 'hold' ? 'tier is Hold' : `tier speed (≤ ${orderSpeedCap(unit, order)})`
-                  }
-                  onChange={(e) =>
-                    editOrder(unit.id, {
-                      exactSpeed:
-                        e.target.value === ''
-                          ? undefined
-                          : Math.max(0, Math.min(orderSpeedCap(unit, order), Math.round(Number(e.target.value)))),
-                    })
-                  }
+                  placeholder={`hexes/round (≤ ${unitSpeedCap(unit)})`}
+                  onChange={(e) => {
+                    if (e.target.value === '') {
+                      editOrder(unit.id, { exactSpeed: undefined })
+                      return
+                    }
+                    const value = Math.max(0, Math.min(unitSpeedCap(unit), Math.round(Number(e.target.value))))
+                    // The tier follows the throttle: pick the smallest tier
+                    // that authorizes this pace, so the pair never conflicts.
+                    const tiers = unitSpeedTiers(unit)
+                    const speed: SpeedTier =
+                      value <= 0
+                        ? 'hold'
+                        : value <= tiers.cruise
+                          ? 'cruise'
+                          : value <= tiers.maxCruise
+                            ? 'max-cruise'
+                            : value <= tiers.maximum
+                              ? 'maximum'
+                              : 'emergency'
+                    editOrder(unit.id, { exactSpeed: value, speed })
+                  }}
                 />
               </label>
               <label className="field">

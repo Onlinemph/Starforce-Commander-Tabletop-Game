@@ -232,14 +232,16 @@ export function unitSpeedCap(unit: Unit): number {
 /**
  * The ceiling an exact speed may order: the CHOSEN tier's own speed — the
  * tier is the authorization, the number a throttle within it — and never
- * past the unit's envelope or a civilian's merchant limit. Hold authorizes
- * nothing: an exact speed under a hold order reads 0.
+ * past the unit's envelope or a civilian's merchant limit. Under a Hold
+ * order the number stands on its own (full envelope): the pace it makes
+ * picks its own tier for burn and signature anyway, and the earliest
+ * exact-speed build saved orders in exactly that shape.
  */
 export function orderSpeedCap(unit: Unit, order: StandingOrder = unit.order): number {
   const tiers = unitSpeedTiers(unit)
   const tierSpeed =
     order.speed === 'hold'
-      ? 0
+      ? tiers.emergency
       : order.speed === 'cruise'
         ? tiers.cruise
         : order.speed === 'max-cruise'

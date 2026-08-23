@@ -181,7 +181,20 @@ function currentDestination(ctx: DetectionContext, state: CampaignState, unit: U
   const mission = unit.order.mission
   if (mission) {
     const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)
-    if (!contact || contactCollapsed(contact)) return null // hold until told otherwise
+    if (!contact || contactCollapsed(contact)) {
+      /*
+       * The trail went cold: the mission ends and the unit RESUMES ITS
+       * WAYPOINTS. This used to hold the ship "until told otherwise", which
+       * read as ships abandoning their plotted routes forever the moment a
+       * contact faded — and under the sensor model contacts fade often. A
+       * hunter with no quarry goes back to its patrol.
+       */
+      delete unit.order.mission
+    }
+  }
+  if (unit.order.mission) {
+    const mission = unit.order.mission
+    const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)!
     const believed = reckonedHex(ctx.map, contact, state)
     if (mission.type === 'intercept') return believed
     // Shadow (5.3): keep the trail at distance three to four.

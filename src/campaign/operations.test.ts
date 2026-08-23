@@ -453,9 +453,39 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
         ],
       }),
     ).toThrow(/exceeds cruise/)
-    // Hold authorizes nothing.
+    // Under Hold the number stands on its own — the earliest exact-speed
+    // build saved orders in that shape, and stranding them broke patrols.
     a.order = { ...a.order, speed: 'hold', exactSpeed: 3 }
-    expect(orderedSpeed(a)).toBe(0)
+    expect(orderedSpeed(a)).toBe(3)
+    expect(effectiveSpeedTier(a)).toBe('cruise')
+  })
+
+  it('a mission whose contact faded clears, and the unit resumes its waypoints', () => {
+    const file = opsFile()
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    const start = { ...a.hex }
+    file.state.contacts.push({
+      id: 'ct-A-9',
+      side: 'A',
+      targetUnitId: 'b-1',
+      attributes: { exists: { value: 'yes', truthful: true, resolvedAtRange: 2, stale: false } },
+      estimatedHex: { q: start.q, r: Math.max(0, start.r - 6) },
+      positionEstimated: true,
+      lastScan: { round: 1, phase: 1 },
+      unscannedRounds: 3, // collapsed: the trail is already cold
+      course: null,
+      observedMoving: false,
+    })
+    a.order = {
+      ...a.order,
+      speed: 'cruise',
+      waypoints: [{ q: start.q + 8, r: start.r }],
+      mission: { type: 'intercept', contactId: 'ct-A-9' },
+    }
+    passRound(file)
+    const after = file.state.units.find((u) => u.id === 'a-1')!
+    expect(after.order.mission).toBeUndefined()
+    expect(after.hex.q).toBeGreaterThan(start.q) // back on its plotted route
   })
 
   it('the resolver refuses an exact speed beyond the envelope', () => {

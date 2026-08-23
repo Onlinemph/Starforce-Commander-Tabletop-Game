@@ -320,9 +320,11 @@ standing order (checkbox in the console) separate from the power setting.
 **Specific speed orders (shipped, his note):** a standing order may carry
 an exact speed in hexes a round (`exactSpeed`) beside the named tier. The
 tier is the authorization and the number a throttle within it: the ceiling
-is the CHOSEN tier's own speed (`orderSpeedCap` — Hold authorizes
-nothing), never past the hull's envelope, and a civilian unit caps at 1–3
-by its merchant hull. The pace made still reads as whichever tier the
+is the CHOSEN tier's own speed (`orderSpeedCap`), never past the hull's
+envelope, and a civilian unit caps at 1–3 by its merchant hull. Under a
+Hold order the number stands on its own (full envelope) — the console
+keeps the pair in sync anyway, the tier following a typed number up and
+the number reined in when the tier drops. The pace made still reads as whichever tier the
 number lands in, so endurance burn, emergency drive wear and the detection
 speed signature follow the real speed, not the label: cruise-4 hull
 ordered maximum-tier but throttled to 3 burns and glows like a cruiser at
@@ -338,6 +340,13 @@ a per-ship roster of class, damage band chip (fresh/damaged/crippled),
 structure remaining, marked-system chips (FTL, sublight, sensors,
 weapons, shield generator, reactors, batteries, systems, armor), and the
 wing's readiness where a hull carries one.
+
+**Ships follow their paths again (playtest fix):** an Intercept or Shadow
+whose contact collapsed used to hold the unit "until told otherwise" —
+which, under the sensor model's faster-fading contacts, read as ships
+abandoning their plotted routes forever. A mission whose trail goes cold
+now CLEARS, and the unit resumes its waypoints. The same pass unstranded
+orders saved by the first exact-speed build with the tier still at Hold.
 
 From his orders list, still to build: task forces, Shadow as a first-class
 order (intercept exists; shadow-at-2-hexes is a mission type away), Attack
