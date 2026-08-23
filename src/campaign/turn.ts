@@ -27,7 +27,7 @@ import {
 import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
-import { effectiveSpeedTier, enduranceTick, orderedSpeed, repairTick, wingTick } from './logistics'
+import { effectiveSpeedTier, enduranceTick, orderedSpeed, repairTick, unitSpeedCap, wingTick } from './logistics'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
 import type { ShipScars } from '../engine/shipState'
@@ -59,6 +59,17 @@ export class PhaseError extends Error {}
 export function orderRefusal(_state: CampaignState, unit: Unit, order: StandingOrder): string | null {
   if (order.cloaked && !unitProfile(unit).cloakCapable) {
     return `${unit.id} cannot cloak — not every hull aboard carries a cloak.`
+  }
+  if (order.exactSpeed != null) {
+    if (!Number.isFinite(order.exactSpeed) || order.exactSpeed < 0) {
+      return `${unit.id}: exact speed must be a number of hexes a round, 0 or more.`
+    }
+    const cap = unitSpeedCap(unit)
+    if (Math.round(order.exactSpeed) > cap) {
+      return `${unit.id}: exact speed ${order.exactSpeed} exceeds this unit's limit of ${cap}${
+        unit.kind === 'convoy' ? ' (civilian hulls run 1–3)' : ''
+      }.`
+    }
   }
   if (order.repairPriority) {
     for (const category of order.repairPriority) {

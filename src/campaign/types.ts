@@ -93,6 +93,15 @@ export interface StandingOrder {
   /** Ordered path; the unit steps toward waypoints[0] on its scheduled phases. */
   waypoints: Hex[]
   speed: SpeedTier
+  /**
+   * An exact speed in hexes a round (the designer's "set specific speeds"),
+   * overriding the named tier when set. Clamped to the unit's envelope —
+   * hold 0 up to emergency — and civilian units cap at 1–3 by merchant hull
+   * (his note). The endurance burn and detection signature come from
+   * whichever tier the number lands in, so 5 on a Yorktown burns like max
+   * cruise and 9 lights it up like maximum.
+   */
+  exactSpeed?: number
   /** Passive-scan power setting: 0 quiet, 1 normal, 2 loud-and-sharp (4.3). */
   sensorPower: 0 | 1 | 2
   /**

@@ -30,7 +30,7 @@ import {
   type CampaignMatchLink,
 } from './onlineCampaign'
 import { battleFileFor, hashText, readback, SIDE_LABEL } from '../campaign/handoff'
-import { damageBand, unitSpeedTiers } from '../campaign/logistics'
+import { damageBand, unitSpeedCap, unitSpeedTiers } from '../campaign/logistics'
 import { quickResolve } from '../campaign/quickResolve'
 import { LAUNCH_SCENARIOS } from '../campaign/scenarios'
 import { soloOrders } from '../campaign/solo'
@@ -823,6 +823,25 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                     Emergency ({unitSpeedTiers(unit).emergency}/round) — risks the drives
                   </option>
                 </select>
+              </label>
+              <label className="field">
+                <span>Exact speed</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={unitSpeedCap(unit)}
+                  step={1}
+                  value={order.exactSpeed ?? ''}
+                  placeholder={`tier (max ${unitSpeedCap(unit)})`}
+                  onChange={(e) =>
+                    editOrder(unit.id, {
+                      exactSpeed:
+                        e.target.value === ''
+                          ? undefined
+                          : Math.max(0, Math.min(unitSpeedCap(unit), Math.round(Number(e.target.value)))),
+                    })
+                  }
+                />
               </label>
               <label className="field">
                 <span>Sensors</span>

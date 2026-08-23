@@ -217,18 +217,48 @@ export function unitSpeedTiers(unit: Unit): SpeedTiers {
 }
 
 /**
+ * The most a unit may order as an exact speed: its emergency speed — except
+ * a civilian unit, limited to 1–3 by its merchant hull (the designer's
+ * note: "Civilian ships are probably limited to speeds of 1-3, depending
+ * on the merchant ship" — the hull's own cruise decides where in 1–3).
+ */
+export function unitSpeedCap(unit: Unit): number {
+  const tiers = unitSpeedTiers(unit)
+  if (unit.kind === 'convoy') return Math.max(1, Math.min(3, tiers.cruise))
+  return tiers.emergency
+}
+
+/**
  * The tier a unit is actually making: its ordered tier, except that a dry
  * tank caps everything at cruise — the limp home (6.4's spirit; provisional
- * until the designer's endurance formula lands).
+ * until the designer's endurance formula lands). An exact-speed order reads
+ * as whichever tier its number lands in, so burn, wear and the detection
+ * signature all follow the real pace rather than the label.
  */
 export function effectiveSpeedTier(unit: Unit): SpeedTier {
+  if (unit.order.exactSpeed != null) {
+    const speed = orderedSpeed(unit)
+    if (speed <= 0) return 'hold'
+    const tiers = unitSpeedTiers(unit)
+    if (speed <= tiers.cruise) return 'cruise'
+    if (speed <= tiers.maxCruise) return 'max-cruise'
+    if (speed <= tiers.maximum) return 'maximum'
+    return 'emergency'
+  }
   if (unit.order.speed === 'hold') return 'hold'
   if (enduranceEmpty(unit)) return 'cruise'
   return unit.order.speed
 }
 
-/** The ordered tier as hexes a round, for the movement schedule. */
+/** The ordered pace as hexes a round, for the movement schedule. */
 export function orderedSpeed(unit: Unit): number {
+  const exact = unit.order.exactSpeed
+  if (exact != null) {
+    let speed = Math.max(0, Math.min(unitSpeedCap(unit), Math.round(exact)))
+    // The dry-tank limp caps an exact order the same way it caps a tier.
+    if (enduranceEmpty(unit)) speed = Math.min(speed, unitSpeedTiers(unit).cruise)
+    return speed
+  }
   const tier = effectiveSpeedTier(unit)
   if (tier === 'hold') return 0
   const tiers = unitSpeedTiers(unit)

@@ -317,15 +317,24 @@ past a tracking horizon (default 8 hexes, configurable) so the 5% floor
 cannot hold a track on a target half a map away. Active Sensors is a
 standing order (checkbox in the console) separate from the power setting.
 
+**Specific speed orders (shipped, his note):** a standing order may carry
+an exact speed in hexes a round (`exactSpeed`), overriding the named tier.
+The number is clamped to the hull's envelope — 0 through emergency — and
+reads as whichever tier it lands in, so endurance burn, emergency drive
+wear and the detection speed signature all follow the real pace: 5 on a
+Yorktown burns like max cruise, 9 lights it up like maximum. Civilian
+units cap at 1–3 by their merchant hull (`unitSpeedCap` = the hull's
+cruise clamped into 1–3); the resolver refuses an order past the cap for
+every actor identically, and the console offers a numeric field beside the
+tier select. The solo doctrine keeps ordering by tier.
+
 From his orders list, still to build: task forces, Shadow as a first-class
 order (intercept exists; shadow-at-2-hexes is a mission type away), Attack
 Nearest / Attack Specified with speed caps, Raid / Assault system orders,
-Avoid Contact, AI civilian shipping between planets and bases, and —
-per his note — **specific speed orders**: setting an exact speed in hexes a
-round rather than a named tier, with civilian ships limited to speeds 1–3
-depending on the merchant hull. Quick Resolve already covers his
-"auto-resolve battles" item; ship entry via the builder covers "add ships"
-(campaign scenarios take any form id, custom forms embed in the file).
+Avoid Contact, and AI civilian shipping between planets and bases. Quick
+Resolve already covers his "auto-resolve battles" item; ship entry via the
+builder covers "add ships" (campaign scenarios take any form id, custom
+forms embed in the file).
 
 ## Where the doc met the data (Part 12 material)
 
