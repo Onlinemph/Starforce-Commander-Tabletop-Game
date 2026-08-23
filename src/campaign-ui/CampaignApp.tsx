@@ -30,7 +30,14 @@ import {
   type CampaignMatchLink,
 } from './onlineCampaign'
 import { battleFileFor, hashText, readback, SIDE_LABEL } from '../campaign/handoff'
-import { damageBand, unitSpeedCap, unitSpeedTiers } from '../campaign/logistics'
+import {
+  damageBand,
+  effectiveSpeedTier,
+  orderSpeedCap,
+  orderedSpeed,
+  unitSpeedTiers,
+} from '../campaign/logistics'
+import { shipFormById } from '../data/ships'
 import { quickResolve } from '../campaign/quickResolve'
 import { LAUNCH_SCENARIOS } from '../campaign/scenarios'
 import { soloOrders } from '../campaign/solo'
@@ -43,9 +50,11 @@ import {
   type Hex,
   type Intervention,
   type PhaseMove,
+  type ShipRecord,
   type Side,
   type SpeedTier,
   type StandingOrder,
+  type Unit,
 } from '../campaign/types'
 import { viewFor } from '../campaign/views'
 import { CampaignMap } from './CampaignMap'
@@ -801,14 +810,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           {unit && order && (
             <section className="campaign-panel">
               <h3>{unit.ships[0]?.name ?? unit.id}</h3>
-              <p className="hint">
-                {unit.kind} · {unit.ships.length} hull{unit.ships.length === 1 ? '' : 's'} · endurance{' '}
-                {unit.endurance}/{unit.enduranceMax}
-                {unit.ships.map((s) => {
-                  const band = damageBand(s)
-                  return band !== 'fresh' ? ` · ${s.name}: ${band}` : ''
-                })}
-              </p>
+              <FleetStatus unit={unit} order={order} />
               <label className="field">
                 <span>Speed</span>
                 <select
@@ -829,16 +831,18 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 <input
                   type="number"
                   min={0}
-                  max={unitSpeedCap(unit)}
+                  max={orderSpeedCap(unit, order)}
                   step={1}
                   value={order.exactSpeed ?? ''}
-                  placeholder={`tier (max ${unitSpeedCap(unit)})`}
+                  placeholder={
+                    order.speed === 'hold' ? 'tier is Hold' : `tier speed (≤ ${orderSpeedCap(unit, order)})`
+                  }
                   onChange={(e) =>
                     editOrder(unit.id, {
                       exactSpeed:
                         e.target.value === ''
                           ? undefined
-                          : Math.max(0, Math.min(unitSpeedCap(unit), Math.round(Number(e.target.value)))),
+                          : Math.max(0, Math.min(orderSpeedCap(unit, order), Math.round(Number(e.target.value)))),
                     })
                   }
                 />
@@ -963,6 +967,85 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           )}
         </aside>
       </div>
+    </div>
+  )
+}
+
+/** The scars aboard one hull, as short chips — only what is actually marked. */
+function scarChips(ship: ShipRecord): string[] {
+  const sc = ship.scars
+  if (!sc) return []
+  const chips: string[] = []
+  const add = (label: string, n: number) => {
+    if (n > 0) chips.push(`${label} ${n}`)
+  }
+  add('FTL', sc.ftl)
+  add('Sublight', sc.systems['__sublight'] ?? 0)
+  add('Sensors', (sc.systems['SENS'] ?? 0) + sc.scout)
+  add(
+    'Weapons',
+    Object.values(sc.mounts).reduce((n, g) => n + g.reduce((a, b) => a + b, 0), 0),
+  )
+  add('Shield gen', sc.shieldGenerator)
+  add(
+    'Reactors',
+    Object.values(sc.reactors).reduce((n, g) => n + g.reduce((a, b) => a + b, 0), 0),
+  )
+  add('Batteries', sc.batteries.filter(Boolean).length)
+  add(
+    'Systems',
+    Object.entries(sc.systems)
+      .filter(([k]) => k !== 'SENS' && k !== '__sublight')
+      .reduce((n, [, d]) => n + d, 0),
+  )
+  add('Armor', (['F', 'S', 'A', 'P'] as const).reduce((n, f) => n + sc.armor[f], 0))
+  return chips
+}
+
+/**
+ * The fleet's makeup and state, in full — these are your own ships, so the
+ * wall has nothing to hide: class, damage band, structure, marked systems,
+ * the wing, and the pace the staged order will actually make.
+ */
+function FleetStatus({ unit, order }: { unit: Unit; order: StandingOrder }) {
+  const staged: Unit = { ...unit, order }
+  const pace = orderedSpeed(staged)
+  const tier = effectiveSpeedTier(staged)
+  const tiers = unitSpeedTiers(unit)
+  const points = unit.ships.reduce((n, s) => n + (shipFormById(s.formId)?.pointValue ?? 0), 0)
+  return (
+    <div className="campaign-fleet">
+      <p className="hint">
+        {unit.kind} · {unit.ships.length} hull{unit.ships.length === 1 ? '' : 's'} · {points} pts ·
+        endurance {unit.endurance}/{unit.enduranceMax} · making {pace}/round ({tier}) · speeds{' '}
+        {tiers.cruise}/{tiers.maxCruise}/{tiers.maximum}/{tiers.emergency}
+      </p>
+      <ul className="campaign-fleet-list">
+        {unit.ships.map((ship) => {
+          const form = shipFormById(ship.formId)
+          const band = damageBand(ship)
+          const structTotal = form ? form.structure.filter((e) => e.kind === 'box').length : 0
+          const structLeft = Math.max(0, structTotal - (ship.scars?.structure ?? 0))
+          const chips = scarChips(ship)
+          return (
+            <li key={ship.id}>
+              <strong>{ship.name}</strong>
+              <span className="fleet-class">{form?.name ?? ship.formId}</span>
+              <span className={`fleet-band fleet-band-${band}`}>{band}</span>
+              <span className="fleet-struct">
+                structure {structLeft}/{structTotal}
+              </span>
+              {chips.length > 0 && <span className="fleet-scars">{chips.join(' · ')}</span>}
+              {ship.wing && (
+                <span className="fleet-wing">
+                  wing {ship.wing.readiness}
+                  {ship.wing.readiness === 'rearming' ? ` (${ship.wing.rearmRounds})` : ''}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

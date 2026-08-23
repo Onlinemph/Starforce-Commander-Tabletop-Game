@@ -4,7 +4,7 @@ import { battleFileFor, hashText, readback } from './handoff'
 import { playBattle, playedBattleFile } from '../engine/selfPlay'
 import { quickResolve, temperamentOf } from './quickResolve'
 import { unitIsCloaked } from './detection'
-import { effectiveSpeedTier, orderedSpeed, unitSpeedCap, unitSpeedTiers } from './logistics'
+import { effectiveSpeedTier, orderSpeedCap, orderedSpeed, unitSpeedCap, unitSpeedTiers } from './logistics'
 import { LAUNCH_SCENARIOS, raidOnDeltaVideus } from './scenarios'
 import { PhaseError, resolvePhase, type DetectionContext } from './turn'
 import { viewFor } from './views'
@@ -421,9 +421,9 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
     // Yorktown I: cruise 4, max cruise 6, maximum 9, emergency 10.
     expect(unitSpeedTiers(a)).toEqual({ cruise: 4, maxCruise: 6, maximum: 9, emergency: 10 })
 
-    a.order = { ...a.order, exactSpeed: 5 }
+    a.order = { ...a.order, speed: 'emergency', exactSpeed: 5 }
     expect(orderedSpeed(a)).toBe(5)
-    expect(effectiveSpeedTier(a)).toBe('max-cruise') // burns and glows like the tier
+    expect(effectiveSpeedTier(a)).toBe('max-cruise') // burns and glows like the pace made
 
     a.order = { ...a.order, exactSpeed: 0 }
     expect(effectiveSpeedTier(a)).toBe('hold')
@@ -434,6 +434,28 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
     // Defense in depth: a number smuggled past validation still clamps.
     a.order = { ...a.order, exactSpeed: 99 }
     expect(orderedSpeed(a)).toBe(10)
+  })
+
+  it('the chosen tier is the ceiling: an exact speed never outruns it', () => {
+    const file = opsFile()
+    const a = file.state.units.find((u) => u.id === 'a-1')!
+    // Cruise authorizes 4; an exact 6 clamps to it, and the resolver refuses.
+    a.order = { ...a.order, speed: 'cruise', exactSpeed: 6 }
+    expect(orderSpeedCap(a)).toBe(4)
+    expect(orderedSpeed(a)).toBe(4)
+    expect(() =>
+      resolvePhase(ctxOf(file), file.state, {
+        round: file.state.round,
+        phase: file.state.phase,
+        side: 'A',
+        interventions: [
+          { type: 'set-order', unitId: 'a-1', order: { ...a.order, speed: 'cruise', exactSpeed: 6 } },
+        ],
+      }),
+    ).toThrow(/exceeds cruise/)
+    // Hold authorizes nothing.
+    a.order = { ...a.order, speed: 'hold', exactSpeed: 3 }
+    expect(orderedSpeed(a)).toBe(0)
   })
 
   it('the resolver refuses an exact speed beyond the envelope', () => {
@@ -457,7 +479,7 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
     a.kind = 'convoy'
     // A Yorktown-hulled stand-in freighter cruises at 4: the cap reads 3.
     expect(unitSpeedCap(a)).toBe(3)
-    a.order = { ...a.order, exactSpeed: 5 }
+    a.order = { ...a.order, speed: 'cruise', exactSpeed: 5 }
     expect(orderedSpeed(a)).toBe(3)
     expect(() =>
       resolvePhase(ctxOf(file), file.state, {
@@ -465,7 +487,7 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
         phase: file.state.phase,
         side: 'A',
         interventions: [
-          { type: 'set-order', unitId: 'a-1', order: { ...a.order, exactSpeed: 5 } },
+          { type: 'set-order', unitId: 'a-1', order: { ...a.order, speed: 'cruise', exactSpeed: 5 } },
         ],
       }),
     ).toThrow(/civilian hulls run/)
@@ -475,7 +497,7 @@ describe("exact speed orders (the designer's specific-speeds note)", () => {
     const file = opsFile()
     const a = file.state.units.find((u) => u.id === 'a-1')!
     const start = { ...a.hex }
-    a.order = { ...a.order, exactSpeed: 2, waypoints: [{ q: 20, r: 4 }] }
+    a.order = { ...a.order, speed: 'cruise', exactSpeed: 2, waypoints: [{ q: 20, r: 4 }] }
     passRound(file)
     const moved = file.state.units.find((u) => u.id === 'a-1')!
     expect(hexDistance(start, moved.hex)).toBe(2)

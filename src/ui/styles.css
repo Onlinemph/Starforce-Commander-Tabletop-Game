@@ -4868,6 +4868,62 @@ button.primary .title-detail {
   margin: 4px 0;
 }
 
+/* The fleet's makeup and state — own ships, full knowledge. */
+.campaign-fleet-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.campaign-fleet-list li {
+  font-size: 12px;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+
+.campaign-fleet-list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.campaign-fleet-list .fleet-class {
+  color: var(--ink-dim);
+}
+
+.campaign-fleet-list .fleet-band {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--green);
+  color: var(--ink-on-fill);
+}
+
+.campaign-fleet-list .fleet-band-damaged {
+  background: var(--warn);
+}
+
+.campaign-fleet-list .fleet-band-crippled {
+  background: var(--danger);
+}
+
+.campaign-fleet-list .fleet-struct,
+.campaign-fleet-list .fleet-wing {
+  color: var(--ink-dim);
+}
+
+.campaign-fleet-list .fleet-scars {
+  color: var(--warn);
+}
+
 .campaign-battle {
   border-top: 1px solid var(--line);
   padding-top: 6px;

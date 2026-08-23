@@ -318,15 +318,26 @@ cannot hold a track on a target half a map away. Active Sensors is a
 standing order (checkbox in the console) separate from the power setting.
 
 **Specific speed orders (shipped, his note):** a standing order may carry
-an exact speed in hexes a round (`exactSpeed`), overriding the named tier.
-The number is clamped to the hull's envelope — 0 through emergency — and
-reads as whichever tier it lands in, so endurance burn, emergency drive
-wear and the detection speed signature all follow the real pace: 5 on a
-Yorktown burns like max cruise, 9 lights it up like maximum. Civilian
-units cap at 1–3 by their merchant hull (`unitSpeedCap` = the hull's
-cruise clamped into 1–3); the resolver refuses an order past the cap for
-every actor identically, and the console offers a numeric field beside the
-tier select. The solo doctrine keeps ordering by tier.
+an exact speed in hexes a round (`exactSpeed`) beside the named tier. The
+tier is the authorization and the number a throttle within it: the ceiling
+is the CHOSEN tier's own speed (`orderSpeedCap` — Hold authorizes
+nothing), never past the hull's envelope, and a civilian unit caps at 1–3
+by its merchant hull. The pace made still reads as whichever tier the
+number lands in, so endurance burn, emergency drive wear and the detection
+speed signature follow the real speed, not the label: cruise-4 hull
+ordered maximum-tier but throttled to 3 burns and glows like a cruiser at
+3. The resolver refuses an over-tier number for every actor identically;
+the console's numeric field is bounded to the live tier's cap. The solo
+doctrine keeps ordering by tier.
+
+**Fleet status readout (console):** the selected unit's panel now shows
+the fleet's makeup and state in full — these are your own ships, so the
+wall hides nothing: unit kind, hull count, point value, endurance, the
+pace the staged order will actually make with the hull's four speeds, and
+a per-ship roster of class, damage band chip (fresh/damaged/crippled),
+structure remaining, marked-system chips (FTL, sublight, sensors,
+weapons, shield generator, reactors, batteries, systems, armor), and the
+wing's readiness where a hull carries one.
 
 From his orders list, still to build: task forces, Shadow as a first-class
 order (intercept exists; shadow-at-2-hexes is a mission type away), Attack

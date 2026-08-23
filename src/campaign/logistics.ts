@@ -24,6 +24,7 @@ import {
   type RepairCategory,
   type ShipRecord,
   type SpeedTier,
+  type StandingOrder,
   type Unit,
 } from './types'
 
@@ -229,6 +230,27 @@ export function unitSpeedCap(unit: Unit): number {
 }
 
 /**
+ * The ceiling an exact speed may order: the CHOSEN tier's own speed — the
+ * tier is the authorization, the number a throttle within it — and never
+ * past the unit's envelope or a civilian's merchant limit. Hold authorizes
+ * nothing: an exact speed under a hold order reads 0.
+ */
+export function orderSpeedCap(unit: Unit, order: StandingOrder = unit.order): number {
+  const tiers = unitSpeedTiers(unit)
+  const tierSpeed =
+    order.speed === 'hold'
+      ? 0
+      : order.speed === 'cruise'
+        ? tiers.cruise
+        : order.speed === 'max-cruise'
+          ? tiers.maxCruise
+          : order.speed === 'maximum'
+            ? tiers.maximum
+            : tiers.emergency
+  return Math.min(tierSpeed, unitSpeedCap(unit))
+}
+
+/**
  * The tier a unit is actually making: its ordered tier, except that a dry
  * tank caps everything at cruise — the limp home (6.4's spirit; provisional
  * until the designer's endurance formula lands). An exact-speed order reads
@@ -254,7 +276,7 @@ export function effectiveSpeedTier(unit: Unit): SpeedTier {
 export function orderedSpeed(unit: Unit): number {
   const exact = unit.order.exactSpeed
   if (exact != null) {
-    let speed = Math.max(0, Math.min(unitSpeedCap(unit), Math.round(exact)))
+    let speed = Math.max(0, Math.min(orderSpeedCap(unit), Math.round(exact)))
     // The dry-tank limp caps an exact order the same way it caps a tier.
     if (enduranceEmpty(unit)) speed = Math.min(speed, unitSpeedTiers(unit).cruise)
     return speed

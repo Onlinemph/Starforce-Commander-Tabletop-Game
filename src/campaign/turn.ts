@@ -27,7 +27,7 @@ import {
 import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
-import { effectiveSpeedTier, enduranceTick, orderedSpeed, repairTick, unitSpeedCap, wingTick } from './logistics'
+import { effectiveSpeedTier, enduranceTick, orderSpeedCap, orderedSpeed, repairTick, wingTick } from './logistics'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
 import type { ShipScars } from '../engine/shipState'
@@ -64,10 +64,10 @@ export function orderRefusal(_state: CampaignState, unit: Unit, order: StandingO
     if (!Number.isFinite(order.exactSpeed) || order.exactSpeed < 0) {
       return `${unit.id}: exact speed must be a number of hexes a round, 0 or more.`
     }
-    const cap = unitSpeedCap(unit)
+    const cap = orderSpeedCap(unit, order)
     if (Math.round(order.exactSpeed) > cap) {
-      return `${unit.id}: exact speed ${order.exactSpeed} exceeds this unit's limit of ${cap}${
-        unit.kind === 'convoy' ? ' (civilian hulls run 1–3)' : ''
+      return `${unit.id}: exact speed ${order.exactSpeed} exceeds ${order.speed} (${cap})${
+        unit.kind === 'convoy' ? ' — civilian hulls run 1–3' : ' — raise the tier or lower the number'
       }.`
     }
   }
