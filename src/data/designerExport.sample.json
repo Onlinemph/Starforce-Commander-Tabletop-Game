@@ -1,0 +1,386 @@
+{
+  "identity": {
+    "name": "SHIP NAME / ID",
+    "classType": "CLASSNAME ID-class Weight Class",
+    "faction": "COMMON",
+    "era": "ERA",
+    "pointValue": 17
+  },
+  "engineering": {
+    "move": 4,
+    "vector": 1,
+    "turn": 4,
+    "special": 2
+  },
+  "shields": {
+    "forward": 13,
+    "aft": 8,
+    "port": 4,
+    "starboard": 5
+  },
+  "armor": {
+    "forward": 7,
+    "aft": 4,
+    "port": 0,
+    "starboard": 0
+  },
+  "shieldGen": {
+    "count": 3,
+    "value": 2
+  },
+  "textBlocks": {
+    "powerSystem": ""
+  },
+  "functionsConfig": {
+    "accDec": {
+      "values": [],
+      "free": 0
+    },
+    "sifIdf": {
+      "values": [],
+      "free": 0,
+      "emer": true
+    },
+    "batRech": {
+      "values": [
+        "1",
+        "2"
+      ],
+      "free": 0
+    },
+    "ftl": {
+      "empty": 2
+    },
+    "cloak": {
+      "enabled": false,
+      "empty": 0
+    },
+    "sensor": {
+      "values": [
+        "1"
+      ],
+      "free": 0
+    },
+    "genSys": {
+      "values": [
+        "NRM",
+        "MAX"
+      ],
+      "free": 1
+    },
+    "weapons": [
+      {
+        "label": "WPN A",
+        "enabled": true,
+        "free": 1,
+        "values": [
+          "1",
+          "2",
+          "6"
+        ]
+      },
+      {
+        "label": "WPN B",
+        "enabled": false,
+        "free": 0,
+        "values": [
+          "1",
+          "2",
+          "0"
+        ]
+      },
+      {
+        "label": "WPN C",
+        "enabled": false,
+        "free": 0,
+        "values": [
+          "1",
+          "2",
+          "0"
+        ]
+      },
+      {
+        "label": "WPN D",
+        "enabled": false,
+        "free": 0,
+        "values": [
+          "1",
+          "2",
+          "6"
+        ]
+      }
+    ]
+  },
+  "powerSystem": {
+    "tracks": [
+      {
+        "key": "lMain",
+        "label": "L MAIN",
+        "points": 2,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "rMain",
+        "label": "R MAIN",
+        "points": 2,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "cMain",
+        "label": "C MAIN",
+        "points": 2,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "slReac",
+        "label": "SL REAC",
+        "points": 3,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "auxPwr",
+        "label": "AUX PWR",
+        "points": 2,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "battery",
+        "label": "BATTERY",
+        "points": 2,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": true
+      },
+      {
+        "key": "ftlDrive",
+        "label": "FTL DRIVE",
+        "points": 0,
+        "boxesPerPoint": 1,
+        "boxPattern": [
+          2,
+          1,
+          2
+        ],
+        "hasDot": false
+      }
+    ]
+  },
+  "sublight": {
+    "maxAccPhs": 1,
+    "greenCircles": 0,
+    "redCircles": 0,
+    "spd": [
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "turns": [
+      20,
+      20,
+      35,
+      20,
+      20,
+      20,
+      40
+    ],
+    "dmgStops": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "structure": {
+    "repairable": 2,
+    "permanent": 5
+  },
+  "shipArtDataUrl": "",
+  "weapons": [
+    {
+      "name": "dafg",
+      "mountArcs": [
+        "1",
+        "2|5",
+        "6"
+      ],
+      "mountFacings": [
+        [
+          1,
+          2
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "powerCircles": 1,
+      "powerStops": [
+        2,
+        4
+      ],
+      "structure": 1,
+      "ranges": [
+        {
+          "band": "0-6",
+          "type": "green",
+          "bonus": 0,
+          "dice": [
+            "R",
+            "R"
+          ]
+        },
+        {
+          "band": "7-12",
+          "type": "black",
+          "bonus": 0,
+          "dice": [
+            "Y",
+            "Y"
+          ]
+        }
+      ],
+      "traits": [],
+      "special": "DMG 6, LEAK 3, STR 2"
+    },
+    {
+      "name": "",
+      "mountArcs": [],
+      "mountFacings": [],
+      "powerCircles": 1,
+      "powerStops": [],
+      "structure": 1,
+      "ranges": [],
+      "traits": [],
+      "special": ""
+    },
+    {
+      "name": "",
+      "mountArcs": [],
+      "mountFacings": [],
+      "powerCircles": 1,
+      "powerStops": [],
+      "structure": 1,
+      "ranges": [],
+      "traits": [],
+      "special": ""
+    },
+    {
+      "name": "",
+      "mountArcs": [],
+      "mountFacings": [],
+      "powerCircles": 2,
+      "powerStops": [],
+      "structure": 2,
+      "ranges": [],
+      "traits": [],
+      "special": ""
+    }
+  ],
+  "systems": [
+    {
+      "key": "SCNC",
+      "value": "2"
+    },
+    {
+      "key": "SENS",
+      "value": "2"
+    },
+    {
+      "key": "TRAC",
+      "value": "2"
+    },
+    {
+      "key": "TRAN",
+      "value": "02"
+    },
+    {
+      "key": "SHTL",
+      "value": "2"
+    },
+    {
+      "key": "QTRS",
+      "value": "2"
+    },
+    {
+      "key": "CRGO",
+      "value": "2"
+    },
+    {
+      "key": "HNGR",
+      "value": "02"
+    },
+    {
+      "key": "LNCH",
+      "value": "2"
+    },
+    {
+      "key": "LAND",
+      "value": "2"
+    },
+    {
+      "key": "CLOAK",
+      "value": "1",
+      "power": "01"
+    },
+    {
+      "key": "CMND",
+      "value": "1",
+      "power": "1"
+    },
+    {
+      "key": "FCON",
+      "value": "1",
+      "power": "1"
+    },
+    {
+      "key": "SCOUT",
+      "value": "1",
+      "power": "1"
+    }
+  ],
+  "crew": {
+    "shuttleCraft": 2,
+    "marinesStationed": 10
+  }
+}

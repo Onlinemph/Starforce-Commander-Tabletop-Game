@@ -10,6 +10,7 @@ import { publishDesign, type PublishResult } from './shipLibrary'
 import { useMemo, useRef, useState } from 'react'
 import { ArcRose } from './ArcRose'
 import { BLUE, RED } from '../data/scenarios'
+import { designerFormToShipForm, looksLikeDesignerExport } from '../data/importDesigner'
 import { SHIP_FORMS } from '../data/ships'
 import {
   blankForm,
@@ -154,12 +155,33 @@ export function ShipBuilder({ onClose }: Props) {
   const upload = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text())
-      const list: ShipForm[] = Array.isArray(parsed) ? parsed : [parsed]
+      const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+      const list: ShipForm[] = []
+      const notes: string[] = []
+      for (const entry of entries) {
+        // A Ship Designer export (crazyvulcan.github.io) converts on the way
+        // in; our own roster shape loads as it always has.
+        if (looksLikeDesignerExport(entry)) {
+          const imported = designerFormToShipForm(entry)
+          if (typeof imported === 'string') {
+            notes.push(imported)
+            continue
+          }
+          list.push(imported.form)
+          if (imported.warnings.length > 0) {
+            notes.push(`${imported.form.name}: ${imported.warnings.join(' ')}`)
+          }
+        } else {
+          list.push(entry as ShipForm)
+        }
+      }
+      const loaded = importCustomForms(list)
       setStatus(
-        `Loaded ${importCustomForms(list)} design(s) as drafts — download the roster file to keep them.`,
+        `Loaded ${loaded} design(s) as drafts — download the roster file to keep them.` +
+          (notes.length > 0 ? ` ${notes.join(' ')}` : ''),
       )
     } catch {
-      setStatus('That file is not a StarForce ship roster.')
+      setStatus('That file is not a StarForce ship roster or Ship Designer export.')
     }
   }
 
