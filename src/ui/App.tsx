@@ -32,6 +32,7 @@ import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ScenarioDesigner } from './ScenarioDesigner'
 import { ShipBuilder } from './ShipBuilder'
+import { Shipwright } from './Shipwright'
 import { useCustomScenarios } from './customScenarios'
 import { FleetPicker } from './FleetPicker'
 import { TutorialPanel } from './TutorialPanel'
@@ -90,6 +91,7 @@ export function App() {
   const [rulerMode, setRulerMode] = useState(false)
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
+  const [wrighting, setWrighting] = useState(false)
   const [library, setLibrary] = useState(false)
   const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
@@ -355,6 +357,9 @@ export function App() {
             <button type="button" onClick={() => setBuilding(true)}>
               Ship builder
             </button>
+            <button type="button" onClick={() => setWrighting(true)}>
+              Shipwright
+            </button>
             <button type="button" onClick={() => setDesigning(true)}>
               Scenario designer
             </button>
@@ -372,6 +377,7 @@ export function App() {
         {/* The workshop doors open from here as they do from the table. */}
         {library && <ShipLibraryPanel onClose={() => setLibrary(false)} />}
         {building && <ShipBuilder onClose={() => setBuilding(false)} />}
+        {wrighting && <Shipwright onClose={() => setWrighting(false)} />}
         {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
         {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
         {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
@@ -479,6 +485,14 @@ export function App() {
         <button
           type="button"
           disabled={enrolledInMatch}
+          onClick={() => setWrighting(true)}
+          title={enrolledInMatch ? LOCKED_HINT : 'Focused construction: the hull is the budget'}
+        >
+          Shipwright
+        </button>
+        <button
+          type="button"
+          disabled={enrolledInMatch}
           onClick={() => setDesigning(true)}
           title={enrolledInMatch ? LOCKED_HINT : 'Lay out a battle of your own: map, terrain, sides and fleets'}
         >
@@ -539,6 +553,7 @@ export function App() {
       )}
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
+      {wrighting && <Shipwright onClose={() => setWrighting(false)} />}
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
       {summaryOpen && (
