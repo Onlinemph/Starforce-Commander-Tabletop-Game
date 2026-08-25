@@ -7,7 +7,8 @@
  * journal entry, 5.2, so the staging discipline is the file format's).
  */
 
-import type { Hex, Intervention, StandingOrder } from '../campaign/types'
+import { entryCost, hexEquals, hexStepToward, terrainAt } from '../campaign/hexmap'
+import type { CampaignMap, Hex, Intervention, StandingOrder } from '../campaign/types'
 
 /** Flat-top hex geometry. `size` is the circumradius in pixels. */
 export function hexCenter(h: Hex, size: number): { x: number; y: number } {
@@ -43,6 +44,36 @@ export function pixelToHex(x: number, y: number, size: number): Hex {
   if (dq > dr && dq > ds) rq = -rr - rs
   else if (dr > ds) rr = -rq - rs
   return { q: rq, r: rr }
+}
+
+/**
+ * Rounds to reach each waypoint at `speed` hexes a round — the ETA the plot
+ * prints beside a waypoint. Walks the exact greedy line the resolver walks
+ * (hexStepToward, one entry cost per hex, nebula and dust costing 2) and
+ * converts cumulative credits to rounds: after R rounds the schedule has
+ * granted R·speed credits, so a point costing C is reached in ceil(C/speed).
+ * Returns [] when the unit is making no way — a hold has no ETA.
+ */
+export function waypointRounds(
+  map: CampaignMap,
+  start: Hex,
+  waypoints: Hex[],
+  speed: number,
+): number[] {
+  if (speed <= 0) return []
+  const out: number[] = []
+  let cost = 0
+  let at = start
+  for (const wp of waypoints) {
+    for (let guard = 0; guard < 500 && !hexEquals(at, wp); guard++) {
+      const next = hexStepToward(at, wp)
+      if (hexEquals(next, at)) break
+      cost += entryCost(terrainAt(map, next))
+      at = next
+    }
+    out.push(Math.ceil(cost / speed))
+  }
+  return out
 }
 
 /**

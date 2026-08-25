@@ -57,9 +57,10 @@ import {
   type StandingOrder,
   type Unit,
 } from '../campaign/types'
+import { snapToHexLine } from '../campaign/hexmap'
 import { viewFor } from '../campaign/views'
 import { CampaignMap } from './CampaignMap'
-import { downloadText, stageOrder, stagedOrderFor } from './helpers'
+import { downloadText, stageOrder, stagedOrderFor, waypointRounds } from './helpers'
 
 const AUTOSAVE_KEY = 'sfc-campaign-autosave'
 const SOLO_KEY = 'sfc-campaign-solo'
@@ -694,11 +695,21 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           selectedUnitId={selectedUnit}
           selectedContactId={selectedContact}
           plannedWaypoints={unit && order ? [unit.hex, ...order.waypoints] : []}
+          waypointEtas={
+            unit && order
+              ? waypointRounds(file.map, unit.hex, order.waypoints, orderedSpeed({ ...unit, order }))
+              : []
+          }
           onClickHex={(hex: Hex) => {
-            // A map click with a unit selected appends a waypoint.
+            // A map click with a unit selected appends a waypoint — snapped to
+            // the nearest straight hex line from the leg's start, because
+            // plotted legs run straight only (a zigzag is several waypoints).
             if (unit && order) {
+              const from = order.waypoints[order.waypoints.length - 1] ?? unit.hex
+              const snapped = snapToHexLine(from, hex, file.map.width, file.map.height)
+              if (!snapped) return // clicked the leg's own start: nothing to plot
               editOrder(unit.id, {
-                waypoints: [...order.waypoints, hex],
+                waypoints: [...order.waypoints, snapped],
                 ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
               })
             }
@@ -917,7 +928,11 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 />
                 Cloaked
               </label>
-              <p className="hint">Click the map to add waypoints ({order.waypoints.length} plotted).</p>
+              <p className="hint">
+                Click the map to add waypoints ({order.waypoints.length} plotted). Legs run straight
+                — an off-line click snaps to the nearest straight course; zigzag with more waypoints.
+                Each waypoint shows its ETA in rounds at the ordered speed.
+              </p>
               <div className="campaign-battle-actions">
                 <button type="button" onClick={() => editOrder(unit.id, { waypoints: [], mission: undefined })}>
                   Clear route

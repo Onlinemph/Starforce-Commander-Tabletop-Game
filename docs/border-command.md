@@ -356,6 +356,30 @@ Resolve already covers his "auto-resolve battles" item; ship entry via the
 builder covers "add ships" (campaign scenarios take any form id, custom
 forms embed in the file).
 
+**The plot reads at any scale (playtest round, 2026-08):** three console
+asks from the table, shipped together.
+
+- **Zoom and pan.** Players couldn't tell whose ships were whose when
+  several fleets shared a hex. The plot now zooms — mouse wheel about the
+  cursor, or the ⊕/⊖/⌂ controls in the corner — up to 8×, and a drag pans
+  the zoomed window (a drag never lands as a click, so panning never plots
+  a waypoint). The zoom is pure viewBox: no transform is ever wrapped
+  around the plot layers, so the click model's getScreenCTM inversion keeps
+  resolving hexes at every scale, and same-hex counters separate because
+  their fan pitch magnifies with everything else.
+- **Straight legs only.** A waypoint click snaps to the nearest of the six
+  straight hex lines out of the leg's start (`snapToHexLine`, hexmap.ts) —
+  courses read as courses, and a zigzag is several waypoints, exactly as
+  the designer asked. On a straight leg the resolver's greedy step IS the
+  line, so the plot shows the hexes the ship will actually cross.
+- **ETAs on the waypoints.** Each waypoint prints `+nR` — rounds from now
+  until the ship stands in that hex — and the course caption closes with
+  the total (`COURSE 10 HEX · 3R`). Computed by `waypointRounds`
+  (campaign-ui/helpers.ts) against the STAGED order: the same walk the
+  resolver makes, nebula and dust charged double, divided by the ordered
+  pace and rounded up. Change the speed tier or the exact-speed throttle
+  and the numbers move live.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

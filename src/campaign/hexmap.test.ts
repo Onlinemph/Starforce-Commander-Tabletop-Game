@@ -7,7 +7,9 @@ import {
   hexNeighbors,
   hexStepToward,
   inBounds,
+  snapToHexLine,
   terrainAt,
+  HEX_DIRECTIONS,
 } from './hexmap'
 import { nextInt, type CampaignRng, type Hex } from './types'
 
@@ -59,6 +61,43 @@ describe('hex math', () => {
       expect(at).toEqual(to)
       // Same inputs, same path.
       expect(hexStepToward(from, to)).toEqual(hexStepToward(from, to))
+    }
+  })
+
+  it('snapToHexLine returns on-line clicks exactly, on every ray', () => {
+    const from = { q: 10, r: 5 }
+    for (const d of HEX_DIRECTIONS) {
+      for (let k = 1; k <= 6; k++) {
+        const target = { q: from.q + k * d.q, r: from.r + k * d.r }
+        if (!inBounds(target, 30, 22)) continue
+        expect(snapToHexLine(from, target, 30, 22)).toEqual(target)
+      }
+    }
+    expect(snapToHexLine(from, from, 30, 22)).toBeNull()
+  })
+
+  it('snapToHexLine lands off-line clicks on a straight ray, never further than the click', () => {
+    const rng = { seed: 31, calls: 0 }
+    for (let i = 0; i < 200; i++) {
+      const from = { q: 5 + nextInt(rng, 20), r: -2 + nextInt(rng, 12) }
+      const target = { q: nextInt(rng, 30), r: -Math.floor(nextInt(rng, 30) / 2) + nextInt(rng, 22) }
+      if (!inBounds(from, 30, 22) || !inBounds(target, 30, 22)) continue
+      const snapped = snapToHexLine(from, target, 30, 22)
+      if (hexDistance(from, target) === 0) {
+        expect(snapped).toBeNull()
+        continue
+      }
+      expect(snapped).not.toBeNull()
+      // On one of the six rays: the whole leg walks a single direction.
+      const leg = hexDistance(from, snapped!)
+      const dir = HEX_DIRECTIONS.find(
+        (d) => snapped!.q === from.q + leg * d.q && snapped!.r === from.r + leg * d.r,
+      )
+      expect(dir).toBeDefined()
+      expect(inBounds(snapped!, 30, 22)).toBe(true)
+      expect(leg).toBeLessThanOrEqual(hexDistance(from, target))
+      // Deterministic.
+      expect(snapToHexLine(from, target, 30, 22)).toEqual(snapped)
     }
   })
 

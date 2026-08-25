@@ -65,6 +65,36 @@ export function hexStepToward(from: Hex, to: Hex): Hex {
 }
 
 /**
+ * The nearest hex to `target` that lies on one of the six straight rays out
+ * of `from`, never leaving the map. Plotted courses are straight legs only —
+ * a zigzag is several waypoints — so a map click snaps here before it becomes
+ * a waypoint. A click already on a ray returns exactly itself; ties between
+ * rays prefer the shorter leg, then the fixed direction order, so the snap is
+ * deterministic. Returns null when `from` IS the target (no leg to plot).
+ */
+export function snapToHexLine(from: Hex, target: Hex, width: number, height: number): Hex | null {
+  const reach = hexDistance(from, target)
+  if (reach === 0) return null
+  let best: Hex | null = null
+  let bestDist = Infinity
+  let bestLeg = Infinity
+  for (const d of HEX_DIRECTIONS) {
+    let at = from
+    for (let leg = 1; leg <= reach; leg++) {
+      at = { q: at.q + d.q, r: at.r + d.r }
+      if (!inBounds(at, width, height)) break
+      const dist = hexDistance(at, target)
+      if (dist < bestDist || (dist === bestDist && leg < bestLeg)) {
+        best = at
+        bestDist = dist
+        bestLeg = leg
+      }
+    }
+  }
+  return best
+}
+
+/**
  * Rectangle membership for the stored map: axial columns q ∈ [0, width),
  * with r offset so each column holds `height` rows — the standard rectangular
  * axial layout for flat-top grids.

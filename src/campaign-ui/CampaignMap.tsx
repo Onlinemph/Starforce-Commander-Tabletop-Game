@@ -30,6 +30,11 @@
  *    inverts getScreenCTM() and calls pixelToHex; a transformed wrapper around
  *    the plot layers silently breaks every map click. Legend and counter-local
  *    transforms are fine — they sit above the click resolution, not around it.
+ *    ZOOM therefore lives in the viewBox and nowhere else: a magnified plot is
+ *    the same coordinate space through a smaller window, getScreenCTM() folds
+ *    the viewBox in, and every click keeps resolving. A wheel spin or the ⊕/⊖
+ *    controls zoom, a drag pans (and suppresses the click it would otherwise
+ *    be), ⌂ returns to the full chart.
  * 2. The ground rect must stay hit-testable. The 660 per-hex polygons carried
  *    no interaction (clicks always resolved at the root), which is what pays
  *    for replacing them with paths — but it means the bled ground rect is now
@@ -38,7 +43,7 @@
  *    counters must, so mousemove never hit-tests a 2,000-segment path.
  */
 
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { allHexes, hexDistance, hexKey, inBounds } from '../campaign/hexmap'
 import type { CampaignMap as CampaignMapData, Hex, Side, SpeedTier } from '../campaign/types'
 import type { SideView, ViewedContact } from '../campaign/views'
@@ -666,16 +671,26 @@ interface Props {
    * multi-hex and each leg's hexDistance is real information.
    */
   plannedWaypoints: Hex[]
+  /**
+   * Rounds to reach each waypoint at the STAGED order's pace — one entry per
+   * plannedWaypoints[1..], recomputed by the console whenever the speed edit
+   * changes. Empty when the unit is making no way.
+   */
+  waypointEtas: number[]
   onClickHex: (hex: Hex) => void
   onClickUnit: (unitId: string) => void
   onClickContact: (contactId: string) => void
 }
+
+/** Zoom limits: 1 is the whole chart; 8 fills the window with ~4 hexes. */
+const ZOOM_MAX = 8
 
 export function CampaignMap({
   view,
   selectedUnitId,
   selectedContactId,
   plannedWaypoints,
+  waypointEtas,
   onClickHex,
   onClickUnit,
   onClickContact,
@@ -683,6 +698,81 @@ export function CampaignMap({
   const last = hexCenter({ q: view.map.width - 1, r: 0 }, HEX)
   const width = last.x + HEX * 2
   const height = view.map.height * HEX * Math.sqrt(3) + HEX * 2
+
+  /* ── Zoom (header rule 1): a smaller WINDOW onto the same user space ──────
+     The whole chart is box; zoomed, the viewBox is box/scale centred on
+     (cx, cy). No transform is ever added around the plot — getScreenCTM()
+     folds the viewBox in, so pixelToHex keeps resolving clicks at any zoom.
+     Stacked fleets separate because the 14-unit fan pitch magnifies with
+     everything else. */
+  const box = { x: -HEX, y: -HEX, w: width + HEX, h: height + HEX }
+  const [zoom, setZoom] = useState<{ cx: number; cy: number; scale: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const drag = useRef<{ x: number; y: number; moved: number } | null>(null)
+  const suppressClick = useRef(false)
+
+  const clampView = (cx: number, cy: number, scale: number) => {
+    const vw = box.w / scale
+    const vh = box.h / scale
+    return {
+      cx: Math.min(Math.max(cx, box.x + vw / 2), box.x + box.w - vw / 2),
+      cy: Math.min(Math.max(cy, box.y + vh / 2), box.y + box.h - vh / 2),
+      scale,
+    }
+  }
+
+  /** Zoom about `focus` (user space), keeping that point still under the
+      cursor — or about the current centre when the ⊕/⊖ controls drive it. */
+  const zoomBy = (factor: number, focus?: { x: number; y: number }) => {
+    setZoom((z) => {
+      const scale = Math.min(ZOOM_MAX, Math.max(1, (z?.scale ?? 1) * factor))
+      if (scale <= 1) return null
+      const prev = z?.scale ?? 1
+      const cx = z?.cx ?? box.x + box.w / 2
+      const cy = z?.cy ?? box.y + box.h / 2
+      const f = focus ?? { x: cx, y: cy }
+      return clampView(f.x + (cx - f.x) * (prev / scale), f.y + (cy - f.y) * (prev / scale), scale)
+    })
+  }
+  // The wheel listener is native and non-passive: React delegates onWheel as
+  // passive, and passive listeners cannot preventDefault the page scroll.
+  const zoomByRef = useRef(zoomBy)
+  zoomByRef.current = zoomBy
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const ctm = svg.getScreenCTM()
+      if (!ctm) return
+      const point = svg.createSVGPoint()
+      point.x = e.clientX
+      point.y = e.clientY
+      const local = point.matrixTransform(ctm.inverse())
+      zoomByRef.current(e.deltaY < 0 ? 1.3 : 1 / 1.3, { x: local.x, y: local.y })
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const vb = zoom
+    ? {
+        x: zoom.cx - box.w / (2 * zoom.scale),
+        y: zoom.cy - box.h / (2 * zoom.scale),
+        w: box.w / zoom.scale,
+        h: box.h / zoom.scale,
+      }
+    : box
+
+  /** A drag that actually moved is a pan, and must not land as a click. */
+  const clickGuarded = (fn: () => void) => {
+    if (suppressClick.current) {
+      suppressClick.current = false
+      return
+    }
+    fn()
+  }
+
   const own = view.side === 'A' ? 'var(--blue)' : 'var(--red)'
   const foe = view.side === 'A' ? 'var(--red)' : 'var(--blue)'
   const holdId = view.side === 'A' ? 'cm-hold-blue' : 'cm-hold-red'
@@ -854,16 +944,41 @@ export function CampaignMap({
   )
 
   return (
+    <div className="campaign-map-frame">
     <svg
+      ref={svgRef}
       className="campaign-map"
-      viewBox={`${-HEX} ${-HEX} ${width + HEX} ${height + HEX}`}
+      viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       role="img"
-      style={{ fontFamily: 'var(--font-lcars)' }}
+      style={{ fontFamily: 'var(--font-lcars)', touchAction: 'none', cursor: zoom ? 'grab' : undefined }}
       aria-label={
         `Campaign plot, ${view.map.width} by ${view.map.height} hexes. ` +
         `${view.units.length} of your units, ${view.contacts.length} contacts, ` +
         `${view.engagements.length} battles waiting.`
       }
+      onPointerDown={(e) => {
+        if (!zoom) return
+        drag.current = { x: e.clientX, y: e.clientY, moved: 0 }
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current
+        if (!d || !zoom) return
+        const ctm = e.currentTarget.getScreenCTM()
+        if (!ctm) return
+        // preserveAspectRatio keeps the CTM uniform, so `a` is THE scale.
+        const scale = ctm.a || 1
+        const dx = (e.clientX - d.x) / scale
+        const dy = (e.clientY - d.y) / scale
+        d.moved += Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y)
+        d.x = e.clientX
+        d.y = e.clientY
+        if (d.moved > 3) suppressClick.current = true
+        setZoom((z) => (z ? clampView(z.cx - dx, z.cy - dy, z.scale) : z))
+      }}
+      onPointerUp={() => {
+        drag.current = null
+      }}
       onClick={(e) => {
         const svg = e.currentTarget
         const point = svg.createSVGPoint()
@@ -873,7 +988,9 @@ export function CampaignMap({
         const hex = pixelToHex(local.x, local.y, HEX)
         // Bounds guard: without it a click in the legend band appends an
         // off-map waypoint to the selected unit's order.
-        if (inBounds(hex, view.map.width, view.map.height)) onClickHex(hex)
+        clickGuarded(() => {
+          if (inBounds(hex, view.map.width, view.map.height)) onClickHex(hex)
+        })
       }}
     >
       <Deepspace sig={sig} map={view.map} side={view.side} />
@@ -1039,6 +1156,14 @@ export function CampaignMap({
                 <text x={p.x + 9} y={p.y - 6} fontSize={TEXT} fill="var(--lc-sand)" opacity={0.9} {...HALO}>
                   {i + 1}
                 </text>
+                {/* The ETA, live against the STAGED speed: rounds from now
+                    until the unit stands in this waypoint's hex. The last
+                    waypoint's rides the COURSE caption instead. */}
+                {i !== routePts.length - 2 && waypointEtas[i] != null && (
+                  <text x={p.x + 9} y={p.y + 11} fontSize={TEXT} fill="var(--lc-sand)" opacity={0.7} {...HALO}>
+                    {`+${waypointEtas[i]}R`}
+                  </text>
+                )}
                 {legs >= 2 && (
                   <text
                     x={mid.x}
@@ -1087,7 +1212,9 @@ export function CampaignMap({
                     {/* Not "PLOT n HEX": the caption band already calls the
                         map's extent PLOT, and one word naming both the chart
                         and a distance along it teaches neither. */}
-                    {`COURSE ${routeTotal} HEX`}
+                    {`COURSE ${routeTotal} HEX${
+                      waypointEtas.length > 0 ? ` · ${waypointEtas[waypointEtas.length - 1]}R` : ''
+                    }`}
                   </text>
                 </g>
               )
@@ -1107,7 +1234,7 @@ export function CampaignMap({
           selected={contact.id === selectedContactId}
           width={view.map.width}
           height={view.map.height}
-          onSelect={onClickContact}
+          onSelect={(id) => clickGuarded(() => onClickContact(id))}
         />
       ))}
 
@@ -1161,7 +1288,7 @@ export function CampaignMap({
             data-unit={unit.id}
             onClick={(e) => {
               e.stopPropagation()
-              onClickUnit(unit.id)
+              clickGuarded(() => onClickUnit(unit.id))
             }}
             style={{ cursor: 'pointer' }}
           >
@@ -1419,6 +1546,23 @@ export function CampaignMap({
         </g>
       </g>
     </svg>
+
+    {/* The zoom controls are HTML over the plot's corner: putting them in the
+        SVG would mean re-anchoring them in user space at every viewport, and
+        rule 1 forbids the transformed wrapper that would make that cheap. */}
+    <div className="campaign-zoom">
+      <button type="button" onClick={() => zoomBy(1.5)} aria-label="Zoom in" title="Zoom in — or spin the wheel over the plot">
+        +
+      </button>
+      <button type="button" onClick={() => zoomBy(1 / 1.5)} aria-label="Zoom out" title="Zoom out" disabled={!zoom}>
+        −
+      </button>
+      <button type="button" onClick={() => setZoom(null)} aria-label="Whole chart" title="Back to the whole chart" disabled={!zoom}>
+        ⌂
+      </button>
+      {zoom && <span className="campaign-zoom-factor">{`${zoom.scale >= 3 ? Math.round(zoom.scale) : zoom.scale.toFixed(1)}×`}</span>}
+    </div>
+    </div>
   )
 }
 
