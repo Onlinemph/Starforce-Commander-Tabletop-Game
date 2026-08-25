@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { blankScenario, newCampaign, replayCampaign } from './file'
 import { battleFileFor, hashText, readback } from './handoff'
 import { playBattle, playedBattleFile } from '../engine/selfPlay'
-import { quickResolve, temperamentOf } from './quickResolve'
+import { captureScars, scarsAreEmpty } from '../engine/shipState'
+import { playEngagement, quickResolve, temperamentOf } from './quickResolve'
 import { unitIsCloaked } from './detection'
 import { effectiveSpeedTier, orderSpeedCap, orderedSpeed, unitSpeedCap, unitSpeedTiers } from './logistics'
 import { LAUNCH_SCENARIOS, raidOnDeltaVideus } from './scenarios'
@@ -337,9 +338,10 @@ describe('quick resolve (Part 8)', () => {
     expect(typeof quick).not.toBe('string')
     const q = quick as QR
 
-    // The played path, by hand, same knobs.
+    // The played path, by hand, same knobs — through the same decision loop
+    // quickResolve rides, so the parity stays byte-for-byte.
     const battle = battleFileFor(ctxOf(file), file.state, file.campaignId, engagement)
-    const played = playBattle(battle.setup, {
+    const played = playEngagement(battle.setup, {
       difficulty: 'captain',
       rounds: 8,
       retreats: true,
@@ -368,6 +370,64 @@ describe('quick resolve (Part 8)', () => {
     units[0].order.mission = undefined
     units[0].order.engagement = 'withdraw'
     expect(temperamentOf(units)).toBe('cautious')
+  })
+
+  it('a clock that lands mid-approach extends until the battle actually happens', () => {
+    const file = collision()
+    const engagement = file.state.pendingBattles[0]
+    const battle = battleFileFor(ctxOf(file), file.state, file.campaignId, engagement)
+
+    // The premise: on the bare clock nothing has happened yet — the fleets
+    // deploy a board apart and round one is still the approach.
+    const bare = playBattle(battle.setup, { difficulty: 'captain', rounds: 1, retreats: true })
+    expect(
+      bare.game.ships.every(
+        (s) => !s.destroyed && !s.derelict && !s.disengaged && scarsAreEmpty(captureScars(s)),
+      ),
+    ).toBe(true)
+
+    // Same knobs through quickResolve: the decision loop gives the fight the
+    // time the campaign owes it, and SOMETHING has happened by the end.
+    const quick = quickResolve(ctxOf(file), file.state, file.campaignId, engagement, {
+      difficulty: 'captain',
+      rounds: 1,
+    })
+    expect(typeof quick).not.toBe('string')
+    const outcome = Object.values((quick as QR).record.result.ships)
+    expect(outcome.some((s) => s.destroyed || s.disengaged || s.scars !== null)).toBe(true)
+  })
+
+  it("a battle death takes the dead scout's contacts with it (playtest ruling)", () => {
+    const file = opsFile({ tuning: { detectionCurve: CERTAIN, misinformationBase: 0, falseContacts: false } })
+    const b = file.state.units.find((u) => u.id === 'b-1')!
+    b.hex = { q: 6, r: 8 } // inside sensor reach of a-1
+    pass(file) // a-1's scan lands: A holds a contact on b-1
+    expect(file.state.contacts.some((c) => c.side === 'A')).toBe(true)
+    expect(file.state.contacts.find((c) => c.side === 'A')!.spotters).toEqual(['a-1'])
+
+    // a-1 dies in a battle. Its side's picture dies with it — immediately,
+    // not three quiet rounds later.
+    file.state.pendingBattles.push({
+      id: 'eng-death',
+      hex: { ...file.state.units.find((u) => u.id === 'a-1')!.hex },
+      round: file.state.round,
+      phase: file.state.phase,
+      unitIds: { A: ['a-1'], B: [] },
+      ambushBy: null,
+      caughtRetreating: null,
+    })
+    pass(file, [
+      {
+        engagementId: 'eng-death',
+        fileHash: 'test',
+        result: {
+          ships: { 'a-1/a-1-s1': { destroyed: true, disengaged: false, scars: null } },
+          vp: { A: 0, B: 0 },
+        },
+      },
+    ])
+    expect(file.state.units.some((u) => u.id === 'a-1')).toBe(false)
+    expect(file.state.contacts.some((c) => c.side === 'A')).toBe(false)
   })
 })
 

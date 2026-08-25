@@ -185,7 +185,9 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           current.state,
           current.campaignId,
           pendingBattle,
-          { difficulty: 'captain', rounds: 12 },
+          // The doc's own difficulty: the admiral fights it for real, and the
+          // clock extends until the battle actually happened (playEngagement).
+          { difficulty: 'admiral' },
         )
         if (typeof quick === 'string') break
         battles.push(quick.record)
@@ -796,7 +798,9 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                                 file.state,
                                 file.campaignId,
                                 pendingBattle,
-                                { difficulty: 'captain', rounds: 12 },
+                                // The admiral, for real — the button has said
+                                // so all along. A few seconds per battle.
+                                { difficulty: 'admiral' },
                               )
                               if (typeof quick === 'string') setNote(quick)
                               else {

@@ -16,8 +16,10 @@
  * played-path-with-both-AI record, byte for byte.
  */
 
-import { playBattle, playedBattleFile } from '../engine/selfPlay'
+import { playBattle, playedBattleFile, type PlayBattleOptions, type PlayedBattle } from '../engine/selfPlay'
+import type { GameSetup } from '../data/savedGame'
 import type { AiDifficulty, AiPersonality } from '../engine/ai'
+import { captureScars, scarsAreEmpty } from '../engine/shipState'
 import { battleFileFor, hashText, readback } from './handoff'
 import type { DetectionContext } from './detection'
 import type { BattleRecord, CampaignState, PendingEngagement, Side, Unit } from './types'
@@ -47,6 +49,42 @@ export interface QuickResolved {
   battleText: string
 }
 
+/** Did the fight actually happen? Nobody hurt, dead, taken or out the door = no. */
+function undecided(game: PlayedBattle['game']): boolean {
+  return game.ships.every(
+    (s) =>
+      !s.destroyed &&
+      !s.derelict &&
+      s.capturedBy === null &&
+      !s.disengaged &&
+      scarsAreEmpty(captureScars(s)),
+  )
+}
+
+/**
+ * Play an engagement's battle to a DECISION. The round clock is a cap, not a
+ * promise of contact: the fleets deploy a full board apart, and a short clock
+ * can land while they are still closing — the engagement would then read back
+ * as if nothing happened at all (every hull fresh, nobody disengaged), which
+ * is the playtest's "my ship auto-resolved against two others and came out
+ * completely fresh". If the clock lands on a battle where literally nothing
+ * happened, it gets more time — doubled, up to four times the asked-for
+ * clock — and the replay is deterministic, so the extension replays the same
+ * opening rounds and both consoles still derive the same result. A battle
+ * where SOMETHING happened may still end on the clock: co-located survivors
+ * re-engage next phase, so a mid-fight call continues rather than vanishes.
+ */
+export function playEngagement(setup: GameSetup, options: PlayBattleOptions): PlayedBattle {
+  const asked = options.rounds ?? 15
+  let rounds = asked
+  let played = playBattle(setup, { ...options, rounds })
+  while (rounds < asked * 4 && undecided(played.game)) {
+    rounds *= 2
+    played = playBattle(setup, { ...options, rounds })
+  }
+  return played
+}
+
 /**
  * Resolve one pending engagement headlessly. Returns the journal-ready
  * record and the battle file it came from, or a string describing what
@@ -72,7 +110,7 @@ export function quickResolve(
     'Beta Command': temperamentOf(unitsOf('B')),
   }
 
-  const played = playBattle(battle.setup, {
+  const played = playEngagement(battle.setup, {
     difficulty: options.difficulty ?? 'admiral',
     rounds: options.rounds ?? 15,
     retreats: true, // honest about retreat: hopeless odds fly for the door

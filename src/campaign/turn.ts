@@ -22,6 +22,7 @@ import {
   runDetection,
   unitIsCloaked,
   unitProfile,
+  pruneOrphanTracks,
   type DetectionContext,
 } from './detection'
 import { resolveSensorModel } from './sensorModel'
@@ -168,6 +169,9 @@ function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: 
   const dead = state.units.filter((u) => u.ships.length === 0).map((u) => u.id)
   state.units = state.units.filter((u) => u.ships.length > 0)
   state.contacts = state.contacts.filter((c) => !dead.includes(c.targetUnitId))
+  // The dead take their pictures with them: a contact every one of whose
+  // spotters just died goes dark THIS phase, not rounds later.
+  pruneOrphanTracks(state)
   state.vp.A += record.result.vp.A
   state.vp.B += record.result.vp.B
 }
@@ -337,6 +341,9 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
   } else {
     next.phase += 1
   }
+  // After everything that can remove a unit or a station this phase —
+  // battles, deliveries, the tick — orphaned tracks go with their spotters.
+  pruneOrphanTracks(next)
   return next
 }
 

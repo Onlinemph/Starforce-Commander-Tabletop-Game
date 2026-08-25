@@ -359,9 +359,35 @@ function newContact(state: CampaignState, side: Side, targetId: string, hex: Hex
     unscannedRounds: 0,
     course: null,
     observedMoving: false,
+    spotters: [],
   }
   state.contacts.push(record)
   return record
+}
+
+/** Credit the scan to the hull (or station) that made it — see pruneOrphanTracks. */
+function creditSpotter(contact: ContactRecord, spotterId: string): void {
+  if (!contact.spotters) contact.spotters = []
+  if (!contact.spotters.includes(spotterId)) contact.spotters.push(spotterId)
+}
+
+/**
+ * Intelligence lives aboard the hulls that gathered it (the playtest ruling):
+ * a contact whose every spotter is dead — units gone from the board, stations
+ * destroyed — disappears with them, ghosts included. A record that has ANY
+ * surviving spotter stays whole: the picture was shared across the force.
+ * Records from before the spotters field existed are kept as they are.
+ */
+export function pruneOrphanTracks(state: CampaignState): void {
+  const alive = new Set(state.units.map((u) => u.id))
+  for (const station of state.infrastructure) {
+    if (!station.destroyed) alive.add(station.id)
+  }
+  state.contacts = state.contacts.filter((contact) => {
+    if (!contact.spotters) return true
+    contact.spotters = contact.spotters.filter((id) => alive.has(id))
+    return contact.spotters.length > 0
+  })
 }
 
 /**
@@ -376,10 +402,12 @@ function landDetection(
   target: Unit,
   range: number,
   prevTrack: TrackState | null,
+  spotterId: string,
 ): { contact: ContactRecord; existsWasNew: boolean } {
   let contact = findContact(state, side, target.id)
   const firstScan = !contact
   if (!contact) contact = newContact(state, side, target.id, target.hex)
+  creditSpotter(contact, spotterId)
 
   // Position: truth, except a first sighting past range two lands ±1 (4.4).
   if (firstScan && range > 2) {
@@ -506,7 +534,7 @@ function infrastructureSweep(
       if (det.p > 0 && (det.p >= 1 || nextRandom(state.rng) < det.p)) {
         const existing = findContact(state, station.side, target.id)
         const prev = existing && !contactCollapsed(existing) ? (existing.track ?? 'tracked') : null
-        const landed = landDetection(state, station.side, target, range, prev)
+        const landed = landDetection(state, station.side, target, range, prev, station.id)
         landed.contact.lastRange = range
       }
       continue
@@ -515,7 +543,7 @@ function infrastructureSweep(
     // non-cloaked inside the radar picket — no roll, no misinformation.
     const radius = station.kind === 'fleet-base' ? 4 : station.kind === 'outpost' ? 2 : 1
     if (cloaked || range > radius) continue
-    landScanCertain(state, station.side, target)
+    landScanCertain(state, station.side, target, station.id)
   }
 }
 
@@ -541,9 +569,10 @@ const LISTENING_POST_ACTOR: SensorActor = {
 }
 
 /** A radar-certain fix: exists and true position, nothing else, no lies. */
-function landScanCertain(state: CampaignState, side: Side, target: Unit): void {
+function landScanCertain(state: CampaignState, side: Side, target: Unit, spotterId: string): void {
   let contact = findContact(state, side, target.id)
   if (!contact) contact = newContact(state, side, target.id, target.hex)
+  creditSpotter(contact, spotterId)
   contact.estimatedHex = { ...target.hex }
   contact.positionEstimated = false
   contact.lastScan = { round: state.round, phase: state.phase }
@@ -618,7 +647,7 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
         if (existing) existing.lastRange = range
         if (!held) continue
 
-        const landed = landDetection(state, side, target, range, track)
+        const landed = landDetection(state, side, target, range, track, searcher.id)
         landed.contact.lastRange = range
         // Intelligence is its own check (§12): the ladder climbs only when
         // it lands — a certain read (p ≥ 1) spends no die.
@@ -659,6 +688,8 @@ function spawnFalseContact(
     hex = options[nextInt(state.rng, options.length)]
   }
   const contact = newContact(state, side, `phantom-${side}-${state.contactSeq}`, hex)
+  // The ghost is the searcher's own hallucination: it dies with the searcher.
+  creditSpotter(contact, searcher.id)
   contact.track = 'detected'
   contact.positionEstimated = true
   contact.attributes.exists = {

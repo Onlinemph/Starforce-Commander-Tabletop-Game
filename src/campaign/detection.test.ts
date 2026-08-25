@@ -29,6 +29,8 @@ function duelFile(over: {
   bHex?: { q: number; r: number }
   aHex?: { q: number; r: number }
   bFormation?: 'close' | 'standard' | 'wide'
+  /** A second A unit ('a-2') at this hex, for shared-picture tests. */
+  aTwinHex?: { q: number; r: number }
 }): CampaignFile {
   const scenario = blankScenario({
     mapSeed: 5,
@@ -44,6 +46,18 @@ function duelFile(over: {
           hex: over.aHex ?? { q: 8, r: 4 },
           order: { speed: 'hold' },
         },
+        ...(over.aTwinHex
+          ? [
+              {
+                id: 'a-2',
+                kind: 'ship' as const,
+                name: 'Second Picket',
+                ships: over.aShips ?? ['union-yorktown-i-class-heavy-cruiser'],
+                hex: over.aTwinHex,
+                order: { speed: 'hold' as const },
+              },
+            ]
+          : []),
       ],
       B: [
         {
@@ -462,5 +476,52 @@ describe('profiles and truths', () => {
     expect(read('count')).toBe('2')
     expect(read('faction')).toBe('Vallari Imperium')
     expect(read('shipClass')).toBe('V-11C PREDATOR-class Dreadnought')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Intelligence lives aboard the hulls that gathered it (playtest ruling)
+// ---------------------------------------------------------------------------
+
+describe("a dead spotter's contacts die with it", () => {
+  it('the last holder gone, the picture goes dark at once — not rounds later', () => {
+    const file = duelFile({})
+    pass(file)
+    const held = contactOf(file, 'A')!
+    expect(held).toBeDefined()
+    expect(held.spotters).toEqual(['a-1'])
+
+    // The picket is lost with all hands.
+    file.state.units = file.state.units.filter((u) => u.id !== 'a-1')
+    pass(file)
+    expect(contactOf(file, 'A')).toBeUndefined()
+  })
+
+  it('a picture shared across the force survives one loss, not the last', () => {
+    const file = duelFile({ aTwinHex: { q: 9, r: 4 } })
+    pass(file)
+    const held = contactOf(file, 'A')!
+    expect(held.spotters).toEqual(['a-1', 'a-2'])
+
+    file.state.units = file.state.units.filter((u) => u.id !== 'a-1')
+    pass(file)
+    expect(contactOf(file, 'A')).toBeDefined() // a-2 still holds the track
+
+    file.state.units = file.state.units.filter((u) => u.id !== 'a-2')
+    pass(file)
+    expect(contactOf(file, 'A')).toBeUndefined()
+  })
+
+  it("a ghost is its searcher's own hallucination and dies with the searcher", () => {
+    const file = duelFile({ falseContacts: true, sensor: { detection: 0, retention: 0, reacquisition: 0 } })
+    // Force the ghost: a certain false-contact chance spawns it on the first scan.
+    ;(file.scenario.tuning.sensorModel as Record<string, unknown>).falseContactPassive = 1
+    pass(file)
+    const ghost = file.state.contacts.find((c) => c.side === 'A')
+    expect(ghost).toBeDefined()
+    expect(ghost!.spotters).toEqual(['a-1'])
+    file.state.units = file.state.units.filter((u) => u.id !== 'a-1')
+    pass(file)
+    expect(file.state.contacts.some((c) => c.side === 'A')).toBe(false)
   })
 })

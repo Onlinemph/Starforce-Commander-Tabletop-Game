@@ -356,8 +356,33 @@ Resolve already covers his "auto-resolve battles" item; ship entry via the
 builder covers "add ships" (campaign scenarios take any form id, custom
 forms embed in the file).
 
-**The plot reads at any scale (playtest round, 2026-08):** three console
-asks from the table, shipped together.
+**Quick Resolve fights for real (playtest fix):** "my ship auto-resolved
+against two others and came out completely fresh." Two causes, both fixed.
+The console had been quick-resolving at the captain difficulty on a
+12-round clock — a fast lane left in from testing — while the button said
+"the admiral is fighting it"; it now IS the admiral, on the standard clock
+(the design doc's own setting, a few seconds per battle). And the clock is
+a cap, not a promise of contact: the fleets deploy a board apart, so a
+short clock could land while they were still closing, and the engagement
+read back as if nothing had happened — every hull fresh. `playEngagement`
+(quickResolve.ts) now extends the clock, doubling up to fourfold, whenever
+it lands on a battle where literally nothing happened; the replay is
+deterministic, so both consoles still derive the same result. A battle
+where something DID happen may still end on the clock — co-located
+survivors re-engage next phase, so a mid-fight call continues rather than
+vanishes. One honest outcome remains that can look bloodless: the admiral
+refuses hopeless odds (past triple strength) and flies for the door — that
+ship reads back DISENGAGED and is pushed a hex toward home, not fresh out
+of nowhere.
+
+**A dead ship's contacts die with it (playtest ruling):** contacts were a
+side-wide pool, so a scout's hard-won picture outlived the scout by rounds.
+Every contact now records its `spotters` — the units (and stations) whose
+scans built the picture; ghosts belong to the searcher that hallucinated
+them. When the last spotter is gone — killed in a battle, or the station
+destroyed — `pruneOrphanTracks` removes the contact the same phase, not
+three quiet rounds later. A picture shared across the force survives any
+one loss: only the death of EVERY contributing spotter takes it dark.
 
 - **Zoom and pan.** Players couldn't tell whose ships were whose when
   several fleets shared a hex. The plot now zooms — mouse wheel about the

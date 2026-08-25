@@ -264,6 +264,13 @@ export interface ContactRecord {
   course: Hex | null
   /** Last observed speed band, for reckoning: a holder is not extrapolated. */
   observedMoving: boolean
+  /**
+   * The units (or stations) whose scans built this picture. Intelligence
+   * lives aboard the hulls that gathered it: when the last of them is gone,
+   * the side's picture of this contact goes with it (pruneOrphanTracks).
+   * Absent on records from before the field existed — those are kept.
+   */
+  spotters?: string[]
 }
 
 // ---------------------------------------------------------------------------
