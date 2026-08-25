@@ -60,7 +60,7 @@ import {
 import { snapToHexLine } from '../campaign/hexmap'
 import { viewFor } from '../campaign/views'
 import { CampaignMap } from './CampaignMap'
-import { downloadText, stageOrder, stagedOrderFor, waypointRounds } from './helpers'
+import { downloadText, routeEntryPhases, stageOrder, stagedOrderFor, waypointRounds } from './helpers'
 
 const AUTOSAVE_KEY = 'sfc-campaign-autosave'
 const SOLO_KEY = 'sfc-campaign-solo'
@@ -702,6 +702,17 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
               ? waypointRounds(file.map, unit.hex, order.waypoints, orderedSpeed({ ...unit, order }))
               : []
           }
+          routeSteps={
+            unit && order
+              ? routeEntryPhases(
+                  file.map,
+                  unit,
+                  order.waypoints,
+                  orderedSpeed({ ...unit, order }),
+                  file.state.phase,
+                )
+              : []
+          }
           onClickHex={(hex: Hex) => {
             // A map click with a unit selected appends a waypoint — snapped to
             // the nearest straight hex line from the leg's start, because
@@ -935,7 +946,8 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
               <p className="hint">
                 Click the map to add waypoints ({order.waypoints.length} plotted). Legs run straight
                 — an off-line click snaps to the nearest straight course; zigzag with more waypoints.
-                Each waypoint shows its ETA in rounds at the ordered speed.
+                Each hex of the route shows how many phases until the ship enters it, live against
+                the ordered speed.
               </p>
               <div className="campaign-battle-actions">
                 <button type="button" onClick={() => editOrder(unit.id, { waypoints: [], mission: undefined })}>

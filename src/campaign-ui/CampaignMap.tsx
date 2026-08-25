@@ -674,9 +674,15 @@ interface Props {
   /**
    * Rounds to reach each waypoint at the STAGED order's pace — one entry per
    * plannedWaypoints[1..], recomputed by the console whenever the speed edit
-   * changes. Empty when the unit is making no way.
+   * changes. Empty when the unit is making no way. Feeds the COURSE caption.
    */
   waypointEtas: number[]
+  /**
+   * Every hex the route enters, stamped with the End Phases from now until
+   * the ship stands in it (helpers.routeEntryPhases) — again recomputed from
+   * the staged order, so a speed edit moves every number at once.
+   */
+  routeSteps: Array<{ hex: Hex; phases: number }>
   onClickHex: (hex: Hex) => void
   onClickUnit: (unitId: string) => void
   onClickContact: (contactId: string) => void
@@ -691,6 +697,7 @@ export function CampaignMap({
   selectedContactId,
   plannedWaypoints,
   waypointEtas,
+  routeSteps,
   onClickHex,
   onClickUnit,
   onClickContact,
@@ -1156,14 +1163,6 @@ export function CampaignMap({
                 <text x={p.x + 9} y={p.y - 6} fontSize={TEXT} fill="var(--lc-sand)" opacity={0.9} {...HALO}>
                   {i + 1}
                 </text>
-                {/* The ETA, live against the STAGED speed: rounds from now
-                    until the unit stands in this waypoint's hex. The last
-                    waypoint's rides the COURSE caption instead. */}
-                {i !== routePts.length - 2 && waypointEtas[i] != null && (
-                  <text x={p.x + 9} y={p.y + 11} fontSize={TEXT} fill="var(--lc-sand)" opacity={0.7} {...HALO}>
-                    {`+${waypointEtas[i]}R`}
-                  </text>
-                )}
                 {legs >= 2 && (
                   <text
                     x={mid.x}
@@ -1178,6 +1177,34 @@ export function CampaignMap({
                   </text>
                 )}
               </g>
+            )
+          })}
+          {/* The phase countdown, hex by hex: how many End Phases from now
+              until the ship stands in each hex of the route — the 16-phase
+              schedule simulated with the STAGED speed, so editing the speed
+              moves every number at once. Offset perpendicular to the leg
+              (the opposite side from the leg-distance label) so no digit
+              sits on the course line itself. */}
+          {routeSteps.map((step, i) => {
+            const c = hexCenter(step.hex, HEX)
+            const prev = hexCenter(i === 0 ? plannedWaypoints[0] : routeSteps[i - 1].hex, HEX)
+            const dx = c.x - prev.x
+            const dy = c.y - prev.y
+            const len = Math.hypot(dx, dy) || 1
+            return (
+              <text
+                key={`ph${step.hex.q},${step.hex.r},${i}`}
+                x={c.x - (dy / len) * 10}
+                y={c.y + (dx / len) * 10 + 3.5}
+                textAnchor="middle"
+                fontSize={TEXT}
+                fill="var(--lc-sand)"
+                opacity={0.7}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+                {...HALO}
+              >
+                {step.phases}
+              </text>
             )
           })}
           {routePts.length > 1 &&

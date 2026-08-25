@@ -8,7 +8,8 @@
  */
 
 import { entryCost, hexEquals, hexStepToward, terrainAt } from '../campaign/hexmap'
-import type { CampaignMap, Hex, Intervention, StandingOrder } from '../campaign/types'
+import { hexesThisPhase, ROUND_PHASES } from '../campaign/schedule'
+import type { CampaignMap, Hex, Intervention, Side, StandingOrder } from '../campaign/types'
 
 /** Flat-top hex geometry. `size` is the circumradius in pixels. */
 export function hexCenter(h: Hex, size: number): { x: number; y: number } {
@@ -72,6 +73,62 @@ export function waypointRounds(
       at = next
     }
     out.push(Math.ceil(cost / speed))
+  }
+  return out
+}
+
+/** One hex the plotted route will enter, and the End Phases from now until it does. */
+export interface RouteStep {
+  hex: Hex
+  phases: number
+}
+
+/**
+ * The route hex by hex, each entry stamped with how many PHASES from now the
+ * unit enters it — the 16-phase schedule (schedule.ts) simulated forward from
+ * the phase about to be resolved: a count of 1 means the very next End Phase
+ * puts the ship in that hex. Exactly the resolver's own arithmetic — the
+ * side's own phases grant hexesThisPhase() credits, each credit pays off slow
+ * terrain (nebula and dust owe a second credit on entry) or steps one hex
+ * along the greedy line — so the numbers on the plot are the numbers the
+ * campaign will actually produce. Recomputed from the STAGED order, which is
+ * what makes every number move the moment the speed edit does.
+ */
+export function routeEntryPhases(
+  map: CampaignMap,
+  unit: { hex: Hex; side: Side; moveDebt: number },
+  waypoints: Hex[],
+  speed: number,
+  phaseNow: number,
+): RouteStep[] {
+  if (speed <= 0 || waypoints.length === 0) return []
+  const route: Hex[] = []
+  let at = unit.hex
+  for (const wp of waypoints) {
+    for (let guard = 0; guard < 500 && !hexEquals(at, wp); guard++) {
+      const next = hexStepToward(at, wp)
+      if (hexEquals(next, at)) break
+      route.push(next)
+      at = next
+    }
+  }
+  const out: RouteStep[] = []
+  let debt = unit.moveDebt
+  let phase = phaseNow
+  let index = 0
+  for (let count = 1; count <= 2000 && index < route.length; count++) {
+    let credits = hexesThisPhase(speed, unit.side, phase)
+    while (credits > 0 && index < route.length) {
+      credits -= 1
+      if (debt > 0) {
+        debt -= 1
+        continue
+      }
+      const hex = route[index++]
+      out.push({ hex, phases: count })
+      debt = entryCost(terrainAt(map, hex)) - 1
+    }
+    phase = phase === ROUND_PHASES ? 1 : phase + 1
   }
   return out
 }

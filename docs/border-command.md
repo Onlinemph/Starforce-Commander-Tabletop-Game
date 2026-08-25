@@ -397,13 +397,19 @@ one loss: only the death of EVERY contributing spotter takes it dark.
   courses read as courses, and a zigzag is several waypoints, exactly as
   the designer asked. On a straight leg the resolver's greedy step IS the
   line, so the plot shows the hexes the ship will actually cross.
-- **ETAs on the waypoints.** Each waypoint prints `+nR` — rounds from now
-  until the ship stands in that hex — and the course caption closes with
-  the total (`COURSE 10 HEX · 3R`). Computed by `waypointRounds`
-  (campaign-ui/helpers.ts) against the STAGED order: the same walk the
-  resolver makes, nebula and dust charged double, divided by the ordered
-  pace and rounded up. Change the speed tier or the exact-speed throttle
-  and the numbers move live.
+- **A phase countdown on every route hex.** Each hex the route enters
+  prints how many END PHASES from now the ship stands in it — a 1 means
+  the very next End Phase does it. `routeEntryPhases`
+  (campaign-ui/helpers.ts) simulates the real 16-phase schedule forward
+  (schedule.ts credits, nebula and dust owing their second credit) over
+  the resolver's own greedy line, so the numbers on the plot are the
+  numbers the campaign will produce — a property test pins the prediction
+  against resolvePhase itself, terrain included. Computed from the STAGED
+  order, so changing the speed tier or the exact-speed throttle moves
+  every number live (cruise-4 reads 3, 7, 11, 15…; exact speed 1 reads
+  15, 31, 47…). The course caption still closes with the round total
+  (`COURSE 8 HEX · 2R`, via `waypointRounds` — same walk, rounds
+  granularity).
 
 ## Where the doc met the data (Part 12 material)
 
