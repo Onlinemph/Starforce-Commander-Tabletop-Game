@@ -964,9 +964,12 @@ export function CampaignMap({
         `${view.engagements.length} battles waiting.`
       }
       onPointerDown={(e) => {
+        // NO pointer capture here: a captured pointer retargets the coming
+        // `click` to this svg, which swallowed every unit/contact click while
+        // zoomed — the playtest's "zoomed in, I couldn't switch ships".
+        // Capture starts only once the gesture has actually MOVED (below).
         if (!zoom) return
         drag.current = { x: e.clientX, y: e.clientY, moved: 0 }
-        e.currentTarget.setPointerCapture(e.pointerId)
       }}
       onPointerMove={(e) => {
         const d = drag.current
@@ -980,7 +983,14 @@ export function CampaignMap({
         d.moved += Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y)
         d.x = e.clientX
         d.y = e.clientY
-        if (d.moved > 3) suppressClick.current = true
+        if (d.moved <= 3) return // a jittery press is still a click, not a pan
+        suppressClick.current = true
+        // Now it is a pan for sure: take the capture so the drag survives
+        // leaving the svg. A stationary press never reaches this line, so
+        // plain clicks keep landing on the counters at any zoom.
+        if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }
         setZoom((z) => (z ? clampView(z.cx - dx, z.cy - dy, z.scale) : z))
       }}
       onPointerUp={() => {
