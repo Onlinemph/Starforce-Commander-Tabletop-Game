@@ -48,6 +48,7 @@ import {
   sideToMove,
   type BattleRecord,
   type CampaignFile,
+  type CampaignScenario,
   type Hex,
   type Intervention,
   type PhaseMove,
@@ -60,10 +61,12 @@ import {
 import { snapToHexLine } from '../campaign/hexmap'
 import { viewFor } from '../campaign/views'
 import { CampaignMap } from './CampaignMap'
+import { ForceEditor } from './ForceEditor'
 import { downloadText, routeEntryPhases, stageOrder, stagedOrderFor, waypointRounds } from './helpers'
 
 const AUTOSAVE_KEY = 'sfc-campaign-autosave'
 const SOLO_KEY = 'sfc-campaign-solo'
+const OPEN_KEY = 'sfc-campaign-open'
 
 interface Props {
   /** Load a campaign battle into the tactical table and switch to it. */
@@ -87,6 +90,16 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     }
   })
   const [soloB, setSoloB] = useState<boolean>(() => localStorage.getItem(SOLO_KEY) === '1')
+  /**
+   * Open table (the designer's testing ask): no blackout between commanders,
+   * and a view switcher to look through EITHER side's sensors at any time —
+   * for watching when ships are detected from both perspectives. Orders can
+   * only be staged while viewing the side whose phase it is.
+   */
+  const [openTable, setOpenTable] = useState<boolean>(() => localStorage.getItem(OPEN_KEY) === '1')
+  const [viewSide, setViewSide] = useState<Side>('A')
+  /** A launch scenario opened for force editing, before any campaign exists. */
+  const [editing, setEditing] = useState<{ id: string; scenario: CampaignScenario } | null>(null)
   const [mode, setMode] = useState<Mode>(file ? 'blackout' : 'menu')
   const [pending, setPending] = useState<Intervention[]>([])
   const [stagedBattles, setStagedBattles] = useState<BattleRecord[]>([])
@@ -119,8 +132,11 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     () => (file ? { map: file.map, scenario: file.scenario } : null),
     [file],
   )
-  // Online, the console IS one seat; local, it is whoever's phase it is.
-  const side: Side = online ? online.seat : file ? sideToMove(file.state.phase) : 'A'
+  // Online, the console IS one seat; local, it is whoever's phase it is —
+  // except at an open table, where the VIEW flips freely and only the moving
+  // side's orders count.
+  const moverSide: Side = file ? sideToMove(file.state.phase) : 'A'
+  const side: Side = online ? online.seat : openTable ? viewSide : moverSide
   const myTurn = !file || !online || sideToMove(file.state.phase) === online.seat
   const view = useMemo(
     () => (file && ctx ? viewFor(file.map, file.state, side) : null),
@@ -147,6 +163,9 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   useEffect(() => {
     localStorage.setItem(SOLO_KEY, soloB ? '1' : '0')
   }, [soloB])
+  useEffect(() => {
+    localStorage.setItem(OPEN_KEY, openTable ? '1' : '0')
+  }, [openTable])
 
   /** The staged (or current) order for a unit, for the console to edit. */
   const orderOf = (unitId: string): StandingOrder | null => {
@@ -157,6 +176,10 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   }
 
   const editOrder = (unitId: string, patch: Partial<StandingOrder>) => {
+    // At an open table, the view flips freely but only the moving commander
+    // gives orders — staging through the other side's window would be
+    // refused at End Phase anyway.
+    if (openTable && !online && side !== moverSide) return
     const base = orderOf(unitId)
     if (!base) return
     setPending((p) => stageOrder(p, unitId, { ...base, ...patch }))
@@ -213,7 +236,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     const move: PhaseMove = {
       round: file.state.round,
       phase: file.state.phase,
-      side,
+      side: moverSide,
       interventions: pending,
       ...(stagedBattles.length > 0 ? { battles: stagedBattles } : {}),
     }
@@ -232,7 +255,25 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     }
     if (soloB) next = runSolo(next)
     setFile(next)
-    if (!soloB && !next.state.finished) setMode('blackout')
+    // The blackout is the wall between two humans at one screen; an open
+    // table drops it on purpose — that is what the mode is for.
+    if (!soloB && !openTable && !next.state.finished) setMode('blackout')
+  }
+
+  /** Open a fresh local campaign from a (possibly force-edited) scenario. */
+  const launchScenario = (id: string, scenario: CampaignScenario) => {
+    try {
+      const fresh = newCampaign(scenario, `${id}-${Date.now().toString(36)}`)
+      setFile(fresh)
+      setMode(soloB || openTable ? 'console' : 'blackout')
+      setPending([])
+      setStagedBattles([])
+      setEditing(null)
+      setViewSide('A')
+      setNote(null)
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const stageBattleRecord = (record: BattleRecord) => {
@@ -409,25 +450,47 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
             Solo — the computer commands side B
           </label>
         )}
+        {!online && (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={openTable}
+              onChange={(e) => setOpenTable(e.target.checked)}
+            />
+            Open table — no blackout; flip between both commanders&apos; views (for testing
+            movement and detection)
+          </label>
+        )}
+        {!online && editing && (
+          <ForceEditor
+            scenario={editing.scenario}
+            onLaunch={(edited) => launchScenario(editing.id, edited)}
+            onCancel={() => setEditing(null)}
+          />
+        )}
         {!online &&
+          !editing &&
           LAUNCH_SCENARIOS.map(({ id, build }) => {
             const scenario = build()
             return (
-              <button
-                key={id}
-                type="button"
-                className="title-item"
-                onClick={() => {
-                  const fresh = newCampaign(scenario, `${id}-${Date.now().toString(36)}`)
-                  setFile(fresh)
-                  setMode(soloB ? 'console' : 'blackout')
-                  setPending([])
-                  setStagedBattles([])
-                }}
-              >
-                {scenario.name}
-                <span className="title-detail">{scenario.rounds} rounds</span>
-              </button>
+              <div key={id} className="campaign-launch-row">
+                <button
+                  type="button"
+                  className="title-item"
+                  onClick={() => launchScenario(id, scenario)}
+                >
+                  {scenario.name}
+                  <span className="title-detail">{scenario.rounds} rounds</span>
+                </button>
+                <button
+                  type="button"
+                  className="campaign-launch-edit"
+                  onClick={() => setEditing({ id, scenario })}
+                  title="Add, remove or re-hull the units on either side before launch"
+                >
+                  Edit forces
+                </button>
+              </div>
             )
           })}
         {!online && (
@@ -444,7 +507,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                   if (typeof loaded === 'string') setNote(loaded)
                   else {
                     setFile(loaded)
-                    setMode(soloB ? 'console' : 'blackout')
+                    setMode(soloB || openTable ? 'console' : 'blackout')
                   }
                 })
                 e.target.value = ''
@@ -453,7 +516,11 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           </label>
         )}
         {file && !online && (
-          <button type="button" className="title-item" onClick={() => setMode(soloB ? 'console' : 'blackout')}>
+          <button
+            type="button"
+            className="title-item"
+            onClick={() => setMode(soloB || openTable ? 'console' : 'blackout')}
+          >
             Continue — {file.scenario.name}, round {file.state.round}
           </button>
         )}
@@ -647,8 +714,9 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   }
 
   // Solo's side never renders — not even for the frame before the doctrine
-  // catches up. The human sees only Commander A's window.
-  if (soloB && !online && side === 'B') {
+  // catches up. At an open table the human may WATCH through B's window while
+  // the doctrine is not mid-turn, so the gate is the moving side, not the view.
+  if (soloB && !online && moverSide === 'B') {
     return (
       <div className="handoff-backdrop">
         <div className="handoff-card">
@@ -668,9 +736,28 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
     <div className="campaign-shell">
       <header className="campaign-topbar">
         <strong>StarForce: Border Command</strong>
+        {openTable && !online && (
+          <div className="campaign-viewswitch" role="group" aria-label="View side">
+            {(['A', 'B'] as Side[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={s === side ? 'primary' : ''}
+                onClick={() => {
+                  setViewSide(s)
+                  setSelectedUnit(null)
+                  setSelectedContact(null)
+                }}
+              >
+                Cmdr {s}
+              </button>
+            ))}
+          </div>
+        )}
         <span>
           Commander {side} — round {file.state.round}, phase {file.state.phase}/16 · VP {view!.vp.A}
           –{view!.vp.B} {!online && soloB && '· solo'}
+          {openTable && !online && side !== moverSide && ` · viewing only — phase ${file.state.phase} is Commander ${moverSide}'s`}
           {online &&
             ` · ${online.name} (${online.matchId})${
               online.status === 'reconnecting' ? ' · connection lost' : ''
@@ -837,6 +924,13 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           {unit && order && (
             <section className="campaign-panel">
               <h3>{unit.ships[0]?.name ?? unit.id}</h3>
+              {openTable && !online && side !== moverSide && (
+                <p className="hint">
+                  You are looking through Commander {side}&apos;s sensors; phase{' '}
+                  {file.state.phase} belongs to Commander {moverSide}, so orders here are locked
+                  until you flip the view.
+                </p>
+              )}
               <FleetStatus unit={unit} order={order} />
               <label className="field">
                 <span>Speed</span>

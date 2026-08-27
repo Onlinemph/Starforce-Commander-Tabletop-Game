@@ -620,7 +620,12 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
 
   if (!form.name.trim()) error('The ship needs a class name.')
   if (form.sizeClass < 1 || form.sizeClass > 10) error('Size class runs from 1 to 10 (B1.3.1).')
-  if (form.sublight.maxSpeed < 1) error('A ship needs a maximum speed of at least 1 (C1.2.7).')
+  // Speed 0 is a STATION — Expansion 7's BASTION battlestation prints SPD 0
+  // with no FTL drive at all. A hull that carries an FTL drive still needs
+  // sublight way (C1.2.7).
+  if (form.sublight.maxSpeed < 1 && form.ftlDriveBoxes > 0) {
+    error('A ship needs a maximum speed of at least 1 (C1.2.7).')
+  }
   if (form.sublight.maxSpeed > 8) error('No ship may exceed speed 8 (C1.2.7).')
   if (form.reactors.length === 0) error('A ship needs at least one reactor (B2.1.1).')
   /*
@@ -643,7 +648,14 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
   if (rungs) {
     for (const reactor of form.reactors) {
       if (!['left-main', 'right-main', 'center-main'].includes(reactor.hitKind)) continue
-      const off = reactor.points.findIndex((p, i) => p.boxes !== rungs[i % 2])
+      // A short FINAL point is a cut-down civilian main — Expansion 7's
+      // freighters print size-5 mains of [2, 1] — so only an off-table point
+      // before the tail, or a tail that is too BIG, breaks the ladder.
+      const off = reactor.points.findIndex(
+        (p, i) =>
+          p.boxes !== rungs[i % 2] &&
+          !(i === reactor.points.length - 1 && p.boxes < rungs[i % 2]),
+      )
       if (off >= 0) {
         const want = rungs[0] === rungs[1] ? `${rungs[0]} boxes` : `${rungs[0]},${rungs[1]} boxes, alternating`
         error(

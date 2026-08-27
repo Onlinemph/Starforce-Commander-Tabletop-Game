@@ -230,7 +230,10 @@ def parse_ship(pno):
 
     text = page.get_text()
 
-    titles = [c for c in gl if c['size'] >= 17 and c['y'] < 32]
+    # 16, not 17: Expansion 7's longest titles ("MAERSK I-class Old
+    # FREIGHTER(PV6)") shrink to 16pt to fit the banner. Nothing else in any
+    # book prints at 16pt inside the y<32 title band, so the guard stays tight.
+    titles = [c for c in gl if c['size'] >= 15.5 and c['y'] < 32]
     if not titles:
         return None
     # Build the name only from the large title glyphs — the grey "SHIP NAME / ID"
@@ -238,7 +241,7 @@ def parse_ship(pno):
     ty = round(titles[0]['y'])
     tx0 = min(c['x'] for c in titles)
     name = ''.join(c['ch'] for c in sorted(
-        [c for c in chars if abs(c['y'] - ty) <= 4 and c['x'] >= tx0 - 2 and c['size'] >= 17],
+        [c for c in chars if abs(c['y'] - ty) <= 4 and c['x'] >= tx0 - 2 and c['size'] >= 15.5],
         key=lambda c: c['x'])).strip()
     if not name or 'SHIP NAME' in name.upper():
         return None

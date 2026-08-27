@@ -15,13 +15,14 @@ import { ARC_ORDER } from '../engine/geometry'
 
 describe('roster', () => {
   it('imports all three factions in full', () => {
-    // 72 from the Master Ship Book plus 21 Aurelians from Expansion 5.
-    expect(SHIP_FORMS.length).toBe(103)
+    // 72 from the Master Ship Book, 31 Aurelians from Ship Book 5, and 9
+    // civilians, transports and stations from the Expansion 7 draft.
+    expect(SHIP_FORMS.length).toBe(112)
     const union = SHIP_FORMS.filter((f) => f.faction === 'Union of Federated Systems')
     const vallari = SHIP_FORMS.filter((f) => f.faction === 'Vallari Imperium')
     const aurelian = SHIP_FORMS.filter((f) => f.faction === 'Aurelian Empire')
-    expect(union.length).toBe(37)
-    expect(vallari.length).toBe(35)
+    expect(union.length).toBe(44)
+    expect(vallari.length).toBe(37)
     // Ship Book 5 (Sep 2025): the Exp 5 twenty-one plus ten Exp 6 hulls.
     expect(aurelian.length).toBe(31)
   })
@@ -35,13 +36,16 @@ describe('roster', () => {
     for (const form of SHIP_FORMS) {
       expect(form.sizeClass, form.name).toBeGreaterThan(0)
       expect(form.stressRating, form.name).toBeGreaterThan(0)
-      expect(form.damageControlRating, form.name).toBeGreaterThan(0)
+      // Zero is a real printed rating: Expansion 7's civilian freighters
+      // carry no damage-control parties at all.
+      expect(form.damageControlRating, form.name).toBeGreaterThanOrEqual(0)
       expect(form.pointValue, form.name).toBeGreaterThan(0)
       expect(form.reactors.length, form.name).toBeGreaterThan(0)
       expect(form.weapons.length, form.name).toBeGreaterThan(0)
       expect(form.systems.length, form.name).toBeGreaterThan(0)
       expect(structureBoxes(makeShip(form)).length, form.name).toBeGreaterThan(0)
-      expect(form.sublight.maxSpeed, form.name).toBeGreaterThan(0)
+      // Zero is a station (the BASTION battlestation prints SPD 0).
+      expect(form.sublight.maxSpeed, form.name).toBeGreaterThanOrEqual(0)
       expect(form.sublight.maxSpeed, form.name).toBeLessThanOrEqual(8) // C1.2.7
     }
   })
@@ -133,7 +137,9 @@ describe('roster', () => {
         expect(now, form.name).toBeLessThanOrEqual(previous)
         previous = now
       }
-      expect(previous, form.name).toBeGreaterThanOrEqual(1)
+      // A warship never drops below 1; a civilian hull that PRINTS 0 has
+      // no floor to keep.
+      expect(previous, form.name).toBeGreaterThanOrEqual(Math.min(1, form.damageControlRating))
     }
   })
 

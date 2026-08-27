@@ -356,6 +356,26 @@ Resolve already covers his "auto-resolve battles" item; ship entry via the
 builder covers "add ships" (campaign scenarios take any form id, custom
 forms embed in the file).
 
+**The designer's roadmap (Aug 2026, verbatim intent, to build once
+movement and detection feel right):**
+
+- Colonies, victory-point objectives, and automated merchant shipping
+  moving between colonies.
+- **Pirates as the anti-doom-stack incentive**: leave a star system
+  unpatrolled and pirate attacks cost you victory points — the reason not
+  to mass every hull into one giant fleet. (Expansion 7's freighters and
+  the pirates it names are the raw material.)
+- **Winning by objectives**, his list: destroy X amount of shipping; land
+  troops on X colony; raid X colony (damage to the planet or its bases);
+  destroy X border stations; destroy or damage shipyards or
+  battlestations; establish a mobile supply base in enemy territory; scout
+  X star system. "Figuring out the balance will take a bit."
+- He is drawing up bases, defense satellites, border stations and more
+  Vallari transports (some already in the Expansion 7 draft: BASTION,
+  VIGILANT; the contents pages also name a Union Habitat, Chaffee Research
+  Frigate, Galileo Tug and Defense Satellite whose record sheets are not
+  in this draft yet).
+
 **Quick Resolve fights for real (playtest fix):** "my ship auto-resolved
 against two others and came out completely fresh." Two causes, both fixed.
 The console had been quick-resolving at the captain difficulty on a
@@ -374,6 +394,39 @@ vanishes. One honest outcome remains that can look bloodless: the admiral
 refuses hopeless odds (past triple strength) and flies for the door — that
 ship reads back DISENGAGED and is pushed a hex toward home, not fresh out
 of nowhere.
+
+**Expansion 7 — Civilians, Support and Pirates (draft v21, imported):** all
+nine record sheets, through the same extractor and generator as the Master
+Ship Book — RUNNER, MAERSK I, HORIZON and WARFARER freighters, the GALILEO
+II, V-6H SALVAGE and V-5H CORSAIR military transports, and the BASTION
+battlestation and VIGILANT outpost (the roster is 112). The draft has no
+Master Ship List, so each form's printed corner is its row; the two printed
+prices (MAERSK "(PV6)", BASTION "Point Value 100") are used as printed and
+the rest come from the design-tool point model (`tools/price_exp7.ts` —
+which lands within half a point of both printed values, a nice check).
+Draft defects recorded as errata on the forms: the V-6H's stale A/MAT and
+T-37 arming lines (its notes say it got no heavy weapons), two STBD-shield
+banner bleeds, the VIGILANT's power total, and two wrench-vs-strip Damage
+Control disagreements read from the strip. New ground the engine now
+accepts, printed by these sheets: Damage Control 0 (civilian freighters),
+speed-0 FTL-less hulls (stations — in the campaign they hold their hex:
+`shipSpeedTiers` gives a drive-less HULL no tiers, distinct from a shot-out
+drive's limp), size class 8, and cut-down civilian reactor mains.
+
+**Edit the forces before launch (the designer's testing ask):** every
+launch scenario now carries an "Edit forces" button — add or remove units
+on either side, re-hull them from the whole roster (Expansion 7 and custom
+designs included), rename them, move their start hexes, set their kind
+(ship, group, convoy). The edited scenario launches like any other and the
+campaign file records it whole.
+
+**Open table (the designer's testing ask):** a menu toggle that drops the
+hotseat blackout and puts a Cmdr A / Cmdr B view switcher in the topbar —
+both perspectives from one chair, for watching when each side's ships are
+detected. Orders can only be staged while viewing the side whose phase it
+is (the other window is sensors-only, and says so); with Solo on you can
+watch the computer's own picture of you between its turns. The blackout
+remains the default for real hotseat play.
 
 **A dead ship's contacts die with it (playtest ruling):** contacts were a
 side-wide pool, so a scout's hard-won picture outlived the scout by rounds.

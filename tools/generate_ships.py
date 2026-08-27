@@ -21,6 +21,97 @@ if os.path.exists('aurelian_raw.json'):
         _s['book'] = 'aurelian'
         S.append(_s)
 
+# Expansion 7 — "Civilians, Support and Pirates" (draft v21, Aug 2026):
+# freighters, military transports and stations. The draft has no Master Ship
+# List, so each form's own printed corner (year, availability) is its row.
+# Point values: the draft prints two ("(PV6)" in the MAERSK banner, "(Point
+# Value 100)" in the BASTION's special-systems note); the rest come from the
+# design-tool point model via exp7_pv.json (written by
+# `npx vite-node tools/price_exp7.ts` — run generate, price, generate again).
+if os.path.exists('exp7_raw.json'):
+    for _s in json.load(open('exp7_raw.json')):
+        _s['faction'] = 'vallari' if _s['name'].upper().startswith('V-') else 'union'
+        _s['book'] = 'exp7'
+        exp7_errata = []
+        # The banner's printed point value is identity, not name.
+        cleaned = re.sub(r'\s*\(PV\s*\d+\)', '', _s['name']).strip()
+        if cleaned != _s['name']:
+            _s['name'] = cleaned
+        if 'V-6H' in _s['name']:
+            # The draft's weapons panel carries only the TYPE-29 — the notes
+            # say the class "did not receive heavy weapons" — but the
+            # FUNCTIONS list still prints the template's A/MAT TRP and T-37
+            # arming lines. Stale lines are dropped so the TYPE-29's own line
+            # (1 free, 4 purchased) arms it.
+            before = len(_s['functions'])
+            _s['functions'] = [f for f in _s['functions']
+                               if f['label'] not in ('A/MAT TRP', 'T-37 DISR')]
+            if len(_s['functions']) != before:
+                exp7_errata.append(
+                    'Draft prints arming lines for A/MAT TRP and T-37 DISR but no such '
+                    'weapons are on the form (the notes say the class received no heavy '
+                    'weapons); the stale lines are dropped.')
+        # The "27/2 PHASER" banner sits beside the rotated STBD SHIELD value
+        # and bleeds into it; the drawn boxes and the plot say 8 and 10.
+        if _s['name'].startswith('HORIZON') and _s['shields'].get('S') == 27:
+            _s['shields']['S'] = 8
+            exp7_errata.append('STBD SHIELD read 27 from the weapon banner; the drawn boxes say 8.')
+        if _s['name'].startswith('WARFARER') and _s['shields'].get('S') == 27:
+            _s['shields']['S'] = 10
+            exp7_errata.append('STBD SHIELD read 27 from the weapon banner; the drawn boxes say 10.')
+        # Where the wrench icon and the structure strip's opening DC marker
+        # disagree (GALILEO II prints wrench 2 over a 3-2-1 strip; V-6H
+        # wrench 1 over 2-1), the STRIP is the bookkeeping the game is
+        # played on — the engine reads the markers — so the rating follows
+        # its opening marker. One for Doyle to settle.
+        first_dc = next((e['rating'] for e in _s['structure'] if e['kind'] == 'dc'), None)
+        if first_dc is not None and first_dc != _s.get('damageControl'):
+            exp7_errata.append(
+                f"Draft prints Damage Control {_s.get('damageControl')} in the wrench but the "
+                f"structure strip opens at {first_dc}; the strip is used.")
+            _s['damageControl'] = first_dc
+        if _s['name'].startswith('VIGILANT'):
+            # Draft prints TOTAL POWER 5+1 but draws 2+2+1+1 = 6 reactor
+            # points. As with the CORVUS shield defects, the drawn boxes are
+            # the bookkeeping the game is played on; one for Doyle to settle.
+            _s['powerMismatchOk'] = True
+            exp7_errata.append(
+                'Draft prints TOTAL POWER 5+1 but draws six reactor power points '
+                '(L MAIN 2, R MAIN 2, SL REAC 1, AUX PWR 1); the drawn reactors are used.')
+        if exp7_errata:
+            _s['exp7Errata'] = exp7_errata
+        S.append(_s)
+
+EXP7_PV = json.load(open('exp7_pv.json')) if os.path.exists('exp7_pv.json') else {}
+# The two prices the draft itself prints.
+EXP7_PRINTED_PV = {'MAERSK': 6.0, 'BASTION': 100.0}
+
+
+def exp7_msl_row(ship):
+    """A pseudo-MSL row for a book with no list: the form's own corner, and
+    the SYST BOXES aggregate summed from the form the way the real list's
+    column was verified to sum (internal boxes + the structure track)."""
+    internal = 0
+    for row in ship['power']:
+        if row['label'].startswith('BATTERY'):
+            internal += len(row['points'])
+        elif row['label'].startswith('FTL'):
+            internal += row.get('boxes', 0)
+        else:
+            internal += sum(row['points'])
+    internal += ship.get('driveBoxes', 0)
+    internal += sum(ship['systems'].values())
+    internal += ship.get('shieldGen', 0)
+    for w in ship['weapons']:
+        internal += sum(m['hitBoxes'] for m in w['mounts'])
+    printed = next((v for k, v in EXP7_PRINTED_PV.items() if ship['name'].startswith(k)), None)
+    pv = printed if printed is not None else EXP7_PV.get(ship['name'], 0)
+    return {'pointValue': pv,
+            'year': ship.get('year') or 3660,
+            'availability': ship.get('availability') or 'common',
+            'systemBoxes': internal + ship['strCount'],
+            'structure': ship['strCount']}
+
 # Rows flagged for a later expansion stay in the matching pool: a few of them
 # already have forms in this book, and dropping the row made the fuzzy match
 # hand the form its predecessor's point value.
@@ -283,9 +374,9 @@ def claim_weapon_for_label(ship, label, claimed, name_first):
 
 
 def build(ship):
-    msl = match_msl(ship)
+    msl = exp7_msl_row(ship) if ship.get('book') == 'exp7' else match_msl(ship)
     faction = ship['faction']
-    errata = apply_errata(ship)
+    errata = apply_errata(ship) + ship.get('exp7Errata', [])
 
     # Hit-point-based damage levels: point value from Doyle's HP sheet where it
     # re-lists the hull (Union only, so far), the MSL otherwise; the victory
@@ -540,6 +631,10 @@ if HP_MSL:
             print(f"  HP sheet row unmatched: {h['class']}")
             problems += 1
     for s in S:
+        # Expansion 7 predates any HP-sheet row; its rows will come with
+        # Doyle's next Master Ship List revision.
+        if s.get('book') == 'exp7':
+            continue
         if s['faction'] == 'union' and hp_key(s['name']) not in HP_BY_KEY:
             print(f"  Union form missing from HP sheet: {s['name']}")
             problems += 1
@@ -550,7 +645,7 @@ if HP_MSL:
                 problems += 1
 for s, raw in zip(ships, S):
     power = sum(len(r['points']) for r in s['reactors'])
-    if power != raw.get('totalPower'):
+    if power != raw.get('totalPower') and not raw.get('powerMismatchOk'):
         print(f"  power mismatch {s['name']}: reactors {power} vs TOTAL POWER {raw['totalPower']}")
         problems += 1
     if s['batteries'] != raw.get('totalBatteries'):

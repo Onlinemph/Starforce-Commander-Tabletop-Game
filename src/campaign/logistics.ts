@@ -196,6 +196,13 @@ export function repairTick(state: CampaignState): void {
 export function shipSpeedTiers(record: ShipRecord): SpeedTiers {
   const form = shipFormById(record.formId)
   if (!form) return speedTiersOf(0, 0)
+  // A hull with no FTL drive AT ALL — no drive boxes, no FTL DRV circles —
+  // is a station (Expansion 7's battlestations and outposts). It holds its
+  // hex: the "limps at 1" floor is for a ship whose drive was shot out, not
+  // for a structure that never had one.
+  if (form.ftlDriveBoxes === 0 && ftlCirclesOf(form) === 0) {
+    return { cruise: 0, maxCruise: 0, maximum: 0, emergency: 0 }
+  }
   let circles = ftlCirclesOf(form)
   const boxes = form.ftlDriveBoxes
   const marked = record.scars?.ftl ?? 0

@@ -1,0 +1,4597 @@
+[
+ {
+  "page": 5,
+  "name": "RUNNER-class Light Freighter",
+  "sizeClass": 3,
+  "accelPerPhase": 1,
+  "stressRating": 4,
+  "damageControl": 1,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3642,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": "EMER",
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.03199768066406
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 1,
+  "stressAccel": 1,
+  "spd": [
+   4,
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 110.37999725341797,
+    "speed": 4
+   },
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20,
+   25,
+   25,
+   30
+  ],
+  "driveBoxes": 3,
+  "_driveBoxX": [
+   110.37999725341797,
+   167.97999572753906,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 8,
+   "A": 10,
+   "P": 6,
+   "S": 6
+  },
+  "_blue": 30,
+  "_green": 4,
+  "_armor": 0,
+  "shieldGen": 1,
+  "systems": {
+   "SENS": 1,
+   "TRAC": 1,
+   "TRAN": 3,
+   "SHTL": 1,
+   "QTRS": 1,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 2,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "LNC-27/2 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 1,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 2,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 6,
+  "name": "MAERSK I-class Old FREIGHTER(PV6)",
+  "sizeClass": 5,
+  "accelPerPhase": 1,
+  "stressRating": 7,
+  "damageControl": 0,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3630,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 0,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "LT PHAS",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     2
+    ],
+    "boxes": 4
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     2
+    ],
+    "boxes": 4
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 1,
+  "stressAccel": 1,
+  "spd": [
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20,
+   25,
+   30
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   139.17999267578125,
+   167.97999572753906,
+   196.77999877929688,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 6,
+   "A": 6,
+   "P": 6,
+   "S": 6
+  },
+  "_blue": 24,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 1,
+   "TRAC": 2,
+   "TRAN": 1,
+   "SHTL": 3,
+   "QTRS": 1,
+   "CRGO": 16
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 6,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "LNC-127/54 LIGHT PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 4,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 7,
+  "name": "HORIZON-class Medium Freighter",
+  "sizeClass": 5,
+  "accelPerPhase": 1,
+  "stressRating": 6,
+  "damageControl": 0,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3645,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.03199768066406
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 0,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 1,
+  "stressAccel": 1,
+  "spd": [
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20,
+   25,
+   30
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   139.17999267578125,
+   167.97999572753906,
+   196.77999877929688,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 8,
+   "A": 8,
+   "P": 8,
+   "S": 27
+  },
+  "_blue": 32,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 1,
+   "TRAC": 2,
+   "TRAN": 3,
+   "SHTL": 2,
+   "QTRS": 2,
+   "CRGO": 16
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 4,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "27/2 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 1,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 2,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 8,
+  "name": "WARFARER-class Large Freighter",
+  "sizeClass": 7,
+  "accelPerPhase": 1,
+  "stressRating": 8,
+  "damageControl": 0,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3647,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 0,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 1,
+  "stressAccel": 1,
+  "spd": [
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20,
+   20
+  ],
+  "driveBoxes": 3,
+  "_driveBoxX": [
+   167.97999572753906,
+   196.77999877929688,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 10,
+   "A": 10,
+   "P": 10,
+   "S": 27
+  },
+  "_blue": 40,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 1,
+   "TRAC": 3,
+   "TRAN": 4,
+   "SHTL": 3,
+   "QTRS": 3,
+   "CRGO": 16
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 6,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "27/2 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 1,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 2,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 9,
+  "name": "BASTION-class Battlestation",
+  "sizeClass": 8,
+  "accelPerPhase": 0,
+  "stressRating": 5,
+  "damageControl": 6,
+  "totalPower": 9,
+  "totalBatteries": 3,
+  "availability": "rare",
+  "year": 3660,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 153.6999969482422
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 110.86000061035156
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 139.05999755859375
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 149.74000549316406
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 177.94000244140625
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 188.6199951171875
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 216.82000732421875
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 227.5
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 110.86000061035156
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 139.05999755859375
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 149.74000549316406
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 177.94000244140625
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 188.6199951171875
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 216.82000732421875
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 227.5
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 179.6199951171875
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 7,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 10,
+      "word": null,
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "LT PHAS",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "C MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     2,
+     2
+    ],
+    "boxes": 4
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1,
+     1,
+     1
+    ],
+    "boxes": 3
+   }
+  ],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20
+  ],
+  "driveBoxes": 2,
+  "_driveBoxX": [
+   225.5800018310547,
+   235.5399932861328
+  ],
+  "shields": {
+   "F": 18,
+   "A": 18,
+   "P": 18,
+   "S": 18
+  },
+  "_blue": 72,
+  "_green": 24,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 6,
+   "SENS": 4,
+   "TRAC": 3,
+   "TRAN": 3,
+   "SHTL": 6,
+   "QTRS": 6,
+   "CMND": 3,
+   "SPCL": 4,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 6
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 5
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 12,
+  "marines": 24,
+  "weapons": [
+   {
+    "name": "MK-5 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 17,
+      "max": 24,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+2",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-500 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "name": "DGR-12A LIGHT PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE SPECIAL SYSTEMS: The 4 Special System (SPCL)  boxes are the base\u2019s Repair systems. While not  useful in combat they are important during a  campaign for repairing friendly starships. (Point Value 100)"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 10,
+  "name": "VIGILANT-class Outpost",
+  "sizeClass": 3,
+  "accelPerPhase": 1,
+  "stressRating": 4,
+  "damageControl": 2,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "rare",
+  "year": 3660,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": "EMER",
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 3,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 7,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "LT PHAS",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 0,
+  "stressAccel": 1,
+  "spd": [
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   196.77999877929688,
+   206.74000549316406,
+   227.25999450683594,
+   237.22000122070312
+  ],
+  "shields": {
+   "F": 14,
+   "A": 14,
+   "P": 14,
+   "S": 14
+  },
+  "_blue": 56,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 3,
+   "SENS": 3,
+   "TRAC": 1,
+   "TRAN": 1,
+   "SHTL": 1,
+   "QTRS": 2,
+   "CRGO": 4
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 2,
+  "marines": 3,
+  "weapons": [
+   {
+    "name": "MK-5 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 17,
+      "max": 24,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+2",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-500 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "name": "DGR-12A LIGHT PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 11,
+  "name": "GALILEO II-class Transport",
+  "sizeClass": 4,
+  "accelPerPhase": 1,
+  "stressRating": 6,
+  "damageControl": 2,
+  "totalPower": 7,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3652,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": "EMER",
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.03199768066406
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 95.61599731445312
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 2,
+  "safeAccel": 2,
+  "stressAccel": 1,
+  "spd": [
+   6,
+   5,
+   4,
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 52.75199890136719,
+    "speed": 6
+   },
+   {
+    "x": 81.552001953125,
+    "speed": 5
+   },
+   {
+    "x": 110.37999725341797,
+    "speed": 4
+   },
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   0,
+   0,
+   25,
+   30,
+   30,
+   35,
+   35
+  ],
+  "driveBoxes": 5,
+  "_driveBoxX": [
+   52.75199890136719,
+   81.552001953125,
+   139.17999267578125,
+   167.97999572753906,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 14,
+   "A": 12,
+   "P": 12,
+   "S": 12
+  },
+  "_blue": 50,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 1,
+   "SENS": 2,
+   "TRAC": 3,
+   "TRAN": 3,
+   "SHTL": 4,
+   "QTRS": 2,
+   "CRGO": 12
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 8,
+  "marines": 9,
+  "weapons": [
+   {
+    "name": "LNC-447 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 12,
+  "name": "V-6H SALVAGE-class Transport",
+  "sizeClass": 4,
+  "accelPerPhase": 2,
+  "stressRating": 6,
+  "damageControl": 1,
+  "totalPower": 7,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3649,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": "EMER",
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.03199768066406
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "T-37 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "T-29 DISR",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 2,
+  "safeAccel": 2,
+  "stressAccel": 2,
+  "spd": [
+   5,
+   4,
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 81.552001953125,
+    "speed": 5
+   },
+   {
+    "x": 110.37999725341797,
+    "speed": 4
+   },
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   0,
+   25,
+   30,
+   35,
+   35,
+   40
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   81.552001953125,
+   139.17999267578125,
+   167.97999572753906,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 13,
+   "A": 9,
+   "P": 10,
+   "S": 10
+  },
+  "_blue": 42,
+  "_green": 8,
+  "_armor": 0,
+  "shieldGen": 2,
+  "systems": {
+   "SCNC": 1,
+   "SENS": 2,
+   "TRAC": 2,
+   "TRAN": 3,
+   "SHTL": 1,
+   "QTRS": 2,
+   "CRGO": 10
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 2,
+  "marines": 8,
+  "weapons": [
+   {
+    "name": "TYPE-29 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 7,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "ATMO",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 13,
+  "name": "V-5H CORSAIR-class Fast Transport",
+  "sizeClass": 3,
+  "accelPerPhase": 2,
+  "stressRating": 5,
+  "damageControl": 2,
+  "totalPower": 7,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3656,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 177.94000244140625
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 203.86000061035156
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": "EMER",
+      "x": 152.02000427246094
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 238.77999877929688
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 127,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.03199768066406
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 95.61599731445312
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.0999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.02000427246094
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 177.94000244140625
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.0999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.18000030517578
+     }
+    ]
+   },
+   {
+    "label": "T-31 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.35199737548828
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.18000030517578
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 126.0999984741211
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1,
+     2
+    ],
+    "boxes": 5
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1,
+     2
+    ],
+    "boxes": 5
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 2,
+  "safeAccel": 3,
+  "stressAccel": 3,
+  "spd": [
+   6,
+   5,
+   4,
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 52.75199890136719,
+    "speed": 6
+   },
+   {
+    "x": 81.552001953125,
+    "speed": 5
+   },
+   {
+    "x": 110.37999725341797,
+    "speed": 4
+   },
+   {
+    "x": 139.17999267578125,
+    "speed": 3
+   },
+   {
+    "x": 167.97999572753906,
+    "speed": 2
+   },
+   {
+    "x": 196.77999877929688,
+    "speed": 1
+   },
+   {
+    "x": 225.5800018310547,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   0,
+   20,
+   30,
+   30,
+   35,
+   35,
+   40
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   52.75199890136719,
+   110.37999725341797,
+   167.97999572753906,
+   225.5800018310547
+  ],
+  "shields": {
+   "F": 11,
+   "A": 8,
+   "P": 9,
+   "S": 9
+  },
+  "_blue": 37,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 1,
+   "SENS": 3,
+   "TRAC": 2,
+   "TRAN": 2,
+   "SHTL": 1,
+   "QTRS": 1,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 2,
+  "marines": 8,
+  "weapons": [
+   {
+    "name": "D-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "AS",
+       "AP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "TYPE-31 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 11,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "ATMO",
+     "PD MODE"
+    ]
+   }
+  ]
+ }
+]
