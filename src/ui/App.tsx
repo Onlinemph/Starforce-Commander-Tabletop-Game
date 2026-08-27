@@ -130,6 +130,10 @@ export function App() {
    * honor-system by nature; the view makes honesty the path of least effort.
    */
   const sides = [...new Set(game.ships.map((s) => s.side))]
+  /** This battle was launched from Border Command: offer the way back. */
+  const fromCampaign = Boolean(
+    (currentSetup() as ReturnType<typeof currentSetup> & { campaignRef?: unknown }).campaignRef,
+  )
   const [rawView, setRawView] = useState<string | null>(
     () => (typeof localStorage === 'undefined' ? null : localStorage.getItem(VIEW_KEY)) || null,
   )
@@ -407,6 +411,15 @@ export function App() {
         >
           Menu
         </button>
+        {fromCampaign && (
+          <button
+            type="button"
+            onClick={() => setScreen('campaign')}
+            title="Back to the campaign console — read this battle back from the Battles-waiting panel"
+          >
+            Border Command
+          </button>
+        )}
         <label className="field inline" title={enrolledInMatch ? LOCKED_HINT : undefined}>
           <span>Scenario</span>
           <select
@@ -561,6 +574,14 @@ export function App() {
           summary={summary}
           scenarioName={game.scenario.name}
           onClose={() => setSummaryOpen(false)}
+          onReturnToCampaign={
+            fromCampaign
+              ? () => {
+                  setSummaryOpen(false)
+                  setScreen('campaign')
+                }
+              : undefined
+          }
         />
       )}
       {lobby && <OnlinePanel onClose={() => setLobby(false)} />}

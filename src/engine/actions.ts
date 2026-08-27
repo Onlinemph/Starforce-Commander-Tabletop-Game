@@ -1118,11 +1118,15 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       }
       const out = attemptSearch(ship, ghost, cloak, game.rng)
       if (out.faces.length > 0) {
-        pushLog(
-          game,
-          `${ship.name} searches for ${ghost.name}: ${out.faces.join(' ')} — ` +
-            (out.detected ? `${DETECTION_LABELS[out.to]} (H6.10).` : 'no contact.'),
-        )
+        // The dice, spelled out — logged AND handed back to the panel, so
+        // the player sees the roll happen where they pressed the button.
+        const line =
+          `${ship.name} searches for ${ghost.name}: rolled ${out.faces.join(' ')} — ` +
+          (out.detected
+            ? `detection rises to ${DETECTION_LABELS[out.to]} (H6.10).`
+            : `no contact (still ${DETECTION_LABELS[out.from]}).`)
+        pushLog(game, line)
+        return said(line)
       }
       return said(out.reason ?? null)
     }

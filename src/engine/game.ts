@@ -2110,9 +2110,10 @@ function advanceCloakPhases(game: GameState): void {
   for (const cloak of Object.values(game.cloaks)) {
     if (cloak.engaged) cloak.phasesCloaked += 1
     else if (cloak.phasesUncloaked !== Infinity) cloak.phasesUncloaked += 1
-    // A searcher may climb one level per segment, so the marker clears with the
-    // phase (H6.15.1).
+    // A searcher may climb one level per segment (H6.15.1) and rolls its ONE
+    // search per phase (H6.9.2); both markers clear with the phase.
     cloak.raisedThisSegment = []
+    cloak.searchedThisSegment = []
     cloak.evadedThisSegment = false
   }
 }

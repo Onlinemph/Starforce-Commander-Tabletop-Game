@@ -3606,7 +3606,11 @@ function planOperations(
     // ship's exposure is the best of them, so concentration finds it sooner.
     if (!cloaked) {
       const ghost = huntedGhost(game, ship)
-      if (ghost) actions.push({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id })
+      // The one search per phase (H6.9.2) may already be spent — the engine
+      // now refuses the second roll, so don't keep proposing it.
+      if (ghost && !game.cloaks[ghost.id]?.searchedThisSegment.includes(ship.id)) {
+        actions.push({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id })
+      }
     }
 
     // A missile in the tractor beam's reach is a missile that never lands (J3.2.2).

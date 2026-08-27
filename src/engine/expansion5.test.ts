@@ -316,6 +316,7 @@ describe('searching for a cloaked ship (H6.9 – H6.12)', () => {
     let climbed = 0
     for (let i = 0; i < 40 && detectionBy(state, 'hunter') < 3; i++) {
       state.raisedThisSegment = []
+      state.searchedThisSegment = []
       const out = attemptSearch(hunter, ghost, state, rng)
       if (out.detected) {
         expect(out.to - out.from).toBe(1)
@@ -332,6 +333,20 @@ describe('searching for a cloaked ship (H6.9 – H6.12)', () => {
     const out = attemptSearch(hunter, ghost, state, new Rng(1))
     expect(out.detected).toBe(false)
     expect(out.reason).toMatch(/one detection level per segment/)
+  })
+
+  it('rolls its ONE search per phase — a miss cannot simply be rerolled (H6.9.2)', () => {
+    const { ghost, hunter, state } = hunt({ targeting: 6, jamming: 1 })
+    const first = attemptSearch(hunter, ghost, state, new Rng(1))
+    expect(first.faces.length).toBeGreaterThan(0)
+    // The playtest exploit: press the button again until it works.
+    const second = attemptSearch(hunter, ghost, state, new Rng(2))
+    expect(second.faces).toEqual([])
+    expect(second.reason).toMatch(/already made its search this phase/)
+    // The marker clears with the phase, like the one-level-per-segment one.
+    state.searchedThisSegment = []
+    state.raisedThisSegment = []
+    expect(attemptSearch(hunter, ghost, state, new Rng(3)).faces.length).toBeGreaterThan(0)
   })
 
   it('refuses a search with less targeting than jamming (H6.10.2)', () => {

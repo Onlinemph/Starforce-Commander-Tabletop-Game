@@ -33,6 +33,8 @@ interface Props {
 
 export function CloakPanel({ game, ship }: Props) {
   const [error, setError] = useState<string | null>(null)
+  /** The last search's dice, shown beside the button that rolled them. */
+  const [searchNote, setSearchNote] = useState<string | null>(null)
   // Where a long-cloaked ship says it ended up (H6.8.7). Seeded from the datum
   // so the commonest answer — "roughly where you last saw me" — is one click.
   const datum = cloakOf(game, ship)?.datum
@@ -195,6 +197,7 @@ export function CloakPanel({ game, ship }: Props) {
             const level = detectionBy(state, ship.id)
             const { count, color } = searchDice(ship, ghost, state)
             const inRange = withinSearchRange(ship, ghost, state)
+            const searched = state.searchedThisSegment.includes(ship.id)
             const to = level === 0 ? state.datum.position : ghost.placement.position
             return (
               <div key={ghost.id} className="cloak-target">
@@ -208,23 +211,32 @@ export function CloakPanel({ game, ship }: Props) {
                 </span>
                 <button
                   type="button"
-                  disabled={!inRange || count === 0 || level >= 3}
+                  disabled={!inRange || count === 0 || level >= 3 || searched}
                   title={
-                    !inRange
-                      ? 'Out of search range (H6.9.1)'
-                      : count === 0
-                        ? 'Targeting is below the cloaked ship’s jamming (H6.10.2)'
-                        : `Roll ${count} ${color} ${count === 1 ? 'die' : 'dice'}`
+                    searched
+                      ? 'Already searched this phase — one attempt per phase (H6.9.2)'
+                      : !inRange
+                        ? 'Out of search range (H6.9.1)'
+                        : count === 0
+                          ? 'Targeting is below the cloaked ship’s jamming (H6.10.2)'
+                          : `Roll ${count} ${color} ${count === 1 ? 'die' : 'dice'}`
                   }
                   onClick={() =>
-                    setError(dispatch({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id }).message)
+                    setSearchNote(
+                      dispatch({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id }).message,
+                    )
                   }
                 >
-                  Search · {count} {color}
+                  {searched ? 'Searched this phase' : `Search · ${count} ${color}`}
                 </button>
               </div>
             )
           })}
+          {searchNote && (
+            <p className={searchNote.includes('rolled') ? 'hint cloak-roll' : 'fire-error'}>
+              {searchNote}
+            </p>
+          )}
         </div>
       )}
 

@@ -70,6 +70,15 @@ export interface CloakState {
   /** Searchers that have already climbed a level this segment (H6.15.1). */
   raisedThisSegment: string[]
   /**
+   * Searchers that have already rolled their ONE search this phase (H6.9.2).
+   * Distinct from raisedThisSegment, which only stopped a second CLIMB: with
+   * nothing recording the attempt itself, a missed roll could simply be
+   * rolled again — press the button until it works. The playtest caught it.
+   * Bonus searches (H6.15's high-speed, damage and small-craft looks) are
+   * events on top of the one scan and do not spend or need this.
+   */
+  searchedThisSegment: string[]
+  /**
    * Whether this ship has already tried to shake its hunters this segment.
    *
    * H6.13.2 puts the attempt at Step E of the Operations Segment — once, not
@@ -102,6 +111,7 @@ export function newCloakState(placement: Placement): CloakState {
     phasesCloaked: 0,
     phasesUncloaked: Infinity,
     raisedThisSegment: [],
+    searchedThisSegment: [],
     evadedThisSegment: false,
     powerCut: false,
     restrictedRound: null,
@@ -397,6 +407,9 @@ export function attemptSearch(
 
   if (!state.engaged) return fail(`${cloaked.name} is not cloaked.`)
   if (from >= 3) return fail(`${searcher.name} already holds a Target Lock.`)
+  if (state.searchedThisSegment.includes(searcher.id)) {
+    return fail(`${searcher.name} has already made its search this phase (H6.9.2).`)
+  }
   if (state.raisedThisSegment.includes(searcher.id)) {
     return fail('A searching ship may only gain one detection level per segment (H6.15.1).')
   }
@@ -414,6 +427,10 @@ export function attemptSearch(
   if (count === 0) {
     return fail('Targeting is lower than the cloaked ship\'s jamming — no search may be attempted (H6.10.2).')
   }
+
+  // The dice are about to roll: THIS is the one search this phase allows
+  // (H6.9.2) — hit or miss. A refusal above never spent it.
+  state.searchedThisSegment.push(searcher.id)
 
   const faces: string[] = []
   let hit = false

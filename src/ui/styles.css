@@ -2614,6 +2614,29 @@ input:focus-visible {
   letter-spacing: 0.08em;
 }
 
+/* The cloak status on the counter itself: CLK while engaged, CLK-C/T/L once
+   a searcher holds Contact, Track or a Target Lock (H6.2). */
+.clk-badge {
+  fill: var(--warn, #e8b84a);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 2.5px;
+}
+
+.cloak-roll {
+  margin-top: 0.4rem;
+}
+
+.summary-campaign-return {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
 .cloak-panel h4 {
   margin: 0.6rem 0 0.2rem;
   font-size: 0.72rem;

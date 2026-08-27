@@ -100,7 +100,12 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   const [viewSide, setViewSide] = useState<Side>('A')
   /** A launch scenario opened for force editing, before any campaign exists. */
   const [editing, setEditing] = useState<{ id: string; scenario: CampaignScenario } | null>(null)
-  const [mode, setMode] = useState<Mode>(file ? 'blackout' : 'menu')
+  // The blackout interstitial only serves two humans at one screen: solo and
+  // the open table go straight to the console — including on the way BACK
+  // from a tactical battle, which re-mounts this component.
+  const [mode, setMode] = useState<Mode>(
+    file ? (soloB || openTable ? 'console' : 'blackout') : 'menu',
+  )
   const [pending, setPending] = useState<Intervention[]>([])
   const [stagedBattles, setStagedBattles] = useState<BattleRecord[]>([])
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null)

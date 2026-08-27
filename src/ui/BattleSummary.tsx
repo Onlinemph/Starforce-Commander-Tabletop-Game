@@ -10,10 +10,13 @@ export function BattleSummaryPanel({
   summary,
   scenarioName,
   onClose,
+  onReturnToCampaign,
 }: {
   summary: BattleSummary
   scenarioName: string
   onClose: () => void
+  /** Set when this battle came from Border Command: one obvious way home. */
+  onReturnToCampaign?: () => void
 }) {
   const ranked = [...summary.sides].sort((a, b) => b.points - a.points)
   return (
@@ -85,6 +88,17 @@ export function BattleSummaryPanel({
             Deeds are read from the battle log; the Report download carries this summary and the
             full log together, ready for the campaign record.
           </p>
+          {onReturnToCampaign && (
+            <div className="summary-campaign-return">
+              <button type="button" className="primary" onClick={onReturnToCampaign}>
+                Return to Border Command
+              </button>
+              <p className="hint">
+                Back at the campaign console, press <strong>Read back from the table</strong> in
+                the Battles-waiting panel to record this result.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -428,6 +428,24 @@ is (the other window is sensors-only, and says so); with Solo on you can
 watch the computer's own picture of you between its turns. The blackout
 remains the default for real hotseat play.
 
+**The cloak hunt, after the first real one (playtest feedback, tactical
+side):** four fixes from the designer's first game against a cloaked
+Tonitrus. The one that mattered: nothing enforced H6.9.2's ONE search per
+phase — a missed roll could simply be pressed again until it hit. The
+engine now records the attempt itself (`searchedThisSegment`, cleared with
+the phase like the one-level-per-segment marker), refuses the second roll,
+the AI stops proposing spent searches, and the button says "Searched this
+phase". The dice are now visible where the button is — the search result
+(faces rolled, level reached or "no contact") comes back into the panel as
+well as the log. Cloak status went onto the counter: a running cloak
+prints **CLK** above the hull, and **CLK-C / CLK-T / CLK-L** once any
+searcher holds Contact, Track or a Target Lock (H6.2) — the designer's own
+suggested vocabulary. And a battle launched from Border Command now
+carries a **Border Command** button in its topbar plus a "Return to Border
+Command" button on the battle-over summary; landing back at the console
+(no blackout interstitial for solo or open-table play) with the
+Battles-waiting panel's read-back button in view.
+
 **A dead ship's contacts die with it (playtest ruling):** contacts were a
 side-wide pool, so a scout's hard-won picture outlived the scout by rounds.
 Every contact now records its `spotters` — the units (and stations) whose

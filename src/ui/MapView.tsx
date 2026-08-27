@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EscapePod } from '../engine/abandonShip'
-import { positionIsHidden } from '../engine/cloaking'
+import { bestDetection, positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
 import { formationOf } from '../engine/formation'
 import type { Flight } from '../engine/fighters'
@@ -808,15 +808,28 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       ))}
 
       {/* Names last, so no counter can paint over one. */}
-      {drawn.map(({ ship, formationSize }) => (
-        <ShipLabel
-          key={ship.id}
-          ship={ship}
-          formationSize={formationSize}
-          shift={labelShifts[ship.id] ?? 0}
-          cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
-        />
-      ))}
+      {drawn.map(({ ship, formationSize }) => {
+        // The cloak's status, printed on the counter (playtest ask): CLK while
+        // engaged, and the letter of the best level ANY searcher holds —
+        // Contact, Track, Target Lock (H6.2) — the number both commanders
+        // track openly at the table.
+        const cloak = game.cloaks[ship.id]
+        const badge = cloak?.engaged
+          ? bestDetection(cloak) === 0
+            ? 'CLK'
+            : `CLK-${['', 'C', 'T', 'L'][bestDetection(cloak)]}`
+          : null
+        return (
+          <ShipLabel
+            key={ship.id}
+            ship={ship}
+            formationSize={formationSize}
+            shift={labelShifts[ship.id] ?? 0}
+            cloaked={Boolean(cloak && positionIsHidden(cloak))}
+            cloakBadge={badge}
+          />
+        )
+      })}
 
       {/*
         Weapon fire and damage, played over the counters as the actions that
@@ -1528,12 +1541,20 @@ function ShipLabel({
   formationSize,
   shift,
   cloaked,
+  cloakBadge,
 }: {
   ship: ShipState
   formationSize: number
   /** How far this name stepped down to clear its neighbours, in pixels. */
   shift: number
   cloaked: boolean
+  /**
+   * "CLK" for a running cloak nobody has found, "CLK-C/T/L" once a searcher
+   * holds Contact, Track or a Target Lock — the playtest asked for the
+   * cloak's status ON the counter rather than only in the panel. Null when
+   * the ship is not running a cloak.
+   */
+  cloakBadge: string | null
 }) {
   const cx = ship.placement.position.x * SCALE
   const cy = ship.placement.position.y * SCALE
@@ -1557,6 +1578,11 @@ function ShipLabel({
       <text y={LABEL_TOP + shift} className="ship-name" textAnchor="middle">
         {shipLabelText(ship, formationSize)}
       </text>
+      {cloakBadge && (
+        <text y={-(SHIP_SIZE / 2 + 8)} className="clk-badge" textAnchor="middle">
+          {cloakBadge}
+        </text>
+      )}
     </g>
   )
 }
