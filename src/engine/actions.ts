@@ -618,6 +618,12 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (adrift) return said(adrift)
       const noCrew = damageControlRefusal(ship)
       if (noCrew) return said(noCrew)
+      // One set of rolls per round (B3.2): without this, a failed repair was
+      // simply rolled again until it worked — the same exploit the playtest
+      // caught on cloak searches.
+      if (ship.repairsRolledRound === game.round) {
+        return said(`${ship.name}'s damage control has made its rolls this round (B3.2).`)
+      }
       const messages: string[] = []
       const outcomes = resolveDamageControl(ship, action.assignments, game.rng, (m) => {
         messages.push(m)
@@ -628,6 +634,9 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       for (const outcome of outcomes) {
         if (!outcome.success) messages.push(`${outcome.category}: no success on ${outcome.dice} dice.`)
       }
+      // Dice actually rolled: the round's one set is spent, hit or miss. An
+      // empty assignment list spends nothing.
+      if (outcomes.some((o) => o.dice > 0)) ship.repairsRolledRound = game.round
       return { message: null, messages }
     }
 

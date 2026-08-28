@@ -64,6 +64,13 @@ export interface ShipState {
    */
   crewArmedUntil: number
   /**
+   * The round this ship's damage control last ROLLED (B3.2) — the Damage
+   * Control Segment is one set of rolls per round, and without recording it
+   * a failed set could simply be rolled again (the playtest caught the same
+   * exploit on cloak searches). 0 = never.
+   */
+  repairsRolledRound: number
+  /**
    * The force's flagship (S3.6). Damage scored against it is worth double to
    * the enemy, and its side gets free tactical scan points to hand out.
    */
@@ -229,6 +236,7 @@ export function createShip(args: {
     reactorDamage,
     // Batteries begin a scenario fully charged (B2.4.1).
     crewArmedUntil: 0,
+    repairsRolledRound: 0,
     flagship: args.flagship ?? false,
     pointValue: args.pointValue ?? form.pointValue,
     arrivesRound: args.arrivesRound ?? 1,

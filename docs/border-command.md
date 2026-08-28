@@ -428,6 +428,19 @@ is (the other window is sensors-only, and says so); with Solo on you can
 watch the computer's own picture of you between its turns. The blackout
 remains the default for real hotseat play.
 
+**Damage control had the same reroll hole (designer's follow-up):** the
+roll capped its DICE per call at the Damage Control Rating, but nothing
+recorded that the call had happened — press "Roll damage control" again
+and the crews rolled again, as often as you liked. The ship now records
+the round its one set of repair rolls was made (B3.2); a second set is
+refused with the rule reference, the button reads "Repairs rolled this
+round", and the crews try again next round. An empty assignment list
+spends nothing. The AI was never affected (it already rolled once per
+round), so no measured behaviour moved. Audit of the other contested
+rolls: tractor locks already spend their attempt (J3.3.1), boarding
+combat is once per segment, scans cost scan points, evasion is gated —
+damage control was the last open reroll.
+
 **The cloak hunt, after the first real one (playtest feedback, tactical
 side):** four fixes from the designer's first game against a cloaked
 Tonitrus. The one that mattered: nothing enforced H6.9.2's ONE search per

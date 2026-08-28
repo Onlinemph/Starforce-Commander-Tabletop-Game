@@ -16,7 +16,7 @@ interface Props {
   ship: ShipState
 }
 
-export function DamageControlPanel({ ship }: Props) {
+export function DamageControlPanel({ game, ship }: Props) {
   const [assignments, setAssignments] = useState<Record<string, { dice: number; key: string }>>({})
   const [resolved, setResolved] = useState<string[] | null>(null)
 
@@ -129,8 +129,18 @@ export function DamageControlPanel({ ship }: Props) {
         category is a success (B3.1.1).
       </p>
 
-      <button type="button" className="primary" disabled={used === 0} onClick={roll}>
-        Roll damage control
+      <button
+        type="button"
+        className="primary"
+        disabled={used === 0 || ship.repairsRolledRound === game.round}
+        title={
+          ship.repairsRolledRound === game.round
+            ? 'One set of repair rolls per round (B3.2) — the crews try again next round'
+            : undefined
+        }
+        onClick={roll}
+      >
+        {ship.repairsRolledRound === game.round ? 'Repairs rolled this round' : 'Roll damage control'}
       </button>
 
       {resolved && (
