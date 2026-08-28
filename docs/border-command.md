@@ -495,6 +495,42 @@ one loss: only the death of EVERY contributing spotter takes it dark.
   (`COURSE 8 HEX · 2R`, via `waypointRounds` — same walk, rounds
   granularity).
 
+**Pirates — the anti-doom-stack incentive (designer's roadmap, first
+slice):** leave a star system on your side of the frontier unpatrolled and
+the clans raid it. At every round tick (`pirateRaidTick`, campaign/pirates.ts,
+called with the round's upkeep in turn.ts) each system on the map is
+assigned an owner by which side of the border it sits on (`systemOwner` —
+nearest border hex decides; a system ON the line is contested and nobody's
+problem); an owned system with no friendly ship or station within
+`patrolRange` hexes rolls the campaign's own dice stream, and on a raid the
+owner loses `raidVp` victory points — the ledger may go negative, which the
+topbar now prints legibly (`VP A −4 · B 0`). One picket within range deters
+the clans completely, which is the whole point: the incentive is to spread
+hulls, not to mass them. Knobs ride the scenario like everything else —
+`tuning.pirates { enabled, raidChance, raidVp, patrolRange }`, defaults on,
+15% per system per round, 2 VP, range 2 — so a designed scenario can turn
+the clans up, down or off. Raids make the news: a public **Dispatches**
+panel in the console sidebar carries the last dozen campaign events
+(`state.events`, capped at 60 in truth, both commanders see the same feed),
+each entry naming the round, the hex and the cost, with the deterrence rule
+spelled out so the lesson teaches itself. Adding the events field breaks
+replay-verify on autosaves from before it — the usual price; fresh
+campaigns after pulling.
+
+The clans also got hulls: three fan-design pirate ships
+(`tools/make_pirates.ts` → customShips.json, faction "Pirate Clans") built
+on Expansion 7 raw material — the **MARAUDER** raider (converted RUNNER
+hull, phasers and a turreted launcher, 6.5 pts), the **JACKAL** corsair
+(V-5H hull with the pirates' mismatched arsenal, 10.5 pts) and the
+**REAVER** armed freighter (HORIZON conversion, 8 pts) — all priced by the
+same point model as the Expansion 7 imports and legal under the design
+validator. A bundled scenario, **"Pirate Raid on the Meridian Run"**
+(customScenarios.json), stages the argument at the tactical scale: a
+NELSON II escorting two freighters through a dust bank against a JACKAL
+and two MARAUDERs. It appears in every scenario picker like any designed
+scenario, and its convoy is the merchant-shipping material the roadmap's
+colony trade will eventually automate.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

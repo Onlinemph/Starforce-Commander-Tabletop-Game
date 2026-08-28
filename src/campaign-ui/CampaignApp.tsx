@@ -760,8 +760,8 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
           </div>
         )}
         <span>
-          Commander {side} — round {file.state.round}, phase {file.state.phase}/16 · VP {view!.vp.A}
-          –{view!.vp.B} {!online && soloB && '· solo'}
+          Commander {side} — round {file.state.round}, phase {file.state.phase}/16 · VP A {view!.vp.A} · B{' '}
+          {view!.vp.B} {!online && soloB && '· solo'}
           {openTable && !online && side !== moverSide && ` · viewing only — phase ${file.state.phase} is Commander ${moverSide}'s`}
           {online &&
             ` · ${online.name} (${online.matchId})${
@@ -923,6 +923,19 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                   </div>
                 )
               })}
+            </section>
+          )}
+
+          {view!.events.length > 0 && (
+            <section className="campaign-panel">
+              <h3>Dispatches</h3>
+              <ul className="campaign-dispatches">
+                {[...view!.events].reverse().map((e, i) => (
+                  <li key={`${e.round}-${e.hex.q}-${e.hex.r}-${i}`}>
+                    <strong>R{e.round}</strong> · {e.text}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

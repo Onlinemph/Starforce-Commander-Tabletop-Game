@@ -17,6 +17,7 @@
 import { contactCollapsed, reckonedHex } from './detection'
 import {
   CONTACT_ATTRIBUTES,
+  type CampaignEvent,
   type CampaignMap,
   type CampaignState,
   type ContactAttribute,
@@ -88,6 +89,8 @@ export interface SideView {
   incoming: Array<{ unitId: string; arrivesRound: number; kind: string; shipCount: number }>
   /** The scoreboard is public (10.1). */
   vp: Record<Side, number>
+  /** The news feed — pirate raids and the like. Public, newest last. */
+  events: CampaignEvent[]
 }
 
 /**
@@ -163,5 +166,8 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
     engagements,
     incoming,
     vp: { A: state.vp.A, B: state.vp.B },
+    // Dispatches are public news; the slice keeps the panel a feed. Old
+    // saves from before the field default to silence.
+    events: structuredClone((state.events ?? []).slice(-12)),
   }
 }

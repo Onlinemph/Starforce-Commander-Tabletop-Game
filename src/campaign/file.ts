@@ -103,6 +103,7 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     contactSeq: 1,
     engagementSeq: 1,
     pendingBattles: [],
+    events: [],
     reinforcements,
     winner: null,
     rng: { seed: scenario.mapSeed, calls: 0 },

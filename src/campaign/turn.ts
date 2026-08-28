@@ -29,6 +29,7 @@ import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
 import { effectiveSpeedTier, enduranceTick, orderSpeedCap, orderedSpeed, repairTick, wingTick } from './logistics'
+import { pirateRaidTick } from './pirates'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
 import type { ShipScars } from '../engine/shipState'
@@ -328,6 +329,9 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     wingTick(next)
     convoyBeaconStep(ctx, next)
     deliveryTick(ctx.scenario, next)
+    // The clans work the unpatrolled systems (pirates.ts) — before the clock
+    // check, so a final-round raid still bleeds the ledger it bleeds.
+    pirateRaidTick(ctx, next)
     next.phase = 1
     next.round += 1
     for (const r of [...next.reinforcements]) {

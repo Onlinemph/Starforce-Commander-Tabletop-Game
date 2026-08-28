@@ -1,1 +1,70 @@
-[]
+[
+ {
+  "id": "s-pirate-raid",
+  "name": "Pirate Raid on the Meridian Run",
+  "background": "The Meridian Run is the quiet lane between two Union colonies - quiet because a Nelson used to fly it. The escort was pulled for the border, the clans noticed inside a week, and two corsairs and a raider have dropped onto the convoy's transit corridor with their reactors already hot.",
+  "victory": "Damage levels inflicted (S2.8.4). The freighters are worth their points to whoever kills them - or keeps them alive.",
+  "specialRules": [
+   "The freighters (RUNNER, HORIZON) are civilian hulls: Damage Control 0 - what breaks, stays broken.",
+   "Pirates fight for cargo, not glory: a mauled corsair should run (the clans do not reimburse dead captains)."
+  ],
+  "bounds": {
+   "width": 48,
+   "height": 48,
+   "fixed": true
+  },
+  "terrain": [
+   {
+    "id": "raid-dust",
+    "kind": "gas-cloud",
+    "name": "Meridian dust bank",
+    "center": {
+     "x": 24,
+     "y": 16
+    },
+    "radius": 5,
+    "scan": 3
+   }
+  ],
+  "sides": [
+   {
+    "side": "Blue Force",
+    "objective": "Get the freighters across the table alive; the Nelson buys them the time.",
+    "facing": 2,
+    "speed": 3,
+    "anchor": {
+     "x": 8,
+     "y": 24
+    },
+    "spread": {
+     "x": 0,
+     "y": 4
+    },
+    "force": [
+     "union-nelson-ii-class-light-frigate",
+     "union-runner-class-light-freighter",
+     "union-horizon-class-medium-freighter"
+    ]
+   },
+   {
+    "side": "Red Force",
+    "objective": "Kill or cripple the freighters and get out before a patrol answers the distress call.",
+    "facing": 6,
+    "speed": 4,
+    "anchor": {
+     "x": 40,
+     "y": 24
+    },
+    "spread": {
+     "x": 0,
+     "y": 5
+    },
+    "force": [
+     "fan-pirate-jackal",
+     "fan-pirate-marauder",
+     "fan-pirate-marauder"
+    ]
+   }
+  ]
+ }
+]

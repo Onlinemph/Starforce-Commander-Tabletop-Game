@@ -2637,6 +2637,23 @@ input:focus-visible {
   margin-top: 10px;
 }
 
+/* The campaign news feed: pirate raids and whatever joins them. */
+.campaign-dispatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.campaign-dispatches strong {
+  color: var(--warn, #e8b84a);
+}
+
 .cloak-panel h4 {
   margin: 0.6rem 0 0.2rem;
   font-size: 0.72rem;

@@ -354,7 +354,37 @@ export interface CampaignScenario {
      * per scenario so a tuning pass is data, not a source change.
      */
     sensorModel?: Record<string, unknown>
+    /**
+     * Pirates — the designer's anti-doom-stack incentive: "if you don't have
+     * a ship on patrol near one of your star systems, then there might be
+     * pirate attacks that cause you to lose victory points." A star system on
+     * your side of the frontier with no friendly unit on patrol nearby risks
+     * a raid at every round tick. Absent = the defaults in pirates.ts;
+     * `enabled: false` switches the clans off. All knobs are the designer's
+     * balance dials.
+     */
+    pirates?: {
+      enabled?: boolean
+      /** Chance per unpatrolled owned system per round. */
+      raidChance?: number
+      /** Victory points a successful raid costs the system's owner. */
+      raidVp?: number
+      /** A friendly unit within this many hexes counts as on patrol. */
+      patrolRange?: number
+    }
   }
+}
+
+/**
+ * A campaign-wide news item — pirate raids and whatever joins them later.
+ * Dispatches are PUBLIC: shipping losses make the news on both sides of the
+ * frontier, and the VP ledger they move is public anyway.
+ */
+export interface CampaignEvent {
+  round: number
+  side: Side
+  hex: Hex
+  text: string
 }
 
 /** A standing-order change — the only thing a player actually journals (5.2). */
@@ -436,6 +466,8 @@ export interface CampaignState {
   engagementSeq: number
   /** Battles triggered and not yet resolved — the campaign holds for them. */
   pendingBattles: PendingEngagement[]
+  /** The public news feed — pirate raids and the like, newest last, capped. */
+  events: CampaignEvent[]
   /** Reinforcements not yet arrived, spawned by the round tick (S3.2). */
   reinforcements: Array<{ arrivesRound: number; side: Side; unit: Unit }>
   /** Set when the campaign ends: the higher ledger, or a draw (10.1). */
