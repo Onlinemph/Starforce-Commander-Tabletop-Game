@@ -89,9 +89,35 @@ export type Formation = 'close' | 'standard' | 'wide'
  */
 export type SpeedTier = 'hold' | 'cruise' | 'max-cruise' | 'maximum' | 'emergency'
 
+/**
+ * A unit's mission (5.3 + the designer's orders list). Contact missions aim
+ * at a CONTACT of the ordering side, never an enemy unit directly — the
+ * anti-leak indirection (see the mission field's comment). Attack Nearest is
+ * a standing posture: it re-aims at whatever contact is nearest each phase
+ * and survives an empty scope. Raid and Assault aim at KNOWN enemy
+ * infrastructure — the charts show it (3.4), so naming it leaks nothing.
+ */
+export type Mission =
+  | { type: 'intercept' | 'shadow'; contactId: string }
+  | { type: 'attack-nearest' }
+  | { type: 'raid' | 'assault'; stationId: string }
+
 export interface StandingOrder {
   /** Ordered path; the unit steps toward waypoints[0] on its scheduled phases. */
   waypoints: Hex[]
+  /**
+   * The route repeats (designer's orders list — patrol circuits, and the
+   * shuttle runs his "AI civilian shipping" wants): a reached waypoint goes
+   * to the back of the list instead of being crossed off.
+   */
+  patrolLoop?: boolean
+  /**
+   * Avoid Contact (designer's orders list): steer wide of every contact the
+   * side holds — the unit detours around a two-hex exclusion bubble and
+   * holds rather than closes when boxed in. Movement only; pair it with
+   * engagement 'withdraw' to also run from a fight that finds you anyway.
+   */
+  avoidContact?: boolean
   speed: SpeedTier
   /**
    * An exact speed in hexes a round (the designer's "set specific speeds"),
@@ -128,13 +154,12 @@ export interface StandingOrder {
    */
   repairPriority?: RepairCategory[]
   /**
-   * Intercept or Shadow (5.3) — aimed at a CONTACT of the ordering side,
-   * never at an enemy unit directly. That indirection is the anti-leak
-   * guarantee: the resolver steers toward the contact's estimated position,
-   * the same estimate the side's view shows, so no order — a player's or a
-   * future AI's — can act on information the side does not hold.
+   * The unit's mission (5.3, and the designer's orders list — see Mission).
+   * Contact missions steer toward the contact's ESTIMATED position, the same
+   * estimate the side's view shows, so no order — a player's or a future
+   * AI's — can act on information the side does not hold.
    */
-  mission?: { type: 'intercept' | 'shadow'; contactId: string }
+  mission?: Mission
 }
 
 export type RepairCategory = 'drive' | 'shields' | 'weapons' | 'sensors' | 'systems' | 'structure'
@@ -387,11 +412,34 @@ export interface CampaignEvent {
   text: string
 }
 
-/** A standing-order change — the only thing a player actually journals (5.2). */
+/**
+ * One line of a side's sensor log — WHY the picture changed: a contact
+ * gained, a track lost, a trail reacquired or gone cold, a dossier that died
+ * with its spotter. Unlike dispatches these are PRIVATE to the side whose
+ * sensors wrote them; the hex is the position that side believed, never
+ * truth, and a ghost's entries read exactly like a real contact's.
+ */
+export interface SensorLogEntry {
+  round: number
+  phase: number
+  side: Side
+  contactId: string
+  hex: Hex
+  text: string
+}
+
+/**
+ * What a player actually journals (5.2): standing-order changes, and the
+ * task-force reorganizations from the designer's orders list — merging
+ * co-located units into one command and detaching ships into a new one. The
+ * split names its new unit id explicitly so a replay reproduces it exactly.
+ */
 export type Intervention =
   | { type: 'set-order'; unitId: string; order: StandingOrder }
   | { type: 'set-waypoints'; unitId: string; waypoints: Hex[] }
   | { type: 'set-repair-priority'; unitId: string; queue: RepairCategory[] }
+  | { type: 'merge-units'; unitId: string; intoId: string }
+  | { type: 'split-unit'; unitId: string; shipIds: string[]; newUnitId: string }
 
 /**
  * One journal entry: one side's phase (5.1). A moves the odd phases, B the
@@ -468,6 +516,8 @@ export interface CampaignState {
   pendingBattles: PendingEngagement[]
   /** The public news feed — pirate raids and the like, newest last, capped. */
   events: CampaignEvent[]
+  /** Both sides' sensor logs, newest last, capped; views filter by side. */
+  sensorLog: SensorLogEntry[]
   /** Reinforcements not yet arrived, spawned by the round tick (S3.2). */
   reinforcements: Array<{ arrivesRound: number; side: Side; unit: Unit }>
   /** Set when the campaign ends: the higher ledger, or a draw (10.1). */

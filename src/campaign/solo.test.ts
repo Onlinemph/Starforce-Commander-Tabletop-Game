@@ -91,7 +91,9 @@ describe('the solo opponent', () => {
     expect(hunting.length).toBeGreaterThan(0)
     for (const order of hunting) {
       if (order.type !== 'set-order') continue
-      expect(order.order.mission!.contactId).toBe('ct-A-9')
+      const mission = order.order.mission!
+      if (mission.type !== 'intercept') continue
+      expect(mission.contactId).toBe('ct-A-9')
       expect(JSON.stringify(order)).not.toContain('b-cruiser')
     }
   })

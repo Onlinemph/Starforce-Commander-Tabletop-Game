@@ -347,6 +347,31 @@ function findContact(state: CampaignState, side: Side, targetId: string): Contac
   return state.contacts.find((c) => c.side === side && c.targetUnitId === targetId)
 }
 
+/** The sensor log stays a log, not an archive. */
+const SENSOR_LOG_CAP = 240
+
+/**
+ * One line into a side's sensor log (types.ts SensorLogEntry). The hex is
+ * always the position the SIDE believes — callers must never pass truth —
+ * and ghosts must be logged through the same calls with the same wording,
+ * or the log's silence would betray them.
+ */
+export function logSensor(state: CampaignState, side: Side, contactId: string, hex: Hex, text: string): void {
+  state.sensorLog ??= [] // states from before the field: start logging now
+  state.sensorLog.push({ round: state.round, phase: state.phase, side, contactId, hex: { ...hex }, text })
+  if (state.sensorLog.length > SENSOR_LOG_CAP) {
+    state.sensorLog.splice(0, state.sensorLog.length - SENSOR_LOG_CAP)
+  }
+}
+
+/** A spotter's name for the log: the hull's name, or the station's kind. */
+function spotterLabel(state: CampaignState, spotterId: string): string {
+  const unit = state.units.find((u) => u.id === spotterId)
+  if (unit) return unit.ships[0]?.name ?? unit.id
+  const station = state.infrastructure.find((i) => i.id === spotterId)
+  return station ? station.kind.replace('-', ' ') : spotterId
+}
+
 function newContact(state: CampaignState, side: Side, targetId: string, hex: Hex): ContactRecord {
   const record: ContactRecord = {
     id: `ct-${side}-${state.contactSeq++}`,
@@ -386,7 +411,17 @@ export function pruneOrphanTracks(state: CampaignState): void {
   state.contacts = state.contacts.filter((contact) => {
     if (!contact.spotters) return true
     contact.spotters = contact.spotters.filter((id) => alive.has(id))
-    return contact.spotters.length > 0
+    if (contact.spotters.length === 0) {
+      logSensor(
+        state,
+        contact.side,
+        contact.id,
+        contact.estimatedHex,
+        'Contact lost — the picture died with the last hull that held it.',
+      )
+      return false
+    }
+    return true
   })
 }
 
@@ -423,6 +458,26 @@ function landDetection(
   contact.course = target.course ? { ...target.course } : null
   contact.observedMoving = target.movedLastOwnPhase
   contact.track = prevTrack === null ? 'detected' : prevTrack === 'track-lost' ? 'reacquired' : 'tracked'
+  // The log tells the story of the TRACK, not of every sweep: a line when a
+  // contact is gained or a lost trail picked back up, silence while a held
+  // track is simply held.
+  if (prevTrack === null) {
+    logSensor(
+      state,
+      side,
+      contact.id,
+      contact.estimatedHex,
+      `New contact at ${contact.estimatedHex.q},${contact.estimatedHex.r} — flagged by ${spotterLabel(state, spotterId)}.`,
+    )
+  } else if (prevTrack === 'track-lost') {
+    logSensor(
+      state,
+      side,
+      contact.id,
+      contact.estimatedHex,
+      `Reacquired at ${contact.estimatedHex.q},${contact.estimatedHex.r} — ${spotterLabel(state, spotterId)} picked the trail back up.`,
+    )
+  }
 
   const existsWasNew = !contact.attributes.exists
   if (existsWasNew) {
@@ -571,7 +626,16 @@ const LISTENING_POST_ACTOR: SensorActor = {
 /** A radar-certain fix: exists and true position, nothing else, no lies. */
 function landScanCertain(state: CampaignState, side: Side, target: Unit, spotterId: string): void {
   let contact = findContact(state, side, target.id)
-  if (!contact) contact = newContact(state, side, target.id, target.hex)
+  if (!contact) {
+    contact = newContact(state, side, target.id, target.hex)
+    logSensor(
+      state,
+      side,
+      contact.id,
+      target.hex,
+      `New contact at ${target.hex.q},${target.hex.r} — flagged by ${spotterLabel(state, spotterId)}.`,
+    )
+  }
   creditSpotter(contact, spotterId)
   contact.estimatedHex = { ...target.hex }
   contact.positionEstimated = false
@@ -635,6 +699,15 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
         } else if (range > cfg.trackingMaxRange) {
           // Beyond the tracking horizon the picture just goes cold: no roll,
           // a held track is lost, a lost one stays lost.
+          if (track !== 'track-lost') {
+            logSensor(
+              state,
+              side,
+              existing!.id,
+              existing!.estimatedHex,
+              `Track lost — out of tracking range, last held near ${existing!.estimatedHex.q},${existing!.estimatedHex.r}.`,
+            )
+          }
           existing!.track = 'track-lost'
         } else if (track === 'track-lost') {
           const p = reacquisitionProbability(det.p, existing!.lastRange ?? range, range, intel.p, cfg)
@@ -642,7 +715,16 @@ export function runDetection(ctx: DetectionContext, state: CampaignState): void 
         } else {
           const p = retentionProbability(existing!.lastRange ?? range, range, intel.p, cfg)
           held = nextRandom(state.rng) < p
-          if (!held) existing!.track = 'track-lost'
+          if (!held) {
+            existing!.track = 'track-lost'
+            logSensor(
+              state,
+              side,
+              existing!.id,
+              existing!.estimatedHex,
+              `Track lost — last held near ${existing!.estimatedHex.q},${existing!.estimatedHex.r}.`,
+            )
+          }
         }
         if (existing) existing.lastRange = range
         if (!held) continue
@@ -690,6 +772,15 @@ function spawnFalseContact(
   const contact = newContact(state, side, `phantom-${side}-${state.contactSeq}`, hex)
   // The ghost is the searcher's own hallucination: it dies with the searcher.
   creditSpotter(contact, searcher.id)
+  // Logged with the SAME words a real sighting gets — a log that phrased
+  // ghosts differently would be a truth oracle.
+  logSensor(
+    state,
+    side,
+    contact.id,
+    hex,
+    `New contact at ${hex.q},${hex.r} — flagged by ${spotterLabel(state, searcher.id)}.`,
+  )
   contact.track = 'detected'
   contact.positionEstimated = true
   contact.attributes.exists = {
@@ -709,6 +800,15 @@ export function decayContacts(state: CampaignState): void {
   for (const contact of state.contacts) {
     if (contact.lastScan.round === state.round) continue
     contact.unscannedRounds += 1
+    if (contact.unscannedRounds === 3) {
+      logSensor(
+        state,
+        contact.side,
+        contact.id,
+        contact.estimatedHex,
+        `Contact gone cold — three quiet rounds; last known near ${contact.estimatedHex.q},${contact.estimatedHex.r}.`,
+      )
+    }
     const resolved = CONTACT_ATTRIBUTES.filter((a) => contact.attributes[a] && !contact.attributes[a]!.stale)
     const newest = resolved[resolved.length - 1]
     if (newest && newest !== 'exists') contact.attributes[newest]!.stale = true

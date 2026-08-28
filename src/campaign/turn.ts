@@ -18,6 +18,7 @@
 import {
   contactCollapsed,
   decayContacts,
+  logSensor,
   reckonedHex,
   runDetection,
   unitIsCloaked,
@@ -28,12 +29,20 @@ import {
 import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
 import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
-import { effectiveSpeedTier, enduranceTick, orderSpeedCap, orderedSpeed, repairTick, wingTick } from './logistics'
+import {
+  effectiveSpeedTier,
+  enduranceMaxOf,
+  enduranceTick,
+  orderSpeedCap,
+  orderedSpeed,
+  repairTick,
+  wingTick,
+} from './logistics'
 import { pirateRaidTick } from './pirates'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
 import type { ShipScars } from '../engine/shipState'
-import { deliveryTick, settleWinner } from './scoring'
+import { deliveryTick, raidTick, settleWinner } from './scoring'
 import {
   DEFAULT_REPAIR_QUEUE,
   nextInt,
@@ -94,11 +103,29 @@ export function orderRefusal(_state: CampaignState, unit: Unit, order: StandingO
  * a foreign or bogus contact id steers nothing either way.
  */
 function sanitizeMission(state: CampaignState, unit: Unit, order: StandingOrder): void {
-  if (!order.mission) return
-  const held = state.contacts.some(
-    (c) => c.id === order.mission!.contactId && c.side === unit.side,
-  )
-  if (!held) delete order.mission
+  const mission = order.mission
+  if (!mission) return
+  switch (mission.type) {
+    case 'intercept':
+    case 'shadow': {
+      const held = state.contacts.some((c) => c.id === mission.contactId && c.side === unit.side)
+      if (!held) delete order.mission
+      return
+    }
+    case 'attack-nearest':
+      return // a standing posture: valid with an empty scope
+    case 'raid':
+    case 'assault': {
+      // Only KNOWN enemy infrastructure may be struck: a station of the
+      // enemy's that the charts show (3.4) — never a listening post, which
+      // exists for a side only as a contact.
+      const station = state.infrastructure.find((i) => i.id === mission.stationId)
+      const legal =
+        station && !station.destroyed && station.side !== unit.side && station.kind !== 'listening-post'
+      if (!legal) delete order.mission
+      return
+    }
+  }
 }
 
 function applyIntervention(state: CampaignState, intervention: Intervention, side: string): void {
@@ -131,7 +158,131 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
       unit.order = order
       break
     }
+    case 'merge-units':
+      mergeUnits(state, unit, intervention.intoId, side)
+      break
+    case 'split-unit':
+      splitUnit(state, unit, intervention.shipIds, intervention.newUnitId)
+      break
   }
+}
+
+/**
+ * Task forces (the designer's orders list): fold one unit into another,
+ * co-located command. The flagship's standing orders carry; the absorbed
+ * unit's identity dissolves — the enemy's dossiers on it follow the hulls
+ * into the new command (they are the same ships), and the intelligence its
+ * scans gathered transfers with it, so nothing a side knew is forgotten by
+ * an org-chart change on either side of the fog.
+ */
+function mergeUnits(state: CampaignState, unit: Unit, intoId: string, side: string): void {
+  const into = state.units.find((u) => u.id === intoId)
+  // Like orders to the dead: a merge target lost in this move's battle drops.
+  if (!into) return
+  if (into.side !== side) throw new PhaseError(`${into.id} is not ${side}'s unit to merge into.`)
+  if (into.id === unit.id) throw new PhaseError(`${unit.id} cannot merge into itself.`)
+  if (!hexEquals(unit.hex, into.hex)) {
+    throw new PhaseError(`${unit.id} and ${into.id} must share a hex to form a task force.`)
+  }
+  for (const u of [unit, into]) {
+    if (u.kind !== 'ship' && u.kind !== 'group') {
+      throw new PhaseError(`${u.id} is a ${u.kind} — only ships and groups form task forces.`)
+    }
+  }
+  if (unit.ships.length + into.ships.length > 8) {
+    throw new PhaseError(`A group is 2–8 ships (6.1): ${unit.id} + ${into.id} would be ${unit.ships.length + into.ships.length}.`)
+  }
+  into.ships.push(...unit.ships)
+  into.kind = 'group'
+  // The smallest tank aboard sets the merged legs (3.1); nobody gains fuel
+  // by re-flagging, so the pool is the smaller of the two.
+  into.enduranceMax = enduranceMaxOf(into)
+  into.endurance = Math.min(into.endurance, unit.endurance, into.enduranceMax)
+  into.moveDebt = Math.max(into.moveDebt, unit.moveDebt)
+  into.cloakedThisRound = into.cloakedThisRound || unit.cloakedThisRound
+  state.units = state.units.filter((u) => u.id !== unit.id)
+  // Orders the merged hulls can no longer honor are trimmed, not refused —
+  // the merge is the player's intent; the flags follow the new envelope.
+  if (into.order.cloaked && !unitProfile(into).cloakCapable) into.order.cloaked = false
+  if (into.order.exactSpeed != null) {
+    into.order.exactSpeed = Math.min(into.order.exactSpeed, orderSpeedCap(into))
+  }
+  for (const contact of state.contacts) {
+    // Spotter credit rides with the hulls into their new command.
+    if (contact.spotters) {
+      contact.spotters = [...new Set(contact.spotters.map((s) => (s === unit.id ? into.id : s)))]
+    }
+  }
+  // The enemy's picture: a dossier on the absorbed unit now shadows the
+  // merged one — unless that side already holds one on the target, in which
+  // case the older of the pair simply dissolves (one unit, one record).
+  const sidesHoldingInto = new Set(
+    state.contacts.filter((c) => c.targetUnitId === into.id).map((c) => c.side),
+  )
+  state.contacts = state.contacts.filter(
+    (c) => !(c.targetUnitId === unit.id && sidesHoldingInto.has(c.side)),
+  )
+  for (const contact of state.contacts) {
+    if (contact.targetUnitId === unit.id) contact.targetUnitId = into.id
+  }
+}
+
+/**
+ * Detach ships into a new unit of their own (the other half of task forces).
+ * The new unit id is named by the intervention — journaled, so a replay
+ * reproduces it byte for byte — and both halves inherit the standing order.
+ * The enemy's dossier stays on the ORIGINAL unit id: the ships that slipped
+ * away are simply not where the picture says the force is, and finding that
+ * out is the game working as designed.
+ */
+function splitUnit(state: CampaignState, unit: Unit, shipIds: string[], newUnitId: string): void {
+  if (unit.kind !== 'ship' && unit.kind !== 'group') {
+    throw new PhaseError(`${unit.id} is a ${unit.kind} — only ships and groups detach.`)
+  }
+  if (shipIds.length === 0) throw new PhaseError('Name at least one ship to detach.')
+  const leaving = unit.ships.filter((s) => shipIds.includes(s.id))
+  if (leaving.length !== shipIds.length) {
+    throw new PhaseError(`Not every named ship is aboard ${unit.id}.`)
+  }
+  if (leaving.length === unit.ships.length) {
+    throw new PhaseError(`A split must leave something behind aboard ${unit.id}.`)
+  }
+  if (
+    !newUnitId ||
+    state.units.some((u) => u.id === newUnitId) ||
+    state.reinforcements.some((r) => r.unit.id === newUnitId)
+  ) {
+    throw new PhaseError(`Unit id ${newUnitId || '(empty)'} is taken.`)
+  }
+  unit.ships = unit.ships.filter((s) => !shipIds.includes(s.id))
+  if (unit.ships.length === 1) unit.kind = 'ship'
+  const detached: Unit = {
+    id: newUnitId,
+    side: unit.side,
+    kind: leaving.length > 1 ? 'group' : 'ship',
+    ships: leaving,
+    hex: { ...unit.hex },
+    order: structuredClone(unit.order),
+    moveDebt: unit.moveDebt,
+    endurance: 0,
+    enduranceMax: 0,
+    cloakedThisRound: unit.cloakedThisRound,
+    movedLastOwnPhase: unit.movedLastOwnPhase,
+    course: unit.course ? { ...unit.course } : null,
+  }
+  // Each half's legs are its own smallest tank; the shared pool does not
+  // grow — both leave with what the force had.
+  detached.enduranceMax = enduranceMaxOf(detached)
+  detached.endurance = Math.min(unit.endurance, detached.enduranceMax)
+  unit.enduranceMax = enduranceMaxOf(unit)
+  unit.endurance = Math.min(unit.endurance, unit.enduranceMax)
+  for (const half of [unit, detached]) {
+    if (half.order.cloaked && !unitProfile(half).cloakCapable) half.order.cloaked = false
+    if (half.order.exactSpeed != null) {
+      half.order.exactSpeed = Math.min(half.order.exactSpeed, orderSpeedCap(half))
+    }
+  }
+  state.units.push(detached)
 }
 
 /**
@@ -169,6 +320,10 @@ function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: 
   }
   const dead = state.units.filter((u) => u.ships.length === 0).map((u) => u.id)
   state.units = state.units.filter((u) => u.ships.length > 0)
+  for (const c of state.contacts) {
+    if (!dead.includes(c.targetUnitId)) continue
+    logSensor(state, c.side, c.id, c.estimatedHex, 'Contact destroyed — confirmed in battle.')
+  }
   state.contacts = state.contacts.filter((c) => !dead.includes(c.targetUnitId))
   // The dead take their pictures with them: a contact every one of whose
   // spotters just died goes dark THIS phase, not rounds later.
@@ -184,7 +339,7 @@ function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: 
  */
 function currentDestination(ctx: DetectionContext, state: CampaignState, unit: Unit): Hex | null {
   const mission = unit.order.mission
-  if (mission) {
+  if (mission && (mission.type === 'intercept' || mission.type === 'shadow')) {
     const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)
     if (!contact || contactCollapsed(contact)) {
       /*
@@ -195,35 +350,64 @@ function currentDestination(ctx: DetectionContext, state: CampaignState, unit: U
        * hunter with no quarry goes back to its patrol.
        */
       delete unit.order.mission
-    }
-  }
-  if (unit.order.mission) {
-    const mission = unit.order.mission
-    const contact = state.contacts.find((c) => c.id === mission.contactId && c.side === unit.side)!
-    const believed = reckonedHex(ctx.map, contact, state)
-    if (mission.type === 'intercept') return believed
-    // Shadow (5.3): keep the trail at distance three to four.
-    const range = hexDistance(unit.hex, believed)
-    if (range > 4) return believed
-    if (range < 3) {
-      // Open the range: step to the neighbor that increases distance most.
-      let best: Hex | null = null
-      let bestDist = range
-      for (const n of [unit.hex, ...hexNeighbors(unit.hex)]) {
-        const d = hexDistance(n, believed)
-        if (d > bestDist) {
-          best = n
-          bestDist = d
+    } else {
+      const believed = reckonedHex(ctx.map, contact, state)
+      if (mission.type === 'intercept') return believed
+      // Shadow (5.3): keep the trail at distance three to four.
+      const range = hexDistance(unit.hex, believed)
+      if (range > 4) return believed
+      if (range < 3) {
+        // Open the range: step to the neighbor that increases distance most.
+        let best: Hex | null = null
+        let bestDist = range
+        for (const n of [unit.hex, ...hexNeighbors(unit.hex)]) {
+          const d = hexDistance(n, believed)
+          if (d > bestDist) {
+            best = n
+            bestDist = d
+          }
         }
+        return best
       }
-      return best
+      return null // in the pocket: hold and listen
     }
-    return null // in the pocket: hold and listen
   }
-  while (unit.order.waypoints.length > 0 && hexEquals(unit.order.waypoints[0], unit.hex)) {
-    unit.order.waypoints.shift()
+  if (mission?.type === 'attack-nearest') {
+    // The standing hunt (designer's orders list): re-aim every step at the
+    // nearest live contact the side holds; with an empty scope, fall through
+    // to the waypoints. The posture itself never expires.
+    let best: Hex | null = null
+    let bestRange = Infinity
+    for (const contact of state.contacts) {
+      if (contact.side !== unit.side || contactCollapsed(contact)) continue
+      const believed = reckonedHex(ctx.map, contact, state)
+      const range = hexDistance(unit.hex, believed)
+      if (range < bestRange) {
+        best = believed
+        bestRange = range
+      }
+    }
+    if (best) return bestRange === 0 ? null : best
   }
-  return unit.order.waypoints[0] ?? null
+  if (mission && (mission.type === 'raid' || mission.type === 'assault')) {
+    const station = state.infrastructure.find((i) => i.id === mission.stationId)
+    if (!station || station.destroyed || station.side === unit.side) {
+      delete unit.order.mission // the objective is gone: back to the route
+    } else {
+      // Inbound to the strike; on the hex, hold for the round tick (raidTick).
+      return hexEquals(unit.hex, station.hex) ? null : station.hex
+    }
+  }
+  // Reached waypoints cross off — or, on a patrol loop, go to the back of
+  // the list so the circuit repeats. The guard bounds the pathological loop
+  // whose every waypoint is the hex the unit is standing on.
+  let guard = unit.order.waypoints.length
+  while (guard-- > 0 && unit.order.waypoints.length > 0 && hexEquals(unit.order.waypoints[0], unit.hex)) {
+    const reached = unit.order.waypoints.shift()!
+    if (unit.order.patrolLoop && unit.order.waypoints.length > 0) unit.order.waypoints.push(reached)
+  }
+  const target = unit.order.waypoints[0] ?? null
+  return target && hexEquals(target, unit.hex) ? null : target
 }
 
 /**
@@ -236,12 +420,24 @@ function currentDestination(ctx: DetectionContext, state: CampaignState, unit: U
  * phases is under way, not holding still, however many hexes this particular
  * phase granted it.
  */
+/** Avoid Contact's exclusion bubble: steer to keep every contact this far out. */
+const AVOID_RANGE = 2
+
 function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credits: number): void {
   if (orderedSpeed(unit) === 0) {
     unit.movedLastOwnPhase = false
     unit.course = null
     return
   }
+  // Avoid Contact (designer's orders list): the hexes this unit's own side
+  // believes something hostile occupies. Steering, like missions, reads only
+  // the side's picture — a ghost repels exactly like a real hull would.
+  const threats: Hex[] = unit.order.avoidContact
+    ? state.contacts
+        .filter((c) => c.side === unit.side && !contactCollapsed(c))
+        .map((c) => reckonedHex(ctx.map, c, state))
+    : []
+  const clearOf = (hex: Hex) => threats.every((t) => hexDistance(hex, t) > AVOID_RANGE)
   for (let i = 0; i < credits; i++) {
     if (unit.moveDebt > 0) {
       unit.moveDebt -= 1 // the second phase a nebula hex costs (2.2)
@@ -249,7 +445,23 @@ function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credi
     }
     const target = currentDestination(ctx, state, unit)
     if (!target) break
-    const next = hexStepToward(unit.hex, target)
+    let next = hexStepToward(unit.hex, target)
+    if (threats.length > 0 && !clearOf(next)) {
+      // The straight line enters the bubble: detour through the clear
+      // neighbor closest to the destination, or hold rather than close.
+      let best: Hex | null = null
+      let bestDist = Infinity
+      for (const n of hexNeighbors(unit.hex)) {
+        if (!inBounds(n, ctx.map.width, ctx.map.height) || !clearOf(n)) continue
+        const d = hexDistance(n, target)
+        if (d < bestDist) {
+          best = n
+          bestDist = d
+        }
+      }
+      if (!best) break
+      next = best
+    }
     // The map edge is a wall, not a suggestion: a waypoint (or a reckoned
     // contact position) beyond it holds the unit at the border rather than
     // walking it off the board.
@@ -329,8 +541,10 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     wingTick(next)
     convoyBeaconStep(ctx, next)
     deliveryTick(ctx.scenario, next)
-    // The clans work the unpatrolled systems (pirates.ts) — before the clock
-    // check, so a final-round raid still bleeds the ledger it bleeds.
+    // Ordered strikes on enemy infrastructure land (scoring.ts raidTick),
+    // then the clans work the unpatrolled systems (pirates.ts) — both before
+    // the clock check, so a final-round strike still pays.
+    raidTick(next)
     pirateRaidTick(ctx, next)
     next.phase = 1
     next.round += 1

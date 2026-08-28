@@ -104,6 +104,7 @@ export function openingState(scenario: CampaignScenario): CampaignState {
     engagementSeq: 1,
     pendingBattles: [],
     events: [],
+    sensorLog: [],
     reinforcements,
     winner: null,
     rng: { seed: scenario.mapSeed, calls: 0 },

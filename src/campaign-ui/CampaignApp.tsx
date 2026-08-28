@@ -51,6 +51,7 @@ import {
   type CampaignScenario,
   type Hex,
   type Intervention,
+  type Mission,
   type PhaseMove,
   type ShipRecord,
   type Side,
@@ -59,7 +60,7 @@ import {
   type Unit,
 } from '../campaign/types'
 import { snapToHexLine } from '../campaign/hexmap'
-import { viewFor } from '../campaign/views'
+import { viewFor, type SideView } from '../campaign/views'
 import { CampaignMap } from './CampaignMap'
 import { ForceEditor } from './ForceEditor'
 import { downloadText, routeEntryPhases, stageOrder, stagedOrderFor, waypointRounds } from './helpers'
@@ -111,6 +112,11 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null)
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // Order-vocabulary pickers (designer's orders list): the strike target for
+  // Raid/Assault and the task-force merge/detach selections.
+  const [strikeTarget, setStrikeTarget] = useState('')
+  const [mergeInto, setMergeInto] = useState('')
+  const [detachShip, setDetachShip] = useState('')
 
   /** The online session, when this console is one seat of a hosted match. */
   const [online, setOnline] = useState<{
@@ -737,6 +743,39 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   const order = unit ? orderOf(unit.id) : null
   const contact = selectedContact ? view!.contacts.find((c) => c.id === selectedContact) : null
 
+  // Strike targets: known enemy infrastructure still standing (3.4 — the
+  // charts show it; listening posts are already filtered by the view).
+  const enemyStations = view!.knownEnemyInfrastructure.filter((s) => !s.destroyed)
+  // Task-force candidates: co-located friendly ships and groups the selected
+  // unit could merge into without breaking 6.1's eight-hull ceiling.
+  const mergeTargets = unit
+    ? view!.units.filter(
+        (u) =>
+          u.id !== unit.id &&
+          (u.kind === 'ship' || u.kind === 'group') &&
+          u.hex.q === unit.hex.q &&
+          u.hex.r === unit.hex.r &&
+          u.ships.length + unit.ships.length <= 8,
+      )
+    : []
+  const stagedTaskforce = pending.filter(
+    (i) => i.type === 'merge-units' || i.type === 'split-unit',
+  ).length
+  /** Stage a non-order intervention, under the same open-table guard as editOrder. */
+  const stageIntervention = (intervention: Intervention) => {
+    if (openTable && !online && side !== moverSide) return
+    setPending((p) => [...p, intervention])
+  }
+  /** A fresh unit id for a detach — unique against the board and the staging. */
+  const freshUnitId = (baseId: string): string => {
+    const taken = new Set<string>(view!.units.map((u) => u.id))
+    for (const i of pending) if (i.type === 'split-unit') taken.add(i.newUnitId)
+    for (let n = 2; ; n++) {
+      const candidate = `${baseId}-d${n}`
+      if (!taken.has(candidate)) return candidate
+    }
+  }
+
   return (
     <div className="campaign-shell">
       <header className="campaign-topbar">
@@ -939,6 +978,22 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
             </section>
           )}
 
+          {view!.sensorLog.length > 0 && (
+            <section className="campaign-panel">
+              <h3>Sensor log</h3>
+              <ul className="campaign-dispatches campaign-sensorlog">
+                {[...view!.sensorLog].reverse().map((e, i) => (
+                  <li key={`${e.round}-${e.phase}-${e.contactId}-${i}`}>
+                    <strong>
+                      R{e.round}·{e.phase}
+                    </strong>{' '}
+                    · {e.text}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {unit && order && (
             <section className="campaign-panel">
               <h3>{unit.ships[0]?.name ?? unit.id}</h3>
@@ -1061,9 +1116,38 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 Each hex of the route shows how many phases until the ship enters it, live against
                 the ordered speed.
               </p>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={order.patrolLoop ?? false}
+                  onChange={(e) => editOrder(unit.id, { patrolLoop: e.target.checked })}
+                />
+                Patrol loop — reached waypoints rejoin the route, so the circuit repeats
+              </label>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={order.avoidContact ?? false}
+                  onChange={(e) => editOrder(unit.id, { avoidContact: e.target.checked })}
+                />
+                Avoid contact — detour two hexes around everything on the plot; pair with
+                &ldquo;Withdraw&rdquo; to also run from a fight
+              </label>
               <div className="campaign-battle-actions">
                 <button type="button" onClick={() => editOrder(unit.id, { waypoints: [], mission: undefined })}>
                   Clear route
+                </button>
+                <button
+                  type="button"
+                  title="A standing hunt: re-aims at whatever contact is nearest, every phase, and rides the waypoints when the scope is empty"
+                  onClick={() =>
+                    editOrder(unit.id, {
+                      mission: { type: 'attack-nearest' },
+                      ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+                    })
+                  }
+                >
+                  Attack nearest
                 </button>
                 {contact && (
                   <>
@@ -1092,10 +1176,104 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                   </>
                 )}
               </div>
-              {order.mission && (
-                <p className="hint">
-                  Mission: {order.mission.type} {order.mission.contactId}
-                </p>
+              {enemyStations.length > 0 && unit.kind !== 'convoy' && (
+                <div className="campaign-strike-row">
+                  <select value={strikeTarget} onChange={(e) => setStrikeTarget(e.target.value)}>
+                    <option value="">Strike a known enemy station…</option>
+                    {enemyStations.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.kind.replace('-', ' ')} at {s.hex.q},{s.hex.r}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!strikeTarget}
+                    title="Hit-and-run for half the station's value; called off if a defender stands within a hex"
+                    onClick={() =>
+                      editOrder(unit.id, {
+                        mission: { type: 'raid', stationId: strikeTarget },
+                        ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+                      })
+                    }
+                  >
+                    Raid
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!strikeTarget}
+                    title="Destroy the station for its full value (3.4); called off if a defender stands within a hex"
+                    onClick={() =>
+                      editOrder(unit.id, {
+                        mission: { type: 'assault', stationId: strikeTarget },
+                        ...(order.speed === 'hold' ? { speed: 'cruise' as const } : {}),
+                      })
+                    }
+                  >
+                    Assault
+                  </button>
+                </div>
+              )}
+              {order.mission && <p className="hint">Mission: {describeMission(view!, order.mission)}</p>}
+              {(mergeTargets.length > 0 || unit.ships.length > 1) && unit.kind !== 'convoy' && unit.kind !== 'starwing' && (
+                <div className="campaign-taskforce">
+                  <h4>Task force</h4>
+                  {mergeTargets.length > 0 && (
+                    <div className="campaign-strike-row">
+                      <select value={mergeInto} onChange={(e) => setMergeInto(e.target.value)}>
+                        <option value="">Merge into a co-located unit…</option>
+                        {mergeTargets.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.ships[0]?.name ?? u.id} ({u.ships.length} hull{u.ships.length === 1 ? '' : 's'})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!mergeInto}
+                        onClick={() => {
+                          stageIntervention({ type: 'merge-units', unitId: unit.id, intoId: mergeInto })
+                          setMergeInto('')
+                        }}
+                      >
+                        Merge
+                      </button>
+                    </div>
+                  )}
+                  {unit.ships.length > 1 && (
+                    <div className="campaign-strike-row">
+                      <select value={detachShip} onChange={(e) => setDetachShip(e.target.value)}>
+                        <option value="">Detach a ship…</option>
+                        {unit.ships.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.id})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!detachShip}
+                        onClick={() => {
+                          stageIntervention({
+                            type: 'split-unit',
+                            unitId: unit.id,
+                            shipIds: [detachShip],
+                            newUnitId: freshUnitId(unit.id),
+                          })
+                          setDetachShip('')
+                        }}
+                      >
+                        Detach
+                      </button>
+                    </div>
+                  )}
+                  {stagedTaskforce > 0 && (
+                    <p className="hint">
+                      {stagedTaskforce} task-force change{stagedTaskforce === 1 ? '' : 's'} staged —
+                      they land at End Phase.
+                    </p>
+                  )}
+                </div>
               )}
             </section>
           )}
@@ -1132,6 +1310,25 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
       </div>
     </div>
   )
+}
+
+/** A station's short label for the mission line, from the side's own charts. */
+function describeStation(view: SideView, stationId: string): string {
+  const s = view.knownEnemyInfrastructure.find((i) => i.id === stationId)
+  return s ? `${s.kind.replace('-', ' ')} at ${s.hex.q},${s.hex.r}` : stationId
+}
+
+/** The mission line, in words rather than ids where the words say more. */
+function describeMission(view: SideView, mission: Mission): string {
+  switch (mission.type) {
+    case 'attack-nearest':
+      return 'attack the nearest contact'
+    case 'raid':
+    case 'assault':
+      return `${mission.type} the enemy ${describeStation(view, mission.stationId)}`
+    default:
+      return `${mission.type} ${mission.contactId}`
+  }
 }
 
 /** The scars aboard one hull, as short chips — only what is actually marked. */

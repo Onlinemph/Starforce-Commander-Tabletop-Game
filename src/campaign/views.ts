@@ -91,6 +91,11 @@ export interface SideView {
   vp: Record<Side, number>
   /** The news feed — pirate raids and the like. Public, newest last. */
   events: CampaignEvent[]
+  /**
+   * This side's OWN sensor log — why the picture changed, newest last. The
+   * side field is dropped: everything here already belongs to the viewer.
+   */
+  sensorLog: Array<{ round: number; phase: number; contactId: string; hex: Hex; text: string }>
 }
 
 /**
@@ -169,5 +174,16 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
     // Dispatches are public news; the slice keeps the panel a feed. Old
     // saves from before the field default to silence.
     events: structuredClone((state.events ?? []).slice(-12)),
+    // The sensor log crosses the wall by copying named fields, per-side.
+    sensorLog: (state.sensorLog ?? [])
+      .filter((entry) => entry.side === side)
+      .slice(-14)
+      .map((entry) => ({
+        round: entry.round,
+        phase: entry.phase,
+        contactId: entry.contactId,
+        hex: { q: entry.hex.q, r: entry.hex.r },
+        text: entry.text,
+      })),
   }
 }

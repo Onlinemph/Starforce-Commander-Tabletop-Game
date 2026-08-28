@@ -348,13 +348,14 @@ abandoning their plotted routes forever. A mission whose trail goes cold
 now CLEARS, and the unit resumes its waypoints. The same pass unstranded
 orders saved by the first exact-speed build with the tier still at Hold.
 
-From his orders list, still to build: task forces, Shadow as a first-class
-order (intercept exists; shadow-at-2-hexes is a mission type away), Attack
-Nearest / Attack Specified with speed caps, Raid / Assault system orders,
-Avoid Contact, and AI civilian shipping between planets and bases. Quick
-Resolve already covers his "auto-resolve battles" item; ship entry via the
-builder covers "add ships" (campaign scenarios take any form id, custom
-forms embed in the file).
+From his orders list — now built (see "The designer's orders list, first
+delivery" below): task forces (merge/split), Attack Nearest, Raid /
+Assault on known stations, Avoid Contact, and patrol loops (the minimal
+slice of AI civilian shipping). Shadow and Intercept existed already.
+Still to come: scheduled colony-to-colony civilian traffic beyond the
+loop. Quick Resolve already covers his "auto-resolve battles" item; ship
+entry via the builder covers "add ships" (campaign scenarios take any form
+id, custom forms embed in the file).
 
 **The designer's roadmap (Aug 2026, verbatim intent, to build once
 movement and detection feel right):**
@@ -530,6 +531,67 @@ NELSON II escorting two freighters through a dust bank against a JACKAL
 and two MARAUDERs. It appears in every scenario picker like any designed
 scenario, and its convoy is the merchant-shipping material the roadmap's
 colony trade will eventually automate.
+
+**The sensor log — why the picture changed:** contacts appeared and
+vanished from the plot with no explanation, which made the detection model
+feel arbitrary exactly where it was being most honest. Each side now keeps
+a private sensor log (`state.sensorLog`, viewed through `SideView` as your
+own entries only; a "Sensor log" panel in the console sidebar shows the
+last fourteen). It tells the story of the TRACK, not of every sweep: one
+line when a contact is gained ("New contact at 12,5 — flagged by USS
+Beagle"), when a held track is lost, when a lost trail is picked back up,
+when three quiet rounds send a record cold, when a picture dies with the
+last hull that held it, and when a battle confirms the kill. Positions in
+the log are always the side's own belief, never truth, and a ghost from a
+false-contact roll is logged in exactly the words a real sighting gets — a
+log that phrased ghosts differently would be a truth oracle (a test pins
+the identical wording). Another state field, so autosaves from before it
+fail replay-verify — fresh campaigns after pulling, as usual.
+
+**The designer's orders list, first delivery:** five orders from his list,
+all resolver-enforced (both consoles and the solo doctrine run the same
+`resolvePhase`, so nothing here is a UI courtesy):
+
+- **Attack Nearest** — a standing hunt: the unit re-aims every phase at
+  whatever live contact its side holds nearest, and rides its waypoints
+  when the scope is empty. Unlike Intercept, the posture survives an empty
+  scope; the speed cap is the order's own speed setting, as everywhere.
+  (Attack Specified is Intercept, which already existed.)
+- **Avoid Contact** — an order flag: the unit steers wide of EVERY contact
+  its side holds, detouring around a two-hex exclusion bubble and holding
+  rather than closing when boxed in. Movement only — pair it with the
+  "Withdraw" engagement posture to also run from a fight that finds you.
+  A ghost repels exactly like a real hull: the steering reads only the
+  side's picture.
+- **Patrol loop** — reached waypoints rejoin the back of the route instead
+  of being crossed off, so a circuit repeats forever. This is also the
+  minimal honest slice of his "AI civilian shipping": a convoy on a loop
+  shuttles between two colonies until someone stops it.
+- **Raid and Assault** — missions aimed at KNOWN enemy infrastructure (the
+  charts show it, 3.4 — listening posts excluded). The unit steers to the
+  station's hex; at the round tick the strike lands unless a defender
+  stands within one hex, in which case it is called off (public news, like
+  the pirates the mechanic mirrors). A raid is a hit-and-run for half the
+  station's 3.4 value rounded up, leaving it standing; an assault destroys
+  the station for full value. Either way the mission clears — a second
+  strike is a second order. Destroyed stations stop repairing, resupplying
+  and scanning, and their spotter credit dies with them.
+- **Task forces** — two new journaled interventions. `merge-units` folds a
+  co-located ship or group into another (2–8 hulls, 6.1): the flagship's
+  orders carry, the smallest tank sets the merged legs, the enemy's
+  dossier on the absorbed unit follows the hulls (they are the same
+  ships), and spotter credit transfers so no intelligence is forgotten by
+  an org-chart change. `split-unit` detaches named ships under a new unit
+  id (journaled explicitly, so replays reproduce it byte for byte); the
+  enemy's dossier stays on the original unit — the ships that slipped away
+  are simply not where the picture says, and finding that out is the game.
+  In the console: a "Task force" block in the unit panel (merge into a
+  co-located unit, detach a ship); the changes land at End Phase like
+  every other intervention.
+
+The rest of his list — Shadow existed; still to come: AI civilian shipping
+beyond the loop (colony-to-colony schedules), and the objective ladder
+gated on colonies.
 
 ## Where the doc met the data (Part 12 material)
 

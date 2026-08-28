@@ -2654,6 +2654,36 @@ input:focus-visible {
   color: var(--warn, #e8b84a);
 }
 
+/* The sensor log: same feed shape, the accent of the scopes not the news. */
+.campaign-sensorlog strong {
+  color: var(--accent);
+}
+
+/* One-line pickers: strike a station, merge, detach. */
+.campaign-strike-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+.campaign-strike-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-taskforce {
+  margin-top: 10px;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  padding-top: 6px;
+}
+.campaign-taskforce h4 {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
 .cloak-panel h4 {
   margin: 0.6rem 0 0.2rem;
   font-size: 0.72rem;
