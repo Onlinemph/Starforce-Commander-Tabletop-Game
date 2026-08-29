@@ -118,6 +118,25 @@ export function ForceEditor({ scenario, onLaunch, onCancel }: Props) {
             }
           />
         </label>
+        <label title="Reinforcement schedule (S3.2): held off the map — undrawn, unscannable — until this campaign round. Blank or 1 deploys at the opening bell.">
+          arrives R
+          <input
+            type="number"
+            min={1}
+            value={unit.arrivesRound ?? ''}
+            placeholder="1"
+            onChange={(e) =>
+              mutate((s) => {
+                const round = Math.round(Number(e.target.value))
+                if (e.target.value === '' || !Number.isFinite(round) || round <= 1) {
+                  delete s.forces[side][index].arrivesRound
+                } else {
+                  s.forces[side][index].arrivesRound = round
+                }
+              })
+            }
+          />
+        </label>
         <button type="button" onClick={() => mutate((s) => void s.forces[side].splice(index, 1))}>
           Remove
         </button>

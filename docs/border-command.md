@@ -611,6 +611,22 @@ R" with the explanation in the hint and the tooltip: the start hex's
 column and row, the same pair the plot prints at its grid marks (the hex
 labeled 10,5 is Q 10, R 5).
 
+**"I set up 8+ ships and not all of them appear" (playtest follow-up):**
+correctly diagnosed — some were scheduled reinforcements (S3.2), in two
+places. Tactically, S3.2 Recon Mission's script holds every Blue ship
+after the first off the map until Round 8 (that is the scenario: the
+picket holds until the destroyers converge), and a composed fleet of
+eight inherits the script; the fleet picker now SAYS so, in a note beside
+Start battle, whenever the chosen scenario holds part of a side back. In
+the campaign, The Long Patrol schedules USS Latecomer (round 10) and VNS
+Reprisal (round 12); the force editor now shows an editable **"arrives R"**
+field on every unit — blank or 1 deploys at the opening bell, N holds the
+unit off the map (undrawn, unscannable) until that round — so a test
+force's schedule is visible and changeable before launch. He is drafting
+CIV ships and bases next, then a list of campaign objectives with their
+victory-point values — the objective ladder will build on the raid/assault
+plumbing and INFRASTRUCTURE_VP when it lands.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

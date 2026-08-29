@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { allShipForms } from '../data/ships'
-import { allScenarioEntries, printedForce, scenarioSides } from '../data/scenarios'
+import { allScenarioEntries, lateArrival, printedForce, scenarioSides } from '../data/scenarios'
 import {
   availabilityIn,
   AVAILABILITY_RULE,
@@ -141,6 +141,19 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const blocked = errors.length > 0 && !ignoreLimits
   // An empty force is a hole in the battle, not a rule you may waive.
   const empty = sides.some((side) => fleetSize(fleets[side] ?? []) === 0)
+
+  // A scenario whose script holds part of a side off the map (S3.2) says so
+  // HERE, not on the board — "I set up 8 ships and only 1 appeared" is a
+  // playtest report this line exists to prevent.
+  const lateNotes = sides.flatMap((side) => {
+    const late = lateArrival(scenario, side)
+    if (!late || fleetSize(fleets[side] ?? []) <= late.fromIndex) return []
+    return [
+      `${side}: only the first ${late.fromIndex === 1 ? 'ship' : `${late.fromIndex} ships`} deploy${
+        late.fromIndex === 1 ? 's' : ''
+      } at start — the rest arrive as Round ${late.round} reinforcements (S3.2, this scenario's script).`,
+    ]
+  })
 
   const start = () => {
     const ai = sides.filter((s) => aiSides.has(s))
@@ -506,6 +519,11 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
             the cards is worse than one that lets a friendly game bend a
             tournament rule.
           */}
+          {lateNotes.map((note) => (
+            <p key={note} className="hint fleet-late-note">
+              {note}
+            </p>
+          ))}
           {errors.length > 0 && (
             <label className="checkbox" title="Overrides the remaining hard limits — an over-budget force, or more hulls than the setup zone holds">
               <input

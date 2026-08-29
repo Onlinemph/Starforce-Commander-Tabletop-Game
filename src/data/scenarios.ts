@@ -1214,6 +1214,16 @@ export function scenarioSides(scenarioId: string): string[] {
   return entryFor(scenarioId).sides.map((s) => s.side)
 }
 
+/**
+ * A side's scripted late arrivals, if the scenario has them (S3.2) — so the
+ * fleet picker can SAY that ships past `fromIndex` deploy as Round-`round`
+ * reinforcements before the player wonders where their battle line went.
+ */
+export function lateArrival(scenarioId: string, side: string): { fromIndex: number; round: number } | null {
+  const setup = entryFor(scenarioId).sides.find((s) => s.side === side)
+  return setup?.late ? { fromIndex: setup.late.fromIndex, round: setup.late.round } : null
+}
+
 /** The force a scenario prints for a side, as form ids (S2.5.1). */
 export function printedForce(scenarioId: string, side: string): string[] {
   const setup = entryFor(scenarioId).sides.find((s) => s.side === side)
