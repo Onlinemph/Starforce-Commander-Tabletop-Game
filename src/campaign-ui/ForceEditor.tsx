@@ -90,8 +90,8 @@ export function ForceEditor({ scenario, onLaunch, onCancel }: Props) {
           <option value="group">group</option>
           <option value="convoy">convoy</option>
         </select>
-        <label>
-          q
+        <label title="The start hex: Q is the column, R the row — the same pair the campaign plot prints at its grid marks and in every unit tooltip (e.g. the hex labeled 10,5 is Q 10, R 5)">
+          hex Q
           <input
             type="number"
             value={unit.hex.q}
@@ -104,8 +104,8 @@ export function ForceEditor({ scenario, onLaunch, onCancel }: Props) {
             }
           />
         </label>
-        <label>
-          r
+        <label title="The start hex: Q is the column, R the row — the same pair the campaign plot prints at its grid marks and in every unit tooltip (e.g. the hex labeled 10,5 is Q 10, R 5)">
+          R
           <input
             type="number"
             value={unit.hex.r}
@@ -181,7 +181,9 @@ export function ForceEditor({ scenario, onLaunch, onCancel }: Props) {
       <p className="hint">
         Reshape either side before launch: any hull in the roster (Expansion 7 freighters,
         transports and stations included, plus your custom designs), any start hex on the{' '}
-        {draft.mapWidth}×{draft.mapHeight} plot. Convoys deliver where the base scenario says.
+        {draft.mapWidth}×{draft.mapHeight} plot. Q,R is the start hex — column and row, the same
+        pair the plot prints at its grid marks (the hex labeled 10,5 is Q 10, R 5). Convoys
+        deliver where the base scenario says.
       </p>
       {(['A', 'B'] as Side[]).map((side) => (
         <section key={side} className="force-side">

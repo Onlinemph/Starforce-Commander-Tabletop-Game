@@ -593,6 +593,24 @@ The rest of his list — Shadow existed; still to come: AI civilian shipping
 beyond the loop (colony-to-colony schedules), and the objective ladder
 gated on colonies.
 
+**First campaign playtest (the designer's slide deck, Aug 2026):** he
+played both sides for an afternoon and "the detection model seems like
+it's working pretty well." Three notes acted on. His **recommended size
+class chart** is now the ladder's truth: small 1–2, medium 3–5 (a
+destroyer or a cruiser), large 6–7 (a battlecruiser or a dreadnought),
+huge 8–10 — previously size 6 read large and 7 huge, which promoted every
+dreadnought to its own band. His question "**what does LOW indicate?**"
+exposed that the plot's unit codes (CLK, WDRW, SLNT, SLOW, INTC, SHDW,
+LOW, GRP…) were explained nowhere: LOW is endurance below a quarter tank —
+his fleet was flying it by round 3 because full-power sensors burn an
+extra point a round on the PROVISIONAL endurance numbers (his formula is
+still pending). Every unit's hover tooltip now spells out each flag it is
+flying in plain words, LOW with the tank reading and the resupply hint.
+And the force editor's bare **"q" and "r"** fields are now labeled "hex Q /
+R" with the explanation in the hint and the tooltip: the start hex's
+column and row, the same pair the plot prints at its grid marks (the hex
+labeled 10,5 is Q 10, R 5).
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

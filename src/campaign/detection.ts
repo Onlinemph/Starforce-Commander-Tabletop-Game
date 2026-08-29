@@ -191,10 +191,15 @@ function interveningTerrain(map: CampaignMap, from: Hex, to: Hex): number {
 // Truth about a target, one attribute at a time (4.4)
 // ---------------------------------------------------------------------------
 
+/**
+ * The designer's recommended size-class chart (campaign playtest, Aug 2026):
+ * small 1–2, medium 3–5 (a destroyer or a cruiser), large 6–7 (a
+ * battlecruiser or a dreadnought), huge 8–10 (stations and the like).
+ */
 function sizeBand(sizeClass: number): string {
   if (sizeClass <= 2) return 'small'
-  if (sizeClass <= 4) return 'medium'
-  if (sizeClass <= 6) return 'large'
+  if (sizeClass <= 5) return 'medium'
+  if (sizeClass <= 7) return 'large'
   return 'huge'
 }
 

@@ -1384,9 +1384,11 @@ export function CampaignMap({
             <title>
               {`${unit.ships[0]?.name ?? unit.id} · ${unit.kind} · ${unit.ships.length} hull${
                 unit.ships.length === 1 ? '' : 's'
-              } · ${unit.order.speed}${unit.order.cloaked ? ' · cloaked' : ''} · endurance ${unit.endurance}/${
+              } · ${unit.order.speed} · endurance ${unit.endurance}/${
                 unit.enduranceMax
-              } · at ${unit.hex.q},${unit.hex.r}`}
+              } · at ${unit.hex.q},${unit.hex.r}${unitFlags(unit)
+                .map(([code, words]) => `\n${code} — ${words}`)
+                .join('')}`}
             </title>
           </g>
         )
@@ -1755,19 +1757,35 @@ function describe(contact: ViewedContact): string {
  * plus five codes is a bird's nest wherever two units are within two hexes.
  */
 function unitCodes(unit: SideView['units'][number]): string {
-  const out: string[] = []
-  const push = (code: string): void => {
-    if (out.length < 2) out.push(code)
+  return unitFlags(unit)
+    .slice(0, 2)
+    .map(([code]) => code)
+    .join(' ')
+}
+
+/**
+ * Every flag a unit is flying, code plus plain words — the codes for the
+ * plot, the words for the tooltip (the playtest question "what does LOW
+ * indicate?" is exactly what the hover now answers). Priority order.
+ */
+function unitFlags(unit: SideView['units'][number]): Array<[string, string]> {
+  const flags: Array<[string, string]> = []
+  if (unit.order.cloaked) flags.push(['CLK', 'running cloaked'])
+  if (unit.order.engagement === 'withdraw') flags.push(['WDRW', 'will try to withdraw if engaged'])
+  else if (unit.order.engagement === 'silent') flags.push(['SLNT', 'stays silent while unseen'])
+  if (unit.moveDebt > 0) flags.push(['SLOW', 'paying slow terrain its second phase'])
+  const mission = unit.order.mission
+  if (mission?.type === 'intercept') flags.push(['INTC', 'intercepting a contact'])
+  else if (mission?.type === 'shadow') flags.push(['SHDW', 'shadowing a contact at 3–4 hexes'])
+  else if (mission?.type === 'attack-nearest') flags.push(['ATKN', 'attacking the nearest contact'])
+  else if (mission?.type === 'raid') flags.push(['RAID', 'inbound to raid an enemy station'])
+  else if (mission?.type === 'assault') flags.push(['ASLT', 'inbound to assault an enemy station'])
+  if (unit.order.avoidContact) flags.push(['AVOD', 'avoiding every known contact'])
+  if (unit.enduranceMax > 0 && unit.endurance / unit.enduranceMax < 0.25) {
+    flags.push(['LOW', `endurance low (${unit.endurance}/${unit.enduranceMax} — resupply at a base or colony)`])
   }
-  if (unit.order.cloaked) push('CLK')
-  if (unit.order.engagement === 'withdraw') push('WDRW')
-  else if (unit.order.engagement === 'silent') push('SLNT')
-  if (unit.moveDebt > 0) push('SLOW')
-  if (unit.order.mission?.type === 'intercept') push('INTC')
-  else if (unit.order.mission?.type === 'shadow') push('SHDW')
-  if (unit.enduranceMax > 0 && unit.endurance / unit.enduranceMax < 0.25) push('LOW')
-  if (unit.kind === 'group') push('GRP')
-  else if (unit.kind === 'starwing') push('SW')
-  else if (unit.kind === 'convoy') push('CVY')
-  return out.join(' ')
+  if (unit.kind === 'group') flags.push(['GRP', `a group of ${unit.ships.length} ships`])
+  else if (unit.kind === 'starwing') flags.push(['SW', 'a starwing'])
+  else if (unit.kind === 'convoy') flags.push(['CVY', 'a civilian convoy'])
+  return flags
 }
