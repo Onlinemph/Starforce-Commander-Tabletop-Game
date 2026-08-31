@@ -532,6 +532,19 @@ and two MARAUDERs. It appears in every scenario picker like any designed
 scenario, and its convoy is the merchant-shipping material the roadmap's
 colony trade will eventually automate.
 
+The clans then scaled up (the designer's ask: "varying point levels, 15,
+25, 50, and 75"). Past the freighter conversions, pirates fly what
+pirates TAKE — each tier is a captured warship re-armed from the
+scrapyard, built through the same Shipwright machinery and tuned until
+the point model landed on the requested value exactly: the **BRIGAND**
+cruiser (a hijacked V-6N Savage, 15 pts), the **CUTTHROAT** heavy cruiser
+(a captured Yorktown I with a scavenged stern phaser, 25 pts), the
+**WARLORD** dreadnought (a Union II that never came home, mismatched
+torpedo tubes because the clans load whatever fits, 50 pts), and the
+**BLACKFLAG** flagship (the pirate king's own rebuilt Yorktown V, six
+phaser batteries forward, 75 pts). Seven pirate hulls now ladder 6.5 →
+75 points, all in every fleet picker and the campaign force editor.
+
 **The sensor log — why the picture changed:** contacts appeared and
 vanished from the plot with no explanation, which made the detection model
 feel arbitrary exactly where it was being most honest. Each side now keeps
