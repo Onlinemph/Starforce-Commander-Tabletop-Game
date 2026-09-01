@@ -705,6 +705,24 @@ empty scope every other idle warship carries the war to the nearest known
 enemy station (Assault) while the rest take patrol stations on the border.
 Still view-only by signature, still deterministic; tests pin each posture.
 
+**The objectives scaffold (for the designer's list):** an objective is
+scenario data — `scenario.objectives: [{ id, side, kind, target, count,
+vp, text }]` — judged at the round tick (objectives.ts) after every other
+ledger movement, paid ONCE into the public ledger, and announced in the
+dispatches. Four kinds the state can already tell: `destroy-station` (a
+named station destroyed), `destroy-ships` (N enemy hulls killed — the state
+now counts `shipsLost` per side from battle readback), `scout-hex` (a
+friendly unit has entered the system — `scouted` per side, recorded as
+units move), and `hold-hex` (a friendly unit on the hex for N consecutive
+ticks, with the clock resetting when the hex is left). A side's own
+objectives show in its view and in a new Objectives panel in the console
+(done / n-of-count / value); the enemy's never cross. The three launch
+scenarios carry examples in his roadmap's vocabulary — scout the enemy's
+station, destroy N hulls, keep a warship over the colony, raze the
+colony or the fleet base — so his list becomes data entry: new kinds
+(land troops, destroy shipping by value, a mobile supply base) are one
+`achieved` case each on the same scaffold.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

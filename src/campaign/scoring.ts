@@ -87,7 +87,8 @@ export function raidTick(state: CampaignState): void {
 /** The events feed stays a feed, not an archive (pirates.ts uses the same cap). */
 const EVENT_CAP = 60
 
-function pushEvent(state: CampaignState, side: Side, hex: { q: number; r: number }, text: string): void {
+/** One line of public news (types.ts CampaignEvent), capped. */
+export function pushEvent(state: CampaignState, side: Side, hex: { q: number; r: number }, text: string): void {
   state.events.push({ round: state.round, side, hex: { ...hex }, text })
   if (state.events.length > EVENT_CAP) state.events.splice(0, state.events.length - EVENT_CAP)
 }

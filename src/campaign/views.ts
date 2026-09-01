@@ -15,10 +15,12 @@
  */
 
 import { contactCollapsed, reckonedHex } from './detection'
+import { objectiveStatus } from './objectives'
 import {
   CONTACT_ATTRIBUTES,
   type CampaignEvent,
   type CampaignMap,
+  type CampaignScenario,
   type CampaignState,
   type ContactAttribute,
   type Hex,
@@ -96,6 +98,20 @@ export interface SideView {
    * side field is dropped: everything here already belongs to the viewer.
    */
   sensorLog: Array<{ round: number; phase: number; contactId: string; hex: Hex; text: string }>
+  /**
+   * This side's OWN objectives with their standing (objectives.ts). The
+   * enemy's objectives never cross: their goals are their business.
+   */
+  objectives: Array<{
+    id: string
+    kind: string
+    text: string
+    vp: number
+    hex?: Hex
+    done: boolean
+    progress: number
+    count: number
+  }>
 }
 
 /**
@@ -103,7 +119,12 @@ export interface SideView {
  * deep copy: handing a caller live references into truth would let mutation —
  * or serialization — walk back through the wall.
  */
-export function viewFor(map: CampaignMap, state: CampaignState, side: Side): SideView {
+export function viewFor(
+  map: CampaignMap,
+  state: CampaignState,
+  side: Side,
+  scenario?: Pick<CampaignScenario, 'objectives'>,
+): SideView {
   const contacts: ViewedContact[] = []
   for (const record of state.contacts) {
     if (record.side !== side) continue
@@ -185,5 +206,20 @@ export function viewFor(map: CampaignMap, state: CampaignState, side: Side): Sid
         hex: { q: entry.hex.q, r: entry.hex.r },
         text: entry.text,
       })),
+    objectives: (scenario?.objectives ?? [])
+      .filter((o) => o.side === side)
+      .map((o) => {
+        const status = objectiveStatus(state, o)
+        return {
+          id: o.id,
+          kind: o.kind,
+          text: o.text,
+          vp: o.vp,
+          ...(o.hex ? { hex: { q: o.hex.q, r: o.hex.r } } : {}),
+          done: status.done,
+          progress: status.progress,
+          count: status.count,
+        }
+      }),
   }
 }

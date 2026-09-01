@@ -36,6 +36,14 @@ export function borderWatch(): CampaignScenario {
       { id: 'a-outpost', side: 'A', kind: 'outpost', hex: { q: 3, r: 10 } },
       { id: 'b-outpost', side: 'B', kind: 'outpost', hex: { q: 26, r: 2 } },
     ],
+    // The objectives scaffold (objectives.ts), seeded from the designer's
+    // roadmap: scout the enemy's outpost, bleed two of their hulls.
+    objectives: [
+      { id: 'a-scout-outpost', side: 'A', kind: 'scout-hex', hex: { q: 26, r: 2 }, vp: 5, text: 'Scout the Vallari outpost' },
+      { id: 'a-kill-two', side: 'A', kind: 'destroy-ships', count: 2, vp: 10, text: 'Destroy two Vallari hulls' },
+      { id: 'b-scout-outpost', side: 'B', kind: 'scout-hex', hex: { q: 3, r: 10 }, vp: 5, text: 'Scout the Union outpost' },
+      { id: 'b-kill-two', side: 'B', kind: 'destroy-ships', count: 2, vp: 10, text: 'Destroy two Union hulls' },
+    ],
     vpThreshold: 60,
   })
 }
@@ -80,6 +88,12 @@ export function raidOnDeltaVideus(): CampaignScenario {
       { id: 'a-beacon-1', side: 'A', kind: 'jump-beacon', hex: { q: 10, r: 14 } },
       { id: 'a-beacon-2', side: 'A', kind: 'jump-beacon', hex: { q: 18, r: 8 } },
       { id: 'a-ears', side: 'A', kind: 'listening-post', hex: { q: 20, r: 2 } },
+    ],
+    objectives: [
+      { id: 'a-hold-colony', side: 'A', kind: 'hold-hex', hex: { q: 26, r: 4 }, count: 3, vp: 8, text: 'Keep a warship over the Delta Videus colony for three rounds' },
+      { id: 'a-kill-raider', side: 'A', kind: 'destroy-ships', count: 1, vp: 10, text: 'Destroy an Aurelian raider' },
+      { id: 'b-raze-colony', side: 'B', kind: 'destroy-station', stationId: 'a-colony', vp: 15, text: 'Destroy the Delta Videus colony' },
+      { id: 'b-kill-two', side: 'B', kind: 'destroy-ships', count: 2, vp: 10, text: 'Destroy two Union hulls' },
     ],
     vpThreshold: 50,
   })
@@ -130,6 +144,12 @@ export function theLongPatrol(): CampaignScenario {
       { id: 'a-beacon', side: 'A', kind: 'jump-beacon', hex: { q: 16, r: 17 } },
       { id: 'b-base', side: 'B', kind: 'fleet-base', hex: { q: 36, r: 8 } },
       { id: 'b-beacon', side: 'B', kind: 'jump-beacon', hex: { q: 26, r: 10 } },
+    ],
+    objectives: [
+      { id: 'a-scout-base', side: 'A', kind: 'scout-hex', hex: { q: 36, r: 8 }, vp: 8, text: 'Scout the Vallari fleet base' },
+      { id: 'a-raze-base', side: 'A', kind: 'destroy-station', stationId: 'b-base', vp: 20, text: 'Destroy the Vallari fleet base' },
+      { id: 'b-scout-base', side: 'B', kind: 'scout-hex', hex: { q: 4, r: 14 }, vp: 8, text: 'Scout the Union fleet base' },
+      { id: 'b-raze-base', side: 'B', kind: 'destroy-station', stationId: 'a-base', vp: 20, text: 'Destroy the Union fleet base' },
     ],
   })
 }

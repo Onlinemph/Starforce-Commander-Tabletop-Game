@@ -28,7 +28,7 @@ import {
 } from './detection'
 import { resolveSensorModel } from './sensorModel'
 import { checkEngagements } from './engagement'
-import { entryCost, hexDistance, hexEquals, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
+import { entryCost, hexDistance, hexEquals, hexKey, hexNeighbors, hexStepToward, inBounds, terrainAt } from './hexmap'
 import {
   effectiveSpeedTier,
   enduranceMaxOf,
@@ -39,6 +39,7 @@ import {
   resolveEndurance,
   wingTick,
 } from './logistics'
+import { objectiveTick } from './objectives'
 import { pirateRaidTick } from './pirates'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
@@ -312,6 +313,9 @@ function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: 
     if (!ship) throw new PhaseError(`Battle result names unknown ship ${key}.`)
     if (outcome.destroyed) {
       unit.ships = unit.ships.filter((s) => s.id !== shipId)
+      // The objectives' kill count (objectives.ts): hulls each side has lost.
+      state.shipsLost ??= { A: 0, B: 0 }
+      state.shipsLost[unit.side] += 1
     } else {
       if (outcome.scars) ship.scars = structuredClone(outcome.scars)
       else delete ship.scars
@@ -474,8 +478,15 @@ function stepUnit(ctx: DetectionContext, state: CampaignState, unit: Unit, credi
     if (hexEquals(next, unit.hex) || !inBounds(next, ctx.map.width, ctx.map.height)) break
     unit.course = { q: next.q - unit.hex.q, r: next.r - unit.hex.r }
     unit.hex = next
+    const entered = terrainAt(ctx.map, next)
+    // A star system entered is a star system scouted (objectives.ts).
+    if (entered === 'system') {
+      state.scouted ??= { A: [], B: [] }
+      const key = hexKey(next)
+      if (!state.scouted[unit.side].includes(key)) state.scouted[unit.side].push(key)
+    }
     // Nebula and dust cost two movement credits per hex (2.2): the second is owed.
-    unit.moveDebt = entryCost(terrainAt(ctx.map, next)) - 1
+    unit.moveDebt = entryCost(entered) - 1
   }
   const underway = unit.moveDebt > 0 || currentDestination(ctx, state, unit) !== null
   unit.movedLastOwnPhase = underway
@@ -553,6 +564,9 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     // the clock check, so a final-round strike still pays.
     raidTick(next)
     pirateRaidTick(ctx, next)
+    // Objectives judge the round after every ledger movement above, so a
+    // station killed or a hull lost THIS tick counts (objectives.ts).
+    objectiveTick(ctx.scenario, next)
     next.phase = 1
     next.round += 1
     for (const r of [...next.reinforcements]) {

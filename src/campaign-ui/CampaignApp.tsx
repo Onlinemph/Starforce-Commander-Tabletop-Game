@@ -150,7 +150,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
   const side: Side = online ? online.seat : openTable ? viewSide : moverSide
   const myTurn = !file || !online || sideToMove(file.state.phase) === online.seat
   const view = useMemo(
-    () => (file && ctx ? viewFor(file.map, file.state, side) : null),
+    () => (file && ctx ? viewFor(file.map, file.state, side, file.scenario) : null),
     [file, ctx, side],
   )
 
@@ -226,7 +226,7 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
         if (typeof quick === 'string') break
         battles.push(quick.record)
       }
-      const soloView = viewFor(current.map, current.state, 'B')
+      const soloView = viewFor(current.map, current.state, 'B', current.scenario)
       const move: PhaseMove = {
         round: current.state.round,
         phase: current.state.phase,
@@ -972,6 +972,23 @@ export function CampaignApp({ onFightBattle, readTableSave, onExit }: Props) {
                 {[...view!.events].reverse().map((e, i) => (
                   <li key={`${e.round}-${e.hex.q}-${e.hex.r}-${i}`}>
                     <strong>R{e.round}</strong> · {e.text}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {view!.objectives.length > 0 && (
+            <section className="campaign-panel">
+              <h3>Objectives</h3>
+              <ul className="campaign-objectives">
+                {view!.objectives.map((o) => (
+                  <li key={o.id} className={o.done ? 'is-done' : undefined}>
+                    <span className="campaign-objective-mark">{o.done ? '✓' : '○'}</span>{' '}
+                    {o.text}
+                    <span className="campaign-objective-vp">
+                      {o.count > 1 && !o.done ? ` ${o.progress}/${o.count} · ` : ' '}+{o.vp} VP
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -2654,6 +2654,25 @@ input:focus-visible {
   color: var(--warn, #e8b84a);
 }
 
+.campaign-objectives {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.campaign-objectives li.is-done {
+  color: var(--ink-dim);
+  text-decoration: line-through;
+}
+.campaign-objective-mark {
+  color: var(--accent);
+}
+.campaign-objective-vp {
+  color: var(--warn, #e8b84a);
+}
+
 /* The sensor log: same feed shape, the accent of the scopes not the news. */
 .campaign-sensorlog strong {
   color: var(--accent);

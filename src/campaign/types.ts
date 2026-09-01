@@ -356,8 +356,33 @@ export interface ScenarioForceUnit {
   deliveryVp?: number
 }
 
+/**
+ * A campaign objective (the designer's win-by-objectives roadmap, 10.1):
+ * scenario data naming what a side is trying to do and what it pays.
+ * Evaluated at the round tick (objectives.ts), paid once, announced in the
+ * dispatches. The kinds are the ones the state can already judge; his list
+ * will add to them.
+ */
+export type ObjectiveKind = 'destroy-station' | 'destroy-ships' | 'scout-hex' | 'hold-hex'
+
+export interface CampaignObjective {
+  id: string
+  side: Side
+  kind: ObjectiveKind
+  /** destroy-station: the station to destroy. */
+  stationId?: string
+  /** scout-hex / hold-hex: the hex. */
+  hex?: Hex
+  /** destroy-ships: enemy hulls to kill; hold-hex: consecutive round ticks to hold (default 1). */
+  count?: number
+  vp: number
+  text: string
+}
+
 export interface CampaignScenario {
   name: string
+  /** What each side is trying to do beyond the ledger (objectives.ts). */
+  objectives?: CampaignObjective[]
   /** Campaign length in rounds (1.2: 20–40). */
   rounds: number
   /** Map generation inputs; the generated map itself is stored beside this. */
@@ -531,6 +556,13 @@ export interface CampaignState {
   events: CampaignEvent[]
   /** Both sides' sensor logs, newest last, capped; views filter by side. */
   sensorLog: SensorLogEntry[]
+  /** Objectives already paid (ids), and per-objective progress (hold-hex rounds). */
+  objectivesDone: string[]
+  objectiveProgress: Record<string, number>
+  /** Hulls each side has LOST in battle — the destroy-ships objectives' count. */
+  shipsLost: Record<Side, number>
+  /** Star-system hexes (`q,r` keys) each side's units have entered. */
+  scouted: Record<Side, string[]>
   /** Reinforcements not yet arrived, spawned by the round tick (S3.2). */
   reinforcements: Array<{ arrivesRound: number; side: Side; unit: Unit }>
   /** Set when the campaign ends: the higher ledger, or a draw (10.1). */
