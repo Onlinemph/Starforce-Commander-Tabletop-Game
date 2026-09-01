@@ -171,8 +171,38 @@ export function loadCampaign(text: string): CampaignFile | string {
   } catch (e) {
     return `The journal does not replay: ${e instanceof Error ? e.message : String(e)}`
   }
-  if (JSON.stringify(replayed) !== JSON.stringify(file.state)) {
+  /*
+   * The verify compares only what the stored state HAS: a build that added a
+   * state field since the file was saved (a sensor log, a spotters list)
+   * produces a replay that is a superset, and that is an upgrade, not a
+   * tamper. Every value the file does carry must still match byte for byte,
+   * so a doctored hex or ledger is refused exactly as before — and the
+   * replayed state, not the stored one, is what the loaded file carries, so
+   * the next save is current.
+   */
+  if (!storedMatchesReplay(file.state, replayed)) {
     return 'The stored state does not match the journal replay.'
   }
+  file.state = replayed
   return file
+}
+
+/**
+ * Does the stored state agree with the replay on every field it carries?
+ * Objects may gain keys in the replay (additive fields); arrays must match
+ * element for element; everything else must be equal.
+ */
+export function storedMatchesReplay(stored: unknown, replayed: unknown): boolean {
+  if (Array.isArray(stored)) {
+    if (!Array.isArray(replayed) || replayed.length !== stored.length) return false
+    return stored.every((item, i) => storedMatchesReplay(item, replayed[i]))
+  }
+  if (stored !== null && typeof stored === 'object') {
+    if (replayed === null || typeof replayed !== 'object' || Array.isArray(replayed)) return false
+    const rec = replayed as Record<string, unknown>
+    return Object.entries(stored as Record<string, unknown>).every(
+      ([key, value]) => key in rec && storedMatchesReplay(value, rec[key]),
+    )
+  }
+  return stored === replayed
 }

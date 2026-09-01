@@ -19,11 +19,11 @@ src/*-probe.test.ts
 # developer's disk.
 /data/
 /models/
-# Ship-book importer intermediates: regenerable from the PDFs in one command,
-# and ships.json is the only output that belongs in the repo (see tools/README.md)
-tools/msl.json
-tools/ships_raw.json
-tools/aurelian_raw.json
+# Ship-book importer intermediates. The RAW extractions (ships_raw.json,
+# aurelian_raw.json, msl.json) are deliberately NOT ignored: the book PDFs
+# live outside the repo and once left with a container recycle, and without
+# the raws the canon roster cannot be regenerated. Commit them the next time
+# the books are extracted. ships_final.json is a pure build output.
 tools/ships_final.json
 tools/__pycache__/
 # Point-calibration sweep outputs: regenerable by re-running the harness

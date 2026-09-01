@@ -668,6 +668,28 @@ CIV ships and bases next, then a list of campaign objectives with their
 victory-point values — the objective ladder will build on the raid/assault
 plumbing and INFRASTRUCTURE_VP when it lands.
 
+**Saves survive new state fields (the "fresh campaigns after pulling"
+tax, retired):** every state field added this month — spotters, events,
+the sensor log — made the designer's autosave fail replay-verify, because
+the loader compared the stored state to the replay byte for byte. It now
+compares only what the stored state HAS (`storedMatchesReplay`,
+file.ts): objects may gain keys in the replay, arrays must match element
+for element, every carried value must still be equal. A replay that is a
+superset is an upgrade, not a tamper — and the loaded file carries the
+replayed state, so the next save is current. A doctored ledger, a moved
+hex or a lost unit is refused exactly as before (tests pin all three).
+
+**Roster tooling — partial regeneration, and a reproducibility note:**
+`generate_ships.py` no longer needs the Master Ship Book extraction to
+run: with `ships_raw.json` absent it builds a PARTIAL roster of the
+expansion books present (loudly, on stderr) for merging into the
+committed `src/data/ships.json` by id, never touching the canon forms.
+That is how draft v2 was imported after the book PDFs left with a
+container recycle. The raw extractions are no longer gitignored — commit
+`ships_raw.json`, `aurelian_raw.json` and `msl.json` the next time the
+books are uploaded and extracted, so the whole roster is rebuildable from
+the repo alone.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

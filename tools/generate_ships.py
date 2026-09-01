@@ -8,7 +8,16 @@ combined roster.
 import difflib, json, os, re, sys
 from collections import defaultdict
 
-S = json.load(open('ships_raw.json'))
+# The Master Ship Book extraction. When it is absent the generator builds a
+# PARTIAL roster — only the expansion books present — for merging into the
+# committed src/data/ships.json by id (see docs/border-command.md, "Roster
+# tooling"). The canon forms are never touched by a partial run.
+if os.path.exists('ships_raw.json'):
+    S = json.load(open('ships_raw.json'))
+else:
+    print('WARNING: ships_raw.json absent — building a PARTIAL roster (expansion books '
+          'only); merge the output into src/data/ships.json by id.', file=sys.stderr)
+    S = []
 # Union forms come first in the Master Ship Book, Vallari after; the Master
 # Ship List uses the same split.
 for _s in S:
@@ -141,7 +150,7 @@ def exp7_msl_row(ship):
 # Rows flagged for a later expansion stay in the matching pool: a few of them
 # already have forms in this book, and dropping the row made the fuzzy match
 # hand the form its predecessor's point value.
-M = json.load(open('msl.json'))
+M = json.load(open('msl.json')) if os.path.exists('msl.json') else []
 
 # Doyle's hit-point-based damage levels (Aug 2026, "MASTER SHIP LIST UNION UFS
 # Hit Point BASED DMG LEVELS"). Damage levels are no longer fractions of the

@@ -71,6 +71,30 @@ describe('the campaign file', () => {
     expect(typeof loadCampaign(JSON.stringify(doctored))).toBe('string')
   })
 
+  it('a save from before a state field existed loads, upgraded, while a doctored value is still refused', () => {
+    const file = newCampaign(scenario(), 'c-test-2b')
+    for (let i = 0; i < 5; i++) pass(file)
+    // An older build's save: no sensor log, no dispatches, no spotters.
+    const older = JSON.parse(saveCampaign(file))
+    delete older.state.sensorLog
+    delete older.state.events
+    for (const c of older.state.contacts) delete c.spotters
+    const loaded = loadCampaign(JSON.stringify(older))
+    expect(typeof loaded).not.toBe('string')
+    // The loaded file carries the CURRENT replay, fields restored.
+    expect(JSON.stringify((loaded as CampaignFile).state)).toBe(JSON.stringify(file.state))
+
+    // Missing fields are forgiven; wrong values are not.
+    const doctored = JSON.parse(saveCampaign(file))
+    delete doctored.state.sensorLog
+    doctored.state.vp.A += 5
+    expect(typeof loadCampaign(JSON.stringify(doctored))).toBe('string')
+    // Nor is an array that lost an element.
+    const shortened = JSON.parse(saveCampaign(file))
+    shortened.state.units.pop()
+    expect(typeof loadCampaign(JSON.stringify(shortened))).toBe('string')
+  })
+
   it('unknown fields ride through save and load untouched (Part 9)', () => {
     const file = newCampaign(scenario(), 'c-test-3') as CampaignFile & { futureField?: unknown }
     file.futureField = { fromVersion: 9, note: 'round-trips' }
