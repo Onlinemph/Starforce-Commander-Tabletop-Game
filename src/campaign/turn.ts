@@ -44,7 +44,8 @@ import { pirateRaidTick } from './pirates'
 import { hexesThisPhase, ROUND_PHASES } from './schedule'
 import { shipFormById } from '../data/ships'
 import type { ShipScars } from '../engine/shipState'
-import { deliveryTick, raidTick, settleWinner } from './scoring'
+import { INFRASTRUCTURE_VP, deliveryTick, pushEvent, raidTick, settleWinner } from './scoring'
+import { stationShipId } from './stations'
 import {
   DEFAULT_REPAIR_QUEUE,
   nextInt,
@@ -308,7 +309,33 @@ function applyBattleResult(ctx: DetectionContext, state: CampaignState, record: 
   for (const [key, outcome] of Object.entries(record.result.ships)) {
     const [unitId, shipId] = key.split('/')
     const unit = state.units.find((u) => u.id === unitId)
-    if (!unit) throw new PhaseError(`Battle result names unknown unit ${unitId}.`)
+    if (!unit) {
+      // A station that fought (stations.ts): its damage lands on the
+      // infrastructure record, and its destruction pays the 3.4 table to
+      // the side that took it down — the same price an assault pays.
+      const station = state.infrastructure.find((i) => i.id === unitId && i.formId)
+      if (!station || shipId !== stationShipId(station)) {
+        throw new PhaseError(`Battle result names unknown unit ${unitId}.`)
+      }
+      if (outcome.destroyed && !station.destroyed) {
+        station.destroyed = true
+        delete station.scars
+        const taker: Side = station.side === 'A' ? 'B' : 'A'
+        const value = INFRASTRUCTURE_VP[station.kind] ?? 2
+        state.vp[taker] += value
+        pushEvent(
+          state,
+          station.side,
+          station.hex,
+          `The ${station.kind.replace('-', ' ')} at ${station.hex.q},${station.hex.r} destroyed in battle — ` +
+            `Commander ${taker} gains ${value} VP.`,
+        )
+      } else if (!outcome.destroyed) {
+        if (outcome.scars) station.scars = structuredClone(outcome.scars)
+        else delete station.scars
+      }
+      continue
+    }
     const ship = unit.ships.find((s) => s.id === shipId)
     if (!ship) throw new PhaseError(`Battle result names unknown ship ${key}.`)
     if (outcome.destroyed) {

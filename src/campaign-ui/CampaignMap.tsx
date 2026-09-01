@@ -46,6 +46,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { allHexes, hexDistance, hexKey, inBounds } from '../campaign/hexmap'
 import type { CampaignMap as CampaignMapData, Hex, Side, SpeedTier } from '../campaign/types'
+import { shipFormById } from '../data/ships'
 import type { SideView, ViewedContact } from '../campaign/views'
 import { Rng } from '../engine/dice'
 import { labelHalfWidth, stackLabels, type LabelBox, type LabelObstacle } from '../ui/mapLabels'
@@ -1082,8 +1083,8 @@ export function CampaignMap({
             <circle cx={c.x} cy={c.y} r={13} fill="url(#cm-plate)" opacity={0.55} pointerEvents="auto">
               <title>
                 {`${INFRA_NAME[i.kind] ?? i.kind} · ${mine ? 'yours' : 'enemy, reported'}${
-                  i.destroyed ? ' · destroyed' : ''
-                } · at ${i.hex.q},${i.hex.r}`}
+                  i.formId ? ` · ${shipFormById(i.formId)?.name ?? i.formId} — fights in its hex` : ''
+                }${i.destroyed ? ' · destroyed' : ''} · at ${i.hex.q},${i.hex.r}`}
               </title>
             </circle>
             <circle

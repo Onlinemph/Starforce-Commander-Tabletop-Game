@@ -25,6 +25,7 @@ import { MAX_FLIGHT_SIZE } from '../engine/fighters'
 import { captureScars, scarsAreEmpty } from '../engine/shipState'
 import { terrainAt } from './hexmap'
 import type { DetectionContext } from './detection'
+import { combatants } from './stations'
 import {
   CONTACT_ATTRIBUTES,
   type BattleResult,
@@ -58,10 +59,14 @@ export function hashText(text: string): string {
 // Distinct FIRST words on purpose: deploy() prefixes ship ids with them.
 export const SIDE_LABEL: Record<Side, string> = { A: 'Alpha Command', B: 'Beta Command' }
 
+/** A side's combatants: its units, and any hull station in the fight (stations.ts). */
 function unitsOf(state: CampaignState, engagement: PendingEngagement, side: Side): Unit[] {
-  return engagement.unitIds[side]
-    .map((id) => state.units.find((u) => u.id === id))
-    .filter((u): u is Unit => Boolean(u))
+  return combatants(state, engagement, side)
+}
+
+/** Is this combatant a station (an infrastructure id, not a unit id)? */
+function isStation(state: CampaignState, unit: Unit): boolean {
+  return state.infrastructure.some((i) => i.id === unit.id)
 }
 
 /** How much dossier this side holds on those units — the deploy-order input. */
@@ -153,6 +158,9 @@ export function battleFileFor(
         objective: 'Fight the battle the campaign brought you.',
         facing: i === 0 ? 2 : 6,
         speed: 4,
+        // A station deploys where it stands and never moves: speed 0 for
+        // its hull, the fleet's deployment speed for everything else.
+        speeds: force.flatMap((u) => u.ships.map(() => (isStation(state, u) ? 0 : 4))),
         anchor: { x: i === 0 ? Math.round(size / 6) : Math.round((5 * size) / 6), y: mid },
         spread: spreadOf(force),
         force: ships.map((s) => s.formId),

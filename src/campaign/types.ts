@@ -218,6 +218,17 @@ export interface Infrastructure {
   kind: InfrastructureKind
   hex: Hex
   destroyed: boolean
+  /**
+   * The hull that IS this station on the table (stations.ts): a BASTION
+   * battlestation, a SENTINEL outpost, a GUARDIAN satellite over a colony.
+   * With a hull, an enemy unit in the hex fights the station — engagements
+   * deploy it at speed 0, readback lands its damage here, and destruction
+   * pays the 3.4 table. Without one, the station is abstract and raids and
+   * assaults resolve at the round tick as before.
+   */
+  formId?: string
+  /** The hull's marked boxes between battles (3.2), exactly as a ship's. */
+  scars?: import('../engine/shipState').ShipScars
 }
 
 // ---------------------------------------------------------------------------

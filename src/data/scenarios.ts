@@ -321,6 +321,8 @@ interface SideSetup {
   /** Compass facing (S2.5.2). */
   facing: number
   speed: number
+  /** Per-hull deployment speeds by force index; unset entries take `speed`. */
+  speeds?: number[]
   anchor: Point
   pattern: Point[]
   spread: Point
@@ -653,7 +655,7 @@ function deploy(setups: SideSetup[], bounds: MapBounds, options: SetupOptions): 
           },
           heading: facingToHeading(late ? late.facing : secret ? secret.facing : setup.facing),
         },
-        speed: setup.speed,
+        speed: setup.speeds?.[i] ?? setup.speed,
         // The scenario names one hull as the flagship, and it is the first
         // one it lists (S3.6).
         flagship: setup.flagship === true && i === 0,
@@ -1112,6 +1114,12 @@ export interface CustomScenario {
     facing: number
     /** Announced deployment speed (S2.4.1). */
     speed: number
+    /**
+     * Per-hull deployment speeds by force index, where one side fields
+     * hulls that must start differently — a campaign station at 0 beside
+     * the fleet at 4. Unset entries take `speed`.
+     */
+    speeds?: number[]
     /** Where the first ship sets up; the rest extend along `spread`. */
     anchor: Point
     spread: Point
@@ -1153,6 +1161,7 @@ export function toScenarioEntry(custom: CustomScenario): { scenario: Scenario; s
     side: s.side,
     facing: s.facing,
     speed: s.speed,
+    speeds: s.speeds,
     anchor: s.anchor,
     pattern: [{ x: 0, y: 0 }],
     spread: s.spread,

@@ -17,6 +17,7 @@
 import { hexDistance, hexEquals, hexKey, hexNeighbors, inBounds, terrainAt } from './hexmap'
 import { unitIsCloaked, unitProfile } from './detection'
 import type { DetectionContext } from './detection'
+import { isHullStation, stationUnit } from './stations'
 import { shipFormById } from '../data/ships'
 import {
   CONTACT_ATTRIBUTES,
@@ -76,7 +77,7 @@ function escapeStep(ctx: DetectionContext, from: Hex, enemies: Unit[]): Hex {
  */
 export function checkEngagements(ctx: DetectionContext, state: CampaignState): void {
   const contested = new Map<string, { hex: Hex; A: Unit[]; B: Unit[] }>()
-  for (const unit of state.units) {
+  const place = (unit: Unit) => {
     const key = hexKey(unit.hex)
     let entry = contested.get(key)
     if (!entry) {
@@ -85,14 +86,24 @@ export function checkEngagements(ctx: DetectionContext, state: CampaignState): v
     }
     entry[unit.side].push(unit)
   }
+  for (const unit of state.units) place(unit)
+  // A station with a hull stands in its hex as a combatant (stations.ts):
+  // it is on the charts, so the enemy always knows it is there — and it
+  // never withdraws, never hides.
+  const stationIds = new Set<string>()
+  for (const station of state.infrastructure) {
+    if (!isHullStation(station)) continue
+    stationIds.add(station.id)
+    place(stationUnit(station))
+  }
 
   for (const { hex, A, B } of [...contested.values()]) {
     if (A.length === 0 || B.length === 0) continue
     // A hex already waiting on the table does not stack a second battle.
     if (state.pendingBattles.some((p) => hexEquals(p.hex, hex))) continue
 
-    const aKnown = A.some((u) => sideKnows(state, 'B', u))
-    const bKnown = B.some((u) => sideKnows(state, 'A', u))
+    const aKnown = A.some((u) => stationIds.has(u.id) || sideKnows(state, 'B', u))
+    const bKnown = B.some((u) => stationIds.has(u.id) || sideKnows(state, 'A', u))
 
     let ambushBy: Side | null = null
     if (!aKnown && !bKnown) continue // ships passing in the night, both dark

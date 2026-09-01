@@ -723,6 +723,31 @@ colony or the fleet base — so his list becomes data entry: new kinds
 (land troops, destroy shipping by value, a mobile supply base) are one
 `achieved` case each on the same scaffold.
 
+**Stations with hulls — raids and assaults fight on the table:** campaign
+infrastructure began as a hex with a repair budget; the designer's
+Expansion 6 stations turn it into a combatant. An infrastructure entry
+that names a `formId` (stations.ts) — a BASTION battlestation, a SENTINEL
+or TORTUGA outpost, a GUARDIAN satellite over a colony — stands in its hex
+as a one-ship unit that never moves: an enemy unit entering the hex
+triggers an engagement (the station is on the charts, so it is always
+known; it never withdraws and never hides, and a cloaked intruder's
+posture still decides an ambush), the handoff deploys it at speed 0 beside
+whatever fleet is there (the scenario format gained per-hull `speeds` for
+exactly this), readback lands its scars on the infrastructure record box
+for box, and its destruction pays the 3.4 table to the side that took it
+down. The orders read the guns' verdict instead of rolling: against a
+gunned station an **assault** pays on the station's death through
+readback and the mission stands until then; a **raid** pays its half
+value once the station has been bloodied — any scar aboard — and clears.
+Stations without a hull resolve at the round tick as before. The enemy's
+charts show a station's class, never its damage. The launch scenarios now
+field them: SENTINEL III and TORTUGA II over the Border Watch outposts, a
+BASTION II at every fleet base, a BLACKREACH III at the Vallari base in
+The Long Patrol, and a GUARDIAN II satellite over the Delta Videus
+colony — the "limited but relatively cheap protection for exposed
+colonies" his notes describe. The solo doctrine's assaults now end at a
+battlestation's guns, which is the point.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

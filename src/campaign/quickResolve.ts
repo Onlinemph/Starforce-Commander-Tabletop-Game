@@ -21,6 +21,7 @@ import type { GameSetup } from '../data/savedGame'
 import type { AiDifficulty, AiPersonality } from '../engine/ai'
 import { captureScars, scarsAreEmpty } from '../engine/shipState'
 import { battleFileFor, hashText, readback } from './handoff'
+import { combatants } from './stations'
 import type { DetectionContext } from './detection'
 import type { BattleRecord, CampaignState, PendingEngagement, Side, Unit } from './types'
 
@@ -101,10 +102,7 @@ export function quickResolve(
   const battle = battleFileFor(ctx, state, campaignId, engagement)
   const fileHash = hashText(JSON.stringify(battle))
 
-  const unitsOf = (side: Side) =>
-    engagement.unitIds[side]
-      .map((id) => state.units.find((u) => u.id === id))
-      .filter((u): u is Unit => Boolean(u))
+  const unitsOf = (side: Side) => combatants(state, engagement, side)
   const personality: Partial<Record<string, AiPersonality>> = {
     'Alpha Command': temperamentOf(unitsOf('A')),
     'Beta Command': temperamentOf(unitsOf('B')),

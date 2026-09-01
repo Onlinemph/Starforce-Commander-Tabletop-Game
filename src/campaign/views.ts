@@ -185,9 +185,11 @@ export function viewFor(
     map: structuredClone(map),
     units: structuredClone(state.units.filter((u) => u.side === side)),
     infrastructure: structuredClone(state.infrastructure.filter((i) => i.side === side)),
-    knownEnemyInfrastructure: structuredClone(
-      state.infrastructure.filter((i) => i.side !== side && i.kind !== 'listening-post'),
-    ),
+    // The charts show the enemy's stations and what class they are (3.4);
+    // how badly one is hurt is intelligence, and stays behind the wall.
+    knownEnemyInfrastructure: state.infrastructure
+      .filter((i) => i.side !== side && i.kind !== 'listening-post')
+      .map(({ scars: _scars, ...known }) => structuredClone(known)),
     contacts,
     engagements,
     incoming,

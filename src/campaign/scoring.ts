@@ -9,6 +9,7 @@
  * names one, the moment a ledger crosses the threshold.
  */
 
+import { scarsAreEmpty } from '../engine/shipState'
 import { logSensor } from './detection'
 import { hexDistance, hexEquals } from './hexmap'
 import type { CampaignScenario, CampaignState, Side } from './types'
@@ -63,6 +64,20 @@ export function raidTick(state: CampaignState): void {
     if (!hexEquals(unit.hex, station.hex)) continue // still inbound
     const kind = station.kind.replace('-', ' ')
     const at = `${station.hex.q},${station.hex.r}`
+    if (station.formId) {
+      // A gunned station (stations.ts): the guns decide. An assault pays on
+      // the station's destruction, through battle readback, and the
+      // mission stands until then. A raid is a hit-and-run: it pays once
+      // the station has been bloodied — any scar aboard — and clears.
+      if (mission.type === 'assault') continue
+      if (!station.scars || scarsAreEmpty(station.scars)) continue
+      delete unit.order.mission
+      const value = INFRASTRUCTURE_VP[station.kind] ?? 2
+      const vp = Math.ceil(value / 2)
+      state.vp[unit.side] += vp
+      pushEvent(state, station.side, station.hex, `The ${kind} at ${at} raided under its own guns — Commander ${unit.side} gains ${vp} VP.`)
+      continue
+    }
     const defended = state.units.some(
       (u) => u.side === station.side && hexDistance(u.hex, station.hex) <= 1,
     )

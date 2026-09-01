@@ -33,8 +33,9 @@ export function borderWatch(): CampaignScenario {
       ],
     },
     infrastructure: [
-      { id: 'a-outpost', side: 'A', kind: 'outpost', hex: { q: 3, r: 10 } },
-      { id: 'b-outpost', side: 'B', kind: 'outpost', hex: { q: 26, r: 2 } },
+      // Stations with hulls (stations.ts): an enemy in the hex fights them.
+      { id: 'a-outpost', side: 'A', kind: 'outpost', hex: { q: 3, r: 10 }, formId: 'union-sentinel-iii-class-outpost' },
+      { id: 'b-outpost', side: 'B', kind: 'outpost', hex: { q: 26, r: 2 }, formId: 'vallari-tortuga-ii-class-outpost' },
     ],
     // The objectives scaffold (objectives.ts), seeded from the designer's
     // roadmap: scout the enemy's outpost, bleed two of their hulls.
@@ -83,8 +84,11 @@ export function raidOnDeltaVideus(): CampaignScenario {
       ],
     },
     infrastructure: [
-      { id: 'a-base', side: 'A', kind: 'fleet-base', hex: { q: 6, r: 10 } },
-      { id: 'a-colony', side: 'A', kind: 'colony', hex: { q: 26, r: 4 } },
+      { id: 'a-base', side: 'A', kind: 'fleet-base', hex: { q: 6, r: 10 }, formId: 'union-bastion-ii-class-battlestation' },
+      // A defense satellite over the colony — "limited but relatively cheap
+      // protection for exposed colonies on the frontier from pirates and
+      // raiders" (the designer's notes).
+      { id: 'a-colony', side: 'A', kind: 'colony', hex: { q: 26, r: 4 }, formId: 'union-guardian-ii-class-defense-satellite' },
       { id: 'a-beacon-1', side: 'A', kind: 'jump-beacon', hex: { q: 10, r: 14 } },
       { id: 'a-beacon-2', side: 'A', kind: 'jump-beacon', hex: { q: 18, r: 8 } },
       { id: 'a-ears', side: 'A', kind: 'listening-post', hex: { q: 20, r: 2 } },
@@ -140,9 +144,9 @@ export function theLongPatrol(): CampaignScenario {
       ],
     },
     infrastructure: [
-      { id: 'a-base', side: 'A', kind: 'fleet-base', hex: { q: 4, r: 14 } },
+      { id: 'a-base', side: 'A', kind: 'fleet-base', hex: { q: 4, r: 14 }, formId: 'union-bastion-ii-class-battlestation' },
       { id: 'a-beacon', side: 'A', kind: 'jump-beacon', hex: { q: 16, r: 17 } },
-      { id: 'b-base', side: 'B', kind: 'fleet-base', hex: { q: 36, r: 8 } },
+      { id: 'b-base', side: 'B', kind: 'fleet-base', hex: { q: 36, r: 8 }, formId: 'vallari-blackreach-iii-class-battlestation' },
       { id: 'b-beacon', side: 'B', kind: 'jump-beacon', hex: { q: 26, r: 10 } },
     ],
     objectives: [
