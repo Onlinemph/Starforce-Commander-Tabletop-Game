@@ -627,7 +627,23 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
     error('A ship needs a maximum speed of at least 1 (C1.2.7).')
   }
   if (form.sublight.maxSpeed > 8) error('No ship may exceed speed 8 (C1.2.7).')
-  if (form.reactors.length === 0) error('A ship needs at least one reactor (B2.1.1).')
+  /*
+   * A defense satellite ("Civilians, Support and Pirates" draft v2's
+   * GUARDIAN and CUTLASS: "truly simple units") prints NO reactors at all —
+   * no drives of any kind either, and every working line runs on its
+   * printed FREE value, so the design has no power economy to validate.
+   * Only that exact shape is exempt from B2.1.1; a driven hull without a
+   * reactor is still a printing error.
+   */
+  const powerlessSatellite =
+    form.reactors.length === 0 &&
+    form.ftlDriveBoxes === 0 &&
+    form.sublight.driveBoxes === 0 &&
+    form.sublight.maxSpeed === 0 &&
+    form.functions.some((l) => l.freeValue > 0)
+  if (form.reactors.length === 0 && !powerlessSatellite) {
+    error('A ship needs at least one reactor (B2.1.1).')
+  }
   /*
    * Main reactor durability scales with the hull, and the designer's own
    * builder sheet (V41) prints the exact table — boxes per power point, odd
@@ -792,7 +808,9 @@ export function validateDesign(form: ShipForm): DesignProblem[] {
   const cheapest = form.functions
     .filter((l) => l.steps.length > 0)
     .reduce((n, l) => Math.min(n, l.steps[0].powerCost), Infinity)
-  if (cheapest !== Infinity && cheapest > available) {
+  if (cheapest !== Infinity && cheapest > available && !powerlessSatellite) {
+    // A powerless satellite's odd purchasable step (the GUARDIAN's 1-power
+    // SIF/IDF) is simply a line the unit never fills; its guns run free.
     error(`No FUNCTIONS line can be powered: the ship makes only ${available} power (B2.2).`)
   }
 

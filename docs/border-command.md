@@ -396,6 +396,34 @@ refuses hopeless odds (past triple strength) and flies for the door — that
 ship reads back DISENGAGED and is pushed a hex toward home, not fresh out
 of nowhere.
 
+**Civilians, Support and Pirates draft v2 (the "Traders, Freighters and
+Pirates" book, now titled Expansion 6 — supersedes v21 below):** twenty
+record sheets through the same pipeline, replacing the nine v21 forms per
+the designer's instruction. The seven same-name classes re-import from the
+new sheets; the BASTION and VIGILANT are re-issued as **BASTION I/II** and
+**SENTINEL II/III**; and eleven sheets are new: the **O'NEIL habitat**,
+**GALILEO I**, the Union **GUARDIAN I/II** and Vallari **CUTLASS I**
+defense satellites, and the Vallari frontier stations — **TORTUGA I/II**
+outposts and **BLACKREACH II/III** battlestations (roster 123: Union 50,
+Vallari 42, Aurelian 31). New printed ground: the defense satellites carry
+NO reactors at all — every working line runs on its printed free value, so
+their guns arm without a power phase — and the validator now admits
+exactly that shape (no reactors, no drives, free-running lines) and
+nothing looser. Draft defects recorded as errata on the forms: the
+HORIZON/WARFARER STBD banner bleed persists; the SENTINELs inherit the
+VIGILANT's power-total misprint (prints 5, draws 6); the GALILEO II's
+banner shields grew to 18/16/16/16 but the drawn tracks stayed at 60
+boxes; the V-6H wrench-vs-strip DC disagreement remains (strip wins); and
+the **"(Point Value 100)" note sits on the BASTION I sheet but describes
+the BASTION II** — the v21 BASTION that sheet was cloned from, which the
+model prices at 99.5 against the Mark I's 40.5, so the printed 100 rides
+with the Mark II and the Mark I takes the model price. One twin-battery
+importer bug found and fixed: two identical TYPE-29 systems on the
+BLACKREACH II collapsed onto one arming line (dict equality vs identity in
+the line pairing). Note: the original book PDFs left the session with a
+container recycle, so this import ran with the canon 103 merged from the
+committed roster rather than regenerated — byte-identical by construction.
+
 **Expansion 7 — Civilians, Support and Pirates (draft v21, imported):** all
 nine record sheets, through the same extractor and generator as the Master
 Ship Book — RUNNER, MAERSK I, HORIZON and WARFARER freighters, the GALILEO

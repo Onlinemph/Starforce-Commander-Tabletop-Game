@@ -1,6 +1,480 @@
 [
  {
-  "page": 5,
+  "page": 6,
+  "name": "O\u2019NEIL-class Habitat",
+  "sizeClass": 10,
+  "accelPerPhase": 0,
+  "stressRating": 8,
+  "damageControl": 2,
+  "totalPower": 7,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3650,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     5,
+     5
+    ],
+    "boxes": 10
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     5,
+     5
+    ],
+    "boxes": 10
+   },
+   {
+    "label": "C MAIN",
+    "points": [
+     5,
+     5
+    ],
+    "boxes": 10
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     5
+    ],
+    "boxes": 5
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [],
+  "_spdCols": [],
+  "turn": [],
+  "driveBoxes": 0,
+  "_driveBoxX": [],
+  "shields": {
+   "F": 20,
+   "A": 20,
+   "P": 20,
+   "S": 20
+  },
+  "_blue": 80,
+  "_green": 8,
+  "_armor": 0,
+  "shieldGen": 2,
+  "systems": {
+   "SCNC": 3,
+   "SENS": 2,
+   "TRAC": 2,
+   "TRAN": 4,
+   "SHTL": 5,
+   "QTRS": 14,
+   "CRGO": 5
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 10,
+  "marines": 6,
+  "weapons": [
+   {
+    "name": "LNC-447 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 7,
   "name": "RUNNER-class Light Freighter",
   "sizeClass": 3,
   "accelPerPhase": 1,
@@ -20,13 +494,13 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -39,7 +513,7 @@
       "free": false,
       "value": 1,
       "word": "EMER",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -52,20 +526,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -78,13 +552,13 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 85.03199768066406
+      "x": 85.5999984741211
      }
     ]
    },
@@ -97,25 +571,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -128,25 +602,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -159,19 +633,19 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -184,13 +658,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    }
@@ -244,23 +718,23 @@
   ],
   "_spdCols": [
    {
-    "x": 110.37999725341797,
+    "x": 110.62000274658203,
     "speed": 4
    },
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -273,9 +747,9 @@
   ],
   "driveBoxes": 3,
   "_driveBoxX": [
-   110.37999725341797,
-   167.97999572753906,
-   225.5800018310547
+   110.62000274658203,
+   168.17999267578125,
+   225.6999969482422
   ],
   "shields": {
    "F": 8,
@@ -429,7 +903,7 @@
   ]
  },
  {
-  "page": 6,
+  "page": 8,
   "name": "MAERSK I-class Old FREIGHTER(PV6)",
   "sizeClass": 5,
   "accelPerPhase": 1,
@@ -449,13 +923,13 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -468,20 +942,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -494,7 +968,7 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      }
     ]
    },
@@ -507,13 +981,13 @@
       "free": true,
       "value": 0,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -526,13 +1000,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -545,7 +1019,7 @@
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    }
@@ -598,19 +1072,19 @@
   ],
   "_spdCols": [
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -622,10 +1096,10 @@
   ],
   "driveBoxes": 4,
   "_driveBoxX": [
-   139.17999267578125,
-   167.97999572753906,
-   196.77999877929688,
-   225.5800018310547
+   139.14999389648438,
+   168.17999267578125,
+   196.6999969482422,
+   225.6999969482422
   ],
   "shields": {
    "F": 6,
@@ -762,7 +1236,7 @@
   ]
  },
  {
-  "page": 7,
+  "page": 9,
   "name": "HORIZON-class Medium Freighter",
   "sizeClass": 5,
   "accelPerPhase": 1,
@@ -782,13 +1256,13 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -801,20 +1275,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -827,13 +1301,13 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 85.03199768066406
+      "x": 85.5999984741211
      }
     ]
    },
@@ -846,19 +1320,19 @@
       "free": true,
       "value": 0,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -871,13 +1345,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    }
@@ -930,19 +1404,19 @@
   ],
   "_spdCols": [
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -954,10 +1428,10 @@
   ],
   "driveBoxes": 4,
   "_driveBoxX": [
-   139.17999267578125,
-   167.97999572753906,
-   196.77999877929688,
-   225.5800018310547
+   139.14999389648438,
+   168.17999267578125,
+   196.6999969482422,
+   225.6999969482422
   ],
   "shields": {
    "F": 8,
@@ -1112,7 +1586,7 @@
   ]
  },
  {
-  "page": 8,
+  "page": 10,
   "name": "WARFARER-class Large Freighter",
   "sizeClass": 7,
   "accelPerPhase": 1,
@@ -1132,13 +1606,13 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -1151,20 +1625,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -1177,7 +1651,7 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      }
     ]
    },
@@ -1190,19 +1664,19 @@
       "free": true,
       "value": 0,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -1215,13 +1689,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    }
@@ -1273,15 +1747,15 @@
   ],
   "_spdCols": [
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -1292,9 +1766,9 @@
   ],
   "driveBoxes": 3,
   "_driveBoxX": [
-   167.97999572753906,
-   196.77999877929688,
-   225.5800018310547
+   168.17999267578125,
+   196.6999969482422,
+   225.6999969482422
   ],
   "shields": {
    "F": 10,
@@ -1483,16 +1957,16 @@
   ]
  },
  {
-  "page": 9,
-  "name": "BASTION-class Battlestation",
+  "page": 11,
+  "name": "BASTION I-class Battlestation",
   "sizeClass": 8,
   "accelPerPhase": 0,
   "stressRating": 5,
   "damageControl": 6,
-  "totalPower": 9,
-  "totalBatteries": 3,
+  "totalPower": 7,
+  "totalBatteries": 2,
   "availability": "rare",
-  "year": 3660,
+  "year": 3648,
   "functions": [
    {
     "label": "SIF/IDF",
@@ -1503,32 +1977,26 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
-     },
-     {
-      "free": false,
-      "value": 3,
-      "word": null,
-      "x": 153.6999969482422
+      "x": 126.1500015258789
      }
     ]
    },
@@ -1540,50 +2008,26 @@
      {
       "free": false,
       "value": null,
-      "word": null,
-      "x": 100.18000030517578
-     },
-     {
-      "free": false,
-      "value": null,
       "word": "F",
-      "x": 110.86000061035156
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 139.05999755859375
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 149.74000549316406
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 177.94000244140625
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 188.6199951171875
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 216.82000732421875
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 227.5
+      "x": 178.17999267578125
      }
     ]
    },
@@ -1595,50 +2039,26 @@
      {
       "free": false,
       "value": null,
-      "word": null,
-      "x": 100.18000030517578
-     },
-     {
-      "free": false,
-      "value": null,
       "word": "F",
-      "x": 110.86000061035156
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 139.05999755859375
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 149.74000549316406
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 177.94000244140625
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 188.6199951171875
-     },
-     {
-      "free": false,
-      "value": null,
-      "word": null,
-      "x": 216.82000732421875
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 227.5
+      "x": 178.17999267578125
      }
     ]
    },
@@ -1651,19 +2071,19 @@
       "free": true,
       "value": 2,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
-      "value": 5,
+      "value": 4,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
-      "value": 8,
+      "value": 6,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -1676,13 +2096,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -1695,25 +2115,25 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 179.6199951171875
+      "x": 179.6699981689453
      }
     ]
    },
@@ -1726,25 +2146,25 @@
       "free": true,
       "value": 2,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 5,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 7,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 10,
       "word": null,
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -1757,13 +2177,13 @@
       "free": true,
       "value": 2,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    }
@@ -1794,28 +2214,19 @@
     "boxes": 6
    },
    {
-    "label": "SL REAC",
+    "label": "AUX PWR",
     "points": [
-     2
+     3
     ],
-    "boxes": 2
+    "boxes": 3
    },
    {
-    "label": "AUX PWR",
+    "label": "BATTERY",
     "points": [
      2,
      2
     ],
     "boxes": 4
-   },
-   {
-    "label": "BATTERY",
-    "points": [
-     1,
-     1,
-     1
-    ],
-    "boxes": 3
    }
   ],
   "maxAccelPerPhase": 0,
@@ -1826,7 +2237,7 @@
   ],
   "_spdCols": [
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -1835,8 +2246,832 @@
   ],
   "driveBoxes": 2,
   "_driveBoxX": [
-   225.5800018310547,
-   235.5399932861328
+   225.6999969482422,
+   236.22999572753906
+  ],
+  "shields": {
+   "F": 15,
+   "A": 15,
+   "P": 15,
+   "S": 15
+  },
+  "_blue": 60,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 5,
+   "SENS": 3,
+   "TRAC": 3,
+   "TRAN": 3,
+   "SHTL": 6,
+   "QTRS": 6,
+   "SPCL": 3,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 6
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 5
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 12,
+  "marines": 24,
+  "weapons": [
+   {
+    "name": "MK-3 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-447 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "name": "LNC-127/54 LIGHT PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 4,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE SPECIAL SYSTEMS: The 4 Special System (SPCL)  boxes are the base\u2019s Repair systems. While not  useful in combat they are important during a  campaign for repairing friendly starships. (Point Value 100)"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 12,
+  "name": "BASTION II-class Battlestation",
+  "sizeClass": 8,
+  "accelPerPhase": 0,
+  "stressRating": 5,
+  "damageControl": 6,
+  "totalPower": 9,
+  "totalBatteries": 3,
+  "availability": "rare",
+  "year": 3661,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 153.64999389648438
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 111.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 139.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 150.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 178.17999267578125
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 189.1699981689453
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 216.6999969482422
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 227.6999969482422
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 111.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 139.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 150.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 178.17999267578125
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 189.1699981689453
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 216.6999969482422
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 227.6999969482422
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 179.6699981689453
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 7,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 10,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "LT PHAS",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "C MAIN",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     3,
+     3,
+     3
+    ],
+    "boxes": 9
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   }
+  ],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20
+  ],
+  "driveBoxes": 2,
+  "_driveBoxX": [
+   225.6999969482422,
+   236.22999572753906
   ],
   "shields": {
    "F": 18,
@@ -2312,14 +3547,14 @@
     "spcl": null,
     "traits": [
      "PREC 0",
-     "PD MODE SPECIAL SYSTEMS: The 4 Special System (SPCL)  boxes are the base\u2019s Repair systems. While not  useful in combat they are important during a  campaign for repairing friendly starships. (Point Value 100)"
+     "PD MODE SPECIAL SYSTEMS: The 4 Special System (SPCL)  boxes are the base\u2019s Repair systems. While not  useful in combat they are important during a  campaign for repairing friendly starships."
     ]
    }
   ]
  },
  {
-  "page": 10,
-  "name": "VIGILANT-class Outpost",
+  "page": 13,
+  "name": "SENTINEL II-class Outpost",
   "sizeClass": 3,
   "accelPerPhase": 1,
   "stressRating": 4,
@@ -2327,7 +3562,7 @@
   "totalPower": 5,
   "totalBatteries": 1,
   "availability": "rare",
-  "year": 3660,
+  "year": 3647,
   "functions": [
    {
     "label": "ACC/DEC",
@@ -2338,7 +3573,7 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -2351,7 +3586,7 @@
       "free": false,
       "value": 1,
       "word": "EMER",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -2364,20 +3599,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -2390,25 +3625,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -2421,25 +3656,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -2450,21 +3685,21 @@
     "circles": [
      {
       "free": true,
-      "value": 3,
+      "value": 2,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
-      "value": 5,
+      "value": 4,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
-      "value": 7,
+      "value": 6,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -2477,13 +3712,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -2496,13 +3731,13 @@
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -2515,13 +3750,13 @@
       "free": true,
       "value": 2,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -2534,13 +3769,13 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    }
@@ -2593,11 +3828,11 @@
   ],
   "_spdCols": [
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -2607,10 +3842,643 @@
   ],
   "driveBoxes": 4,
   "_driveBoxX": [
-   196.77999877929688,
-   206.74000549316406,
-   227.25999450683594,
-   237.22000122070312
+   196.6999969482422,
+   207.1999969482422,
+   227.1999969482422,
+   237.72999572753906
+  ],
+  "shields": {
+   "F": 12,
+   "A": 12,
+   "P": 12,
+   "S": 12
+  },
+  "_blue": 48,
+  "_green": 8,
+  "_armor": 0,
+  "shieldGen": 2,
+  "systems": {
+   "SCNC": 3,
+   "SENS": 3,
+   "TRAC": 1,
+   "TRAN": 1,
+   "SHTL": 1,
+   "QTRS": 2,
+   "CRGO": 4
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 2,
+  "marines": 3,
+  "weapons": [
+   {
+    "name": "MK-3 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-447 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "name": "LNC-127/54 LIGHT PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 4,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 14,
+  "name": "SENTINEL III-class Outpost",
+  "sizeClass": 3,
+  "accelPerPhase": 1,
+  "stressRating": 4,
+  "damageControl": 2,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "rare",
+  "year": 3660,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": "EMER",
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 3,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 5,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 7,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "LT PHAS",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 0,
+  "stressAccel": 1,
+  "spd": [
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 196.6999969482422,
+    "speed": 1
+   },
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   196.6999969482422,
+   207.1999969482422,
+   227.1999969482422,
+   237.72999572753906
   ],
   "shields": {
    "F": 14,
@@ -2955,12 +4823,556 @@
   ]
  },
  {
-  "page": 11,
-  "name": "GALILEO II-class Transport",
+  "page": 15,
+  "name": "GUARDIAN I-class Defense Satellite",
+  "sizeClass": 1,
+  "accelPerPhase": 0,
+  "stressRating": 1,
+  "damageControl": 0,
+  "totalPower": 0,
+  "totalBatteries": 0,
+  "availability": "common",
+  "year": 3646,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 3,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   }
+  ],
+  "power": [],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [],
+  "_spdCols": [],
+  "turn": [],
+  "driveBoxes": 0,
+  "_driveBoxX": [],
+  "shields": {
+   "F": 8,
+   "A": 8,
+   "P": 8,
+   "S": 8
+  },
+  "_blue": 32,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 1
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 0,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "MK-3 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-27/2 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 1,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 2,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 16,
+  "name": "GUARDIAN II-class Defense Satellite",
+  "sizeClass": 1,
+  "accelPerPhase": 0,
+  "stressRating": 1,
+  "damageControl": 0,
+  "totalPower": 0,
+  "totalBatteries": 0,
+  "availability": "common",
+  "year": 3667,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 6,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   }
+  ],
+  "power": [],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [],
+  "_spdCols": [],
+  "turn": [],
+  "driveBoxes": 0,
+  "_driveBoxX": [],
+  "shields": {
+   "F": 10,
+   "A": 10,
+   "P": 10,
+   "S": 10
+  },
+  "_blue": 40,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 2
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 0,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "MK-5 A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 16,
+      "band": "red",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 17,
+      "max": 24,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+2",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "LNC-27/2 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 17,
+  "name": "GALILEO I-class Transport",
   "sizeClass": 4,
   "accelPerPhase": 1,
   "stressRating": 6,
-  "damageControl": 2,
+  "damageControl": 3,
   "totalPower": 7,
   "totalBatteries": 1,
   "availability": "common",
@@ -2975,19 +5387,19 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -3000,19 +5412,19 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 3,
       "word": "EMER",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -3025,20 +5437,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -3051,19 +5463,19 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 85.03199768066406
+      "x": 85.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 95.61599731445312
+      "x": 96.625
      }
     ]
    },
@@ -3076,25 +5488,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -3107,25 +5519,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -3138,19 +5550,19 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -3163,13 +5575,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -3182,13 +5594,13 @@
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    }
@@ -3246,31 +5658,31 @@
   ],
   "_spdCols": [
    {
-    "x": 52.75199890136719,
+    "x": 52.57500076293945,
     "speed": 6
    },
    {
-    "x": 81.552001953125,
+    "x": 81.5999984741211,
     "speed": 5
    },
    {
-    "x": 110.37999725341797,
+    "x": 110.62000274658203,
     "speed": 4
    },
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -3285,11 +5697,11 @@
   ],
   "driveBoxes": 5,
   "_driveBoxX": [
-   52.75199890136719,
-   81.552001953125,
-   139.17999267578125,
-   167.97999572753906,
-   225.5800018310547
+   52.57500076293945,
+   81.5999984741211,
+   139.14999389648438,
+   168.17999267578125,
+   225.6999969482422
   ],
   "shields": {
    "F": 14,
@@ -3457,7 +5869,514 @@
   ]
  },
  {
-  "page": 12,
+  "page": 18,
+  "name": "GALILEO II-class Transport",
+  "sizeClass": 4,
+  "accelPerPhase": 1,
+  "stressRating": 6,
+  "damageControl": 3,
+  "totalPower": 7,
+  "totalBatteries": 1,
+  "availability": "common",
+  "year": 3668,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": "EMER",
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "FTL DRV",
+    "color": "#00b050",
+    "y": 141,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 85.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 96.625
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "PHASER",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     2,
+     2
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   },
+   {
+    "label": "FTL DRV",
+    "points": [],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 2,
+  "safeAccel": 2,
+  "stressAccel": 1,
+  "spd": [
+   6,
+   5,
+   4,
+   3,
+   2,
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 52.57500076293945,
+    "speed": 6
+   },
+   {
+    "x": 81.5999984741211,
+    "speed": 5
+   },
+   {
+    "x": 110.62000274658203,
+    "speed": 4
+   },
+   {
+    "x": 139.14999389648438,
+    "speed": 3
+   },
+   {
+    "x": 168.17999267578125,
+    "speed": 2
+   },
+   {
+    "x": 196.6999969482422,
+    "speed": 1
+   },
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   0,
+   0,
+   25,
+   30,
+   30,
+   35,
+   35
+  ],
+  "driveBoxes": 5,
+  "_driveBoxX": [
+   52.57500076293945,
+   81.5999984741211,
+   139.14999389648438,
+   168.17999267578125,
+   225.6999969482422
+  ],
+  "shields": {
+   "F": 18,
+   "A": 16,
+   "P": 16,
+   "S": 16
+  },
+  "_blue": 60,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 1,
+   "SENS": 3,
+   "TRAC": 3,
+   "TRAN": 3,
+   "SHTL": 4,
+   "QTRS": 2,
+   "CRGO": 12
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 8,
+  "marines": 9,
+  "weapons": [
+   {
+    "name": "LNC-500 PHASER",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 19,
   "name": "V-6H SALVAGE-class Transport",
   "sizeClass": 4,
   "accelPerPhase": 2,
@@ -3477,25 +6396,25 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -3508,19 +6427,19 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 3,
       "word": "EMER",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -3533,20 +6452,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -3559,13 +6478,13 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 85.03199768066406
+      "x": 85.5999984741211
      }
     ]
    },
@@ -3578,25 +6497,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -3609,25 +6528,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -3640,19 +6559,19 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -3665,64 +6584,32 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
-     }
-    ]
-   },
-   {
-    "label": "A/MAT TRP",
-    "color": "#ff0000",
-    "y": 207,
-    "circles": [
-     {
-      "free": false,
-      "value": 2,
-      "word": null,
-      "x": 100.18000030517578
-     }
-    ]
-   },
-   {
-    "label": "T-37 DISR",
-    "color": "#ff0000",
-    "y": 220,
-    "circles": [
-     {
-      "free": false,
-      "value": 2,
-      "word": null,
-      "x": 100.18000030517578
-     },
-     {
-      "free": false,
-      "value": 4,
-      "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
    {
     "label": "T-29 DISR",
     "color": "#ff0000",
-    "y": 233,
+    "y": 207,
     "circles": [
      {
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    }
@@ -3779,27 +6666,27 @@
   ],
   "_spdCols": [
    {
-    "x": 81.552001953125,
+    "x": 81.5999984741211,
     "speed": 5
    },
    {
-    "x": 110.37999725341797,
+    "x": 110.62000274658203,
     "speed": 4
    },
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -3813,10 +6700,10 @@
   ],
   "driveBoxes": 4,
   "_driveBoxX": [
-   81.552001953125,
-   139.17999267578125,
-   167.97999572753906,
-   225.5800018310547
+   81.5999984741211,
+   139.14999389648438,
+   168.17999267578125,
+   225.6999969482422
   ],
   "shields": {
    "F": 13,
@@ -3835,7 +6722,7 @@
    "TRAN": 3,
    "SHTL": 1,
    "QTRS": 2,
-   "CRGO": 10
+   "CRGO": 8
   },
   "structure": [
    {
@@ -3892,7 +6779,7 @@
    }
   ],
   "shuttles": 2,
-  "marines": 8,
+  "marines": 10,
   "weapons": [
    {
     "name": "TYPE-29 GRAVITIC DISRUPTOR",
@@ -3987,7 +6874,7 @@
   ]
  },
  {
-  "page": 13,
+  "page": 20,
   "name": "V-5H CORSAIR-class Fast Transport",
   "sizeClass": 3,
   "accelPerPhase": 2,
@@ -4007,37 +6894,37 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 4,
       "word": null,
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": 5,
       "word": null,
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      },
      {
       "free": false,
       "value": 6,
       "word": null,
-      "x": 203.86000061035156
+      "x": 204.1999969482422
      }
     ]
    },
@@ -4050,19 +6937,19 @@
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 2,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": 3,
       "word": "EMER",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      }
     ]
    },
@@ -4075,20 +6962,20 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 238.77999877929688
+      "x": 239.22000122070312
      }
     ]
    },
    {
     "label": "BTY RECH",
     "color": "#00b050",
-    "y": 127,
+    "y": 128,
     "circles": [
      {
       "free": false,
       "value": 1,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -4101,19 +6988,19 @@
       "free": false,
       "value": null,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 85.03199768066406
+      "x": 85.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": null,
-      "x": 95.61599731445312
+      "x": 96.625
      }
     ]
    },
@@ -4126,25 +7013,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -4157,25 +7044,25 @@
       "free": false,
       "value": null,
       "word": "F",
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": null,
       "word": "P",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      },
      {
       "free": false,
       "value": null,
       "word": "S",
-      "x": 152.02000427246094
+      "x": 152.14999389648438
      },
      {
       "free": false,
       "value": null,
       "word": "A",
-      "x": 177.94000244140625
+      "x": 178.17999267578125
      }
     ]
    },
@@ -4188,19 +7075,19 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 5,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -4213,13 +7100,13 @@
       "free": true,
       "value": null,
       "word": "NRM",
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": null,
       "word": "MAX",
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    },
@@ -4232,7 +7119,7 @@
       "free": false,
       "value": 2,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      }
     ]
    },
@@ -4245,19 +7132,19 @@
       "free": true,
       "value": 1,
       "word": null,
-      "x": 74.35199737548828
+      "x": 74.5999984741211
      },
      {
       "free": false,
       "value": 3,
       "word": null,
-      "x": 100.18000030517578
+      "x": 100.12000274658203
      },
      {
       "free": false,
       "value": 5,
       "word": null,
-      "x": 126.0999984741211
+      "x": 126.1500015258789
      }
     ]
    }
@@ -4315,31 +7202,31 @@
   ],
   "_spdCols": [
    {
-    "x": 52.75199890136719,
+    "x": 52.57500076293945,
     "speed": 6
    },
    {
-    "x": 81.552001953125,
+    "x": 81.5999984741211,
     "speed": 5
    },
    {
-    "x": 110.37999725341797,
+    "x": 110.62000274658203,
     "speed": 4
    },
    {
-    "x": 139.17999267578125,
+    "x": 139.14999389648438,
     "speed": 3
    },
    {
-    "x": 167.97999572753906,
+    "x": 168.17999267578125,
     "speed": 2
    },
    {
-    "x": 196.77999877929688,
+    "x": 196.6999969482422,
     "speed": 1
    },
    {
-    "x": 225.5800018310547,
+    "x": 225.6999969482422,
     "speed": 0
    }
   ],
@@ -4354,10 +7241,10 @@
   ],
   "driveBoxes": 4,
   "_driveBoxX": [
-   52.75199890136719,
-   110.37999725341797,
-   167.97999572753906,
-   225.5800018310547
+   52.57500076293945,
+   110.62000274658203,
+   168.17999267578125,
+   225.6999969482422
   ],
   "shields": {
    "F": 11,
@@ -4590,6 +7477,3206 @@
     "traits": [
      "ATMO",
      "PD MODE"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 21,
+  "name": "CUTLASS I-class Defense Satellite",
+  "sizeClass": 1,
+  "accelPerPhase": 0,
+  "stressRating": 1,
+  "damageControl": 0,
+  "totalPower": 0,
+  "totalBatteries": 0,
+  "availability": "common",
+  "year": 3658,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 3,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   },
+   {
+    "label": "T-31 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     }
+    ]
+   }
+  ],
+  "power": [],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [],
+  "_spdCols": [],
+  "turn": [],
+  "driveBoxes": 0,
+  "_driveBoxX": [],
+  "shields": {
+   "F": 6,
+   "A": 6,
+   "P": 6,
+   "S": 6
+  },
+  "_blue": 24,
+  "_green": 0,
+  "_armor": 0,
+  "shieldGen": 0,
+  "systems": {
+   "SENS": 1
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   }
+  ],
+  "shuttles": 0,
+  "marines": 0,
+  "weapons": [
+   {
+    "name": "D-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 1,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "NoBAT",
+     "FTL"
+    ]
+   },
+   {
+    "name": "TYPE-31 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 11,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 22,
+  "name": "TORTUGA I-class Outpost",
+  "sizeClass": 3,
+  "accelPerPhase": 1,
+  "stressRating": 4,
+  "damageControl": 2,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "rare",
+  "year": 3647,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": "EMER",
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-45 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-51 DISR",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 0,
+  "stressAccel": 1,
+  "spd": [
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 196.6999969482422,
+    "speed": 1
+   },
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   196.6999969482422,
+   207.1999969482422,
+   227.1999969482422,
+   237.72999572753906
+  ],
+  "shields": {
+   "F": 10,
+   "A": 10,
+   "P": 10,
+   "S": 10
+  },
+  "_blue": 40,
+  "_green": 8,
+  "_armor": 0,
+  "shieldGen": 2,
+  "systems": {
+   "SCNC": 2,
+   "SENS": 2,
+   "TRAC": 1,
+   "TRAN": 1,
+   "SHTL": 1,
+   "QTRS": 2,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 2,
+  "marines": 5,
+  "weapons": [
+   {
+    "name": "D-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "FTL",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-37 HEAVY DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 4,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 7,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-29 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 7,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 23,
+  "name": "TORTUGA II-class Outpost",
+  "sizeClass": 3,
+  "accelPerPhase": 1,
+  "stressRating": 4,
+  "damageControl": 2,
+  "totalPower": 5,
+  "totalBatteries": 1,
+  "availability": "rare",
+  "year": 3668,
+  "functions": [
+   {
+    "label": "ACC/DEC",
+    "color": "#00b050",
+    "y": 101,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": "EMER",
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "EMER",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 3,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-45 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-51 DISR",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     2,
+     1
+    ],
+    "boxes": 3
+   },
+   {
+    "label": "SL REAC",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     1
+    ],
+    "boxes": 1
+   }
+  ],
+  "maxAccelPerPhase": 1,
+  "safeAccel": 0,
+  "stressAccel": 1,
+  "spd": [
+   1,
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 196.6999969482422,
+    "speed": 1
+   },
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20,
+   20
+  ],
+  "driveBoxes": 4,
+  "_driveBoxX": [
+   196.6999969482422,
+   207.1999969482422,
+   227.1999969482422,
+   237.72999572753906
+  ],
+  "shields": {
+   "F": 16,
+   "A": 16,
+   "P": 16,
+   "S": 16
+  },
+  "_blue": 64,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 2,
+   "SENS": 3,
+   "TRAC": 1,
+   "TRAN": 1,
+   "SHTL": 1,
+   "QTRS": 2,
+   "CRGO": 6
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 2,
+  "marines": 5,
+  "weapons": [
+   {
+    "name": "J-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 4,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 15,
+      "band": "red",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 16,
+      "max": 20,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+2",
+    "traits": [
+     "FTL",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-45 HEAVY DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-51 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 24,
+  "name": "BLACKREACH II-class Battlestation",
+  "sizeClass": 8,
+  "accelPerPhase": 0,
+  "stressRating": 6,
+  "damageControl": 5,
+  "totalPower": 8,
+  "totalBatteries": 1,
+  "availability": "rare",
+  "year": 3649,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "T-37 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "T-29 DISR",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-29 DISR",
+    "color": "#ff0000",
+    "y": 246,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     3,
+     3,
+     3
+    ],
+    "boxes": 9
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     3,
+     3,
+     3
+    ],
+    "boxes": 9
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     2
+    ],
+    "boxes": 2
+   }
+  ],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20
+  ],
+  "driveBoxes": 2,
+  "_driveBoxX": [
+   225.6999969482422,
+   236.22999572753906
+  ],
+  "shields": {
+   "F": 12,
+   "A": 12,
+   "P": 12,
+   "S": 12
+  },
+  "_blue": 48,
+  "_green": 12,
+  "_armor": 0,
+  "shieldGen": 3,
+  "systems": {
+   "SCNC": 3,
+   "SENS": 3,
+   "TRAC": 3,
+   "TRAN": 5,
+   "SHTL": 5,
+   "QTRS": 4,
+   "CRGO": 10
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 5
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 10,
+  "marines": 30,
+  "weapons": [
+   {
+    "name": "J-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+1",
+    "traits": [
+     "FTL",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-37 HEAVY DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 4,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 7,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-29 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 7,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   },
+   {
+    "name": "TYPE-29 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 7,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 8,
+      "max": 9,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ]
+ },
+ {
+  "page": 25,
+  "name": "BLACKREACH III-class Battlestation",
+  "sizeClass": 8,
+  "accelPerPhase": 0,
+  "stressRating": 6,
+  "damageControl": 5,
+  "totalPower": 8,
+  "totalBatteries": 2,
+  "availability": "rare",
+  "year": 3668,
+  "functions": [
+   {
+    "label": "SIF/IDF",
+    "color": "#00b050",
+    "y": 114,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": null,
+      "x": 239.22000122070312
+     }
+    ]
+   },
+   {
+    "label": "BTY RECH",
+    "color": "#00b050",
+    "y": 128,
+    "circles": [
+     {
+      "free": false,
+      "value": 1,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "SHLD RNFC",
+    "color": "#0070c0",
+    "y": 154,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SHLD REPR",
+    "color": "#0070c0",
+    "y": 167,
+    "circles": [
+     {
+      "free": false,
+      "value": null,
+      "word": "F",
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "P",
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "S",
+      "x": 152.14999389648438
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "A",
+      "x": 178.17999267578125
+     }
+    ]
+   },
+   {
+    "label": "SENSOR",
+    "color": "#bf9000",
+    "y": 180,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "GEN SYS",
+    "color": "#bf9000",
+    "y": 194,
+    "circles": [
+     {
+      "free": true,
+      "value": null,
+      "word": "NRM",
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": null,
+      "word": "MAX",
+      "x": 126.1500015258789
+     }
+    ]
+   },
+   {
+    "label": "A/MAT TRP",
+    "color": "#ff0000",
+    "y": 207,
+    "circles": [
+     {
+      "free": false,
+      "value": 2,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 3,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "T-45 DISR",
+    "color": "#ff0000",
+    "y": 220,
+    "circles": [
+     {
+      "free": true,
+      "value": 2,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     },
+     {
+      "free": false,
+      "value": 6,
+      "word": null,
+      "x": 126.1500015258789
+     },
+     {
+      "free": false,
+      "value": 8,
+      "word": null,
+      "x": 152.14999389648438
+     }
+    ]
+   },
+   {
+    "label": "T-51 DISR",
+    "color": "#ff0000",
+    "y": 233,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   },
+   {
+    "label": "T-51 DISR",
+    "color": "#ff0000",
+    "y": 246,
+    "circles": [
+     {
+      "free": true,
+      "value": 1,
+      "word": null,
+      "x": 74.5999984741211
+     },
+     {
+      "free": false,
+      "value": 4,
+      "word": null,
+      "x": 100.12000274658203
+     }
+    ]
+   }
+  ],
+  "power": [
+   {
+    "label": "L MAIN",
+    "points": [
+     3,
+     3,
+     3
+    ],
+    "boxes": 9
+   },
+   {
+    "label": "R MAIN",
+    "points": [
+     3,
+     3,
+     3
+    ],
+    "boxes": 9
+   },
+   {
+    "label": "AUX PWR",
+    "points": [
+     3,
+     3
+    ],
+    "boxes": 6
+   },
+   {
+    "label": "BATTERY",
+    "points": [
+     2,
+     2
+    ],
+    "boxes": 4
+   }
+  ],
+  "maxAccelPerPhase": 0,
+  "safeAccel": 0,
+  "stressAccel": 0,
+  "spd": [
+   0
+  ],
+  "_spdCols": [
+   {
+    "x": 225.6999969482422,
+    "speed": 0
+   }
+  ],
+  "turn": [
+   20
+  ],
+  "driveBoxes": 2,
+  "_driveBoxX": [
+   225.6999969482422,
+   236.22999572753906
+  ],
+  "shields": {
+   "F": 18,
+   "A": 18,
+   "P": 18,
+   "S": 18
+  },
+  "_blue": 72,
+  "_green": 16,
+  "_armor": 0,
+  "shieldGen": 4,
+  "systems": {
+   "SCNC": 4,
+   "SENS": 4,
+   "TRAC": 3,
+   "TRAN": 5,
+   "SHTL": 5,
+   "QTRS": 4,
+   "CMND": 3,
+   "CRGO": 10
+  },
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 5
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "shuttles": 10,
+  "marines": 30,
+  "weapons": [
+   {
+    "name": "D-YAGUS A/MAT TORPEDO",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [
+       0
+      ],
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 4,
+      "band": "green",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 5,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 11,
+      "max": 15,
+      "band": "red",
+      "dice": [
+       "red",
+       "red"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 16,
+      "max": 20,
+      "band": "red",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": "4 DMG, LEAK+1, STR+2",
+    "traits": [
+     "FTL",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-45 HEAVY DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     },
+     {
+      "armingCircles": 2,
+      "hitBoxes": 2,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "yellow",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 10,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 13,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   },
+   {
+    "name": "TYPE-51 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   },
+   {
+    "name": "TYPE-51 GRAVITIC DISRUPTOR",
+    "mounts": [
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "AS",
+       "AP",
+       "PA",
+       "PF"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "SF",
+       "SA",
+       "AS",
+       "AP"
+      ]
+     },
+     {
+      "armingCircles": 1,
+      "hitBoxes": 1,
+      "gates": [],
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ]
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue"
+      ],
+      "bonus": 0
+     }
+    ],
+    "spcl": null,
+    "traits": [
+     "PD MODE",
+     "ATMO"
     ]
    }
   ]

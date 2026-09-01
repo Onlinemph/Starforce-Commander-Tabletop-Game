@@ -15,14 +15,15 @@ import { ARC_ORDER } from '../engine/geometry'
 
 describe('roster', () => {
   it('imports all three factions in full', () => {
-    // 72 from the Master Ship Book, 31 Aurelians from Ship Book 5, and 9
-    // civilians, transports and stations from the Expansion 7 draft.
-    expect(SHIP_FORMS.length).toBe(112)
+    // 72 from the Master Ship Book, 31 Aurelians from Ship Book 5, and 20
+    // civilians, transports and stations from "Civilians, Support and
+    // Pirates" draft v2 (the Traders, Freighters and Pirates book).
+    expect(SHIP_FORMS.length).toBe(123)
     const union = SHIP_FORMS.filter((f) => f.faction === 'Union of Federated Systems')
     const vallari = SHIP_FORMS.filter((f) => f.faction === 'Vallari Imperium')
     const aurelian = SHIP_FORMS.filter((f) => f.faction === 'Aurelian Empire')
-    expect(union.length).toBe(44)
-    expect(vallari.length).toBe(37)
+    expect(union.length).toBe(50)
+    expect(vallari.length).toBe(42)
     // Ship Book 5 (Sep 2025): the Exp 5 twenty-one plus ten Exp 6 hulls.
     expect(aurelian.length).toBe(31)
   })
@@ -40,7 +41,11 @@ describe('roster', () => {
       // carry no damage-control parties at all.
       expect(form.damageControlRating, form.name).toBeGreaterThanOrEqual(0)
       expect(form.pointValue, form.name).toBeGreaterThan(0)
-      expect(form.reactors.length, form.name).toBeGreaterThan(0)
+      // Defense satellites (draft v2's GUARDIAN/CUTLASS) print no reactors:
+      // their lines run on free values. Anything with a drive needs one.
+      if (form.ftlDriveBoxes > 0 || form.sublight.driveBoxes > 0) {
+        expect(form.reactors.length, form.name).toBeGreaterThan(0)
+      }
       expect(form.weapons.length, form.name).toBeGreaterThan(0)
       expect(form.systems.length, form.name).toBeGreaterThan(0)
       expect(structureBoxes(makeShip(form)).length, form.name).toBeGreaterThan(0)

@@ -21,16 +21,25 @@ if os.path.exists('aurelian_raw.json'):
         _s['book'] = 'aurelian'
         S.append(_s)
 
-# Expansion 7 — "Civilians, Support and Pirates" (draft v21, Aug 2026):
-# freighters, military transports and stations. The draft has no Master Ship
-# List, so each form's own printed corner (year, availability) is its row.
-# Point values: the draft prints two ("(PV6)" in the MAERSK banner, "(Point
-# Value 100)" in the BASTION's special-systems note); the rest come from the
-# design-tool point model via exp7_pv.json (written by
-# `npx vite-node tools/price_exp7.ts` — run generate, price, generate again).
+# "Civilians, Support and Pirates" — now titled Expansion 6, draft v2
+# ("Traders, Freighters and Pirates", Sep 2026), superseding the v21 draft
+# this pipeline first imported; the internal book tag stays 'exp7'.
+# Freighters, military transports and stations, twenty sheets: the v21 nine
+# (BASTION and VIGILANT re-issued as BASTION I/II and SENTINEL II/III) plus
+# the O'NEIL habitat, GALILEO I, the GUARDIAN and CUTLASS defense
+# satellites, and the Vallari TORTUGA outposts and BLACKREACH
+# battlestations. The draft has no Master Ship List, so each form's own
+# printed corner (year, availability) is its row. Point values: the draft
+# prints two ("(PV6)" in the MAERSK banner, "(Point Value 100)" on the
+# BASTION I sheet); the rest come from the design-tool point model via
+# exp7_pv.json (written by `npx vite-node tools/price_exp7.ts` — run
+# generate, price, generate again).
 if os.path.exists('exp7_raw.json'):
+    # Vallari sheets are the V- classes plus the named pirate-frontier
+    # stations; everything else in the draft flies Union colors.
+    _VALLARI = ('V-', 'CUTLASS', 'TORTUGA', 'BLACKREACH')
     for _s in json.load(open('exp7_raw.json')):
-        _s['faction'] = 'vallari' if _s['name'].upper().startswith('V-') else 'union'
+        _s['faction'] = 'vallari' if _s['name'].upper().startswith(_VALLARI) else 'union'
         _s['book'] = 'exp7'
         exp7_errata = []
         # The banner's printed point value is identity, not name.
@@ -70,21 +79,38 @@ if os.path.exists('exp7_raw.json'):
                 f"Draft prints Damage Control {_s.get('damageControl')} in the wrench but the "
                 f"structure strip opens at {first_dc}; the strip is used.")
             _s['damageControl'] = first_dc
-        if _s['name'].startswith('VIGILANT'):
-            # Draft prints TOTAL POWER 5+1 but draws 2+2+1+1 = 6 reactor
-            # points. As with the CORVUS shield defects, the drawn boxes are
-            # the bookkeeping the game is played on; one for Doyle to settle.
+        if _s['name'].startswith('BASTION I-class'):
+            # The "(Point Value 100)" note sits on THIS sheet, but it is the
+            # v21 BASTION's note carried along when the sheet was cloned —
+            # that design (power 9, MK-5/LNC-500/DGR-12A) is now the BASTION
+            # II, and the model prices it at ~100 while pricing this
+            # lighter Mark I at 40.5. The printed 100 rides with the Mark II.
+            exp7_errata.append(
+                "Sheet prints '(Point Value 100)' — inherited from the v21 BASTION this sheet "
+                'was cloned from, which is now the BASTION II. This Mark I is priced by the '
+                'model (40.5); one for Doyle to settle.')
+        if _s['name'].startswith('BASTION II'):
+            exp7_errata.append(
+                'Point Value 100 as the draft prints (the note sits on the Mark I sheet, but '
+                'describes this design — the v21 BASTION re-issued).')
+        if _s['name'].startswith('SENTINEL'):
+            # v21's VIGILANT carried this defect and its v2 successors keep
+            # it: the sheet prints TOTAL POWER 5 but draws 2+2+1+1 = 6
+            # reactor points. The drawn boxes are the bookkeeping the game
+            # is played on; one for Doyle to settle.
             _s['powerMismatchOk'] = True
             exp7_errata.append(
-                'Draft prints TOTAL POWER 5+1 but draws six reactor power points '
+                'Draft prints TOTAL POWER 5 but draws six reactor power points '
                 '(L MAIN 2, R MAIN 2, SL REAC 1, AUX PWR 1); the drawn reactors are used.')
         if exp7_errata:
             _s['exp7Errata'] = exp7_errata
         S.append(_s)
 
 EXP7_PV = json.load(open('exp7_pv.json')) if os.path.exists('exp7_pv.json') else {}
-# The two prices the draft itself prints.
-EXP7_PRINTED_PV = {'MAERSK': 6.0, 'BASTION': 100.0}
+# The two prices the draft itself prints. The 100 is keyed to the BASTION II:
+# the note sits on the Mark I sheet but describes the v21 BASTION that sheet
+# was cloned from, which v2 re-issues as the Mark II (see the errata above).
+EXP7_PRINTED_PV = {'MAERSK': 6.0, 'BASTION II': 100.0}
 
 
 def exp7_msl_row(ship):
@@ -212,6 +238,11 @@ SHIELD_BOX_ERRATA = {
     # Ship Book 5 carries the CORVUS I's art defect forward into its refit.
     'CORVUS II-class Destroyer': (58,
         'Form prints AFT SHIELD 12 but draws 10 aft shield boxes (60 printed, 58 drawn). '
+        'The printed strengths are used.'),
+    # Draft v2 raised the GALILEO II's shields (18/16/16/16, was 14/12/12/12)
+    # but the drawn tracks did not grow with the banner.
+    'GALILEO II-class Transport': (60,
+        'Form prints shields 18/16/16/16 (66) but draws 60 shield boxes. '
         'The printed strengths are used.'),
 }
 
@@ -350,7 +381,7 @@ def claim_weapon_for_label(ship, label, claimed, name_first):
         if pick is None:
             return None
         claimed.add(pick)
-        return ship['weapons'][pick]
+        return pick
     tokens = [LABEL_EXPANSIONS.get(t, t) for t in re.split(r'[\s/]+', label.upper()) if t]
     scored = []
     for i, w in enumerate(ship['weapons']):
@@ -370,7 +401,7 @@ def claim_weapon_for_label(ship, label, claimed, name_first):
     if pick is None:
         return None
     claimed.add(pick)
-    return ship['weapons'][pick]
+    return pick
 
 
 def build(ship):
@@ -460,14 +491,18 @@ def build(ship):
         # ordinal matching then slid every later line up one weapon — MED DISR
         # armed the small plasma, LT DISR armed the medium disruptor, and the
         # light disruptor armed nothing.
-        weapon = claim_weapon_for_label(ship, label, claimed, name_first)
+        # The claimed INDEX names the weapon: twin batteries print as two
+        # equal weapon dicts, and list.index() on the dict handed both
+        # arming lines to the first of them (found by the BLACKREACH II's
+        # paired TYPE-29s).
+        wx = claim_weapon_for_label(ship, label, claimed, name_first)
         wi += 1
         functions.append({'id': f'f-{slug(label)}-{wi}', 'label': label, 'kind': 'weapon',
                           'freeValue': (free['value'] or 0) if free else 0,
                           'steps': steps(), 'sequential': True,
                           'weaponSystemId':
-                              slug(weapon['name']) + f"-{ship['weapons'].index(weapon) + 1}"
-                              if weapon else None})
+                              slug(ship['weapons'][wx]['name']) + f'-{wx + 1}'
+                              if wx is not None else None})
 
     # A weapon the FUNCTIONS list never arms is a hole in the form, not a
     # free gun: E4.2.6 gives every weapon system exactly one arming line. The

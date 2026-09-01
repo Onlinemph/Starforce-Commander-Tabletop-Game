@@ -1,9 +1,20 @@
 {
+ "O’NEIL-class Habitat": 24,
  "RUNNER-class Light Freighter": 6.5,
  "HORIZON-class Medium Freighter": 7,
  "WARFARER-class Large Freighter": 9,
- "VIGILANT-class Outpost": 25.5,
- "GALILEO II-class Transport": 13,
+ "BASTION I-class Battlestation": 40.5,
+ "SENTINEL II-class Outpost": 16,
+ "SENTINEL III-class Outpost": 25.5,
+ "GUARDIAN I-class Defense Satellite": 4.5,
+ "GUARDIAN II-class Defense Satellite": 8,
+ "GALILEO I-class Transport": 13.5,
+ "GALILEO II-class Transport": 17,
  "V-6H SALVAGE-class Transport": 10.5,
- "V-5H CORSAIR-class Fast Transport": 12.5
+ "V-5H CORSAIR-class Fast Transport": 12.5,
+ "CUTLASS I-class Defense Satellite": 3.5,
+ "TORTUGA I-class Outpost": 13.5,
+ "TORTUGA II-class Outpost": 25.5,
+ "BLACKREACH II-class Battlestation": 33,
+ "BLACKREACH III-class Battlestation": 75.5
 }
