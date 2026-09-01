@@ -7,7 +7,7 @@
  */
 
 import { generateMap } from './hexmap'
-import { enduranceMaxOf } from './logistics'
+import { enduranceMaxOf, resolveEndurance } from './logistics'
 import { orderRefusal, resolvePhase, type DetectionContext } from './turn'
 import {
   DETECTION_CURVE,
@@ -76,8 +76,9 @@ export function openingState(scenario: CampaignScenario): CampaignState {
       movedLastOwnPhase: false,
       course: null,
     }
-    // The smallest tank aboard sets the unit's legs (3.1, 6.4).
-    unit.enduranceMax = enduranceMaxOf(unit)
+    // The smallest tank aboard sets the unit's legs (3.1, 6.4), scaled by
+    // the scenario's endurance dial.
+    unit.enduranceMax = enduranceMaxOf(unit, resolveEndurance(scenario.tuning.endurance).tankMultiplier)
     unit.endurance = unit.enduranceMax
     return unit
   }

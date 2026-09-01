@@ -690,6 +690,21 @@ container recycle. The raw extractions are no longer gitignored — commit
 books are uploaded and extracted, so the whole roster is rebuildable from
 the repo alone.
 
+**Endurance dials, and a solo opponent that uses the orders list:**
+every endurance number is now scenario data — `tuning.endurance
+{ baseBurn, cloakBurn, sensorBurn, speedBurn, tankMultiplier }`
+(logistics.ts ENDURANCE_DEFAULTS: 1 / 1 / 1 / the tier table /
+1) — so the designer can turn the round-3-LOW he saw into whatever pace he
+wants without a source change while his formula is pending; the tank
+multiplier applies at the opening bell and to every merge and split. And
+the solo doctrine (solo.ts) now plays the vocabulary his own list asked
+for: convoys sail under Avoid Contact with orders to withdraw if caught;
+a warship under a quarter tank breaks off for the nearest depot before
+anything else; with a contact in hand it intercepts as before, and with an
+empty scope every other idle warship carries the war to the nearest known
+enemy station (Assault) while the rest take patrol stations on the border.
+Still view-only by signature, still deterministic; tests pin each posture.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

@@ -397,6 +397,19 @@ export interface CampaignScenario {
       /** A friendly unit within this many hexes counts as on patrol. */
       patrolRange?: number
     }
+    /**
+     * Endurance (6.4) as balance dials, PROVISIONAL until the designer's
+     * formula lands (logistics.ts ENDURANCE_DEFAULTS): the base burn a
+     * round, the cloak and full-power-sensor surcharges, the per-tier speed
+     * burn, and a multiplier on every tank. Absent = the defaults.
+     */
+    endurance?: {
+      baseBurn?: number
+      cloakBurn?: number
+      sensorBurn?: number
+      speedBurn?: Partial<Record<SpeedTier, number>>
+      tankMultiplier?: number
+    }
   }
 }
 

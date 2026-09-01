@@ -36,6 +36,7 @@ import {
   orderSpeedCap,
   orderedSpeed,
   repairTick,
+  resolveEndurance,
   wingTick,
 } from './logistics'
 import { pirateRaidTick } from './pirates'
@@ -128,7 +129,12 @@ function sanitizeMission(state: CampaignState, unit: Unit, order: StandingOrder)
   }
 }
 
-function applyIntervention(state: CampaignState, intervention: Intervention, side: string): void {
+function applyIntervention(
+  state: CampaignState,
+  intervention: Intervention,
+  side: string,
+  tankMultiplier: number,
+): void {
   const unit = state.units.find((u) => u.id === intervention.unitId)
   /*
    * Orders to the dead are dropped, not refused: a move's interventions are
@@ -159,10 +165,10 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
       break
     }
     case 'merge-units':
-      mergeUnits(state, unit, intervention.intoId, side)
+      mergeUnits(state, unit, intervention.intoId, side, tankMultiplier)
       break
     case 'split-unit':
-      splitUnit(state, unit, intervention.shipIds, intervention.newUnitId)
+      splitUnit(state, unit, intervention.shipIds, intervention.newUnitId, tankMultiplier)
       break
   }
 }
@@ -175,7 +181,7 @@ function applyIntervention(state: CampaignState, intervention: Intervention, sid
  * scans gathered transfers with it, so nothing a side knew is forgotten by
  * an org-chart change on either side of the fog.
  */
-function mergeUnits(state: CampaignState, unit: Unit, intoId: string, side: string): void {
+function mergeUnits(state: CampaignState, unit: Unit, intoId: string, side: string, tank: number): void {
   const into = state.units.find((u) => u.id === intoId)
   // Like orders to the dead: a merge target lost in this move's battle drops.
   if (!into) return
@@ -196,7 +202,7 @@ function mergeUnits(state: CampaignState, unit: Unit, intoId: string, side: stri
   into.kind = 'group'
   // The smallest tank aboard sets the merged legs (3.1); nobody gains fuel
   // by re-flagging, so the pool is the smaller of the two.
-  into.enduranceMax = enduranceMaxOf(into)
+  into.enduranceMax = enduranceMaxOf(into, tank)
   into.endurance = Math.min(into.endurance, unit.endurance, into.enduranceMax)
   into.moveDebt = Math.max(into.moveDebt, unit.moveDebt)
   into.cloakedThisRound = into.cloakedThisRound || unit.cloakedThisRound
@@ -235,7 +241,7 @@ function mergeUnits(state: CampaignState, unit: Unit, intoId: string, side: stri
  * away are simply not where the picture says the force is, and finding that
  * out is the game working as designed.
  */
-function splitUnit(state: CampaignState, unit: Unit, shipIds: string[], newUnitId: string): void {
+function splitUnit(state: CampaignState, unit: Unit, shipIds: string[], newUnitId: string, tank: number): void {
   if (unit.kind !== 'ship' && unit.kind !== 'group') {
     throw new PhaseError(`${unit.id} is a ${unit.kind} — only ships and groups detach.`)
   }
@@ -272,9 +278,9 @@ function splitUnit(state: CampaignState, unit: Unit, shipIds: string[], newUnitI
   }
   // Each half's legs are its own smallest tank; the shared pool does not
   // grow — both leave with what the force had.
-  detached.enduranceMax = enduranceMaxOf(detached)
+  detached.enduranceMax = enduranceMaxOf(detached, tank)
   detached.endurance = Math.min(unit.endurance, detached.enduranceMax)
-  unit.enduranceMax = enduranceMaxOf(unit)
+  unit.enduranceMax = enduranceMaxOf(unit, tank)
   unit.endurance = Math.min(unit.endurance, unit.enduranceMax)
   for (const half of [unit, detached]) {
     if (half.order.cloaked && !unitProfile(half).cloakCapable) half.order.cloaked = false
@@ -510,7 +516,8 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     )
   }
 
-  for (const intervention of move.interventions) applyIntervention(next, intervention, move.side)
+  const tank = resolveEndurance(ctx.scenario.tuning.endurance).tankMultiplier
+  for (const intervention of move.interventions) applyIntervention(next, intervention, move.side, tank)
   for (const unit of next.units) {
     if (unit.side !== move.side) continue
     stepUnit(ctx, next, unit, hexesThisPhase(orderedSpeed(unit), unit.side, next.phase))
@@ -537,7 +544,7 @@ export function resolvePhase(ctx: DetectionContext, state: CampaignState, move: 
     decayContacts(next)
     repairTick(next)
     emergencyWearTick(next)
-    enduranceTick(next)
+    enduranceTick(next, resolveEndurance(ctx.scenario.tuning.endurance))
     wingTick(next)
     convoyBeaconStep(ctx, next)
     deliveryTick(ctx.scenario, next)

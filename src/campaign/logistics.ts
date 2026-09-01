@@ -20,6 +20,7 @@ import { ftlCirclesOf, operationalStats, sifOf, speedTiersOf, type SpeedTiers } 
 import { scarsAreEmpty, type ShipScars } from '../engine/shipState'
 import {
   DEFAULT_REPAIR_QUEUE,
+  type CampaignScenario,
   type CampaignState,
   type RepairCategory,
   type ShipRecord,
@@ -309,14 +310,20 @@ export function orderedSpeed(unit: Unit): number {
 // Endurance (6.4) — fuel, supplies, ammo and spares as one pooled number
 // ---------------------------------------------------------------------------
 
-/** The smallest tank aboard sets the unit's legs (3.1). */
-export function enduranceMaxOf(unit: Unit): number {
-  return Math.min(
+/**
+ * The smallest tank aboard sets the unit's legs (3.1), scaled by the
+ * scenario's tank multiplier (tuning.endurance — a balance dial while the
+ * designer's endurance formula is pending; his first campaign flew LOW
+ * fleet-wide by round 3 on the provisional numbers).
+ */
+export function enduranceMaxOf(unit: Unit, tankMultiplier = 1): number {
+  const smallest = Math.min(
     ...unit.ships.map((s) => {
       const form = shipFormById(s.formId)
       return form ? operationalStats(form).endurance : 8
     }),
   )
+  return Math.max(1, Math.round(smallest * tankMultiplier))
 }
 
 /** Anywhere with a berth or a depot refills the tank (3.4, 6.4). */
@@ -350,16 +357,50 @@ export const SPEED_BURN: Record<SpeedTier, number> = {
 }
 
 /**
+ * Every endurance number as a scenario dial (tuning.endurance): the base
+ * burn, the cloak and full-power-sensor surcharges, the per-tier speed burn,
+ * and a multiplier on tank size. All PROVISIONAL until the designer's
+ * endurance formula (quarters/cargo/size) lands — which is exactly why they
+ * are data: his balancing pass should be a scenario edit, not a source
+ * change.
+ */
+export interface EnduranceConfig {
+  baseBurn: number
+  cloakBurn: number
+  sensorBurn: number
+  speedBurn: Record<SpeedTier, number>
+  tankMultiplier: number
+}
+
+export const ENDURANCE_DEFAULTS: EnduranceConfig = {
+  baseBurn: 1,
+  cloakBurn: 1,
+  sensorBurn: 1,
+  speedBurn: SPEED_BURN,
+  tankMultiplier: 1,
+}
+
+export function resolveEndurance(tuning?: CampaignScenario['tuning']['endurance']): EnduranceConfig {
+  if (!tuning) return ENDURANCE_DEFAULTS
+  return {
+    ...ENDURANCE_DEFAULTS,
+    ...tuning,
+    speedBurn: { ...ENDURANCE_DEFAULTS.speedBurn, ...(tuning.speedBurn ?? {}) },
+  }
+}
+
+/**
  * The round tick's endurance pass (6.4): one point a round, one more for any
  * cloaked running, one more for sensors held at full power, plus the speed
  * tier's burn — then the depots refill whoever ends the round alongside one.
+ * Every number is the scenario's (resolveEndurance).
  */
-export function enduranceTick(state: CampaignState): void {
+export function enduranceTick(state: CampaignState, cfg: EnduranceConfig = ENDURANCE_DEFAULTS): void {
   for (const unit of state.units) {
-    let burn = 1
-    if (unit.cloakedThisRound) burn += 1
-    if (unit.order.sensorPower === 2) burn += 1
-    burn += SPEED_BURN[effectiveSpeedTier(unit)]
+    let burn = cfg.baseBurn
+    if (unit.cloakedThisRound) burn += cfg.cloakBurn
+    if (unit.order.sensorPower === 2) burn += cfg.sensorBurn
+    burn += cfg.speedBurn[effectiveSpeedTier(unit)]
     unit.endurance = Math.max(0, unit.endurance - burn)
     unit.cloakedThisRound = false
     if (canResupplyAt(state, unit)) unit.endurance = unit.enduranceMax

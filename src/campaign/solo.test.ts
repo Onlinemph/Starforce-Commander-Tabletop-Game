@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { newCampaign } from './file'
 import { quickResolve } from './quickResolve'
-import { borderWatch } from './scenarios'
+import { borderWatch, raidOnDeltaVideus } from './scenarios'
 import { soloOrders } from './solo'
 import { resolvePhase, type DetectionContext } from './turn'
 import { viewFor } from './views'
@@ -96,6 +96,44 @@ describe('the solo opponent', () => {
       expect(mission.contactId).toBe('ct-A-9')
       expect(JSON.stringify(order)).not.toContain('b-cruiser')
     }
+  })
+
+  it('sends its convoys out under Avoid Contact with orders to run', () => {
+    const file = newCampaign(raidOnDeltaVideus(), 'c-solo-5')
+    const orders = soloOrders(viewFor(file.map, file.state, 'A'))
+    const convoy = orders.find((o) => o.unitId === 'a-convoy')
+    expect(convoy?.type).toBe('set-order')
+    if (convoy?.type !== 'set-order') return
+    expect(convoy.order.avoidContact).toBe(true)
+    expect(convoy.order.engagement).toBe('withdraw')
+    // The schedule itself is untouched: the route still runs to the colony.
+    expect(convoy.order.waypoints.length).toBeGreaterThan(0)
+  })
+
+  it('carries the war to a known enemy station when the scope is empty', () => {
+    const file = newCampaign(borderWatch(), 'c-solo-6')
+    // Side B's charts show A's outpost (3.4); half its idle warships go for it.
+    const orders = soloOrders(viewFor(file.map, file.state, 'B'))
+    const strikes = orders.filter(
+      (o) => o.type === 'set-order' && o.order.mission?.type === 'assault',
+    )
+    expect(strikes.length).toBeGreaterThan(0)
+    for (const strike of strikes) {
+      if (strike.type !== 'set-order' || strike.order.mission?.type !== 'assault') continue
+      expect(strike.order.mission.stationId).toBe('a-outpost')
+    }
+  })
+
+  it('a warship low on endurance heads for the nearest depot before anything else', () => {
+    const file = newCampaign(borderWatch(), 'c-solo-7')
+    const cruiser = file.state.units.find((u) => u.id === 'b-cruiser')!
+    cruiser.endurance = 1 // of a full tank: LOW
+    const orders = soloOrders(viewFor(file.map, file.state, 'B'))
+    const order = orders.find((o) => o.unitId === 'b-cruiser')
+    expect(order?.type).toBe('set-order')
+    if (order?.type !== 'set-order') return
+    expect(order.order.mission).toBeUndefined()
+    expect(order.order.waypoints).toEqual([{ q: 26, r: 2 }]) // b-outpost
   })
 
   it('is deterministic: the same view yields the same orders', () => {

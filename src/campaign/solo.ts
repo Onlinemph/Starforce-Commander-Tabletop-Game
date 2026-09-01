@@ -44,35 +44,97 @@ function sameOrder(a: StandingOrder, b: StandingOrder): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+/** The nearest of the side's own depots — anywhere a tank refills (6.4). */
+function nearestDepot(view: SideView, from: Hex): Hex | null {
+  let best: Hex | null = null
+  let bestRange = Infinity
+  for (const station of view.infrastructure) {
+    if (station.destroyed) continue
+    if (station.kind !== 'fleet-base' && station.kind !== 'outpost' && station.kind !== 'colony') continue
+    const range = hexDistance(from, station.hex)
+    if (range < bestRange) {
+      best = station.hex
+      bestRange = range
+    }
+  }
+  return best
+}
+
 /**
- * One phase's interventions for the side this view belongs to. Convoys keep
- * their scheduled routes; warships intercept the nearest contact their side
- * holds, or take a patrol station on the border when the fog is empty.
- * Only CHANGED orders are emitted — a quiet phase is zero interventions,
- * exactly as the doc's workload rule wants (5.2).
+ * The nearest enemy station worth a strike — the charts show them (3.4);
+ * listening posts are not on the charts and beacons are not worth the trip.
+ */
+function nearestTarget(view: SideView, from: Hex): { id: string; hex: Hex } | null {
+  let best: { id: string; hex: Hex } | null = null
+  let bestRange = Infinity
+  for (const station of view.knownEnemyInfrastructure) {
+    if (station.destroyed || station.kind === 'listening-post' || station.kind === 'jump-beacon') continue
+    const range = hexDistance(from, station.hex)
+    if (range < bestRange) {
+      best = { id: station.id, hex: station.hex }
+      bestRange = range
+    }
+  }
+  return best
+}
+
+/**
+ * One phase's interventions for the side this view belongs to, in the
+ * designer's order vocabulary. Convoys sail their schedule under Avoid
+ * Contact with orders to withdraw if caught. A warship low on endurance
+ * heads for the nearest depot. Otherwise warships intercept the nearest
+ * contact their side holds; with an empty scope, every other idle warship
+ * carries the war to the nearest known enemy station (Assault) and the rest
+ * take patrol stations on the border. Only CHANGED orders are emitted — a
+ * quiet phase is zero interventions, exactly as the doc's workload rule
+ * wants (5.2).
  */
 export function soloOrders(view: SideView): Intervention[] {
   const interventions: Intervention[] = []
   view.units.forEach((unit: Unit, index: number) => {
-    // Shipping sails its schedule; the escort doctrine is the route itself.
-    if (unit.kind === 'convoy') return
-
-    const seen = quarry(view, unit.hex)
     const desired: StandingOrder = structuredClone(unit.order)
+
+    if (unit.kind === 'convoy') {
+      // Shipping sails its schedule; its doctrine is to see nobody and, if
+      // seen anyway, to run.
+      desired.avoidContact = true
+      desired.engagement = 'withdraw'
+      if (!sameOrder(unit.order, desired)) {
+        interventions.push({ type: 'set-order', unitId: unit.id, order: desired })
+      }
+      return
+    }
+
     desired.speed = 'cruise'
-    if (seen) {
+    const low = unit.enduranceMax > 0 && unit.endurance / unit.enduranceMax < 0.25
+    const home = low ? nearestDepot(view, unit.hex) : null
+    const seen = quarry(view, unit.hex)
+    if (home && hexDistance(unit.hex, home) > 0) {
+      // Legs first: a dry tank fights nobody (6.4).
+      desired.mission = undefined
+      desired.waypoints = [home]
+      desired.sensorPower = 1
+    } else if (seen) {
       desired.mission = { type: 'intercept', contactId: seen.id }
     } else {
       desired.mission = undefined
-      const station = patrolStation(view, index)
-      const arrived = station && hexDistance(unit.hex, station) === 0
-      if (station && !arrived && desired.waypoints.length === 0) {
-        desired.waypoints = [station]
-      }
-      // On station with nothing seen: hold quiet and listen hard.
-      if (arrived) {
-        desired.speed = 'hold'
-        desired.sensorPower = 2
+      const target = index % 2 === 1 ? nearestTarget(view, unit.hex) : null
+      if (target) {
+        // The strike: the mission steers; a battle at the station is the
+        // engagement rules' business.
+        desired.mission = { type: 'assault', stationId: target.id }
+        desired.waypoints = []
+      } else {
+        const station = patrolStation(view, index)
+        const arrived = station && hexDistance(unit.hex, station) === 0
+        if (station && !arrived && desired.waypoints.length === 0) {
+          desired.waypoints = [station]
+        }
+        // On station with nothing seen: hold quiet and listen hard.
+        if (arrived) {
+          desired.speed = 'hold'
+          desired.sensorPower = 2
+        }
       }
     }
     // A dry tank cannot afford hungry sensors (6.4).
