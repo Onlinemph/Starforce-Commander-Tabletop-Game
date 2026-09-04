@@ -748,6 +748,50 @@ colony — the "limited but relatively cheap protection for exposed
 colonies" his notes describe. The solo doctrine's assaults now end at a
 battlestation's guns, which is the point.
 
+**The Sensor Lab (the designer's ask for a workbook):** "a spreadsheet
+similar in format to the one I sent you, that allows us designers to enter
+data for various situations… to ensure the results are to our liking and
+that they make sense… useful for us to check Claude's work and useful for
+players." It is now a tool in the ship-builder row on the title screen and
+in the battle topbar. Pick a real hull on each side, describe the
+situation — speed, active sensors, cloak, damage band, hull count and
+formation, terrain occupied and terrain between, range, and where the
+track was last held — and read the campaign's own numbers.
+
+The load-bearing design decision: the lab is not a second model.
+`campaign/sensorLab.ts` builds each side as a campaign UNIT and asks
+`detection.ts`'s own `unitActor` for the sensor actor, then calls the same
+`sensorModel.ts` functions the operational sweep calls. A test pins the
+lab's reading against a real campaign state computing the same pairing,
+factor for factor — so the lab cannot quietly drift into checking itself.
+It inherits the campaign's consequences for free, which a bare formula
+would miss: a crippled hull's cloak is refused, a merchant hull is capped
+at speed 3, a close formation reads as one contact while its lead ship
+does the scanning.
+
+Three things the spreadsheet could not do, and the reason this is a tool:
+the **per-round truth** (sixteen scans a round, so the workbook's own
+worked pairing reads 15% a scan and 92% a round — per-scan numbers alone
+mislead, and this is the lab's opening screen); the **whole range curve**
+at once, with per-scan, per-round, intelligence, retention and
+reacquisition columns and a CSV export straight back into a spreadsheet;
+and the **approach simulation** — both ships closing at their ordered
+speeds while the searcher rolls the real per-phase odds against a
+shrinking range, seeded so two people comparing notes see one answer,
+answering "at what range do I actually see them?"
+
+Two findings the lab surfaced immediately, both for the designer to rule
+on. **Creeping in slowly is not stealth**: the per-scan odds fall with
+speed, but a slow closer spends more phases in every range band, and the
+extra scans more than repay the quieter signature — a picket sees a
+crawling scout FURTHER out than a sprinting one (pinned as a test, since
+it is emergent rather than intended). And **two dials do not reach the
+model at all**: the searcher's own damage, and the sensor-power setting
+(0/1/2), because the sheet takes all three SP values as static stats. A
+ship at quiet power searches exactly as well as one at full power, and a
+battered scout as well as a fresh one. The lab says so on its own factor
+panel rather than leaving it to be discovered.
+
 ## Where the doc met the data (Part 12 material)
 
 1. **"V-7: cloak true" (3.1.1) is not what the roster says.** No V-7 RAIDER

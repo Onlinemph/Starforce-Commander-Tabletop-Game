@@ -5264,3 +5264,151 @@ button.primary .title-detail {
 .campaign-dossier li.stale {
   opacity: 0.55;
 }
+
+
+/* ── Sensor Lab: the designer's detection workbook, live ─────────────────── */
+.sensor-lab {
+  max-width: 1180px;
+  width: 96vw;
+}
+.lab-body {
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+}
+.lab-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.lab-side,
+.lab-situation,
+.lab-results,
+.lab-sweep,
+.lab-approach {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.lab-side h3,
+.lab-situation h3,
+.lab-results h3,
+.lab-sweep h3,
+.lab-approach h3 {
+  margin: 0 0 8px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.lab-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.lab-row .field {
+  flex: 1;
+  min-width: 90px;
+}
+
+/* The figures: per-scan small, per-round large — the number that decides. */
+.lab-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.lab-figure {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.lab-figure span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+}
+.lab-figure strong {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+.lab-figure em {
+  font-size: 0.68rem;
+  font-style: normal;
+  color: var(--ink-mute, var(--ink-dim));
+}
+.lab-figure.is-major {
+  background: rgba(232, 184, 74, 0.12);
+}
+.lab-figure.is-major strong {
+  color: var(--warn, #e8b84a);
+}
+
+.lab-factors {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.lab-factors summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.lab-factors table,
+.lab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.lab-factors th,
+.lab-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-dim);
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+}
+.lab-factors td,
+.lab-table td {
+  padding: 3px 6px;
+}
+.lab-table tr.is-current {
+  background: rgba(232, 184, 74, 0.14);
+}
+.lab-bar-cell {
+  width: 34%;
+}
+.lab-bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0.75;
+  min-width: 1px;
+}
+.lab-sweep-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.lab-sweep-head h3 {
+  margin: 0;
+}
+.lab-sweep-head .field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+.lab-sweep-head .field.inline input {
+  width: 74px;
+}
+
+@media (max-width: 820px) {
+  .lab-sides {
+    grid-template-columns: 1fr;
+  }
+}

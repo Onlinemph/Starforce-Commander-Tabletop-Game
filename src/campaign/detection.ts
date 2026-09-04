@@ -139,7 +139,7 @@ function inCloseFormation(unit: Unit): boolean {
  * as a target the group reads as ONE contact — ship count 1 in the difficulty
  * stack, the truth findable only through the count rung's 25% peek.
  */
-function unitActor(map: CampaignMap, unit: Unit, role: 'searcher' | 'target'): SensorActor {
+export function unitActor(map: CampaignMap, unit: Unit, role: 'searcher' | 'target'): SensorActor {
   const all = unit.ships.map((s) => statsFor(s.formId))
   const band = unitDamageBand(unit)
   const close = inCloseFormation(unit)

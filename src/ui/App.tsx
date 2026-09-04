@@ -31,6 +31,7 @@ import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
 import { ScenarioDesigner } from './ScenarioDesigner'
+import { SensorLab } from './SensorLab'
 import { ShipBuilder } from './ShipBuilder'
 import { Shipwright } from './Shipwright'
 import { useCustomScenarios } from './customScenarios'
@@ -93,6 +94,8 @@ export function App() {
   const [building, setBuilding] = useState(false)
   const [wrighting, setWrighting] = useState(false)
   const [library, setLibrary] = useState(false)
+  // The designer's detection-math workbench (campaign/sensorLab.ts).
+  const [sensorLab, setSensorLab] = useState(false)
   const [designing, setDesigning] = useState(false)
   const [linking, setLinking] = useState(false)
   const [lobby, setLobby] = useState(false)
@@ -367,6 +370,9 @@ export function App() {
             <button type="button" onClick={() => setDesigning(true)}>
               Scenario designer
             </button>
+            <button type="button" onClick={() => setSensorLab(true)}>
+              Sensor lab
+            </button>
             <button type="button" onClick={() => setLibrary(true)}>
               Library
             </button>
@@ -382,6 +388,7 @@ export function App() {
         {library && <ShipLibraryPanel onClose={() => setLibrary(false)} />}
         {building && <ShipBuilder onClose={() => setBuilding(false)} />}
         {wrighting && <Shipwright onClose={() => setWrighting(false)} />}
+        {sensorLab && <SensorLab onClose={() => setSensorLab(false)} />}
         {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
         {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
         {lobby && <OnlinePanel onClose={() => setLobby(false)} />}
@@ -505,6 +512,13 @@ export function App() {
         </button>
         <button
           type="button"
+          onClick={() => setSensorLab(true)}
+          title="Work the detection math: two real ships, any situation, the campaign's own numbers"
+        >
+          Sensor lab
+        </button>
+        <button
+          type="button"
           disabled={enrolledInMatch}
           onClick={() => setDesigning(true)}
           title={enrolledInMatch ? LOCKED_HINT : 'Lay out a battle of your own: map, terrain, sides and fleets'}
@@ -567,6 +581,7 @@ export function App() {
 
       {building && <ShipBuilder onClose={() => setBuilding(false)} />}
       {wrighting && <Shipwright onClose={() => setWrighting(false)} />}
+      {sensorLab && <SensorLab onClose={() => setSensorLab(false)} />}
       {designing && <ScenarioDesigner onClose={() => setDesigning(false)} />}
       {replaying && <ReplayTheater initial={currentSave()} onClose={() => setReplaying(false)} />}
       {summaryOpen && (
