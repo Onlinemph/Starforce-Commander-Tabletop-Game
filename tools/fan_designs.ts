@@ -67,8 +67,9 @@
  *     already that they did not shoot enough.
  */
 
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { findShipForm } from '../src/data/ships'
 import { pointValue, validateDesign } from '../src/engine/shipBuilder'
 import type { Arc, FunctionLineDef, ShipForm, WeaponSystemDef } from '../src/engine/types'
 
@@ -2551,6 +2552,47 @@ const ARK_ROYAL: ShipForm = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * YORKTOWN V-class Strike Carrier — the printed YORKTOWN V with nothing taken
+ * off it and a four-flight deck bolted on.
+ *
+ * The ARK ROYAL is the carrier built the way carriers are built: the tubes
+ * come off to make room for the deck, and the ship cannot win a gunfight on
+ * its own. This is the other experiment, the one the ARK ROYAL's own essay
+ * warns about — "a carrier whose own guns can win a duel is a battlecruiser
+ * with a hangar". Four MK-6 tubes, five LNC-1000 turrets, the V's full
+ * screens and reactor, and the ARK ROYAL's deck exactly: HNGR 4, LNCH 2,
+ * LNDG 2. Nothing else changes; the form is the printed one, read off the
+ * roster at build time, so it can never drift from the V by hand.
+ *
+ * It exists to answer a balance question rather than to be fielded: what is
+ * the wing worth when it is added to a hull that already fights, rather than
+ * paid for out of the hull's own guns? The printed price below is the
+ * builder's own reading of the hull plus the ARK ROYAL's measured wing
+ * premium (99.2 against the model's 47.3, so about 52 points for four
+ * flights of SABREs), because the wing is the same wing. Whether that is
+ * right is what the duels are for.
+ */
+const YORKTOWN_V_PRINTED = findShipForm('YORKTOWN V-class')!
+const YORKTOWN_V_CARRIER: ShipForm = {
+  ...YORKTOWN_V_PRINTED,
+  id: 'fan-union-yorktown-v-strike-carrier',
+  name: 'YORKTOWN V-class Strike Carrier',
+  systems: [
+    ...YORKTOWN_V_PRINTED.systems,
+    { kind: 'HNGR', label: 'Hangar Bay', boxes: 4 },
+    { kind: 'LNCH', label: 'Launch Bays', boxes: 2 },
+    { kind: 'LNDG', label: 'Landing Bays', boxes: 2 },
+  ],
+  pointValue: 0,
+  availability: 'rare',
+}
+
+/** The ARK ROYAL's measured wing premium, in points: what four SABRE flights added to its price. */
+const WING_PREMIUM = 99.2 - 47.3
+
+// ---------------------------------------------------------------------------
+
 interface Design {
   form: ShipForm
   /**
@@ -2887,6 +2929,17 @@ const DESIGNS: Design[] = [
     costModifier: 2.1,
     costNote: 'the modifier IS the wing: 24 fighters that no rule prices yet (Q3)',
   },
+  {
+    form: YORKTOWN_V_CARRIER,
+    /*
+     * The same wing as the ARK ROYAL's, so the same premium — added, not
+     * multiplied, because a modifier that doubles a 78-point hull would be
+     * pricing the tubes twice. Expressed as a modifier because that is what
+     * the sheet has: model price plus the ARK ROYAL's measured 51.9.
+     */
+    costModifier: (pointValue(YORKTOWN_V_CARRIER).points + WING_PREMIUM) / pointValue(YORKTOWN_V_CARRIER).points,
+    costNote: "the hull at the model's price plus the ARK ROYAL's measured wing premium (51.9)",
+  },
 ]
 
 /**
@@ -2923,6 +2976,18 @@ if (failed) {
   process.exit(1)
 }
 
+/*
+ * The roster file is shared: `tools/make_pirates.ts` appends its hulls to the
+ * same JSON, so this tool replaces only the designs it owns and carries every
+ * other entry through untouched (the first version overwrote the file whole
+ * and silently deleted seven pirate hulls). Same one-space indent as the
+ * pirate tool, so the two never reformat each other's work.
+ */
 const out = fileURLToPath(new URL('../src/data/customShips.json', import.meta.url))
-writeFileSync(out, JSON.stringify(roster, null, 2) + '\n')
-console.log(`\nWrote ${roster.length} design(s) to src/data/customShips.json`)
+const owned = new Set(roster.map((form) => form.id))
+const others = (JSON.parse(readFileSync(out, 'utf8')) as ShipForm[]).filter((form) => !owned.has(form.id))
+writeFileSync(out, JSON.stringify([...roster, ...others], null, 1))
+console.log(
+  `\nWrote ${roster.length} design(s) to src/data/customShips.json` +
+    (others.length > 0 ? `, keeping ${others.length} from other tools` : ''),
+)
