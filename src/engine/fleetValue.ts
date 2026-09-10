@@ -68,7 +68,10 @@ export function balancedPointValue(form: ShipForm): number {
    * against the massed point defense of a cruiser screen, and both formats
    * land on the same worth). The YORKTOWN V Strike Carrier carries its own
    * entry too (90: a YORKTOWN V's 57.3 plus the 33 its four flights
-   * measured as adding, titrated against the bare hull with escorts).
+   * measured as adding, titrated against the bare hull with escorts), as do
+   * the six faction carriers built by `tools/fan_designs.ts` — every one
+   * titrated the same way, and every one landing a wing at 13 to 20 points
+   * over its donor. See docs/fighters.md, "A carrier for every navy".
    */
   if (form.systems.some((group) => group.kind === 'HNGR' && group.boxes > 0)) {
     return printed

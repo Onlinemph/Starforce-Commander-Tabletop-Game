@@ -454,8 +454,37 @@ the cloak: a cloaked carrier may operate (Q12‑A, one detection roll a launch),
 appear out of an empty patch of map, at the price that every launch is a roll against the cloak.
 
 Balanced prices are titrated the way the strike carrier's was — each carrier against its own bare
-donor hull with escorts added rung by rung — and recorded in `fleetValues.json`; the ladders are
-below.
+donor hull with escorts added rung by rung, admiral rank, 16 games a rung — and recorded in
+`fleetValues.json`:
+
+| carrier | ladder (opponent balanced points → result) | break-even |
+| --- | --- | --- |
+| INDEPENDENCE | KNOX III 36.6 → 15‑1 · +PELLEW III 66 → 3‑13 · +YORKTOWN IV 76.6 → 0‑16 | **52** |
+| LEXINGTON | UNION II 56.6 → 9‑7 · +PELLEW III 86 → 7‑9 · +YORKTOWN IV 96.6 → 2‑14 · +YORKTOWN V 113.9 → 0‑16 | **75** |
+| V‑6R ROOST | SAVAGE 31.4 → 15‑1 · +CORSAIR 61.5 → 1‑15 · +RAVAGER 70.6 → 3‑13 | **45** |
+| V‑13A AERIE | HAVOC 68.7 → 15‑1 · +CORSAIR 98.8 → 4‑12 · +MARAUDER 111.7 → 1‑15 | **88** |
+| NIDUS | CORVUS II 32.1 → 14‑1‑1 · +CORVUS II 64.2 → 0‑16 · +TONITRUS II 71.3 → 0‑16 | **47** |
+| ALA REGIA | TONITRUS II 39.2 → 16‑0 · DEF. ALATUS I 61.9 → 6‑10 · DEF. ALATUS II 70.2 → 6‑10 · +CORVUS II 102.3 → 0‑16 | **55** |
+
+**What the six ladders say.** On a hull that already fights, a wing is worth 13 to 20 balanced
+points whatever the navy flies: two SABRE flights add about 15 to a KNOX III, two TALONs 14 to a
+SAVAGE, four TALONs 19 to a HAVOC, two STRIX 15 to a CORVUS II. The LEXINGTON's six flights come
+out 18 above the UNION II whose six tubes they replaced, and the ALA REGIA's four STRIX are worth
+*less* than the two plasma systems it gave up — it loses 6‑10 to its own bare donor. Only the ARK
+ROYAL, whose hull is nothing but a deck and flak, is worth its whole wing. The same number keeps
+coming back: a deck is a good 15-point upgrade and a poor 50-point one.
+
+**What building them found.** The Aurelian pair exposed two AI bugs older than the carriers. A ship
+with no visible enemy plotted straight at speed forever, which on a fixed map is the edge and the
+edge is disengagement (J9.2.4); and a cloaked ship only surfaced for a gunnery solution against a
+*visible* target, while H6.9.5 forbids searching from behind a cloak — so two dark fleets waited
+for each other forever. CORVUS II against CORVUS II at admiral rank was eight draws in eight without
+a shot; the NIDUS cloaked at the first phase, launched while hidden, and sailed off the map in
+round seven of every game. Both fixed in `ai.ts` (`phantomAtDatum`, `daylightCallsFor`): the helm
+steers at a ghost's datum, and a ship stays in daylight when every enemy is dark, when it has a
+wing to fly with an enemy inside launch horizon, or when its next straight leg leaves the map. The
+mirror duel is now 6‑2 with six hulls destroyed in eight games; the NIDUS with its cloak *stripped*
+had beaten the CORVUS II 8‑0, which is how the wing was cleared of blame.
 
 ---
 
