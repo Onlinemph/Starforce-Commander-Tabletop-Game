@@ -20,7 +20,7 @@
 import { FILE_FORMS, registerCustomForms, shipFormById } from '../src/data/ships'
 import { registerCustomScenarios, startScenario } from '../src/data/scenarios'
 import { applyAction, type GameAction } from '../src/engine/actions'
-import { aiNextActions, createAiMemo, type AiDifficulty, type AiMemo } from '../src/engine/ai'
+import { aiNextActions, createAiMemo, setWingDoctrine, type AiDifficulty, type AiMemo } from '../src/engine/ai'
 import { activeShips, type GameState } from '../src/engine/game'
 import { health } from '../src/engine/battleScore'
 
@@ -49,6 +49,9 @@ const retreats = (arg('retreat') ?? 'on') !== 'off'
 const toTheDeath = process.argv.includes('--kill')
 /** `--stack`: the house rule letting two flights attack one shield of a size-7+ hull in a phase. */
 const fighterStacking = process.argv.includes('--stack')
+/** `--facing spread|weakest`: which shield a wing goes for (WingDoctrine.facing); default is the doctrine's. */
+const facing = arg('facing') as 'spread' | 'weakest' | undefined
+if (facing) setWingDoctrine({ facing })
 const cap = toTheDeath ? Math.max(rounds, 60) : rounds
 
 for (const id of [...forceA, ...forceB]) {
