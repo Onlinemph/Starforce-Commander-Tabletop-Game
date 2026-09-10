@@ -99,6 +99,7 @@ import {
   headingVector,
   relativeBearing,
   shieldsFacing,
+  translate,
 } from './geometry'
 import { disengagementOptions, plannedMovement, validatePlot, accelerationBudget } from './navigation'
 import {
@@ -540,10 +541,88 @@ function wantsCloak(game: GameState, ship: ShipState, difficulty: AiDifficulty):
   // a cloaked ship completely, so a cloak engaged over a live firing solution
   // is a volley thrown away.
   if (firingSolution(game, ship)) return false
+  // Nor when the job of the moment needs daylight: hunting a ghost, flying a
+  // wing, or turning before the map runs out. See `daylightCallsFor`.
+  if (daylightCallsFor(game, ship)) return false
   const enemy = nearest(ship, enemiesOf(game, ship).filter((e) => !positionHidden(game, e)))
   const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
   const far = !enemy || actualRange(ship.placement.position, enemy.placement.position) > preferredRange(ship) + 8
   return hurt || far || reloading(ship)
+}
+
+/**
+ * The three reasons a ship should be visible even with nothing to shoot —
+ * each of them a way two cloaked fleets were measured never fighting at all.
+ *
+ *  - **Somebody has to hunt.** A ship may not search from behind its own
+ *    cloak (H6.9.5), and a cloaked ship cannot be fired on until it is found.
+ *    So two dark fleets that both wait for a target to appear wait forever:
+ *    CORVUS II against CORVUS II at admiral rank went eight games without a
+ *    shot. When nothing is visible and a ghost's datum — where it was last
+ *    seen (H6.2.2) — is inside search reach, the cloak comes off to look.
+ *  - **A wing to fly.** Every launch is a detection roll against the cloak
+ *    (H6.15.4, Q12-A), so a carrier that is about to operate aircraft gains
+ *    nothing by being dark and loses its turning circle (H6.8.5). Measured on
+ *    the NIDUS: it cloaked at the first phase, put its wing up while hidden,
+ *    and — allowed only to fly straight — sailed off the map in round seven
+ *    of every game with the enemy at 78% hull.
+ *  - **The map runs out.** A hidden ship may only fly straight, and leaving
+ *    a fixed map is disengagement (J9.2.4). If the next straight leg ends off
+ *    the table the ship surfaces to turn, hurt or not; being seen is cheaper
+ *    than being gone.
+ */
+function daylightCallsFor(game: GameState, ship: ShipState): boolean {
+  return huntCallsForDaylight(game, ship) || wingWantsDaylight(game, ship) || straightLegLeavesMap(game, ship)
+}
+
+/** Range to the nearest enemy the ship can put a number on: position if visible, datum if not. */
+function nearestKnownRange(game: GameState, ship: ShipState): number {
+  let best = Infinity
+  for (const enemy of enemiesOf(game, ship)) {
+    const at = positionHidden(game, enemy)
+      ? (game.cloaks[enemy.id]?.datum.position ?? enemy.placement.position)
+      : enemy.placement.position
+    best = Math.min(best, actualRange(ship.placement.position, at))
+  }
+  return best
+}
+
+function huntCallsForDaylight(game: GameState, ship: ShipState): boolean {
+  const enemies = enemiesOf(game, ship)
+  if (enemies.length === 0 || enemies.some((e) => !positionHidden(game, e))) return false
+  /*
+   * Every enemy is a ghost, so nobody can shoot until somebody looks, and
+   * nobody can look from the dark (H6.9.5). Surface now, not when the datum
+   * comes within search range: that version was tried, and two destroyers
+   * closing at twelve inches a phase had passed each other in the dark and
+   * were eighty inches apart by the time either reached the other's datum.
+   * The cost is a cloak that flickers for a round or two while both sides
+   * close — each surfaces to look, sees the other, goes dark again because
+   * it is far, and surfaces again because everything is dark — which the
+   * minimum cloak and uncloak times (H6.6.7, H6.7.7) keep to a couple of
+   * cycles before the range is short enough that nobody wants to hide.
+   */
+  return huntedGhost(game, ship) !== null
+}
+
+function wingWantsDaylight(game: GameState, ship: ShipState): boolean {
+  if (hangarCapacity(ship) === 0) return false
+  if (flightsReadyToFly(game, ship) < 1 && flightsAirborne(game, ship).length === 0) return false
+  return nearestKnownRange(game, ship) <= launchHorizon(ship)
+}
+
+/** How far out a carrier starts its wing: the same figure `planFlightOps` opens the doors at. */
+function launchHorizon(ship: ShipState): number {
+  const card = fighterCard(wingCardFor(ship))
+  const cruise = card ? airframeSpeed(card, loadoutOf(card, 'strike')) : 5
+  return cruise * PHASES_PER_ROUND * doctrineFor(ship.side).launchHorizonRounds
+}
+
+function straightLegLeavesMap(game: GameState, ship: ShipState): boolean {
+  const { width, height, fixed } = game.scenario.bounds
+  if (!fixed) return false
+  const next = translate(ship.placement.position, ship.placement.heading, Math.max(0, ship.speed))
+  return next.x < 0 || next.y < 0 || next.x > width || next.y > height
 }
 
 /**
@@ -628,6 +707,24 @@ function firingSolution(game: GameState, ship: ShipState): boolean {
       ),
   )
   return range <= reach + 6
+}
+
+/**
+ * A hidden enemy as the helm is allowed to know it: the hull's own card, at
+ * its datum — the place it was last seen (H6.2.2) — rather than where it is.
+ *
+ * Steering at the datum is what a player does with a ghost on the table, and
+ * it is what search range is measured to (H6.9.1), so the hunt and the helm
+ * agree. Before this, a ship with nothing visible plotted straight at speed
+ * whatever lay ahead, and on a fixed map what lies ahead is the edge, which
+ * is disengagement (J9.2.4): CORVUS II against CORVUS II, both cloaked, was
+ * eight draws in eight without a shot, and the NIDUS carrier — surfaced and
+ * hunting — still flew off the board in round seven.
+ */
+function phantomAtDatum(game: GameState, ghost: ShipState | null): ShipState | null {
+  if (!ghost) return null
+  const datum = game.cloaks[ghost.id]?.datum
+  return datum ? { ...ghost, placement: datum } : ghost
 }
 
 /**
@@ -1473,7 +1570,10 @@ function planOrders(
      */
     const focusId =
       difficulty === 'ensign' || ablated('focus') ? null : focusTargetFor(game, ship, difficulty)
-    const enemy = enemies.find((e) => e.id === focusId) ?? nearest(ship, enemies)
+    const enemy =
+      enemies.find((e) => e.id === focusId) ??
+      nearest(ship, enemies) ??
+      phantomAtDatum(game, huntedGhost(game, ship))
 
     const plan = enemy ? bestPlot(game, ship, card, enemy, difficulty, memo) : { maneuver: 'straight' as Maneuver, direction: null, accel: 0 }
     if (card.maneuver !== plan.maneuver || card.direction !== plan.direction) {
@@ -3580,7 +3680,12 @@ function planOperations(
        * wounded ship is trying to live.
        */
       const hurt = ['moderate', 'heavy', 'crippled'].includes(damageLevel(ship))
-      if (!hurt && firingSolution(game, ship)) {
+      if (
+        (!hurt && (firingSolution(game, ship) || huntCallsForDaylight(game, ship) || wingWantsDaylight(game, ship))) ||
+        // Hurt or not: a hidden ship flies straight, and straight off a fixed
+        // map is disengagement (J9.2.4). Surface and turn.
+        straightLegLeavesMap(game, ship)
+      ) {
         actions.push({ type: 'decloak', shipId: ship.id })
       }
     }

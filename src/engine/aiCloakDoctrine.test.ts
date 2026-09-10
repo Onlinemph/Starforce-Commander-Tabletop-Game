@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { startScenario } from '../data/scenarios'
+import { registerCustomScenarios, startScenario } from '../data/scenarios'
+import { FILE_FORMS, registerCustomForms } from '../data/ships'
 import { applyAction, type GameAction } from './actions'
 import { aiNextActions, createAiMemo } from './ai'
 import { cloakStrength, isCloaked } from './cloaking'
 import { isHoming, totalFlight } from './homing'
 import { activeShips, cloakOf, type GameState } from './game'
+
+registerCustomForms(FILE_FORMS)
+
+/** Two forces nose to nose on a fixed 72" map, the duel harness's own layout. */
+function duel(id: string, a: string[], b: string[]) {
+  registerCustomScenarios([
+    {
+      id,
+      name: id,
+      background: '',
+      victory: 'destruction',
+      bounds: { width: 72, height: 72, fixed: true },
+      terrain: [],
+      sides: [
+        { side: 'Alpha', objective: 'destroy', facing: 2, speed: 4, anchor: { x: 12, y: 36 }, spread: { x: 0, y: 6 }, force: a },
+        { side: 'Beta', objective: 'destroy', facing: 6, speed: 4, anchor: { x: 60, y: 36 }, spread: { x: 0, y: 6 }, force: b },
+      ],
+    },
+  ])
+}
 
 /**
  * Cloak doctrine, both ends of it.
@@ -73,6 +94,40 @@ describe('a cloaked captain', () => {
     // never leads to a volley is armour, which is what this doctrine fixed.
     const shots = game.log.filter((e) => / fires on | launches /.test(e.message))
     expect(shots.length).toBeGreaterThan(0)
+  })
+})
+
+describe('two captains in the dark', () => {
+  /*
+   * A ship may not search from behind its own cloak (H6.9.5), and a hidden
+   * ship cannot be fired on. So two cloaked ships that each wait for a target
+   * to appear wait forever — CORVUS II against CORVUS II at admiral rank went
+   * eight games without either firing a shot. Somebody has to surface to
+   * look, and the doctrine is that a ship with nothing visible and a ghost's
+   * datum inside search reach is that somebody.
+   */
+  it('surfaces to hunt when nothing is visible, and the battle happens', () => {
+    duel('test-dark-duel', ['aurelian-corvus-ii-class-destroyer'], ['aurelian-corvus-ii-class-destroyer'])
+    const { game, journal } = fight('test-dark-duel', 1, ['Alpha', 'Beta'], 8)
+    expect(journal.map((a) => a.type)).toContain('decloak')
+    const shots = game.log.filter((e) => / fires on | launches /.test(e.message))
+    expect(shots.length, 'nobody fired in eight rounds').toBeGreaterThan(0)
+  })
+
+  it('keeps a cloaked carrier on the map and flying its wing', () => {
+    /*
+     * The NIDUS, measured: cloaked at the first phase, launched while hidden,
+     * and — a hidden ship may only fly straight (H6.8.5) — sailed off the
+     * fixed map in round seven of every game. Launching is a detection roll
+     * against the cloak anyway (H6.15.4), so a carrier with a wing to fly and
+     * an enemy inside its launch horizon has nothing to gain from the dark.
+     */
+    duel('test-dark-carrier', ['fan-aurelian-nidus-escort-carrier'], ['aurelian-corvus-ii-class-destroyer'])
+    const { game, journal } = fight('test-dark-carrier', 1, ['Alpha', 'Beta'], 8)
+    expect(journal.map((a) => a.type)).toContain('launch-flight')
+    const carrier = game.ships.find((s) => s.side === 'Alpha')!
+    expect(carrier.disengaged, 'the carrier left the map').toBe(false)
+    expect(game.log.some((e) => e.message.includes('has left the map'))).toBe(false)
   })
 })
 
