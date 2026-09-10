@@ -34,6 +34,7 @@ import {
 import {
   airframeSpeed,
   currentLoadout,
+  freeShieldKey,
   hangarCapacity,
   launchRate,
   loadoutOf,
@@ -5233,8 +5234,8 @@ function planFlightOps(
         : enemyShips.filter((s) => !busy(s))
     const berth =
       loadout.strikeHit > 0
-        ? (nearestFreeShield(flight.position, preferred, struck) ??
-          nearestFreeShield(flight.position, enemyShips, struck))
+        ? (nearestFreeShield(flight.position, preferred, struck, game.fighterStacking) ??
+          nearestFreeShield(flight.position, enemyShips, struck, game.fighterStacking))
         : null
     /*
      * `go` is where the flight is sent; `hit` is what the engine will measure
@@ -5304,9 +5305,11 @@ function planFlightOps(
         berth.ship.placement.position,
         berth.ship.placement.heading,
       )[0]
-      const key = `${berth.ship.id}:${bearing}`
-      if (key !== owned && struck.has(key)) continue
-      struck.add(key)
+      if (bearing !== berth.side) {
+        const claim = freeShieldKey(struck, berth.ship, bearing, game.fighterStacking)
+        if (!claim) continue
+        struck.add(claim)
+      }
     }
     offer(
       `attack:${flight.id}`,
@@ -5353,6 +5356,8 @@ function nearestFreeShield(
   from: Point,
   ships: ShipState[],
   struck: ReadonlySet<string>,
+  /** The stacking house rule: two runs a shield on a size-7+ hull. */
+  stacking: boolean,
 ): { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null {
   let best: { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null = null
   let bestRange = Infinity
@@ -5367,8 +5372,10 @@ function nearestFreeShield(
         y: at.y + Math.sin(angle) * (FIGHTER_WEAPON_RANGE - 0.5),
       }
       const side = shieldsFacing(approach, at, ship.placement.heading)[0]
-      const key = `${ship.id}:${side}`
-      if (struck.has(key)) continue
+      // The key this run would be recorded under, or nothing if the shield
+      // has taken all the runs the rules allow it this phase.
+      const key = freeShieldKey(struck, ship, side, stacking)
+      if (!key) continue
       const range = reach(from, approach)
       if (range >= bestRange) continue
       bestRange = range

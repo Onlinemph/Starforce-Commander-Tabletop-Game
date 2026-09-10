@@ -440,6 +440,33 @@ describe('the AI in the Flight Operations Segment', () => {
     expect(game.flights.find((f) => !f.dockedTo)!.members).toBe(3)
   })
 
+  it('stacks two flights on one shield of a big hull when the house rule is on, and never otherwise', () => {
+    /*
+     * Four flights in reach of a lone dreadnought-sized target. The planner
+     * spreads a wing across facings, but a facing that may take two runs is
+     * "free" for a second flight, and the nearest free facing wins — so with
+     * the rule on, at least one shield takes two runs, and with it off, none.
+     */
+    const dreadnought = (stacking: boolean) => {
+      const mother = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+      const game = flightOps([
+        mother,
+        shipAt({ id: 'red-1', side: 'Red', form: { ...VALLARI_CRUISER, sizeClass: 7 }, x: 18, y: 20 }),
+      ])
+      game.fighterStacking = stacking
+      for (let i = 0; i < 4; i++) launchFlight(game, mother, 'sabre', 'strike', 6)
+      for (const f of game.flights) {
+        f.activated = false
+        f.position = { x: 15.5, y: 20 }
+      }
+      mother.flightsAboard = 0
+      play(game, 'Blue')
+      return [...game.ops.shieldsStruckThisPhase]
+    }
+    expect(dreadnought(true).some((key) => key.endsWith('#2')), 'no shield took two runs').toBe(true)
+    expect(dreadnought(false).some((key) => key.endsWith('#2')), 'a shield took two runs with the rule off').toBe(false)
+  })
+
   it('does nothing at all, and costs nothing, in a battle with no fighters', () => {
     const game = flightOps([
       shipAt({ id: 'blue-1', side: 'Blue', x: 10, y: 20 }),

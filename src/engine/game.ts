@@ -172,11 +172,14 @@ import {
   flightLaunchRefusal,
   flightMoveRefusal,
   flightRecoveryRefusal,
+  freeShieldKey,
   hangarCapacity,
   launchPositionFor,
   launchRate,
   loadoutOf,
   MAX_FLIGHT_SIZE,
+  shieldStrikeCap,
+  STACKING_SIZE_CLASS,
   strike,
   strikeExpendsLoad,
   FIGHTER_WEAPON_RANGE,
@@ -611,6 +614,11 @@ export interface GameState {
   /** H4 Coordinated Fire is optional (H4.1) and off unless switched on. */
   coordinatedFire: boolean
   /**
+   * House rule, off unless switched on: two flights may attack the same
+   * shield of a size-7-or-larger hull in one phase (`shieldStrikeCap`).
+   */
+  fighterStacking: boolean
+  /**
    * Optional batteries (B2.5): stored power may be spent during a combat
    * phase's Command Segment, not only at Resource Allocation. Chosen before
    * the game, and carried in the setup so a replay plays the same game.
@@ -721,6 +729,8 @@ export function createGame(args: {
   options?: DestructionOptions
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
+  /** House rule: two flights a shield a phase against size-7+ hulls. */
+  fighterStacking?: boolean
   optionalBatteries?: boolean
   readyGate?: boolean
   /** Freeze the optional rules for the battle (online matches). */
@@ -769,6 +779,7 @@ export function createGame(args: {
     command,
     rulesVersion: args.rulesVersion ?? 1,
     coordinatedFire: args.coordinatedFire ?? false,
+    fighterStacking: args.fighterStacking ?? false,
     optionalBatteries: args.optionalBatteries ?? false,
     readyGate: args.readyGate ?? false,
     rulesLocked: args.rulesLocked ?? false,
@@ -3678,12 +3689,20 @@ export function flightStrike(game: GameState, flightId: string, shipId: string):
    * run costs the flight nothing, not even its ordnance.
    */
   const side = shieldsFacing(flight.position, ship.placement.position, ship.placement.heading)[0]
-  const shieldKey = `${ship.id}:${side}`
-  if (game.ops.shieldsStruckThisPhase.has(shieldKey)) {
-    return (
-      `${ship.name}'s ${side} shield has already been attacked this phase — ` +
-      `only one flight may attack a shield per phase. Come at another facing, or wait a phase.`
-    )
+  /*
+   * The phase record holds one key per run a shield has taken. Normally a
+   * shield takes one; under the stacking house rule a big hull's shield takes
+   * two, and the second run is recorded under its own key so the count can be
+   * read back (`freeShieldKey`).
+   */
+  const shieldKey = freeShieldKey(game.ops.shieldsStruckThisPhase, ship, side, game.fighterStacking)
+  if (!shieldKey) {
+    return shieldStrikeCap(ship, game.fighterStacking) === 1
+      ? `${ship.name}'s ${side} shield has already been attacked this phase — ` +
+          `only one flight may attack a shield per phase. Come at another facing, or wait a phase.`
+      : `${ship.name}'s ${side} shield has already been attacked twice this phase — ` +
+          `two flights may attack a shield of a size ${STACKING_SIZE_CLASS}+ hull per phase, no more. ` +
+          `Come at another facing, or wait a phase.`
   }
 
   const result = strike(flight, loadout, game.rng)

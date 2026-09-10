@@ -611,6 +611,54 @@ describe('one flight a shield a phase', () => {
     game.flights.find((f) => f.id === 'two')!.attacked = false
     expect(flightStrike(game, 'two', 'target')).toBeNull()
   })
+
+  describe('the stacking house rule: two flights a shield on a size-7+ hull', () => {
+    /** Three flights on the bow of a dreadnought-sized hull. */
+    function threeOnABigBow(stacking: boolean): GameState {
+      const game = battle([
+        shipAt({ id: 'carrier', form: carrierForm() }),
+        shipAt({
+          id: 'target',
+          side: 'Red',
+          form: { ...VALLARI_CRUISER, sizeClass: 7 },
+          x: 10,
+          y: 10,
+          heading: 0,
+        }),
+      ])
+      game.fighterStacking = stacking
+      game.flights.push(
+        flightAt({ id: 'one', side: 'Blue', x: 10, y: 8.5, config: 'strike', cardId: 'peregrine' }),
+        flightAt({ id: 'two', side: 'Blue', x: 10, y: 9, config: 'strike', cardId: 'peregrine' }),
+        flightAt({ id: 'three', side: 'Blue', x: 10.2, y: 8.7, config: 'strike', cardId: 'peregrine' }),
+      )
+      return game
+    }
+
+    it('is off by default: a big hull is still one flight a shield', () => {
+      const game = threeOnABigBow(false)
+      expect(game.fighterStacking).toBe(false)
+      expect(flightStrike(game, 'one', 'target')).toBeNull()
+      expect(flightStrike(game, 'two', 'target')).toMatch(/only one flight may attack a shield/)
+    })
+
+    it('lets a second flight onto the same shield, and turns the third away', () => {
+      const game = threeOnABigBow(true)
+      expect(flightStrike(game, 'one', 'target')).toBeNull()
+      expect(flightStrike(game, 'two', 'target')).toBeNull()
+      expect(flightStrike(game, 'three', 'target')).toMatch(/attacked twice this phase/)
+      // Both runs are on the record, the second under its own key.
+      expect(game.ops.shieldsStruckThisPhase.has('target:F')).toBe(true)
+      expect(game.ops.shieldsStruckThisPhase.has('target:F#2')).toBe(true)
+    })
+
+    it('does nothing for a cruiser even when switched on', () => {
+      const game = twoOnTheBow()
+      game.fighterStacking = true
+      expect(flightStrike(game, 'one', 'target')).toBeNull()
+      expect(flightStrike(game, 'two', 'target')).toMatch(/only one flight may attack a shield/)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

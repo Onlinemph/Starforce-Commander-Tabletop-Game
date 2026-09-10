@@ -247,6 +247,8 @@ export interface SetupOptions {
   rulesVersion?: number
   /** Play with the optional Coordinated Fire rules (H4.1). */
   coordinatedFire?: boolean
+  /** House rule: two flights may attack one shield of a size-7+ hull in a phase. */
+  fighterStacking?: boolean
   /** E11.2 / E11.3 / E11.4–E11.6 optional rules, off by default. */
   derelicts?: boolean
   explosions?: boolean
@@ -1298,6 +1300,7 @@ export function startScenario(scenarioId: string, options: SetupOptions = {}): G
     seed: options.seed,
     rulesVersion: options.rulesVersion ?? 1,
     coordinatedFire: options.coordinatedFire ?? false,
+    fighterStacking: options.fighterStacking ?? false,
     optionalBatteries: options.optionalBatteries ?? false,
     readyGate: options.readyGate ?? false,
     rulesLocked: options.rulesLocked ?? false,

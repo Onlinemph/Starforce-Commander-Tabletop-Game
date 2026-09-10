@@ -385,6 +385,18 @@ a second gun platform, for seven fewer points, and it beat the combined hull 15â
 most on a hull built around it and least on one that would rather be shooting; the ARK ROYAL essay
 predicted as much, and now it is a number.
 
+### House rule under test: two flights a shield on a size-7+ hull
+
+Pricing a wing differently by format is awkward and would not survive contact with a fleet picker,
+so the lever proposed instead is a rule: **a hull of size class 7 or larger may be attacked on the
+same shield by two flights in a phase.** Cruisers and below keep the outline's one. The printed
+roster has nothing at size 6, so "7 or larger" is exactly the dreadnoughts and the stations. It is
+a setup option (`fighterStacking`, off by default; "Fighters stack on big hulls" in the picker,
+`--stack` on `tools/versus.ts`), carried in the save so a replay plays the same game. The phase
+record keeps its shape: a stacked second run is stored under `ship:side#2`, and the engine and the
+planner both read the count through `freeShieldKey`, so they cannot disagree about whether a shield
+is free. Measurements below.
+
 ---
 
 ## Q3, answered: what a flight costs

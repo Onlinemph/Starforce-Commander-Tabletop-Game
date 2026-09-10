@@ -47,6 +47,8 @@ const rounds = Number(arg('rounds') ?? 12)
  */
 const retreats = (arg('retreat') ?? 'on') !== 'off'
 const toTheDeath = process.argv.includes('--kill')
+/** `--stack`: the house rule letting two flights attack one shield of a size-7+ hull in a phase. */
+const fighterStacking = process.argv.includes('--stack')
 const cap = toTheDeath ? Math.max(rounds, 60) : rounds
 
 for (const id of [...forceA, ...forceB]) {
@@ -120,7 +122,7 @@ let aKilled = 0
 let bKilled = 0
 for (let seed = 1; seed <= Math.max(1, Math.floor(games / 2)); seed++) {
   for (const rep of [0, 1]) {
-    const game: GameState = startScenario('versus', { seed: seed * 7919 + rep, mapScale: 2 })
+    const game: GameState = startScenario('versus', { seed: seed * 7919 + rep, mapScale: 2, fighterStacking })
     const sides = [...new Set(game.ships.map((s) => s.side))]
     const memos = new Map<string, AiMemo>(sides.map((x) => [x, createAiMemo()]))
     const drive = (closing: boolean) => {

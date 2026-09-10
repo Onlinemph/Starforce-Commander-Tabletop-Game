@@ -102,6 +102,8 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
   const [optionalBatteries, setOptionalBatteries] = useState(false)
   // H4: the ten firing steps, and one attack per faction per target per phase.
   const [coordinatedFire, setCoordinatedFire] = useState(false)
+  // House rule: two flights on one shield of a size-7+ hull in a phase.
+  const [fighterStacking, setFighterStacking] = useState(false)
   // E11's optional endgame: derelicts, explosions, and getting the crew off.
   const [derelicts, setDerelicts] = useState(false)
   const [explosions, setExplosions] = useState(false)
@@ -171,6 +173,7 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
       balancedPoints: balancedPoints || undefined,
       optionalBatteries: optionalBatteries || undefined,
       coordinatedFire: coordinatedFire || undefined,
+      fighterStacking: fighterStacking || undefined,
       derelicts: derelicts || undefined,
       // A ship cannot linger long enough to explode or be abandoned unless it
       // lingers at all, so both of those imply derelicts (E11.3, E11.6.2).
@@ -301,6 +304,17 @@ export function FleetPicker({ scenarioId, onClose }: Props) {
               onChange={(e) => setCoordinatedFire(e.target.checked)}
             />
             Coordinated Fire (H4)
+          </label>
+          <label
+            className="checkbox"
+            title="House rule. The fighter outline allows one flight per starship shield per phase. With this on, a hull of size class 7 or larger — dreadnoughts and stations — may be attacked on the same shield by two flights in a phase. Measured need: a wing of 2-damage fighters cannot get through a dreadnought's 20-plus shield facings one flight at a time, and loses 2-14 to a PREDATOR at matched points."
+          >
+            <input
+              type="checkbox"
+              checked={fighterStacking}
+              onChange={(e) => setFighterStacking(e.target.checked)}
+            />
+            Fighters stack on big hulls (size 7+, house rule)
           </label>
           <label
             className="checkbox"

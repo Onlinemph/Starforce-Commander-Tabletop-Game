@@ -39,6 +39,8 @@ export interface GameSetup {
   /** Engine rules reading (see CURRENT_RULES_VERSION). Absent = 1. */
   rulesVersion?: number
   coordinatedFire?: boolean
+  /** House rule: two flights may attack one shield of a size-7+ hull in a phase. */
+  fighterStacking?: boolean
   /** Optional batteries (B2.5): stored power spendable mid-round. */
   optionalBatteries?: boolean
   /** E11.2 — a gutted hull becomes a derelict instead of leaving the map. */
@@ -104,6 +106,7 @@ export function buildGame(setup: GameSetup): GameState {
     seed: setup.seed,
     rulesVersion: setup.rulesVersion ?? 1,
     coordinatedFire: setup.coordinatedFire ?? false,
+    fighterStacking: setup.fighterStacking ?? false,
     optionalBatteries: setup.optionalBatteries ?? false,
     readyGate: setup.readyGate ?? false,
     rulesLocked: setup.rulesLocked ?? false,

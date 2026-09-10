@@ -437,6 +437,7 @@ export function App() {
                 scenarioId: e.target.value,
                 seed: Math.floor(Math.random() * 1e9),
                 coordinatedFire: game.coordinatedFire,
+                fighterStacking: game.fighterStacking || undefined,
               })
               setTargetId(null)
             }}

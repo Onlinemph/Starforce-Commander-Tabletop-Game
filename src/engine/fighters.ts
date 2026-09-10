@@ -2,7 +2,7 @@ import { rollD6, rollsUnder, type Rng } from './dice'
 import { distance, translate } from './geometry'
 import { undamagedSystemBoxes, type ShipState } from './shipState'
 import { smallTargetDamage, type SmallTargetVolley } from './smallCraft'
-import type { DieFace, Point } from './types'
+import type { DieFace, Point, ShieldSide } from './types'
 
 /**
  * Fighters (FIGHTERS AND SMALL CRAFT — NOTES AND OUTLINE, Apr 2026).
@@ -426,6 +426,67 @@ export function flightRecoveryRefusal(
     return `The flight is ${range.toFixed(1)}" out; it must finish within ${RECOVERY_RANGE}".`
   }
   return null
+}
+
+// ---------------------------------------------------------------------------
+// Runs per shield per phase
+// ---------------------------------------------------------------------------
+
+/**
+ * "Only 1 fighter flight (no matter how large) may attack a single starship
+ * shield per phase" — Apr 2026 outline, ATTACKING STARSHIPS. That is the rule,
+ * and it is the rule that makes a wing useless against a dreadnought: a
+ * SABRE's 2 a hit against 20-plus blue and 4 green on every facing, one flight
+ * a facing a phase, never gets through before the disruptors thin the wing
+ * (2W-14L against a PREDATOR at matched points, measured twice).
+ *
+ * The house rule proposed for it, off unless the setup switches it on: a hull
+ * of size class 7 or larger — the dreadnoughts and the stations; the printed
+ * roster has nothing at size 6 — may be attacked on the same shield by two
+ * flights in a phase. Cruisers and below keep the printed one.
+ */
+export const STACKING_SIZE_CLASS = 7
+
+/** Runs one shield of this hull may take in a phase. */
+export function shieldStrikeCap(ship: ShipState, stacking: boolean): number {
+  return stacking && ship.form.sizeClass >= STACKING_SIZE_CLASS ? 2 : 1
+}
+
+/**
+ * The key the phase record stores for the n-th run (0-based) on a shield. The
+ * first run keeps the bare `ship:side` key every save and replay already
+ * carries; a stacked second run is recorded under its own key so the count
+ * reads back without changing the record's shape.
+ */
+export function shieldStrikeKey(shipId: string, side: ShieldSide, n: number): string {
+  return n === 0 ? `${shipId}:${side}` : `${shipId}:${side}#${n + 1}`
+}
+
+/** Runs a shield has taken this phase, read off the record. */
+export function shieldStrikesThisPhase(
+  struck: ReadonlySet<string>,
+  shipId: string,
+  side: ShieldSide,
+): number {
+  let n = 0
+  while (struck.has(shieldStrikeKey(shipId, side, n))) n += 1
+  return n
+}
+
+/**
+ * The key a further run on this shield would be recorded under, or `null`
+ * when the shield has taken every run the rules allow it this phase. The
+ * engine and the AI's planner both ask this, so they can never disagree
+ * about whether a shield is free.
+ */
+export function freeShieldKey(
+  struck: ReadonlySet<string>,
+  ship: ShipState,
+  side: ShieldSide,
+  stacking: boolean,
+): string | null {
+  const taken = shieldStrikesThisPhase(struck, ship.id, side)
+  return taken < shieldStrikeCap(ship, stacking) ? shieldStrikeKey(ship.id, side, taken) : null
 }
 
 /**
