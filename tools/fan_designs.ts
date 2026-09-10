@@ -2613,6 +2613,162 @@ const YORKTOWN_V_CARRIER: ShipForm = {
 
 /** The ARK ROYAL's measured wing premium, in points: what four SABRE flights added to its price. */
 const WING_PREMIUM = 99.2 - 47.3
+/** The same premium per flight, for decks of other sizes. */
+const WING_PREMIUM_PER_FLIGHT = WING_PREMIUM / 4
+
+// ---------------------------------------------------------------------------
+
+/**
+ * A carrier built the way the ARK ROYAL was built, out of a printed hull.
+ *
+ * The recipe is the ARK ROYAL essay's, applied mechanically so that every
+ * faction's carrier is the same kind of ship and the differences between them
+ * are the factions' own: the tubes come off (every A/MAT and plasma torpedo
+ * system, and the FUNCTIONS line that fed it), the secondary battery stays —
+ * which on every printed hull means the PD MODE mounts, the ones that can
+ * actually answer a flight — and a deck goes in. Sensors go up one box,
+ * because air direction is what a carrier contributes to a battle. Everything
+ * else is the donor's: reactor, screens, armour, cloak, turn table, structure.
+ * A Vallari carrier keeps its plate, an Aurelian one keeps its cloak, and
+ * neither gets a gun its navy does not already field.
+ *
+ * `sizeClass` may be moved: a fleet carrier built on a size-5 cruiser is the
+ * size-6 hull the printed roster skips, for the reason the ARK ROYAL essay
+ * gives.
+ */
+function carrierFrom(
+  donorName: string,
+  args: {
+    id: string
+    name: string
+    year: number
+    hangar: number
+    launch: number
+    landing: number
+    sizeClass?: number
+    availability?: ShipForm['availability']
+  },
+): ShipForm {
+  const donor = findShipForm(donorName)
+  if (!donor) throw new Error(`No printed hull matches "${donorName}"`)
+  const isTube = (w: WeaponSystemDef) => /TORP/i.test(w.name)
+  const tubes = new Set(donor.weapons.filter(isTube).map((w) => w.id))
+  return {
+    ...donor,
+    id: args.id,
+    name: args.name,
+    sizeClass: args.sizeClass ?? donor.sizeClass,
+    weapons: donor.weapons.filter((w) => !isTube(w)),
+    functions: donor.functions.filter(
+      (line) => !(line.weaponSystemId && tubes.has(line.weaponSystemId)),
+    ),
+    systems: [
+      ...donor.systems.map((s) => (s.kind === 'SENS' ? { ...s, boxes: s.boxes + 1 } : s)),
+      { kind: 'HNGR', label: 'Hangar Bay', boxes: args.hangar },
+      { kind: 'LNCH', label: 'Launch Bays', boxes: args.launch },
+      { kind: 'LNDG', label: 'Landing Bays', boxes: args.landing },
+    ],
+    pointValue: 0,
+    year: args.year,
+    availability: args.availability ?? 'rare',
+  }
+}
+
+/** A carrier's price: the builder's reading of the hull, plus the measured premium per flight aboard. */
+function carrierDesign(form: ShipForm): Design {
+  const hangar = form.systems.find((s) => s.kind === 'HNGR')?.boxes ?? 0
+  const model = pointValue(form).points
+  return {
+    form,
+    costModifier: (model + WING_PREMIUM_PER_FLIGHT * hangar) / model,
+    costNote: `the hull at the model's price plus the ARK ROYAL's measured wing premium (${
+      Math.round(WING_PREMIUM_PER_FLIGHT * 10) / 10
+    } a flight, ${hangar} flights)`,
+  }
+}
+
+/**
+ * Six more carriers, two a faction, so every navy can put a wing up and the
+ * question "what is a wing worth" can be asked of every navy's fighters.
+ *
+ * **Union.** The INDEPENDENCE is a KNOX III with a two-flight deck — the
+ * one printed Union hull that already carries no tubes, an escort cruiser
+ * whose whole battery is PD-capable phasers, which is to say it was a carrier
+ * escort before it had anything to escort. The LEXINGTON is the other end:
+ * a UNION II dreadnought's reactor, screens and secondary battery under a
+ * six-flight hangar with three launch and three landing bays. Six flights is
+ * two more than the four a carrier may have in the air, and that is the
+ * point of it — a fleet carrier keeps replacements below, and the wing that
+ * comes home three fighters short goes back up six strong.
+ *
+ * **Vallari.** The V-6R ROOST is a SAVAGE light cruiser with two flights of
+ * V-1 TALONs, the only armoured fighter in the game and the one whose strike
+ * does 3 a hit — the Vallari answer to the SABRE's 2. The V-13A AERIE is a
+ * HAVOC with the six V-YAGUS tubes gone and its eight TYPE-61 gravitic
+ * disruptors kept: the battery that made the PREDATOR the hull no Union wing
+ * could approach, now screening a wing of its own.
+ *
+ * **Aurelian.** The NIDUS is a CORVUS II destroyer with two flights of STRIX
+ * under a cloak, and the ALA REGIA a DEFENSOR ALATUS II with four. Both keep
+ * the cloak, and that is the interesting mechanic: a cloaked carrier may
+ * operate (Q12-A: one detection roll per launch, however many fighters go),
+ * so an Aurelian wing can appear from an empty patch of map — but each
+ * launch is a roll against the cloak, and a carrier that has to launch four
+ * flights is a carrier that has told everybody where it is.
+ */
+const INDEPENDENCE = carrierFrom('KNOX III-class', {
+  id: 'fan-union-independence-escort-carrier',
+  name: 'INDEPENDENCE-class Escort Carrier',
+  year: 3674,
+  hangar: 2,
+  launch: 1,
+  landing: 1,
+  availability: 'uncommon',
+})
+const LEXINGTON = carrierFrom('UNION II-class', {
+  id: 'fan-union-lexington-fleet-carrier',
+  name: 'LEXINGTON-class Fleet Carrier',
+  year: 3669,
+  hangar: 6,
+  launch: 3,
+  landing: 3,
+})
+const ROOST = carrierFrom('V-6P SAVAGE', {
+  id: 'fan-vallari-v-6r-roost-light-carrier',
+  name: 'V-6R ROOST-class Light Carrier',
+  year: 3673,
+  hangar: 2,
+  launch: 1,
+  landing: 1,
+  availability: 'uncommon',
+})
+const AERIE = carrierFrom('V-10E HAVOC', {
+  id: 'fan-vallari-v-13a-aerie-fleet-carrier',
+  name: 'V-13A AERIE-class Fleet Carrier',
+  year: 3675,
+  hangar: 4,
+  launch: 2,
+  landing: 2,
+  sizeClass: 6,
+})
+const NIDUS = carrierFrom('CORVUS II-class', {
+  id: 'fan-aurelian-nidus-escort-carrier',
+  name: 'NIDUS-class Escort Carrier',
+  year: 3675,
+  hangar: 2,
+  launch: 1,
+  landing: 1,
+  availability: 'uncommon',
+})
+const ALA_REGIA = carrierFrom('DEFENSOR ALATUS II-class', {
+  id: 'fan-aurelian-ala-regia-fleet-carrier',
+  name: 'ALA REGIA-class Fleet Carrier',
+  year: 3675,
+  hangar: 4,
+  launch: 2,
+  landing: 2,
+  sizeClass: 6,
+})
 
 // ---------------------------------------------------------------------------
 
@@ -2963,6 +3119,12 @@ const DESIGNS: Design[] = [
     costModifier: (pointValue(YORKTOWN_V_CARRIER).points + WING_PREMIUM) / pointValue(YORKTOWN_V_CARRIER).points,
     costNote: "the hull at the model's price plus the ARK ROYAL's measured wing premium (51.9)",
   },
+  carrierDesign(INDEPENDENCE),
+  carrierDesign(LEXINGTON),
+  carrierDesign(ROOST),
+  carrierDesign(AERIE),
+  carrierDesign(NIDUS),
+  carrierDesign(ALA_REGIA),
 ]
 
 /**

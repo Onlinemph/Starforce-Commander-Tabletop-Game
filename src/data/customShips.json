@@ -9214,6 +9214,4474 @@
   "shipBookPage": 18
  },
  {
+  "id": "fan-union-independence-escort-carrier",
+  "name": "INDEPENDENCE-class Escort Carrier",
+  "faction": "Union of Federated Systems",
+  "sizeClass": 4,
+  "stressRating": 3,
+  "damageControlRating": 3,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   }
+  ],
+  "batteries": 1,
+  "ftlDriveBoxes": 2,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 5
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 3,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-phaser-1",
+    "label": "PHASER",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 6
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "lnc-1200-phaser-1"
+   },
+   {
+    "id": "f-pls-phas-2",
+    "label": "PLS PHAS",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 6
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "sgn-60-pulse-phaser-2"
+   }
+  ],
+  "weapons": [
+   {
+    "id": "lnc-1200-phaser-1",
+    "name": "LNC-1200 PHASER",
+    "weaponClass": "phaser",
+    "mounts": [
+     {
+      "id": "lnc-1200-phaser-1-m1",
+      "arcs": [
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-1200-phaser-1-m2",
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-1200-phaser-1-m3",
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-1200-phaser-1-m4",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "yellow"
+      ],
+      "bonus": 1
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "yellow"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "yellow",
+       "yellow"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 13,
+      "max": 15,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "id": "sgn-60-pulse-phaser-2",
+    "name": "SGN-60 PULSE PHASER",
+    "weaponClass": "phaser",
+    "mounts": [
+     {
+      "id": "sgn-60-pulse-phaser-2-m1",
+      "arcs": [
+       "FS",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 4,
+      "hitBoxes": 2
+     },
+     {
+      "id": "sgn-60-pulse-phaser-2-m2",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "FP"
+      ],
+      "armingCircles": 4,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "blue",
+       "blue",
+       "blue",
+       "blue"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue",
+       "blue",
+       "blue"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue",
+       "blue",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 4,
+   "blue": {
+    "F": 24,
+    "A": 18,
+    "P": 20,
+    "S": 20
+   },
+   "green": {
+    "F": 4,
+    "S": 4,
+    "A": 4,
+    "P": 4
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 2
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 5
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 2
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 2
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 2
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 2
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 3
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 2
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 1
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 1
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    45,
+    45,
+    40,
+    35,
+    30,
+    25,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 3,
+   "stressAccelPerRound": 2,
+   "driveBoxes": 5,
+   "dmgTopSpeed": [
+    5,
+    3,
+    2,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 8,
+  "shuttles": 4,
+  "pointValue": 75.9,
+  "year": 3674,
+  "availability": "uncommon",
+  "victoryTable": [
+   {
+    "damage": 16.75,
+    "points": 4.3
+   },
+   {
+    "damage": 17.75,
+    "points": 10.8
+   },
+   {
+    "damage": 35.5,
+    "points": 21.5
+   },
+   {
+    "damage": 53.25,
+    "points": 32.2
+   },
+   {
+    "damage": 63.9,
+    "points": 38.7
+   }
+  ],
+  "shipBookPage": 28
+ },
+ {
+  "id": "fan-union-lexington-fleet-carrier",
+  "name": "LEXINGTON-class Fleet Carrier",
+  "faction": "Union of Federated Systems",
+  "sizeClass": 7,
+  "stressRating": 6,
+  "damageControlRating": 5,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 3
+     },
+     {
+      "boxes": 3
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 3
+     },
+     {
+      "boxes": 3
+     }
+    ]
+   },
+   {
+    "id": "c-main",
+    "label": "C MAIN",
+    "hitKind": "center-main",
+    "points": [
+     {
+      "boxes": 3
+     },
+     {
+      "boxes": 3
+     },
+     {
+      "boxes": 3
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   }
+  ],
+  "batteries": 2,
+  "ftlDriveBoxes": 3,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 6
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-phaser-2",
+    "label": "PHASER",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 6
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     },
+     {
+      "powerCost": 1,
+      "value": 10
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "lnc-500-phaser-2"
+   },
+   {
+    "id": "f-lt-phaser-3",
+    "label": "LT PHASER",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [],
+    "sequential": true,
+    "weaponSystemId": "dgr-12a-light-phaser-3"
+   }
+  ],
+  "weapons": [
+   {
+    "id": "lnc-500-phaser-2",
+    "name": "LNC-500 PHASER",
+    "weaponClass": "phaser",
+    "mounts": [
+     {
+      "id": "lnc-500-phaser-2-m1",
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-500-phaser-2-m2",
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-500-phaser-2-m3",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-500-phaser-2-m4",
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "lnc-500-phaser-2-m5",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE"
+    ]
+   },
+   {
+    "id": "dgr-12a-light-phaser-3",
+    "name": "DGR-12A LIGHT PHASER",
+    "weaponClass": "phaser",
+    "mounts": [
+     {
+      "id": "dgr-12a-light-phaser-3-m1",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS",
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 1,
+      "hitBoxes": 1
+     },
+     {
+      "id": "dgr-12a-light-phaser-3-m2",
+      "arcs": [
+       "SA",
+       "AS",
+       "AP",
+       "PA"
+      ],
+      "armingCircles": 1,
+      "hitBoxes": 1
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "red",
+      "dice": [
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 0",
+     "PD MODE"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 4,
+   "blue": {
+    "F": 24,
+    "A": 22,
+    "P": 22,
+    "S": 22
+   },
+   "green": {
+    "F": 4,
+    "S": 4,
+    "A": 4,
+    "P": 4
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 4
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 4
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 3
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 3
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 3
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 6
+   },
+   {
+    "kind": "CMND",
+    "label": "Command Systems",
+    "boxes": 5
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 4
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 6
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 3
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 3
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "dc",
+    "rating": 5
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    35,
+    30,
+    30,
+    30,
+    30,
+    20,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 2,
+   "stressAccelPerRound": 2,
+   "driveBoxes": 8,
+   "dmgTopSpeed": [
+    6,
+    5,
+    4,
+    3,
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 18,
+  "shuttles": 6,
+  "pointValue": 129.5,
+  "year": 3669,
+  "availability": "rare",
+  "victoryTable": [
+   {
+    "damage": 27.25,
+    "points": 7.7
+   },
+   {
+    "damage": 28.25,
+    "points": 19.2
+   },
+   {
+    "damage": 56.5,
+    "points": 38.5
+   },
+   {
+    "damage": 84.75,
+    "points": 57.8
+   },
+   {
+    "damage": 101.7,
+    "points": 69.3
+   }
+  ],
+  "shipBookPage": 8
+ },
+ {
+  "id": "fan-vallari-v-6r-roost-light-carrier",
+  "name": "V-6R ROOST-class Light Carrier",
+  "faction": "Vallari Imperium",
+  "sizeClass": 4,
+  "stressRating": 4,
+  "damageControlRating": 2,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   }
+  ],
+  "batteries": 1,
+  "ftlDriveBoxes": 2,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 5
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-t-43-disr-2",
+    "label": "T-43 DISR",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "type-43-heavy-disruptor-2"
+   },
+   {
+    "id": "f-t-61-disr-3",
+    "label": "T-61 DISR",
+    "kind": "weapon",
+    "freeValue": 4,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 6
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "type-61-gravitic-disruptor-3"
+   }
+  ],
+  "weapons": [
+   {
+    "id": "type-43-heavy-disruptor-2",
+    "name": "TYPE-43 HEAVY DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "type-43-heavy-disruptor-2-m1",
+      "arcs": [
+       "FS",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "type-43-heavy-disruptor-2-m2",
+      "arcs": [
+       "FS",
+       "SF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 10,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 13,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 0",
+     "NoBAT",
+     "ATMO"
+    ]
+   },
+   {
+    "id": "type-61-gravitic-disruptor-3",
+    "name": "TYPE-61 GRAVITIC DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "type-61-gravitic-disruptor-3-m1",
+      "arcs": [
+       "AP",
+       "PA",
+       "PF"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m2",
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m3",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m4",
+      "arcs": [
+       "SF",
+       "SA",
+       "AS"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 4,
+   "blue": {
+    "F": 20,
+    "A": 12,
+    "P": 16,
+    "S": 16
+   },
+   "green": {
+    "F": 4,
+    "S": 4,
+    "A": 4,
+    "P": 4
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 2
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 5
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 2
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 3
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 1
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 2
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 1
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 2
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 1
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 1
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    45,
+    40,
+    40,
+    35,
+    30,
+    20,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 2,
+   "stressAccelPerRound": 3,
+   "driveBoxes": 5,
+   "dmgTopSpeed": [
+    4,
+    3,
+    2,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 16,
+  "shuttles": 2,
+  "pointValue": 56.6,
+  "year": 3673,
+  "availability": "uncommon",
+  "victoryTable": [
+   {
+    "damage": 15.75,
+    "points": 3.5
+   },
+   {
+    "damage": 16.75,
+    "points": 8.8
+   },
+   {
+    "damage": 33.5,
+    "points": 17.5
+   },
+   {
+    "damage": 50.25,
+    "points": 26.2
+   },
+   {
+    "damage": 60.3,
+    "points": 31.5
+   }
+  ],
+  "shipBookPage": 66
+ },
+ {
+  "id": "fan-vallari-v-13a-aerie-fleet-carrier",
+  "name": "V-13A AERIE-class Fleet Carrier",
+  "faction": "Vallari Imperium",
+  "sizeClass": 6,
+  "stressRating": 3,
+  "damageControlRating": 3,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   }
+  ],
+  "batteries": 1,
+  "ftlDriveBoxes": 2,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 5
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 3,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-t-45-disr-2",
+    "label": "T-45 DISR",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "type-45-heavy-disruptor-2"
+   },
+   {
+    "id": "f-t-61-disr-3",
+    "label": "T-61 DISR",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "type-61-gravitic-disruptor-3"
+   },
+   {
+    "id": "f-t-61-disr-4",
+    "label": "T-61 DISR",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "type-61-gravitic-disruptor-4"
+   }
+  ],
+  "weapons": [
+   {
+    "id": "type-45-heavy-disruptor-2",
+    "name": "TYPE-45 HEAVY DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "type-45-heavy-disruptor-2-m1",
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "type-45-heavy-disruptor-2-m2",
+      "arcs": [
+       "FS",
+       "SF",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "yellow"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 9,
+      "band": "black",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 10,
+      "max": 12,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 13,
+      "max": 14,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 0",
+     "ATMO",
+     "NoBAT"
+    ]
+   },
+   {
+    "id": "type-61-gravitic-disruptor-3",
+    "name": "TYPE-61 GRAVITIC DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "type-61-gravitic-disruptor-3-m1",
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m2",
+      "arcs": [
+       "SF",
+       "AS",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m3",
+      "arcs": [
+       "FS",
+       "SF",
+       "AP",
+       "PF"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-3-m4",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   },
+   {
+    "id": "type-61-gravitic-disruptor-4",
+    "name": "TYPE-61 GRAVITIC DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "type-61-gravitic-disruptor-4-m1",
+      "arcs": [
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-4-m2",
+      "arcs": [
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-4-m3",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     },
+     {
+      "id": "type-61-gravitic-disruptor-4-m4",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 1
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 3,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 4,
+      "max": 6,
+      "band": "green",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 7,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "blue",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 4,
+   "blue": {
+    "F": 26,
+    "A": 16,
+    "P": 20,
+    "S": 20
+   },
+   "green": {
+    "F": 4,
+    "S": 4,
+    "A": 4,
+    "P": 4
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 3
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 5
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 3
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 4
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 3
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 4
+   },
+   {
+    "kind": "CMND",
+    "label": "Command Systems",
+    "boxes": 3
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 2
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 4
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 2
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 2
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    45,
+    40,
+    40,
+    35,
+    35,
+    20,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 3,
+   "stressAccelPerRound": 2,
+   "driveBoxes": 6,
+   "dmgTopSpeed": [
+    5,
+    4,
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 24,
+  "shuttles": 6,
+  "pointValue": 119.3,
+  "year": 3675,
+  "availability": "rare",
+  "victoryTable": [
+   {
+    "damage": 22,
+    "points": 10
+   },
+   {
+    "damage": 23,
+    "points": 25
+   },
+   {
+    "damage": 46,
+    "points": 50
+   },
+   {
+    "damage": 69,
+    "points": 75
+   },
+   {
+    "damage": 82.8,
+    "points": 90
+   }
+  ],
+  "shipBookPage": 50
+ },
+ {
+  "id": "fan-aurelian-nidus-escort-carrier",
+  "name": "NIDUS-class Escort Carrier",
+  "faction": "Aurelian Empire",
+  "sizeClass": 3,
+  "stressRating": 3,
+  "damageControlRating": 2,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 1
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 1
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 1
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 1
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 1
+     }
+    ]
+   }
+  ],
+  "batteries": 1,
+  "ftlDriveBoxes": 2,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 6
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 3,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-adm-15-2",
+    "label": "ADM-15",
+    "kind": "weapon",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "adm-15-medium-disruptor-2"
+   },
+   {
+    "id": "f-adm-13-3",
+    "label": "ADM-13",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     },
+     {
+      "powerCost": 1,
+      "value": 10
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "adm-13-medium-disruptor-3"
+   },
+   {
+    "id": "cloak",
+    "label": "CLOAK",
+    "kind": "special",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   }
+  ],
+  "weapons": [
+   {
+    "id": "adm-15-medium-disruptor-2",
+    "name": "ADM-15 MEDIUM DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "adm-15-medium-disruptor-2-m1",
+      "arcs": [
+       "FS",
+       "SF",
+       "AS",
+       "AP",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE",
+     "ATMO"
+    ]
+   },
+   {
+    "id": "adm-13-medium-disruptor-3",
+    "name": "ADM-13 MEDIUM DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "adm-13-medium-disruptor-3-m1",
+      "arcs": [
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-13-medium-disruptor-3-m2",
+      "arcs": [
+       "AS",
+       "AP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-13-medium-disruptor-3-m3",
+      "arcs": [
+       "FS",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-13-medium-disruptor-3-m4",
+      "arcs": [
+       "AS",
+       "AP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-13-medium-disruptor-3-m5",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 10,
+      "band": "black",
+      "dice": [
+       "green"
+      ]
+     },
+     {
+      "min": 11,
+      "max": 12,
+      "band": "red",
+      "dice": [
+       "green"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 3,
+   "blue": {
+    "F": 16,
+    "A": 12,
+    "P": 16,
+    "S": 16
+   },
+   "green": {
+    "F": 3,
+    "S": 3,
+    "A": 3,
+    "P": 3
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 2
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 5
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 2
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 2
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 1
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 1
+   },
+   {
+    "kind": "CLOAK",
+    "label": "Cloaking System",
+    "boxes": 1
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 1
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 2
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 1
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 1
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    45,
+    45,
+    45,
+    40,
+    35,
+    30,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 3,
+   "stressAccelPerRound": 3,
+   "driveBoxes": 4,
+   "dmgTopSpeed": [
+    4,
+    2,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 10,
+  "shuttles": 2,
+  "pointValue": 56.7,
+  "year": 3675,
+  "availability": "uncommon",
+  "victoryTable": [
+   {
+    "damage": 15,
+    "points": 3.6
+   },
+   {
+    "damage": 16,
+    "points": 9
+   },
+   {
+    "damage": 32,
+    "points": 18
+   },
+   {
+    "damage": 48,
+    "points": 27
+   },
+   {
+    "damage": 57.6,
+    "points": 32.4
+   }
+  ],
+  "shipBookPage": 23,
+  "shipBook": "aurelian",
+  "notes": "Form prints AFT SHIELD 12 but draws 10 aft shield boxes (60 printed, 58 drawn). The printed strengths are used."
+ },
+ {
+  "id": "fan-aurelian-ala-regia-fleet-carrier",
+  "name": "ALA REGIA-class Fleet Carrier",
+  "faction": "Aurelian Empire",
+  "sizeClass": 6,
+  "stressRating": 4,
+  "damageControlRating": 4,
+  "reactors": [
+   {
+    "id": "l-main",
+    "label": "L MAIN",
+    "hitKind": "left-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "r-main",
+    "label": "R MAIN",
+    "hitKind": "right-main",
+    "points": [
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     },
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "sl-reac",
+    "label": "SL REAC",
+    "hitKind": "sublight-reactor",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   },
+   {
+    "id": "aux-pwr",
+    "label": "AUX PWR",
+    "hitKind": "aux",
+    "points": [
+     {
+      "boxes": 2
+     }
+    ]
+   }
+  ],
+  "batteries": 2,
+  "ftlDriveBoxes": 2,
+  "functions": [
+   {
+    "id": "accel",
+    "label": "ACC/DEC",
+    "kind": "accel",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     },
+     {
+      "powerCost": 1,
+      "value": 5
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "sif",
+    "label": "SIF/IDF",
+    "kind": "sif",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "emer",
+    "label": "EMER",
+    "kind": "emergency-turn",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "bat-rech",
+    "label": "BTY RECH",
+    "kind": "battery-recharge",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": false
+   },
+   {
+    "id": "ftl",
+    "label": "FTL DRV",
+    "kind": "ftl-drive",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "rnfc-F",
+    "label": "SHLD RNFC F",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "rnfc-P",
+    "label": "SHLD RNFC P",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "rnfc-S",
+    "label": "SHLD RNFC S",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "rnfc-A",
+    "label": "SHLD RNFC A",
+    "kind": "shield-reinforce",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "repr-F",
+    "label": "SHLD REPR F",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "F"
+   },
+   {
+    "id": "repr-P",
+    "label": "SHLD REPR P",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "P"
+   },
+   {
+    "id": "repr-S",
+    "label": "SHLD REPR S",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "S"
+   },
+   {
+    "id": "repr-A",
+    "label": "SHLD REPR A",
+    "kind": "shield-repair",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     }
+    ],
+    "sequential": false,
+    "shieldSide": "A"
+   },
+   {
+    "id": "sensor",
+    "label": "SENSOR",
+    "kind": "sensor",
+    "freeValue": 4,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 6
+     },
+     {
+      "powerCost": 1,
+      "value": 8
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "gensys",
+    "label": "GEN SYS",
+    "kind": "gen-sys",
+    "freeValue": 1,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 2
+     }
+    ],
+    "sequential": true
+   },
+   {
+    "id": "f-med-disr-3",
+    "label": "MED DISR",
+    "kind": "weapon",
+    "freeValue": 2,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 5
+     },
+     {
+      "powerCost": 1,
+      "value": 9
+     },
+     {
+      "powerCost": 1,
+      "value": 12
+     }
+    ],
+    "sequential": true,
+    "weaponSystemId": "adm-15-medium-disruptor-3"
+   },
+   {
+    "id": "cloak",
+    "label": "CLOAK",
+    "kind": "special",
+    "freeValue": 0,
+    "steps": [
+     {
+      "powerCost": 1,
+      "value": 1
+     },
+     {
+      "powerCost": 1,
+      "value": 2
+     },
+     {
+      "powerCost": 1,
+      "value": 3
+     },
+     {
+      "powerCost": 1,
+      "value": 4
+     }
+    ],
+    "sequential": true
+   }
+  ],
+  "weapons": [
+   {
+    "id": "adm-15-medium-disruptor-3",
+    "name": "ADM-15 MEDIUM DISRUPTOR",
+    "weaponClass": "disruptor",
+    "mounts": [
+     {
+      "id": "adm-15-medium-disruptor-3-m1",
+      "arcs": [
+       "AP",
+       "PA",
+       "PF"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-15-medium-disruptor-3-m2",
+      "arcs": [
+       "AP",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-15-medium-disruptor-3-m3",
+      "arcs": [
+       "FS",
+       "PA",
+       "PF",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-15-medium-disruptor-3-m4",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "FP"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-15-medium-disruptor-3-m5",
+      "arcs": [
+       "FS",
+       "SF",
+       "SA",
+       "AS"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     },
+     {
+      "id": "adm-15-medium-disruptor-3-m6",
+      "arcs": [
+       "SF",
+       "SA",
+       "AS"
+      ],
+      "armingCircles": 2,
+      "hitBoxes": 2
+     }
+    ],
+    "brackets": [
+     {
+      "min": 0,
+      "max": 2,
+      "band": "green",
+      "dice": [
+       "yellow",
+       "green"
+      ]
+     },
+     {
+      "min": 3,
+      "max": 5,
+      "band": "green",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 6,
+      "max": 8,
+      "band": "black",
+      "dice": [
+       "green",
+       "green"
+      ]
+     },
+     {
+      "min": 9,
+      "max": 11,
+      "band": "black",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     },
+     {
+      "min": 12,
+      "max": 13,
+      "band": "red",
+      "dice": [
+       "green",
+       "blue"
+      ]
+     }
+    ],
+    "traits": [
+     "PREC 1",
+     "PD MODE",
+     "ATMO"
+    ]
+   }
+  ],
+  "shields": {
+   "generatorBoxes": 4,
+   "blue": {
+    "F": 26,
+    "A": 24,
+    "P": 24,
+    "S": 24
+   },
+   "green": {
+    "F": 4,
+    "S": 4,
+    "A": 4,
+    "P": 4
+   }
+  },
+  "armor": {
+   "F": 0,
+   "S": 0,
+   "A": 0,
+   "P": 0
+  },
+  "systems": [
+   {
+    "kind": "SCNC",
+    "label": "Sciences",
+    "boxes": 4
+   },
+   {
+    "kind": "SENS",
+    "label": "Sensors",
+    "boxes": 5
+   },
+   {
+    "kind": "TRAC",
+    "label": "Tractor Beams",
+    "boxes": 2
+   },
+   {
+    "kind": "TRAN",
+    "label": "Transporters",
+    "boxes": 3
+   },
+   {
+    "kind": "SHTL",
+    "label": "Shuttle Bay",
+    "boxes": 2
+   },
+   {
+    "kind": "QTRS",
+    "label": "Quarters",
+    "boxes": 3
+   },
+   {
+    "kind": "CRGO",
+    "label": "Cargo",
+    "boxes": 2
+   },
+   {
+    "kind": "CLOAK",
+    "label": "Cloaking System",
+    "boxes": 1
+   },
+   {
+    "kind": "HNGR",
+    "label": "Hangar Bay",
+    "boxes": 4
+   },
+   {
+    "kind": "LNCH",
+    "label": "Launch Bays",
+    "boxes": 2
+   },
+   {
+    "kind": "LNDG",
+    "label": "Landing Bays",
+    "boxes": 2
+   }
+  ],
+  "structure": [
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "black"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 4
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 3
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 2
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "box",
+    "color": "red"
+   },
+   {
+    "kind": "dc",
+    "rating": 1
+   }
+  ],
+  "sublight": {
+   "maxSpeed": 6,
+   "turnBySpeed": [
+    45,
+    40,
+    40,
+    35,
+    35,
+    20,
+    0
+   ],
+   "maxAccelPerPhase": 2,
+   "safeAccelPerRound": 2,
+   "stressAccelPerRound": 3,
+   "driveBoxes": 6,
+   "dmgTopSpeed": [
+    5,
+    3,
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "marineSquads": 15,
+  "shuttles": 4,
+  "pointValue": 112.3,
+  "year": 3675,
+  "availability": "rare",
+  "victoryTable": [
+   {
+    "damage": 21.75,
+    "points": 10.3
+   },
+   {
+    "damage": 22.75,
+    "points": 25.8
+   },
+   {
+    "damage": 45.5,
+    "points": 51.5
+   },
+   {
+    "damage": 68.25,
+    "points": 77.2
+   },
+   {
+    "damage": 81.9,
+    "points": 92.7
+   }
+  ],
+  "shipBookPage": 32,
+  "shipBook": "aurelian"
+ },
+ {
   "id": "fan-pirate-marauder",
   "name": "MARAUDER-class Corsair",
   "faction": "Pirate Clans",

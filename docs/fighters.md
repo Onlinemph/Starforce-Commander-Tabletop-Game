@@ -427,6 +427,36 @@ a heavy at all, the lever is strike damage (3 a hit instead of 2 puts a stacked 
 a full wing at about 30, which is a breach on most facings), or a rule that lets a strike ignore
 the green layer. Both are Doyle's to weigh; the option stays in the setup so a table can try it.
 
+### A carrier for every navy
+
+`tools/fan_designs.ts` now builds six more carriers, two a faction, all by one recipe
+(`carrierFrom`): take a printed hull, remove every torpedo system and the FUNCTIONS line that fed
+it, keep the secondary battery (on every printed hull that is the PD MODE mounts, the ones that can
+answer a flight), add a deck, add one sensor box. Everything else stays the donor's — a Vallari
+carrier keeps its plate, an Aurelian one keeps its cloak, and nobody gets a gun their navy does not
+field. Printed price is the builder's reading of the hull plus the ARK ROYAL's measured wing
+premium, 13 a flight.
+
+| carrier | donor | deck (HNGR/LNCH/LNDG) | size | printed | wing |
+| --- | --- | --- | --- | --- | --- |
+| INDEPENDENCE-class Escort Carrier | KNOX III | 2/1/1 | 4 | 75.9 | SABRE |
+| LEXINGTON-class Fleet Carrier | UNION II | 6/3/3 | 7 | 129.5 | SABRE |
+| V‑6R ROOST-class Light Carrier | V‑6P SAVAGE | 2/1/1 | 4 | 56.6 | V‑1 TALON |
+| V‑13A AERIE-class Fleet Carrier | V‑10E HAVOC | 4/2/2 | 6 | 119.3 | V‑1 TALON |
+| NIDUS-class Escort Carrier | CORVUS II | 2/1/1 | 3 | 56.7 | STRIX |
+| ALA REGIA-class Fleet Carrier | DEFENSOR ALATUS II | 4/2/2 | 6 | 112.3 | STRIX |
+
+Three things to watch. The LEXINGTON carries six flights against a four-in-the-air cap, so it is
+the first carrier with replacements below. The Vallari pair fly the V‑1 TALON, the only fighter
+whose strike does 3 a hit — the number the stacking measurement said matters — behind the TYPE‑61
+battery that made the PREDATOR the hull no Union wing could approach. And the Aurelian pair keep
+the cloak: a cloaked carrier may operate (Q12‑A, one detection roll a launch), so a STRIX wing can
+appear out of an empty patch of map, at the price that every launch is a roll against the cloak.
+
+Balanced prices are titrated the way the strike carrier's was — each carrier against its own bare
+donor hull with escorts added rung by rung — and recorded in `fleetValues.json`; the ladders are
+below.
+
 ---
 
 ## Q3, answered: what a flight costs
