@@ -3499,7 +3499,17 @@ export function launchFlight(
   // Each flight already out has taken a slot across the stern; the next one
   // forms up beside them rather than on top of them.
   const slot = flightsAirborne(game, ship).length
-  const docked = flightsDocked(game, ship).find((f) => !f.spent) ?? flightsDocked(game, ship)[0]
+  /*
+   * A rearmed flight on the deck first; a fresh one from the wing next; and a
+   * flight still waiting on the Hangar Bay Segment only when there is nothing
+   * else aboard. Taking the spent flight ahead of a fresh one was a real bug:
+   * the AI, counting the fresh flights as launchable, asked for a launch and
+   * got its just-landed BASIC counter back instead — a touch-and-go that put
+   * the same empty flight up and down every phase while the fresh ones sat.
+   */
+  const dockedFlights = flightsDocked(game, ship)
+  const docked =
+    dockedFlights.find((f) => !f.spent) ?? (ship.flightsAboard > 0 ? undefined : dockedFlights[0])
   if (docked) {
     delete docked.dockedTo
     docked.position = launchPositionFor(ship, slot)

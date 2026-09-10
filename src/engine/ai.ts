@@ -5129,36 +5129,49 @@ function planFlightOps(
     const rearmable =
       doctrine.spent === 'rearm' && Boolean(flight.spent && mother && hangarCapacity(mother) > 0)
     if (mother && !canDogfight && (rearmable || !canStrike)) {
-      if (withinRecoveryRange(flight.position, mother.placement.position)) {
-        /*
-         * Only as many as the deck can take: one per undamaged LNDG box a
-         * phase, and no more than the hangar holds. The rest hold off — which
-         * is what a real deck cycle looks like, and what stops the planner
-         * offering a landing the engine will refuse.
-         */
-        if (!flight.activated && landings(mother) > 0) {
-          queued.set(mother.id, (queued.get(mother.id) ?? 0) + 1)
-          offer(`land:${flight.id}`, {
-            type: 'recover-flight',
-            flightId: flight.id,
-            shipId: mother.id,
-          })
-        }
-        continue
-      }
-      if (!flight.activated) {
-        offer(`home:${flight.id}`, {
-          type: 'move-flight',
+      // Launched or flown already this phase: nothing more to do until the next.
+      if (flight.activated) continue
+      /*
+       * Only as many as the deck can take: one per undamaged LNDG box a
+       * phase, and no more than the hangar holds. The rest hold off — which
+       * is what a real deck cycle looks like, and what stops the planner
+       * offering a landing the engine will refuse.
+       */
+      const land = () => {
+        queued.set(mother.id, (queued.get(mother.id) ?? 0) + 1)
+        offer(`land:${flight.id}`, {
+          type: 'recover-flight',
           flightId: flight.id,
-          // Onto the recovery ring rather than onto the carrier's own point, so
-          // a wing coming home together arrives as four readable counters.
-          ...stepToward(
-            flight.position,
-            fanOut(mother.placement.position, slotOf(game, flight), RECOVERY_RANGE - 0.8),
-            speed,
-          ),
+          shipId: mother.id,
         })
       }
+      if (withinRecoveryRange(flight.position, mother.placement.position) && landings(mother) > 0) {
+        land()
+        continue
+      }
+      /*
+       * Fly home, and come aboard in the same phase if the leg ends within
+       * reach — "finishing within two inches of the carrier" is the rule, the
+       * move and the landing are one activation, and the engine has always
+       * allowed it. The planner used to insist on a phase between the two,
+       * and that was a stall, not a deck cycle: a carrier under way covers
+       * five to seven inches a phase, so a flight that flew onto the recovery
+       * ring and waited was two inches out again by the time it was allowed
+       * to land, flew onto the ring again, waited again — for six rounds in
+       * the battle that exposed it, with the enemy's disruptor taking a
+       * fighter or two off the wing every phase it hung there. A flight that
+       * cannot land this phase (the deck is full) still keeps station on the
+       * ring rather than holding where it is, for the same reason.
+       */
+      const step = stepToward(
+        flight.position,
+        // Onto the recovery ring rather than onto the carrier's own point, so
+        // a wing coming home together arrives as four readable counters.
+        fanOut(mother.placement.position, slotOf(game, flight), RECOVERY_RANGE - 0.8),
+        speed,
+      )
+      offer(`home:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
+      if (withinRecoveryRange(step, mother.placement.position) && landings(mother) > 0) land()
       continue
     }
     if (!canDogfight && !canStrike) continue

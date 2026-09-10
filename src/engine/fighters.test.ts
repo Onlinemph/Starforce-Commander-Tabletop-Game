@@ -932,6 +932,9 @@ describe('the wing is a fixed number of flights', () => {
     expect(recoverFlight(game, flight.id, ship)).toBeNull()
 
     game.ops.flightsLaunchedThisPhase = {}
+    // Nothing fresh left aboard: a spent flight only goes back up ahead of
+    // the Hangar Bay Segment when it is all the deck has.
+    ship.flightsAboard = 0
     expect(launchFlight(game, ship, 'starfury', 'space-superiority', 6)).toBeNull()
     // The same counter, not a fresh six — and still on its BASIC face until
     // the Hangar Bay Segment gives the load back.

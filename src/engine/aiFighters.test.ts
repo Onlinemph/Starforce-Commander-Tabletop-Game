@@ -358,6 +358,73 @@ describe('the AI in the Flight Operations Segment', () => {
     expect(play(game, 'Blue')).toContain('launch-flight')
   })
 
+  it('flies home and lands in the same phase, so a carrier under way can recover its wing', () => {
+    /*
+     * From the ARK ROYAL versus PREDATOR duels: the wing struck once in round
+     * four and then hung two inches behind its own carrier for six rounds.
+     * The planner flew each spent flight onto the recovery ring and then
+     * refused to land it in the same phase; by the next phase the carrier
+     * had moved on five or six inches, the flight was out of reach again,
+     * and it flew onto the ring again. The rule is "finishing within two
+     * inches of the carrier" — one activation, move and land together.
+     */
+    const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+    const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 60, y: 60 })])
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    const flight = game.flights[0]
+    flight.spent = true
+    flight.activated = false
+    // Six inches astern: out of recovery reach, inside one leg plus the ring.
+    flight.position = { x: 10, y: 26 }
+    ship.flightsAboard = 0
+
+    const taken = play(game, 'Blue')
+    expect(taken).toContain('move-flight')
+    expect(taken).toContain('recover-flight')
+    expect(game.flights[0].dockedTo, 'the flight should be aboard this phase, not next').toBe(ship.id)
+  })
+
+  it('keeps a flight the deck cannot take yet on the ring, not where it was', () => {
+    const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+    const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 60, y: 60 })])
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    for (const f of game.flights) {
+      f.spent = true
+      f.activated = false
+      f.position = { x: 10, y: 26 }
+    }
+    ship.flightsAboard = 0
+
+    // One LNDG box: one lands, the other closes up and waits its turn.
+    play(game, 'Blue')
+    const aboard = game.flights.filter((f) => f.dockedTo)
+    const waiting = game.flights.filter((f) => !f.dockedTo)
+    expect(aboard).toHaveLength(1)
+    expect(waiting).toHaveLength(1)
+    expect(waiting[0].activated, 'the waiting flight should have flown home').toBe(true)
+    expect(Math.hypot(waiting[0].position.x - 10, waiting[0].position.y - 20)).toBeLessThan(2.5)
+  })
+
+  it('breaks out a fresh flight before putting a spent one back up', () => {
+    const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
+    const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 24, y: 20 })])
+    launchFlight(game, ship, 'sabre', 'strike', 6)
+    const flight = game.flights[0]
+    flight.spent = true
+    flight.position = { x: 10, y: 21 }
+    recoverFlight(game, flight.id, ship)
+    game.ops.flightsLaunchedThisPhase = {}
+    // Three fresh flights still aboard: the next launch is one of those, and
+    // the spent flight stays on the deck for the Hangar Bay Segment.
+    expect(ship.flightsAboard).toBe(3)
+    expect(launchFlight(game, ship)).toBeNull()
+    expect(game.flights.find((f) => f.id === flight.id)!.dockedTo).toBe(ship.id)
+    expect(game.flights.filter((f) => !f.dockedTo)).toHaveLength(1)
+    expect(game.flights.find((f) => !f.dockedTo)!.spent).toBe(false)
+    expect(ship.flightsAboard).toBe(2)
+  })
+
   it('relaunches the flight that landed, with the fighters it has left', () => {
     const ship = shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 })
     const game = flightOps([ship, shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 24, y: 20 })])
