@@ -486,6 +486,64 @@ wing to fly with an enemy inside launch horizon, or when its next straight leg l
 mirror duel is now 6‑2 with six hulls destroyed in eight games; the NIDUS with its cloak *stripped*
 had beaten the CORVUS II 8‑0, which is how the wing was cleared of blame.
 
+### Cloaked carriers, and how the good ones fly
+
+Every Aurelian hull cloaks, so every Aurelian carrier does, and the rules make that a specific
+kind of ship rather than a carrier with a trick:
+
+- **Launching while dark is legal, and it is a flare.** A cloaked ship may not fire (H6.4.2) and
+  may not launch homing weapons, but flights are small craft, and H6.15.4 gives every searching
+  enemy a bonus search roll per small craft launched. The engine counts a whole flight as one
+  launch (Q12‑A), so putting a wing up is four rolls against the cloak, not twenty-four. A carrier
+  can therefore open a battle by launching out of nowhere — but it has just told the table where
+  to look.
+- **A cloaked ship has no shields (H6.4).** That cuts both ways and both matter. A cloaked
+  *target* takes a flight's strike straight into the hull: on the traced seed a STRIX wing put 8,
+  12 and 16 points of plasma into a cloaked CORVUS as internal damage, with no screen to soak it.
+  And a cloaked *carrier* that is found is a bare hull under a plasma salvo, which is how the ALA
+  IMPERIALIS took a 40-point heavy torpedo on its F shield the phase after it surfaced.
+- **A hidden ship flies straight (H6.8.5).** No hard turns, so a cloaked carrier cannot hold
+  station near the fight; it crosses, and everything it wants to do at the far end — launch,
+  recover, turn — it does better in daylight. The AI now surfaces the moment its wing has a target
+  inside launch horizon, and the trace shows why: it stops powering the cloak at the Resource
+  Allocation Segment (H6.3.2), comes out in Phase 1, and has both wings in the air by the end of
+  the round.
+- **The wing is the cloak.** The STRIX card carries Jamming 8 — the highest in the set — because
+  E10.2.2 adds a flight's jamming to the range of every non-PD volley fired at it, which is what a
+  cloak does at hull scale. A STRIX two inches off a cruiser's bow is engaged as though it were ten
+  inches away. It is Structure 3 for the same reason, and point defense (exempt under E12.4.3)
+  eats it. So the Aurelian carrier's wing is nearly immune to main batteries and dies to flak,
+  which is the faction's bargain everywhere else, written on a card.
+
+The doctrine that comes out of this: **cross dark, arrive in daylight, strike cloaked hulls.**
+Cloak for the approach, where a hidden ship is safe and the wing is aboard; decloak at launch
+range (the AI does this by itself now); put the wing on whatever the enemy has cloaked, because
+plasma into an unshielded hull is the best damage in the game; recover, rearm, and re-cloak
+through the reload if the enemy's guns are what is left. The ALA REGIA measured below its own
+donor because four STRIX are not worth two plasma tubes on a heavy cruiser. The answer to that is
+not a better cloak; it is more fighters than tubes, which is what the super carriers are for.
+
+### Super carriers: two wings on a dreadnought
+
+Three more from the same recipe, on each faction's dreadnought, with an eight-bay deck and four
+launch and four landing bays:
+
+| carrier | donor | deck | wing | printed |
+| --- | --- | --- | --- | --- |
+| SARATOGA-class Super Carrier | UNION III | 8/4/4 | SABRE | 206.9 |
+| V‑14A EYRIE-class Super Carrier | V‑11C PREDATOR | 8/4/4 | V‑1 TALON | 214.5 |
+| ALA IMPERIALIS-class Super Carrier | INVICTUS II | 8/4/4 | STRIX | 185.0 |
+
+Eight bays is two fighter cards, and the engine now reads it that way: `airborneCap` gives a
+hull four flights of sky per four hangar bays (a six-bay LEXINGTON still flies four, with two on
+the deck as replacements; nothing under eight bays changes). So a super carrier flies eight at
+once, launches four and lands four a phase, and the cycle the trace shows is the whole argument:
+eight flights up by round 3, eight strikes in one round (60 points of plasma across four facings
+of an INVICTUS II), all eight recovered in round 4, all eight rearmed at the round-4 Hangar Bay
+Segment, all eight back up in round 5. A fleet carrier strikes every other round; a super carrier
+strikes every round. Balanced prices are titrated against the bare dreadnought donors; ladders
+below.
+
 ---
 
 ## Q3, answered: what a flight costs

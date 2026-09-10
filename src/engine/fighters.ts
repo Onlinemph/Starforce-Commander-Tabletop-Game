@@ -106,6 +106,21 @@ export function airframeJamming(card: FighterCard, loadout: FighterLoadout | und
 export const MAX_FLIGHT_SIZE = 6
 /** Flights one carrier may put on the board at once (outline; four ID boxes per card). */
 export const MAX_FLIGHTS_PER_SHIP = 4
+
+/**
+ * Flights this hull may have in the air at once.
+ *
+ * The outline's four is the four ID boxes down the edge of one fighter card:
+ * one card is one wing, and a carrier flies one card. A hull with eight
+ * hangar bays is carrying two cards, and gets two cards' worth of sky — the
+ * super carriers in `tools/fan_designs.ts` are the reason this exists. The
+ * cap steps by whole cards, so a six-bay LEXINGTON still flies four with two
+ * on the deck as replacements, and nothing under eight bays changes.
+ */
+export function airborneCap(ship: ShipState): number {
+  const bays = ship.form.systems.filter((s) => s.kind === 'HNGR').reduce((n, s) => n + s.boxes, 0)
+  return MAX_FLIGHTS_PER_SHIP * Math.max(1, Math.floor(bays / MAX_FLIGHTS_PER_SHIP))
+}
 /** Range a flight launches into, as J8.2.1 for shuttles. */
 export const FLIGHT_RANGE = 1
 /**
@@ -384,8 +399,8 @@ export function flightLaunchRefusal(
     return `${ship.name} launches ${launchRate(ship)} flight(s) a phase, one per LNCH box.`
   }
   if (aboard < 1) return `${ship.name} has no flights left in the hangar.`
-  if (flightsAirborne >= MAX_FLIGHTS_PER_SHIP) {
-    return `${ship.name} may have ${MAX_FLIGHTS_PER_SHIP} flights out at once.`
+  if (flightsAirborne >= airborneCap(ship)) {
+    return `${ship.name} may have ${airborneCap(ship)} flights out at once.`
   }
   return null
 }

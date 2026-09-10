@@ -853,10 +853,21 @@ describe('launching and recovering (Q5, Q12-A)', () => {
   })
 
   it('caps a carrier at four flights out (the four ID boxes)', () => {
-    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 8, LNCH: 8, LNDG: 1 }) })
+    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 6, LNCH: 8, LNDG: 1 }) })
     const game = battle([ship])
     for (let i = 0; i < 4; i++) expect(launchFlight(game, ship)).toBeNull()
+    // Six bays is one card and two spares, not a card and a half.
     expect(launchFlight(game, ship)).toMatch(/4 flights out at once/)
+  })
+
+  it('gives an eight-bay hull two cards of sky: eight flights out', () => {
+    // Nine launch bays and a ninth flight squeezed aboard, so neither the
+    // per-phase rate nor an empty hangar is what stops the ninth launch.
+    const ship = shipAt({ id: 'c', form: carrierForm({ HNGR: 8, LNCH: 9, LNDG: 1 }) })
+    ship.flightsAboard = 9
+    const game = battle([ship])
+    for (let i = 0; i < 8; i++) expect(launchFlight(game, ship)).toBeNull()
+    expect(launchFlight(game, ship)).toMatch(/8 flights out at once/)
   })
 
   it('counts a whole flight as ONE launch for cloak detection (H6.15.4)', () => {

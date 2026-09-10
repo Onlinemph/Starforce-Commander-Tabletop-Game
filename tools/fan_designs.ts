@@ -2770,6 +2770,52 @@ const ALA_REGIA = carrierFrom('DEFENSOR ALATUS II-class', {
   sizeClass: 6,
 })
 
+/**
+ * Super carriers: two wings on a dreadnought hull.
+ *
+ * The six carriers above measured a wing at 13 to 20 balanced points on a
+ * hull that already fights, and the Aurelian pair measured theirs at less
+ * than the plasma tubes it replaced. The player's answer was the right one:
+ * then carry more fighters than tubes. These three are each faction's
+ * dreadnought with every tube gone and an eight-bay deck in their place —
+ * two fighter cards' worth (`airborneCap`), so eight flights fly at once,
+ * four launch and four land a phase, and a wing that comes home spent finds
+ * the other wing already on the catapults. That is the difference from the
+ * LEXINGTON: not a reserve, a second wing, and a sortie every round instead
+ * of every other.
+ *
+ * The SARATOGA keeps the UNION III's five LNC-1200 turrets and DGR-14 flak;
+ * the V-14A EYRIE keeps the PREDATOR's ten TYPE-71 gravitic disruptors, the
+ * densest anti-fighter battery in the game, so its own wing sorties under
+ * the flak that shot the Union's down; the ALA IMPERIALIS keeps the INVICTUS
+ * II's six ADM-15s and its cloak — eight flights of STRIX from an empty
+ * patch of map, with plasma on every one.
+ */
+const SARATOGA = carrierFrom('UNION III-class', {
+  id: 'fan-union-saratoga-super-carrier',
+  name: 'SARATOGA-class Super Carrier',
+  year: 3676,
+  hangar: 8,
+  launch: 4,
+  landing: 4,
+})
+const EYRIE = carrierFrom('V-11C PREDATOR', {
+  id: 'fan-vallari-v-14a-eyrie-super-carrier',
+  name: 'V-14A EYRIE-class Super Carrier',
+  year: 3676,
+  hangar: 8,
+  launch: 4,
+  landing: 4,
+})
+const ALA_IMPERIALIS = carrierFrom('INVICTUS II-class', {
+  id: 'fan-aurelian-ala-imperialis-super-carrier',
+  name: 'ALA IMPERIALIS-class Super Carrier',
+  year: 3676,
+  hangar: 8,
+  launch: 4,
+  landing: 4,
+})
+
 // ---------------------------------------------------------------------------
 
 interface Design {
@@ -3125,6 +3171,9 @@ const DESIGNS: Design[] = [
   carrierDesign(AERIE),
   carrierDesign(NIDUS),
   carrierDesign(ALA_REGIA),
+  carrierDesign(SARATOGA),
+  carrierDesign(EYRIE),
+  carrierDesign(ALA_IMPERIALIS),
 ]
 
 /**

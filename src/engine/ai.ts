@@ -44,7 +44,7 @@ import {
   FIGHTER_WEAPON_RANGE,
   RECOVERY_RANGE,
   MAX_FLIGHT_SIZE,
-  MAX_FLIGHTS_PER_SHIP,
+  airborneCap,
   type FighterConfigKind,
   type Flight,
 } from './fighters'
@@ -5130,7 +5130,7 @@ function planFlightOps(
     const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
     let room = Math.min(
       rate,
-      MAX_FLIGHTS_PER_SHIP - flightsAirborne(game, ship).length,
+      airborneCap(ship) - flightsAirborne(game, ship).length,
       // A flight that landed with its load spent waits for the Hangar Bay
       // Segment. Sending it straight back up is a touch-and-go that costs the
       // wing its whole mid-game.

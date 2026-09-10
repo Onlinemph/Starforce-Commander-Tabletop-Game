@@ -32,7 +32,7 @@ import {
   FIGHTER_WEAPON_RANGE,
   FLIGHT_RANGE,
   MAX_FLIGHT_SIZE,
-  MAX_FLIGHTS_PER_SHIP,
+  airborneCap,
   type FighterConfigKind,
   type Flight,
 } from '../engine/fighters'
@@ -171,7 +171,7 @@ function FighterSection({ game, ship }: { game: GameState; ship: ShipState }) {
         <>
           <p className="hint">
             {flightsInHangar(game, ship)} flight(s) in the hangar of {hangar} · {out.length}/
-            {MAX_FLIGHTS_PER_SHIP} out · {launched}/{launchRate(ship)} launched and {recovered}/
+            {airborneCap(ship)} out · {launched}/{launchRate(ship)} launched and {recovered}/
             {recoveryRate(ship)} recovered this phase.
           </p>
           <div className="builder-row wrap">
