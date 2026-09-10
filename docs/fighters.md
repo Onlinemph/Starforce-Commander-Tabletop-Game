@@ -591,6 +591,14 @@ point a mount. It errs against the guns, never against the fighters.
 **Caveat on the rulebook.** The core rules PDF is not in this workspace; F1.4.2 is enforced as the
 engine's own comment stated it, and the wording should be confirmed against the printed rule.
 
+**Measured after the fix**, admiral, 16 games, before → after: ARK ROYAL vs PREDATOR 2‑14 → 1‑15,
+vs HAVOC 2‑14 → 2‑14, vs UNION II 7‑9 → 6‑10, vs MARAUDER 15‑1 → 13‑3, vs INVICTUS I 0‑16 → 1‑15;
+Strike Carrier vs UNION III + KNOX II 1‑15 → 1‑15. All within noise, so every balanced price above
+stands. Shortening a dual-mode gun's point-defense reach from twelve inches to eight does not save
+a wing that has to close to two inches to strike: the losses were always taken on the last leg,
+inside the flak either way. The ceiling is real, and it is the rules' own — a wing of 2‑damage
+fighters against a hull with a dense PD MODE battery and 20-plus shields, whatever the reach.
+
 ### Doctrine under test: queue the wing on one facing
 
 The other player proposal: instead of four flights on four shields, line the wing up on the
