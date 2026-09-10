@@ -558,6 +558,39 @@ catapults means the hull never spends a round with nothing in the air. And the A
 the one the ALA REGIA could not reach: eight STRIX *are* worth more than an INVICTUS II's four
 plasma systems, by a clear margin. More fighters than tubes was the right instinct.
 
+### Point defense, audited
+
+After every concentration rule pointed at flak as the wing's real ceiling, the point-defense path
+(`fireAtSmallTarget`) was read against the rule references it cites. Four things were wrong or
+missing, one of them large:
+
+- **F1.4.2 was a comment, not a rule.** A `PD MODE` gun is a main-battery weapon that may also fire
+  in point defense mode, and the rule limits that mode to its first two range brackets. The engine
+  let every PD MODE mount fire as point defense across its whole chart — full damage, no jamming —
+  so a PREDATOR's TYPE‑33s reached twelve inches against fighters where the rule gives them eight,
+  an LNC‑1200 fifteen where the rule gives six. Past its first two brackets a PD MODE gun is now an
+  ordinary gun shooting at a small target: halved (E12.4.4), with the flight's jamming on the range
+  (E10.2.2), which for a STRIX at jamming 8 usually means off the chart. Dedicated `PD WPN` and
+  `PD AREA` weapons are point defense across their charts. The AI's point-defense planner applies
+  the same limit, so it no longer pulls a mount out of its volley for a shot the rule halves.
+- **Mount damage did not degrade the shot.** Gunnery drops a damaged mount's weakest dice
+  (E8.3.1); fire at small targets rolled the full bracket. It now drops them too.
+- **Ammunition was not checked.** A limited-ammunition mount could fire at small targets past its
+  allowance, and every mount was charged a round of ammunition whether it carried any or not.
+- Rerolls (E1.2.1, E1.2.3) are still not offered on fire at small targets. Both sides are equally
+  without them, so the AI results are unaffected, but a human firing PD at a flight cannot reroll
+  where the rule would let them. Left as a known gap.
+
+Two things that were checked and are right: COA 1 pools a ship's volley against the flight and
+divides by the fighter's Structure with the remainder carried (E12.4.2), and point defense gets its
+shot before the flight strikes because the Combat Segment closes before Flight Operations
+(E12.3.4). One simplification worth knowing: non-PD fire is halved and floored per *mount* rather
+than once per pooled volley, which under-counts a main battery's fire at a flight by up to half a
+point a mount. It errs against the guns, never against the fighters.
+
+**Caveat on the rulebook.** The core rules PDF is not in this workspace; F1.4.2 is enforced as the
+engine's own comment stated it, and the wording should be confirmed against the printed rule.
+
 ### Doctrine under test: queue the wing on one facing
 
 The other player proposal: instead of four flights on four shields, line the wing up on the

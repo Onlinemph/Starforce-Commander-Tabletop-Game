@@ -799,8 +799,29 @@ describe('jamming exactly as E10.2.2 (Q18-A)', () => {
     expect(near.out.volley!.faces).toHaveLength(near.weapon.brackets[0].dice.length)
     // And its damage is not halved, where the battery's would be (E12.4.3).
     expect(near.out.volley!.degraded).toBe(false)
-    // Still on the chart where the battery is off it entirely.
-    expect(fireAt('nial', 10, PD).out.refusal).toBeNull()
+    // The second bracket is still point defense mode (F1.4.2): 5" is 3-5.
+    const second = fireAt('nial', 5, PD)
+    expect(second.out.refusal).toBeNull()
+    expect(second.out.volley!.degraded).toBe(false)
+  })
+
+  it('a PD MODE gun is only point defense in its first two brackets (F1.4.2)', () => {
+    /*
+     * The LNC-447's chart runs 0-2, 3-5, 6-8, 9-10, 11-12. Point defense
+     * mode is the first two of those. From 6" out it is a phaser shooting at
+     * a small target like any other: Degraded Fire Control halves it
+     * (E12.4.4) and the flight's jamming goes onto the range (E10.2.2).
+     */
+    // 7" at a Frazi (jamming 5) resolves at 12": the last bracket, one blue
+    // die, halved.
+    const seven = fireAt('frazi', 7, PD)
+    expect(seven.out.refusal).toBeNull()
+    expect(seven.out.volley!.degraded).toBe(true)
+    expect(seven.out.volley!.faces).toHaveLength(1)
+    // 10" at a Nial (jamming 8) is 18": off the chart, and the refusal says why.
+    const ten = fireAt('nial', 10, PD)
+    expect(ten.out.refusal).toMatch(/\+8 jamming/)
+    expect(ten.out.refusal).toMatch(/F1\.4\.2/)
   })
 })
 

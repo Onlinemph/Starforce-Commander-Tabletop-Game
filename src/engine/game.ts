@@ -15,7 +15,14 @@ import {
 // Type-only, and deliberately so: actions.ts imports this module at runtime,
 // and a value import back the other way would be a genuine cycle.
 import type { GameAction } from './actions'
-import { applyHeldVolley, firingOrder, type HeldVolley } from './combat'
+import {
+  applyHeldVolley,
+  dropWeakest,
+  firesAsPointDefense,
+  firingOrder,
+  isPointDefense,
+  type HeldVolley,
+} from './combat'
 import {
   commandSystemBoxes,
   hasCommandSystems,
@@ -3258,9 +3265,19 @@ export function fireAtSmallTarget(
   const state = weapon ? attacker.mounts[weapon.id]?.[mountIndex] : undefined
   if (!weapon || !state) return { refusal: 'No such weapon mount.' }
   if (!mountIsReady(weapon, mountIndex, state)) return { refusal: `${weapon.name} is not armed.` }
+  const mountDef = weapon.mounts[mountIndex]
+  if (mountDef.ammo !== undefined && state.ammoUsed >= mountDef.ammo) {
+    return { refusal: `${weapon.name} mount ${mountIndex + 1} is out of ammunition (F1.2.4).` }
+  }
 
-  const pointDefense = weapon.traits.some((t) => /^PD/i.test(t.replace(/\s+/g, '')))
   const actual = Math.floor(distance(attacker.placement.position, target.position))
+  /*
+   * Point defense, or not, is decided by the weapon AND the range: a
+   * dedicated PD weapon is point defense across its chart, a PD MODE gun only
+   * in its first two brackets (F1.4.2), and past them it is a main battery
+   * shooting at a small target like any other.
+   */
+  const pointDefense = firesAsPointDefense(weapon, actual)
   /*
    * E10.2.2 — the target's jamming is added to the actual range. It is a
    * bracket shift, not a to-hit modifier, so a Nial at jamming 8 pushes a main
@@ -3272,13 +3289,17 @@ export function fireAtSmallTarget(
   const range = actual + jamming
   const bracket = weapon.brackets.find((b) => range >= b.min && range <= b.max)
   if (!bracket) {
+    const beyondPd = isPointDefense(weapon) && !pointDefense ? ' — beyond point defense mode\'s first two brackets (F1.4.2)' : ''
     return {
       refusal:
         jamming > 0
-          ? `${target.name} is at ${actual}" +${jamming} jamming = ${range}", off ${weapon.name}'s chart (E10.2.2).`
+          ? `${target.name} is at ${actual}" +${jamming} jamming = ${range}", off ${weapon.name}'s chart (E10.2.2)${beyondPd}.`
           : `${target.name} is at ${range}", outside ${weapon.name}'s chart.`,
     }
   }
+  // A damaged mount fires with its weakest dice gone (E8.3.1), here as anywhere.
+  const dice = dropWeakest([...bracket.dice], Math.min(state.damage, bracket.dice.length))
+  if (dice.length === 0) return { refusal: `${weapon.name} mount ${mountIndex + 1} is too damaged to fire.` }
   // A target held in your own beam is simply shifted into a convenient arc, so
   // only a free-flying one has to be borne on (J3.2.5, E2.2.2).
   if (
@@ -3292,11 +3313,11 @@ export function fireAtSmallTarget(
   }
 
   const faces = target.held
-    ? bracket.dice.map((die) => HELD_TARGET_FACE[die])
-    : rollDice(bracket.dice, game.rng).map((r) => r.face)
+    ? dice.map((die) => HELD_TARGET_FACE[die])
+    : rollDice(dice, game.rng).map((r) => r.face)
 
   state.armed = 0
-  state.ammoUsed += 1
+  if (mountDef.ammo !== undefined) state.ammoUsed += 1
 
   /*
    * COA 1 (E12.4.2) — the volley is pooled against the flight and divided by

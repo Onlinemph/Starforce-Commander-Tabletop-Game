@@ -964,10 +964,15 @@ place (J3.5.1).
 Shuttles, probes and missiles in flight are counters you can fire on. What matters is whether the
 weapon was built for it:
 
-- A **point defense** weapon (any `PD` trait) fires normally and applies its damage in full
-  (E12.4.3).
+- A **point defense** weapon fires normally and applies its damage in full (E12.4.3). A dedicated
+  one (`PD WPN`, `PD AREA`) is point defense across its whole chart; a dual-mode gun (`PD MODE`) is
+  point defense only in its **first two range brackets** (F1.4.2), and past them it is a main
+  battery like any other.
 - Anything else must use **Degraded Fire Control**, which totals the damage and halves it, rounding
-  down (E12.4.4, E10.2.3). A phaser can swat a shuttle; it just does half of what it would to a hull.
+  down (E12.4.4, E10.2.3), with the target's jamming added to the range (E10.2.2). A phaser can swat
+  a shuttle; it just does half of what it would to a hull.
+- A damaged mount fires with its weakest dice gone (E8.3.1), and a mount with limited ammunition
+  spends a round of it (F1.2.4), exactly as against a ship.
 
 A homing weapon may not be fired on during the phase it launched (E12.3.2), so only counters that
 have already flown a leg appear as targets.

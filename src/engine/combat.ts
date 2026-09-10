@@ -45,6 +45,30 @@ export function harmsStarships(weapon: WeaponSystemDef): boolean {
   return !hasTrait(weapon, 'PDWPN')
 }
 
+/**
+ * How many of a weapon's range brackets it fires as point defense in.
+ *
+ * A dedicated point defense weapon (`PD WPN`, `PD AREA`) is point defense
+ * across its whole chart. A dual-mode gun (`PD MODE`) is a main-battery
+ * weapon that may also fire in point defense mode, and F1.4.2 limits that
+ * mode to its first two range brackets: beyond them it is an ordinary gun
+ * shooting at a small target — Degraded Fire Control (E12.4.4) and the
+ * target's jamming on the range (E10.2.2) both apply. This was a comment
+ * and not a rule for a long time, and the measured cost was large: a
+ * PREDATOR's TYPE-33s reached twelve inches at full damage against
+ * fighters, where the rule gives them eight.
+ */
+export function pointDefenseReach(weapon: WeaponSystemDef): number {
+  if (hasTrait(weapon, 'PDWPN') || hasTrait(weapon, 'PDAREA')) return Infinity
+  return hasTrait(weapon, 'PDMODE') ? 2 : 0
+}
+
+/** Whether a shot from this weapon at `actualRange` counts as point defense (F1.4.2). */
+export function firesAsPointDefense(weapon: WeaponSystemDef, actualRange: number): boolean {
+  const index = bracketIndexFor(weapon, actualRange)
+  return index >= 0 && index < pointDefenseReach(weapon)
+}
+
 // ---------------------------------------------------------------------------
 // Range brackets (E1.2, C1.5)
 // ---------------------------------------------------------------------------
@@ -569,7 +593,7 @@ export function resolveVolley(
 const DIE_STRENGTH: Record<DieColor, number> = { blue: 0, green: 1, yellow: 2, red: 3 }
 
 /** Remove the `count` weakest dice — the firing player's sensible choice (E8.3.1). */
-function dropWeakest(dice: DieColor[], count: number): DieColor[] {
+export function dropWeakest(dice: DieColor[], count: number): DieColor[] {
   const sorted = [...dice].sort((a, b) => DIE_STRENGTH[a] - DIE_STRENGTH[b])
   const toDrop = sorted.slice(0, count)
   const result = [...dice]

@@ -1,5 +1,5 @@
 import { applyAction, type GameAction } from './actions'
-import { firingOrder, selectBracket, traitValue } from './combat'
+import { firesAsPointDefense, firingOrder, selectBracket, traitValue } from './combat'
 import { expectedValue } from './dice'
 import {
   asteroidFieldsAt,
@@ -4648,7 +4648,10 @@ function fleetPointDefense(game: GameState, fleet: ShipState[], memo: AiMemo): G
         if (memo.done.has(`pdshot:${game.round}:${game.phase}:${key}:${hw.id}`)) return false
         if (busy && (budget.get(ship.id) ?? 0) <= 0) return false
         const range = actualRange(ship.placement.position, hw.position)
-        if (!weapon.brackets.some((b) => range >= b.min && range <= b.max)) return false
+        // Only where the shot is point defense: a PD MODE gun past its first
+        // two brackets is a main battery firing at a small target (F1.4.2),
+        // halved and jammed, and not worth a mount out of the volley.
+        if (!firesAsPointDefense(weapon, range)) return false
         return canBearOn(
           mount.arcs,
           arcTo(ship.placement.position, ship.placement.heading, hw.position),
