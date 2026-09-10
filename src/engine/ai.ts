@@ -316,7 +316,22 @@ export const DEFAULT_WING_DOCTRINE: WingDoctrine = {
   spent: 'rearm',
   flightSize: MAX_FLIGHT_SIZE,
   strikeLoad: 'strike',
-  facing: 'weakest',
+  /*
+   * Spread, measured. The queue was a player's proposal and it does what it
+   * says — traced against a PREDATOR, every run for four rounds went onto
+   * the aft shield and a hull that used to sit at 100% came down to 84% —
+   * but the games say it is a trade, not a gain. Admiral rank, 16 games,
+   * ARK ROYAL against: YORKTOWN V 8-8 spread / 11-5 queued; MARAUDER 15-1 /
+   * 12-4; UNION II 7-9 / 5-11; PREDATOR 2-14 either way; HAVOC 2-14 either
+   * way; INVICTUS I 0-16 / 1-15. It wins against a heavy cruiser whose
+   * facings one flight cannot open, and loses against a MARAUDER whose eight
+   * all-arc gravitic disruptors shoot the queue while it waits its turn.
+   * Against a dreadnought it changes nothing, because the shield is not the
+   * limit there — the flak is. Every price in fleetValues.json was measured
+   * under spread, so spread stays the default and the queue stays a knob
+   * (`--facing weakest` on tools/versus.ts).
+   */
+  facing: 'spread',
 }
 
 /**

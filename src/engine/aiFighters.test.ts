@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { THE_DUEL } from '../data/scenarios'
 import { VALLARI_CRUISER, YORKTOWN } from '../data/ships'
 import { applyAction } from './actions'
-import { aiNextActions, createAiMemo } from './ai'
+import { aiNextActions, createAiMemo, setWingDoctrine } from './ai'
 import { createGame, launchFlight, recoverFlight, runHangarBay, type GameState } from './game'
 import { createShip, type ShipState } from './shipState'
 import type { ShipForm } from './types'
@@ -148,8 +148,8 @@ describe('the AI in the Flight Operations Segment', () => {
     ])
     launchFlight(game, game.ships[0], 'peregrine', 'strike', 6)
     for (const f of game.flights) f.activated = false
-    // Two phases: the wing queues on the facing it has chosen for the hull,
-    // which may be the far side, and a flight seven inches out cannot get
+    // Two phases, so the test holds under either facing doctrine: a queued
+    // wing may choose the far side, and a flight seven inches out cannot get
     // round to it and run in on the same leg.
     const taken = [...play(game, 'Blue'), ...nextPhase(game, () => play(game, 'Blue'))]
     expect(taken).toContain('flight-strike')
@@ -165,6 +165,7 @@ describe('the AI in the Flight Operations Segment', () => {
      */
     const target = shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 20, y: 20 })
     const game = flightOps([shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 }), target])
+    setWingDoctrine({ facing: 'weakest' }, 'Blue')
     // Everyone has watched the A shield soak twelve: it is the weak one.
     game.shieldHitsSeen[target.id] = { A: 12 }
     for (let i = 0; i < 4; i++) launchFlight(game, game.ships[0], 'sabre', 'strike', 6)
@@ -185,6 +186,7 @@ describe('the AI in the Flight Operations Segment', () => {
     nextPhase(game, () => play(game, 'Blue'))
     expect(struckSides(), 'the next in line takes the same facing').toEqual(['A'])
     expect(game.flights.filter((f) => f.spent).length).toBe(2)
+    setWingDoctrine()
   })
 
   it('takes its ordnance to the hull even with enemy fighters in reach', () => {

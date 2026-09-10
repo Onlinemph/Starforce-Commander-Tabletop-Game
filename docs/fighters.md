@@ -558,6 +558,38 @@ catapults means the hull never spends a round with nothing in the air. And the A
 the one the ALA REGIA could not reach: eight STRIX *are* worth more than an INVICTUS II's four
 plasma systems, by a clear margin. More fighters than tubes was the right instinct.
 
+### Doctrine under test: queue the wing on one facing
+
+The other player proposal: instead of four flights on four shields, line the wing up on the
+weakest facing with the least flak on it and take it in turns — one run a phase (the outline's
+rule), the rest holding a move short — so one shield takes three runs a round against one round's
+repair. Built as `WingDoctrine.facing = 'weakest'` (`--facing weakest` on `tools/versus.ts`): once
+a round, per enemy hull, the wing picks the facing with the least shield left, read from the hits
+everyone has watched it soak, with every point defense mount bearing on the facing's approaches
+counted as four boxes against it. Building it found that both doctrines' stand-off points sat on
+the compass diagonals — exactly the shield-arc boundaries (E2.2.4) — so a flight stopping a hair
+short read a different shield than the one it was sent to; the points are now laid out from the
+hull's heading, clear of the boundaries.
+
+It does what it says. Traced against a PREDATOR, every run from round four to round seven went
+onto the aft shield and a hull that used to sit at 100% came down to 84%. The games say it is a
+trade rather than a gain — admiral rank, 16 games, ARK ROYAL against:
+
+| opponent | spread | queued |
+| --- | --- | --- |
+| YORKTOWN V | 8‑8 | 11‑5 |
+| V‑7M‑3 MARAUDER | 15‑1 | 12‑4 |
+| UNION II | 7‑9 | 5‑11 |
+| V‑11B PREDATOR | 2‑14 | 2‑14 |
+| V‑10E HAVOC | 2‑14 | 2‑14 |
+| INVICTUS I | 0‑16 | 1‑15 |
+
+It wins against a heavy cruiser whose facings one flight cannot open, and loses against a MARAUDER
+whose eight all-arc gravitic disruptors shoot the queue while it waits its turn. Against a
+dreadnought it changes nothing, because the shield is not the limit there; the flak is. Spread
+stays the default — every price in `fleetValues.json` was measured under it — and the queue stays
+a knob for a table that wants to fly it, which against a lone heavy cruiser is the right call.
+
 ---
 
 ## Q3, answered: what a flight costs
