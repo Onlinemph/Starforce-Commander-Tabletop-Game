@@ -395,7 +395,37 @@ a setup option (`fighterStacking`, off by default; "Fighters stack on big hulls"
 `--stack` on `tools/versus.ts`), carried in the save so a replay plays the same game. The phase
 record keeps its shape: a stacked second run is stored under `ship:side#2`, and the engine and the
 planner both read the count through `freeShieldKey`, so they cannot disagree about whether a shield
-is free. Measurements below.
+is free.
+
+**Measured: it does not move anything.** Admiral rank, 16 games each, the same seeds as the
+baselines:
+
+| matchup (balanced points) | stacking off | stacking on |
+| --- | --- | --- |
+| ARK ROYAL 61 vs V‑11B PREDATOR 51.6 | 2W‑14L | 1W‑15L |
+| ARK ROYAL 61 vs UNION II 56.6 | 7W‑9L | 7W‑9L |
+| ARK ROYAL 61 vs INVICTUS I 55.5 | — | 0W‑16L |
+| ARK ROYAL 61 vs V‑10E HAVOC 68.7 (size 5, rule does not apply) | 2W‑14L | 2W‑14L |
+| Strike Carrier 90 vs UNION III + KNOX II 129.6 | 1W‑15L | 0W‑16L |
+
+The AI does use the rule: on the traced seed the wing put two flights on the S shield and two on
+the F shield in one phase, for 10 and 12 damage. Against 20 to 24 blue plus 4 green, reinforced and
+repaired every round, that is not a breach, and the shield is whole again before the wing has
+rearmed. Two stacked flights top out around 12 in a phase; the whole four-flight cycle is about 20;
+a dreadnought facing is 24 to 34. The cap is not the constraint. The damage per fighter is.
+
+Two other things the table says. The UNION II row is the same 7‑9 either way, so the ARK ROYAL is
+already roughly even with a Union dreadnought and the "dreadnought ceiling" is really a *PREDATOR
+and INVICTUS* ceiling: those hulls carry the anti-fighter batteries (six TYPE‑33 gravitic disruptors
+on the PREDATOR) that take one or two fighters off the wing every phase it is in reach, and the
+INVICTUS I does it with the thinnest screens of the three. And the HAVOC row is the rule's blind
+spot by construction: a size‑5 hull with dreadnought shields (26/16/20/20) is exactly the target
+the wing cannot open, and "size 7 or larger" never reaches it.
+
+So the honest reading is that a stacking rule addresses the wrong limit. If the wing is to threaten
+a heavy at all, the lever is strike damage (3 a hit instead of 2 puts a stacked pair at about 18 and
+a full wing at about 30, which is a breach on most facings), or a rule that lets a strike ignore
+the green layer. Both are Doyle's to weigh; the option stays in the setup so a table can try it.
 
 ---
 
