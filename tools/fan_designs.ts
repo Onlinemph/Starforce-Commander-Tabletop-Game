@@ -2570,8 +2570,31 @@ const ARK_ROYAL: ShipForm = {
  * paid for out of the hull's own guns? The printed price below is the
  * builder's own reading of the hull plus the ARK ROYAL's measured wing
  * premium (99.2 against the model's 47.3, so about 52 points for four
- * flights of SABREs), because the wing is the same wing. Whether that is
- * right is what the duels are for.
+ * flights of SABREs), because the wing is the same wing. That is the
+ * printed-scale answer, kept for the same reason the ARK ROYAL keeps its
+ * 99.2: the printed list prices what a ship is made of.
+ *
+ * **What it is worth, measured.** On the balanced scale
+ * (`src/data/fleetValues.json`) a carrier keeps its printed price until it
+ * is titrated, and this one has been. Admiral rank, 16 games a rung,
+ * opponents priced on the balanced scale, the ladder run against its own
+ * base hull so that the only thing being measured is the wing:
+ *
+ *     YORKTOWN V alone               57.3   16W- 0L
+ *     YORKTOWN V + PELLEW III        86.7   10W- 6L
+ *     YORKTOWN V + YORKTOWN IV       97.3    3W-13L
+ *     YORKTOWN V + YORKTOWN Vc      133.6    0W-16L
+ *
+ * Break-even is about 90, so the wing adds about 33 balanced points to a
+ * YORKTOWN V — not the 52 the printed price assumes, and not the 61 the
+ * whole ARK ROYAL is worth. At 129.5 it was shut out by everything priced
+ * to match it (0-16 against a PREDATOR and a RAVAGER, 0-16 against three
+ * MARAUDERs, 1-15 against a UNION III and a KNOX) and only broke even
+ * against an INVICTUS II and a CORVUS (8-8). The reading is the ARK ROYAL
+ * essay's own warning made measurable: a wing on a hull that already fights
+ * is worth less than the same wing on a hull built around it, because the
+ * ARK ROYAL plus an EXETER I — the same wing and a second gun platform, for
+ * seven fewer points — beat this ship 15-1.
  */
 const YORKTOWN_V_PRINTED = findShipForm('YORKTOWN V-class')!
 const YORKTOWN_V_CARRIER: ShipForm = {

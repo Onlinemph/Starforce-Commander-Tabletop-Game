@@ -322,6 +322,68 @@ six-Starfury strike flights about 77 points, which would put the package at 124.
 
 That measurement is one of the two independent estimates that produced the price below.
 
+### The dreadnought ceiling, and the wing that would not land
+
+A later round of duels put the ARK ROYAL against the Vallari heavies and found two things, one a
+bug and one a fact about fighters.
+
+**The bug.** The AI's planner flew each spent flight onto the carrier's recovery ring and then
+refused to land it in the same phase, because the move had activated it. A carrier under way covers
+five to seven inches a phase, so by the next phase the flight was two inches out again, flew onto
+the ring again, and waited again — for six rounds in the game that exposed it, with a gravitic
+disruptor taking a fighter or two off the wing every phase it hung there. The rule is "finishing
+within two inches of the carrier": the move and the landing are one activation, and the engine had
+always allowed it. Fixed in `planFlightOps`; the same seed now runs strike round four, aboard round
+five, rearmed, back up round six, striking again round eight.
+
+**The fact.** Fixing the deck cycle did not change the result. Admiral rank, 16 games each:
+
+| matchup (balanced points) | result |
+| --- | --- |
+| ARK ROYAL 61 vs V‑7M‑3 MARAUDER 43 | 16W‑0L |
+| ARK ROYAL 61 vs V‑11B PREDATOR 51.6 | 2W‑14L |
+| ARK ROYAL 61 vs V‑10E HAVOC 68.7 | 2W‑14L |
+| 2× ARK ROYAL 122 vs V‑11B PREDATOR 51.6 | 14W‑2L |
+
+Over twelve rounds the wing landed 36 points of strike damage, spread over four facings of a hull
+carrying 18–24 blue and 4 green on each. Nothing got through, and the dreadnought sat at full hull
+all game. Two carriers win, so it is a damage-density ceiling rather than a hard counter — but a
+SABRE's 2 a hit against a dreadnought's screens is a wing-and-a-half short of opening one facing.
+
+The controls said the balanced scale is not the culprit. UNION II (56.6) vs PREDATOR (51.6) went
+9W‑6L‑1D, right where the scale puts it; MARAUDER (43) vs PREDATOR went 1W‑15L, which the balanced
+scale calls and the printed list (75 vs 68) gets backwards. But XERXES IV (52.3) vs PREDATOR also
+went 2W‑14L: the scale's small-hull premium is the value of *numbers*, and a lone destroyer cannot
+cash it. The balanced scale is a fleet scale; in a one-on-one duel the premium misleads. The carrier
+is the same story — its wing is a swarm — with the shield ceiling on top.
+
+### A wing on a hull that already fights
+
+`tools/fan_designs.ts` also carries the **YORKTOWN V-class Strike Carrier**: the printed YORKTOWN V
+with nothing taken off it and the ARK ROYAL's deck bolted on (HNGR 4, LNCH 2, LNDG 2). It was
+built to answer one question — what is the wing worth when it is *added* to a gun platform rather
+than paid for out of the tubes? Printed at 129.5 (the builder's 77.6 plus the ARK ROYAL's 51.9 wing
+premium), it was then matched against forces of about 129 balanced points, admiral, 16 games each:
+
+| opponent (balanced) | result |
+| --- | --- |
+| INVICTUS II + CORVUS II (128.7) | 8W‑8L |
+| UNION III + KNOX II (129.6) | 1W‑15L |
+| YORKTOWN V + YORKTOWN Vc (133.6) | 0W‑16L |
+| V‑11C PREDATOR + V‑8A RAVAGER (128.4) | 0W‑16L |
+| three V‑7M‑3 MARAUDERs (129) | 0W‑16L |
+| ARK ROYAL + EXETER I (122.5) | 1W‑15L |
+
+Then titrated against its own base hull, so the only thing measured is the wing: 16W‑0L over a bare
+YORKTOWN V (57.3), 10W‑6L over V + PELLEW III (86.7), 3W‑13L over V + YORKTOWN IV (97.3), 0W‑16L
+over V + YORKTOWN Vc (133.6). Break-even is about **90**, so four SABRE flights add about **33
+balanced points** to a YORKTOWN V — not the 52 the printed price assumes and not the 61 the whole
+ARK ROYAL is worth. `fleetValues.json` carries the 90.
+
+The last row of the matched table is the moral. The ARK ROYAL plus an EXETER I is the same wing and
+a second gun platform, for seven fewer points, and it beat the combined hull 15‑1. A wing is worth
+most on a hull built around it and least on one that would rather be shooting; the ARK ROYAL essay
+predicted as much, and now it is a number.
 
 ---
 

@@ -66,7 +66,9 @@ export function balancedPointValue(form: ShipForm): number {
    * printed price; the ARK ROYAL, titrated directly, carries its own entry
    * (61 — the wing that fights dead even with a lone heavy cruiser melts
    * against the massed point defense of a cruiser screen, and both formats
-   * land on the same worth).
+   * land on the same worth). The YORKTOWN V Strike Carrier carries its own
+   * entry too (90: a YORKTOWN V's 57.3 plus the 33 its four flights
+   * measured as adding, titrated against the bare hull with escorts).
    */
   if (form.systems.some((group) => group.kind === 'HNGR' && group.boxes > 0)) {
     return printed
