@@ -51,6 +51,24 @@ function flightOps(ships: ShipState[], seed = 12): GameState {
   return game
 }
 
+/**
+ * Open a fresh Flight Operations phase by hand — activations and attacks
+ * cleared, the per-phase shield record and deck counters reset — then run
+ * `act` in it. The tests here drive one segment at a time rather than the
+ * whole sequence of play, so this is the segment boundary they need.
+ */
+function nextPhase<T>(game: GameState, act: () => T): T {
+  for (const f of game.flights) {
+    f.activated = false
+    f.attacked = false
+  }
+  game.ops.shieldsStruckThisPhase.clear()
+  game.ops.flightsLaunchedThisPhase = {}
+  game.ops.flightsRecoveredThisPhase = {}
+  game.phase = game.phase === 'combat-1' ? 'combat-2' : 'combat-3'
+  return act()
+}
+
 /** Run the AI to a standstill, applying what it asks for. */
 function play(game: GameState, side: string): string[] {
   const memo = createAiMemo()
@@ -130,9 +148,43 @@ describe('the AI in the Flight Operations Segment', () => {
     ])
     launchFlight(game, game.ships[0], 'peregrine', 'strike', 6)
     for (const f of game.flights) f.activated = false
-    const taken = play(game, 'Blue')
+    // Two phases: the wing queues on the facing it has chosen for the hull,
+    // which may be the far side, and a flight seven inches out cannot get
+    // round to it and run in on the same leg.
+    const taken = [...play(game, 'Blue'), ...nextPhase(game, () => play(game, 'Blue'))]
     expect(taken).toContain('flight-strike')
     expect(game.flights[0].spent, 'the load should be gone after the run').toBe(true)
+  })
+
+  it('queues the wing on one facing: one run a phase, the rest holding, all on the same shield', () => {
+    /*
+     * The doctrine a player proposed after watching four flights hit four
+     * shields and every shield repair: line up on the weakest facing with the
+     * least flak on it and take it in turns, so one shield takes three runs a
+     * round against one round's repair.
+     */
+    const target = shipAt({ id: 'red-1', side: 'Red', form: VALLARI_CRUISER, x: 20, y: 20 })
+    const game = flightOps([shipAt({ id: 'blue-1', side: 'Blue', form: carrier(), x: 10, y: 20 }), target])
+    // Everyone has watched the A shield soak twelve: it is the weak one.
+    game.shieldHitsSeen[target.id] = { A: 12 }
+    for (let i = 0; i < 4; i++) launchFlight(game, game.ships[0], 'sabre', 'strike', 6)
+    // In reach of every facing, so the choice is the doctrine's and not the geometry's.
+    for (const f of game.flights) {
+      f.activated = false
+      f.position = { x: 20, y: 24 }
+    }
+    game.ships[0].flightsAboard = 0
+
+    const struckSides = (): string[] =>
+      [...game.ops.shieldsStruckThisPhase].map((key) => key.split(':')[1].replace(/#.*/, ''))
+    play(game, 'Blue')
+    expect(struckSides(), 'one run a phase on the chosen facing').toEqual(['A'])
+    const spentAfterOne = game.flights.filter((f) => f.spent).length
+    expect(spentAfterOne).toBe(1)
+
+    nextPhase(game, () => play(game, 'Blue'))
+    expect(struckSides(), 'the next in line takes the same facing').toEqual(['A'])
+    expect(game.flights.filter((f) => f.spent).length).toBe(2)
   })
 
   it('takes its ordnance to the hull even with enemy fighters in reach', () => {

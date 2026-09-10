@@ -541,8 +541,22 @@ once, launches four and lands four a phase, and the cycle the trace shows is the
 eight flights up by round 3, eight strikes in one round (60 points of plasma across four facings
 of an INVICTUS II), all eight recovered in round 4, all eight rearmed at the round-4 Hangar Bay
 Segment, all eight back up in round 5. A fleet carrier strikes every other round; a super carrier
-strikes every round. Balanced prices are titrated against the bare dreadnought donors; ladders
-below.
+strikes every round. Balanced prices, titrated against the bare dreadnought donors, admiral rank,
+16 games a rung:
+
+| carrier | ladder (opponent balanced points → result) | break-even |
+| --- | --- | --- |
+| SARATOGA | UNION III 97 → 14‑2 · +PELLEW III 126.4 → 9‑7 · +YORKTOWN IV 137 → 5‑11 | **130** |
+| V‑14A EYRIE | PREDATOR C 89.2 → 15‑1 · +CORSAIR 119.3 → 10‑6 · +RAVAGER 128.4 → 15‑1 · +HAVOC 157.9 → 3‑13 | **142** |
+| ALA IMPERIALIS | INVICTUS II 96.6 → 10‑5‑1 · +CORVUS II 128.7 → 13‑3 · +TONITRUS II 135.8 → 7‑9 · +DEF. ALATUS I 158.5 → 1‑15 | **138** |
+
+So two wings on a dreadnought are worth 33 to 53 balanced points over the bare hull — the
+SARATOGA's eight SABRE flights 33 over a UNION III, the EYRIE's eight TALONs 53 over a PREDATOR,
+the ALA IMPERIALIS's eight STRIX 41 over an INVICTUS II. Against 13 to 20 for one wing on a
+cruiser, that is more than double per flight, which is the sortie rate: a second wing on the
+catapults means the hull never spends a round with nothing in the air. And the Aurelian number is
+the one the ALA REGIA could not reach: eight STRIX *are* worth more than an INVICTUS II's four
+plasma systems, by a clear margin. More fighters than tubes was the right instinct.
 
 ---
 

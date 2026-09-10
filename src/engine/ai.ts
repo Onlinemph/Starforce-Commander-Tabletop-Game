@@ -166,6 +166,13 @@ import { activePlotModel, plotExploration, plotModelValue, plotRecorder } from '
 
 export interface AiMemo {
   done: Set<string>
+  /**
+   * The facing each side's wing is queued on, per enemy hull, for the round
+   * (`side:shipId`). Chosen once a round so the queue keeps hammering the
+   * same shield through three phases instead of re-picking as the estimate
+   * moves.
+   */
+  wingFacing: Map<string, { round: number; side: ShieldSide }>
   /** Rollout-resolved plot choices, one per (round, phase, ship). The orders
    *  segment re-plans until it settles, and a decision made by simulation is
    *  far too expensive to remake on every pass of that loop. */
@@ -196,6 +203,7 @@ export interface AiMemo {
 export function createAiMemo(): AiMemo {
   return {
     done: new Set(),
+    wingFacing: new Map(),
     plots: new Map(),
     volleys: new Map(),
     scanSeen: new Map(),
@@ -289,6 +297,16 @@ export interface WingDoctrine {
   flightSize: number
   /** The load to go up with when there is nothing to dogfight. */
   strikeLoad: FighterConfigKind
+  /**
+   * Which of a hull's shields the wing goes for. `spread` puts each flight on
+   * the nearest facing nobody has taken this phase, so four flights hit four
+   * shields at once and each shield repairs. `weakest` picks one facing per
+   * hull per round — the one with the least shield left and the fewest point
+   * defense mounts bearing on it — and queues the wing on it: one run a phase
+   * (the outline's rule), the rest holding a move short, so the same facing
+   * takes three runs a round against one round's repair.
+   */
+  facing: 'spread' | 'weakest'
 }
 
 export const DEFAULT_WING_DOCTRINE: WingDoctrine = {
@@ -298,7 +316,16 @@ export const DEFAULT_WING_DOCTRINE: WingDoctrine = {
   spent: 'rearm',
   flightSize: MAX_FLIGHT_SIZE,
   strikeLoad: 'strike',
+  facing: 'weakest',
 }
+
+/**
+ * How much a point defense mount bearing on a facing is worth in shield
+ * points when the wing chooses where to queue: a mount that gets a shot at
+ * every flight in the queue costs more fighters than a few extra boxes of
+ * shield cost damage.
+ */
+const PD_MOUNT_DETERRENT = 4
 
 let wingDoctrine: WingDoctrine = DEFAULT_WING_DOCTRINE
 /** Per-side overrides, so a sweep can put one doctrine against another. */
@@ -5337,11 +5364,35 @@ function planFlightOps(
       doctrine.massing === 'concentrate'
         ? enemyShips.filter(busy)
         : enemyShips.filter((s) => !busy(s))
-    const berth =
-      loadout.strikeHit > 0
-        ? (nearestFreeShield(flight.position, preferred, struck, game.fighterStacking) ??
-          nearestFreeShield(flight.position, enemyShips, struck, game.fighterStacking))
-        : null
+    /*
+     * Spread: the nearest free facing on the nearest hull. Weakest: the hull
+     * first (the wing's, or the nearest), then the facing the wing has queued
+     * on for the round — and if that facing has taken its run this phase, a
+     * holding point a move short of it, so the flight is next in line rather
+     * than off attacking some other shield that will only repair.
+     */
+    let berth: Berth | null = null
+    if (loadout.strikeHit > 0) {
+      if (doctrine.facing === 'weakest') {
+        const hull =
+          nearestBy(flight.position, preferred, (s) => s.placement.position) ??
+          nearestBy(flight.position, enemyShips, (s) => s.placement.position)
+        berth = hull
+          ? facingBerth(
+              flight.position,
+              hull,
+              weakestFacing(game, memo, flight.side, hull),
+              struck,
+              game.fighterStacking,
+              slotOf(game, flight),
+            )
+          : null
+      } else {
+        berth =
+          nearestFreeShield(flight.position, preferred, struck, game.fighterStacking) ??
+          nearestFreeShield(flight.position, enemyShips, struck, game.fighterStacking)
+      }
+    }
     /*
      * `go` is where the flight is sent; `hit` is what the engine will measure
      * the attack against. They differ on purpose. A flight sent to a shield
@@ -5394,6 +5445,8 @@ function planFlightOps(
       offer(`move:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
       where = { x: step.x, y: step.y }
     }
+    // Queued behind another flight on the wing's facing: hold, do not attack.
+    if (aim.kind === 'ship' && berth && !berth.key) continue
     if (flight.attacked) continue
     // Measured to the target itself, not to the spot the flight was sent to.
     if (!withinWeaponRange(where, aim.hit)) continue
@@ -5411,6 +5464,8 @@ function planFlightOps(
         berth.ship.placement.heading,
       )[0]
       if (bearing !== berth.side) {
+        // A queued wing does not wander onto another facing; it waits its turn.
+        if (doctrine.facing === 'weakest') continue
         const claim = freeShieldKey(struck, berth.ship, bearing, game.fighterStacking)
         if (!claim) continue
         struck.add(claim)
@@ -5457,26 +5512,122 @@ function reach(a: Point, b: Point): number {
  * keeps the geometry honest without this function knowing which way a heading
  * points.
  */
+/**
+ * Where a flight is sent against a hull: the shield, the point to stand off
+ * it from, and the phase-record key its run will take — or `null` for the
+ * key when the flight is queued behind another on that facing and `approach`
+ * is a holding point instead.
+ */
+interface Berth {
+  ship: ShipState
+  side: ShieldSide
+  approach: Point
+  key: string | null
+}
+
+/**
+ * The eight stand-off points around a hull, and the shield each reads as.
+ *
+ * Laid out from the hull's own heading, two to a quadrant and clear of the
+ * quadrant boundaries: the shield arcs split at 45° off the bow (E2.2.4), so
+ * points on the compass diagonals sit exactly on a boundary, where the
+ * engine reads one shield and a flight that stops a hair short reads the
+ * other — and a queue told to attack only its chosen facing then never
+ * attacks at all. Found by the test that queues four SABREs on one shield.
+ */
+function approachPoints(ship: ShipState): Array<{ approach: Point; side: ShieldSide; bearing: number }> {
+  const at = ship.placement.position
+  const points: Array<{ approach: Point; side: ShieldSide; bearing: number }> = []
+  for (let i = 0; i < 8; i++) {
+    const bearing = (ship.placement.heading + i * 45 + 22.5) % 360
+    // Just inside weapon range, so a flight that stops here is in range even
+    // after the engine's own epsilon.
+    const approach = translate(at, bearing, FIGHTER_WEAPON_RANGE - 0.5)
+    points.push({ approach, side: shieldsFacing(approach, at, ship.placement.heading)[0], bearing })
+  }
+  return points
+}
+
+/**
+ * The facing a side's wing queues on against this hull, chosen once a round.
+ *
+ * Least shield left first — read the way a player reads it, from the hits
+ * everyone has watched the facing soak (`estimatedShieldRemaining`) — with
+ * every point defense mount that bears on the facing's approaches counted
+ * as `PD_MOUNT_DETERRENT` boxes of shield, because a mount that gets a shot
+ * at every flight in a queue costs more than a few boxes cost. Held for the
+ * round so the queue keeps hammering the same shield through three phases:
+ * that is the whole point of queueing, and a facing that has been stripped
+ * reads as the weakest anyway, so the wing stays on it into the hull.
+ */
+function weakestFacing(game: GameState, memo: AiMemo, attackerSide: string, ship: ShipState): ShieldSide {
+  const key = `${attackerSide}:${ship.id}`
+  const cached = memo.wingFacing.get(key)
+  if (cached && cached.round === game.round) return cached.side
+  const points = approachPoints(ship)
+  let best: ShieldSide = 'F'
+  let bestScore = Infinity
+  for (const side of ['F', 'P', 'S', 'A'] as ShieldSide[]) {
+    const approaches = points.filter((p) => p.side === side)
+    if (approaches.length === 0) continue
+    let pd = 0
+    for (const weapon of ship.form.weapons) {
+      if (!weapon.traits?.some((t) => t.includes('PD MODE'))) continue
+      for (const mount of weapon.mounts) {
+        const bears = approaches.some((p) =>
+          canBearOn(mount.arcs, arcTo(ship.placement.position, ship.placement.heading, p.approach)),
+        )
+        if (bears) pd += 1
+      }
+    }
+    const score = estimatedShieldRemaining(game, ship, side) + pd * PD_MOUNT_DETERRENT
+    if (score < bestScore) {
+      bestScore = score
+      best = side
+    }
+  }
+  memo.wingFacing.set(key, { round: game.round, side: best })
+  return best
+}
+
+/**
+ * A berth on one chosen facing: the run if the facing is free this phase,
+ * otherwise a holding point a move short of it — outside the flight's own
+ * weapon range so the planner never proposes a run from there, inside one
+ * leg so the flight is on the shield the moment its turn comes.
+ */
+function facingBerth(
+  from: Point,
+  ship: ShipState,
+  side: ShieldSide,
+  struck: ReadonlySet<string>,
+  stacking: boolean,
+  slot: number,
+): Berth | null {
+  const candidates = approachPoints(ship).filter((p) => p.side === side)
+  const nearest = nearestBy(from, candidates, (p) => p.approach)
+  if (!nearest) return null
+  const key = freeShieldKey(struck, ship, side, stacking)
+  if (key) return { ship, side, approach: nearest.approach, key }
+  const hold = fanOut(
+    translate(ship.placement.position, nearest.bearing, FIGHTER_WEAPON_RANGE + 2.5),
+    slot,
+    1,
+  )
+  return { ship, side, approach: hold, key: null }
+}
+
 function nearestFreeShield(
   from: Point,
   ships: ShipState[],
   struck: ReadonlySet<string>,
   /** The stacking house rule: two runs a shield on a size-7+ hull. */
   stacking: boolean,
-): { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null {
-  let best: { ship: ShipState; side: ShieldSide; approach: Point; key: string } | null = null
+): Berth | null {
+  let best: Berth | null = null
   let bestRange = Infinity
   for (const ship of ships) {
-    const at = ship.placement.position
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI) / 4
-      // Just inside weapon range, so a flight that stops here is in range even
-      // after the engine's own epsilon.
-      const approach = {
-        x: at.x + Math.cos(angle) * (FIGHTER_WEAPON_RANGE - 0.5),
-        y: at.y + Math.sin(angle) * (FIGHTER_WEAPON_RANGE - 0.5),
-      }
-      const side = shieldsFacing(approach, at, ship.placement.heading)[0]
+    for (const { approach, side } of approachPoints(ship)) {
       // The key this run would be recorded under, or nothing if the shield
       // has taken all the runs the rules allow it this phase.
       const key = freeShieldKey(struck, ship, side, stacking)
