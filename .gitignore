@@ -48,3 +48,6 @@ tools/scan_tier.csv
 # UI screenshots: regenerable evidence from tools/shots/capture.mjs, and PNGs
 # of a whole app are megabytes that would bloat the history for no gain.
 /shots/
+
+# Screenshot-test output (baselines in tests/visual/ are committed)
+tests/visual/__out__/

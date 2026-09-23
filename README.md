@@ -25,9 +25,10 @@ That is the whole setup. There is no server to start, no database, no API keys a
 the game is a single static page and the rules engine runs in the browser.
 
 ```bash
-npm test             # 688 rules and data-integrity tests
+npm test             # 1,300+ rules and data-integrity tests
 npm run typecheck
 npm run check        # both of the above
+npm run test:visual  # battle-map screenshots vs tests/visual/*.png (--update to accept changes)
 npm run season       # the AI's standing baselines, measured (tools/README.md)
 npm run build        # static site in dist/
 npm run serve        # preview the built site on your network at :4173
