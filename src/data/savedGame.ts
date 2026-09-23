@@ -30,8 +30,12 @@ import {
  * across several volleys at different targets (each mount once a phase), and
  * derelicts are locked out of helm orders, repairs and arming. Files without
  * the stamp replay under reading 1, exactly as they were fought.
+ *
+ * Version 3 is the rules audit against the printed books (docs/rules-audit.md):
+ * every fix there that refuses something once accepted, or changes a roll or
+ * a result, applies from reading 3 on.
  */
-export const CURRENT_RULES_VERSION = 2
+export const CURRENT_RULES_VERSION = 3
 
 export interface GameSetup {
   scenarioId: string

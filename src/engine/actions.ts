@@ -81,6 +81,7 @@ import {
   settleCargoDeliveries,
   tacticalScanOf,
   firingOrderRefusal,
+  repeatTargetRefusal,
   terrainObstacles,
   tractorIncomingHoming,
   workingSystemBoxes,
@@ -871,6 +872,13 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const outOfTurn = firingOrderRefusal(game, attacker)
       if (outOfTurn) return said(outOfTurn)
 
+      // A split opportunity (E6.2 Step 6) may only divide fire across OTHER
+      // targets — everything a ship sends at one target in one phase is a
+      // single volley (E7.1.1, E3.3.8), so a second declaration against a
+      // target already fired on this segment refuses here.
+      const repeat = repeatTargetRefusal(game, attacker, target)
+      if (repeat) return said(repeat)
+
       // Context is re-derived here, never trusted from the panel, so a replay
       // sees exactly the modifiers the original resolution saw.
       const inGroup = game.coordinatedGroup?.shipIds.includes(attacker.id) ?? false
@@ -930,6 +938,14 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (!result.ok) return said(result.reason)
 
       game.firedThisSegment.add(attacker.id)
+      // Records this volley's target so a later declaration this segment at
+      // the SAME target refuses (E7.1.1) instead of being accepted as a
+      // second volley.
+      {
+        const fired = game.firedTargetsThisSegment.get(attacker.id) ?? new Set<string>()
+        fired.add(target.id)
+        game.firedTargetsThisSegment.set(attacker.id, fired)
+      }
       /*
        * Rules reading 2: the opportunity stays open while the ship has a
        * charged mount that has not spoken — it may declare further volleys at

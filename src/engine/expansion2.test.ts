@@ -295,11 +295,18 @@ describe('coordinated fire eligibility (H4.5)', () => {
     expect(validateCoordinatedFire(mixed, FIRING_STEPS[6])).toMatch(/same faction/)
   })
 
-  it('caps step 10 by the scan-per-ship requirement rather than a ship count (H4.5.3)', () => {
+  it('caps step 10 at five ships, on top of the scan-per-ship requirement (H4.2.3)', () => {
     expect(validateCoordinatedFire(entries([5, 5, 5, 5, 5]), FIRING_STEPS[9])).toBeNull()
-    // A sixth ship needs six points each, which step 10 still covers.
-    expect(validateCoordinatedFire(entries([5, 5, 5, 5, 5, 5]), FIRING_STEPS[9])).toMatch(/6 is required/)
-    expect(validateCoordinatedFire(entries([6, 6, 6, 6, 6, 6]), FIRING_STEPS[9])).toBeNull()
+    /*
+     * Correcting a test that locked in the bug this rule found: step 10 reads
+     * "Up to Five Ships with Tactical Scan Level 5+" (H4.2.3) — a hard cap of
+     * five, same shape as steps 7–9's "Up to Two/Three/Four Ships", not an
+     * open group bounded only by the scan-per-ship math. A command ship can
+     * lend Tactical Scan past a hull's own sensor rating with no upper bound
+     * (H5.2.2), so six ships at Tactical Scan 6 satisfy the scan requirement
+     * and must still be refused on the ship count.
+     */
+    expect(validateCoordinatedFire(entries([6, 6, 6, 6, 6, 6]), FIRING_STEPS[9])).toMatch(/at most 5 ships/)
   })
 })
 

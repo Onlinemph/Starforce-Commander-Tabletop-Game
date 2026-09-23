@@ -38,10 +38,12 @@ export const FIRING_STEPS: readonly FiringStep[] = [
   { index: 7, kind: 'coordinated', scan: 2, openEnded: false, maxShips: 2, label: 'Up to two ships with Tactical Scan Level 2' },
   { index: 8, kind: 'coordinated', scan: 3, openEnded: false, maxShips: 3, label: 'Up to three ships with Tactical Scan Level 3' },
   { index: 9, kind: 'coordinated', scan: 4, openEnded: false, maxShips: 4, label: 'Up to four ships with Tactical Scan Level 4' },
-  // "…followed by five and up" (H4.5.3): the group size is bounded by the
-  // requirement that every ship's scan be at least the number of ships firing,
-  // so leaving this open-ended cannot be abused.
-  { index: 10, kind: 'coordinated', scan: 5, openEnded: true, maxShips: null, label: 'Five or more ships with Tactical Scan Level 5+' },
+  // H4.2.3 step 10 reads "Up to Five Ships with Tactical Scan Level 5+": the
+  // scan requirement is open-ended, but the group size is still capped at
+  // five. A command ship can lend Tactical Scan with no upper bound (H5.2.2),
+  // so leaving this cap out lets a fleet of six or more legally fire as one
+  // coordinated group, past what the step allows.
+  { index: 10, kind: 'coordinated', scan: 5, openEnded: true, maxShips: 5, label: 'Up to five ships with Tactical Scan Level 5+' },
 ]
 
 /** Does a ship of this scan level fire on this step? */

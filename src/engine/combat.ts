@@ -375,6 +375,13 @@ export function resolveVolley(
       if (state.damage > 0) {
         return { ok: false, reason: `Degraded weapons may not fire at low power (E3.4.2).` }
       }
+      if ((mountDef.roundGates ?? []).some(Boolean)) {
+        // E3.4.2: low power is only for a one-round arming weapon. A mount
+        // with any slow-arming diamond needs two or more rounds and may not
+        // use this rule, even if this bracket's circle count happens to match
+        // its dice count.
+        return { ok: false, reason: `${weapon.name} requires multiple rounds to arm and may not fire at low power (E3.4.2).` }
+      }
       const n = Math.max(0, Math.min(selection.lowPowerDice, state.armed, dice.length))
       if (n === 0) return { ok: false, reason: 'No arming circles available for low-power fire.' }
       dice = dice.slice(0, n)

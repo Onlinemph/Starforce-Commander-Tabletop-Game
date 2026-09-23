@@ -588,6 +588,15 @@ export interface GameState {
    * reading 1 or the H4 step machine (H4.1.1 is explicit: one attack).
    */
   openFireShip: string | null
+  /**
+   * Targets each ship has already fired on this Combat Segment, keyed by
+   * attacker id. A volley is "all the weapons fired by a single ship ... at a
+   * single target" (E7.1.1) — splitting fire across OTHER targets in one
+   * opportunity is legal (E6.2 Step 6), but a ship may not declare a second,
+   * separate volley at a target it has already fired on this phase; that fire
+   * must be one volley (E3.3.8 repeats the same rule for proximity fire).
+   */
+  firedTargetsThisSegment: Map<string, Set<string>>
   /** Engine rules reading the battle was created under (savedGame.ts). */
   rulesVersion: number
   /**
@@ -800,6 +809,7 @@ export function createGame(args: {
     log: [],
     firedThisSegment: new Set(),
     openFireShip: null,
+    firedTargetsThisSegment: new Map(),
     pendingVolleys: [],
     damageScript: [],
     stagedAction: null,
@@ -1436,6 +1446,26 @@ export function firingOrderRefusal(game: GameState, attacker: ShipState): string
 }
 
 /**
+ * Why this ship may not open a second, separate volley at this target this
+ * Combat Segment, or `null` when it may.
+ *
+ * "A volley is ... all the weapons fired by a single ship ... at a single
+ * target" during a phase; however fire is divided, everything a ship sends at
+ * one target in one phase is a single volley (E7.1.1), and a ship may only
+ * split its fire across OTHER targets (E6.2 Step 6, E3.3.8). One predicate for
+ * the engine, the AI and the panel, same as `firingOrderRefusal` above.
+ */
+export function repeatTargetRefusal(game: GameState, attacker: ShipState, target: ShipState): string | null {
+  // Rules reading 3. Earlier journals accepted the repeat and replay so.
+  if (game.rulesVersion < 3) return null
+  if (!game.firedTargetsThisSegment.get(attacker.id)?.has(target.id)) return null
+  return (
+    `${attacker.name} has already fired on ${target.name} this phase — all fire at one target in a ` +
+    `phase is a single volley (E7.1.1, E3.3.8).`
+  )
+}
+
+/**
  * Arm the general crew to repel boarders (J6.3): two extra squads per size
  * class, and the ship stops being a warship for twenty rounds after the
  * fighting ends — no damage control, two points less power, and it fires
@@ -1521,7 +1551,10 @@ export function declareCoordinatedFire(
   ships: ShipState[],
   target: ShipState,
 ): string | null {
-  const step = currentFiringStep(game)
+  const current = currentFiringStep(game)
+  // Reading 3 caps step 10 at five ships (H4.2.3). Journals fought before it
+  // had the step open-ended and replay that way.
+  const step = game.rulesVersion >= 3 || current.index !== 10 ? current : { ...current, maxShips: null }
   const entries = ships.map((ship) => ({ ship, scan: tacticalScanOf(game, ship) }))
   const problem = validateCoordinatedFire(entries, step)
   if (problem) return problem
@@ -2029,6 +2062,7 @@ function runSegmentExit(game: GameState): void {
       releaseHeldMissiles(game, report.broken)
       game.firedThisSegment.clear()
       game.openFireShip = null
+      game.firedTargetsThisSegment.clear()
       // Each mount speaks once per phase (E6.2 Step 6); the new phase clears
       // the record along with the ships' own fired-or-passed marks.
       for (const ship of game.ships) {

@@ -22,6 +22,7 @@ import {
   cloudModifiers,
   impactingHoming,
   probeLaunchers,
+  repeatTargetRefusal,
   smallTargetsFor,
   tractorableHoming,
   tractorBeamsFree,
@@ -93,6 +94,11 @@ export function CombatPanel({ game, attacker }: Props) {
   // H4.3.1: one attack per faction per target per phase. A group member is
   // covered by the attack its group already recorded.
   const attackBlocked = target && !inGroup ? attackAllowed(game, attacker, target) : null
+  // A split opportunity may only divide fire across OTHER targets — every
+  // weapon a ship sends at one target in a phase is a single volley
+  // (E7.1.1), so re-picking a target already fired on this segment is
+  // refused rather than offered as a second volley.
+  const repeatBlocked = target ? repeatTargetRefusal(game, attacker, target) : null
 
   // Scout targeting and area jamming both bend the effective range (H3.4, H3.5).
   const support = target ? scoutSupport(game, attacker, target) : NO_SCOUT_SUPPORT
@@ -248,6 +254,7 @@ export function CombatPanel({ game, attacker }: Props) {
       )}
 
       {attackBlocked && <p className="fire-error">{attackBlocked}</p>}
+      {repeatBlocked && <p className="fire-error">{repeatBlocked}</p>}
       {cloak.targetUnshootable && <p className="fire-error">{cloak.targetUnshootable}</p>}
       {cloak.attackerCloaked && (
         <p className="fire-error">{attacker.name} is cloaked and may not fire (H6.4.2).</p>
@@ -436,6 +443,7 @@ export function CombatPanel({ game, attacker }: Props) {
             !target ||
             selected.size === 0 ||
             attackBlocked !== null ||
+            repeatBlocked !== null ||
             cloak.attackerCloaked ||
             cloak.targetUnshootable !== undefined ||
             !mayFire
