@@ -177,6 +177,13 @@ export interface VolleyRequest {
   /** The target has its cloak engaged, which bars precision targeting (H6.4.11). */
   targetCloaked?: boolean
   /**
+   * Replaces the target's jamming (plus any scout area jamming) in the
+   * effective-range formula, when set. `cloakModifiers` supplies 0 for a
+   * cloaked target under rules reading 3 (H6.4.5, H6.14.4); omitted, the
+   * target's own jamming applies as normal.
+   */
+  targetJammingOverride?: number
+  /**
    * Working SCNC boxes on the attacker, for the precision-targeting hand
    * (E9.2.2). Defaults to its undamaged boxes; a nebula can switch them off
    * (K4.2.4).
@@ -289,7 +296,13 @@ export function resolveVolley(
   const support = request.scoutSupport ?? NO_SCOUT_SUPPORT
   const actual = actualRange(attacker.placement.position, target.placement.position)
   const targeting = request.degradedFireControl ? 0 : attacker.sensors.targeting + support.targeting
-  const effective = effectiveRange(actual, target.sensors.jamming + support.jamming, targeting)
+  // H6.4.5/H6.14.4: while cloaked, a target's jamming power is diverted into
+  // the cloak itself and stops acting as jamming against a Track/Lock
+  // attacker — `targetJammingOverride` carries that (rules reading 3 only;
+  // see `cloakModifiers`), so an old journal's shot still resolves at the
+  // same range it did when it was fought.
+  const targetJamming = request.targetJammingOverride ?? target.sensors.jamming + support.jamming
+  const effective = effectiveRange(actual, targetJamming, targeting)
 
   if (request.obstacles && !hasLineOfSight(attacker.placement.position, target.placement.position, request.obstacles)) {
     return { ok: false, reason: 'Line of sight is blocked (E2.3.2).' }

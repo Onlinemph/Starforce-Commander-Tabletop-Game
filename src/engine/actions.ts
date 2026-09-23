@@ -1071,7 +1071,7 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       const cloak = ship ? cloakOf(game, ship) : null
       if (!ship || !cloak) return said('No cloaking system.')
       const enemies = game.ships.filter((s) => s.side !== ship.side)
-      const result = engageCloak(ship, cloak, enemies)
+      const result = engageCloak(ship, cloak, enemies, game.rulesVersion)
       if (result.ok) {
         pushLog(
           game,
@@ -1091,7 +1091,7 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       // H6.6.7: once engaged the cloak runs for a full phase before it may be
       // switched off. The panel greys the button out; the engine is what makes
       // it true for a remote client or a replayed script.
-      if (!mayDecloak(cloak)) {
+      if (!mayDecloak(cloak, game.rulesVersion)) {
         return said('The cloak must run for a full phase before it can be disengaged (H6.6.7).')
       }
       disengageCloak(cloak)
@@ -1141,8 +1141,21 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (shipIsCloaked(game, ship)) {
         return said(`${ship.name} cannot search for another cloaked ship while cloaked (H6.9.5).`)
       }
-      const out = attemptSearch(ship, ghost, cloak, game.rng)
+      // H6.9.2: one search attempt per phase, no matter how many cloaked
+      // vessels are on the board — the budget belongs to the searcher, not
+      // to whichever ghost it is pointed at this time. Rules reading 3 only:
+      // an old journal's second search against a different ghost, already
+      // accepted, must keep replaying as it was fought.
+      if (game.rulesVersion >= 3 && game.ops.cloakSearchedThisPhase.has(ship.id)) {
+        return said(`${ship.name} has already made its search this phase (H6.9.2).`)
+      }
+      // H6.9.4: a search needs line of sight to the datum or contact, same as
+      // weapon fire — reading 3 only, so an old journal's search through a
+      // planet still replays as it was fought.
+      const obstacles = game.rulesVersion >= 3 ? terrainObstacles(game.scenario.terrain) : []
+      const out = attemptSearch(ship, ghost, cloak, game.rng, obstacles)
       if (out.faces.length > 0) {
+        if (game.rulesVersion >= 3) game.ops.cloakSearchedThisPhase.add(ship.id)
         // The dice, spelled out — logged AND handed back to the panel, so
         // the player sees the roll happen where they pressed the button.
         const line =

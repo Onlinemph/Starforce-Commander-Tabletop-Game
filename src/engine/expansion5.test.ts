@@ -246,6 +246,29 @@ describe('engaging and disengaging (H6.6, H6.7)', () => {
     state.phasesUncloaked = 1
     expect(engageCloak(s, state, []).ok).toBe(true)
   })
+
+  /**
+   * Rules reading 3 tightens both minimums to two phase-boundary ticks, per
+   * the rulebook's own worked examples (H6.6.7, H6.7.7) — engaged in Phase 3
+   * the cloak must hold through Phase 1 of the next round and may only come
+   * off in Phase 2; switched off in Phase 1 it stays off through Phase 2 and
+   * may only re-engage in Phase 3. Reading 1/2 above keeps one tick, so an
+   * old journal's early decloak or re-engage still replays as it was fought.
+   */
+  it('rules reading 3 wants two ticks, not one, for both minimums', () => {
+    const { s, state } = setup(30)
+    engageCloak(s, state, [], 3)
+    state.phasesCloaked = 1
+    expect(mayDecloak(state, 3)).toBe(false)
+    state.phasesCloaked = 2
+    expect(mayDecloak(state, 3)).toBe(true)
+
+    disengageCloak(state)
+    state.phasesUncloaked = 1
+    expect(engageCloak(s, state, [], 3).reason).toMatch(/full phase before re-engaging/)
+    state.phasesUncloaked = 2
+    expect(engageCloak(s, state, [], 3).ok).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------

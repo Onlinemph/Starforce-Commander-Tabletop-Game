@@ -524,6 +524,15 @@ export interface OperationsState {
    * has to spread them across its four shields, or come back next phase.
    */
   shieldsStruckThisPhase: Set<string>
+  /**
+   * Searchers that have already spent their one cloak-search attempt this
+   * phase (H6.9.2) — "no matter how many cloaked vessels are on the board".
+   * Keyed by searcher id, not by the ghost being searched: a `CloakState`'s
+   * own `searchedThisSegment` only stops a second roll against *that* ghost,
+   * so with two or more cloaked enemies a searcher could otherwise roll once
+   * per ghost in the same phase.
+   */
+  cloakSearchedThisPhase: Set<string>
 }
 
 export function newOperationsState(): OperationsState {
@@ -546,6 +555,7 @@ export function newOperationsState(): OperationsState {
     contestedThisPhase: new Set(),
     boardingFought: new Set(),
     shieldsStruckThisPhase: new Set(),
+    cloakSearchedThisPhase: new Set(),
   }
 }
 
@@ -969,7 +979,12 @@ export function cloakModifiers(
   game: GameState,
   attacker: ShipState,
   target: ShipState,
-): { attackerCloaked: boolean; targetCloaked: boolean; targetUnshootable?: string } {
+): {
+  attackerCloaked: boolean
+  targetCloaked: boolean
+  targetUnshootable?: string
+  targetJammingOverride?: number
+} {
   // Aiming a ship at itself is how the UI asks "may I fire at all?" before a
   // target is chosen; its own cloak still answers.
   const targetCloak = target.id === attacker.id ? undefined : game.cloaks[target.id]
@@ -981,6 +996,11 @@ export function cloakModifiers(
     attackerCloaked: shipUnderCloakRestrictions(game, attacker),
     targetCloaked: cloaked,
     ...(permission.mayFire ? {} : { targetUnshootable: permission.reason }),
+    // H6.4.5/H6.14.4, rules reading 3 only: a cloaked target's jamming feeds
+    // the cloak instead of blocking the shot that found it. Reading 1/2 omit
+    // this, so `resolveVolley` falls back to the target's own jamming and an
+    // old journal's effective range — and so its hits — replay unchanged.
+    ...(cloaked && game.rulesVersion >= 3 ? { targetJammingOverride: 0 } : {}),
   }
 }
 
@@ -1149,7 +1169,10 @@ function extraSearches(game: GameState, ship: ShipState, dice: number, why: stri
     if (hunter.side === ship.side || hunter.derelict) continue
     // H6.9.5: a ship running its own cloak is not hunting anyone.
     if (shipIsCloaked(game, hunter)) continue
-    const out = bonusSearch(hunter, ship, cloak, dice, game.rng)
+    // H6.9.4, rules reading 3 only: obstacles are omitted below reading 3, so
+    // an old journal's bonus search through a planet still replays as fought.
+    const obstacles = game.rulesVersion >= 3 ? terrainObstacles(game.scenario.terrain) : []
+    const out = bonusSearch(hunter, ship, cloak, dice, game.rng, obstacles)
     if (out.faces.length === 0) continue
     pushLog(
       game,
@@ -1233,7 +1256,7 @@ function cutUnpoweredCloaks(game: GameState): void {
   for (const ship of activeShips(game)) {
     const cloak = game.cloaks[ship.id]
     if (!cloak?.engaged || cloakFullyPowered(ship)) continue
-    const { damaged } = cutCloakPower(cloak, game.round)
+    const { damaged } = cutCloakPower(cloak, game.round, game.rulesVersion)
     if (damaged) {
       ship.systemDamage['CLOAK'] = (ship.systemDamage['CLOAK'] ?? 0) + 1
       pushLog(
@@ -2109,6 +2132,7 @@ function runSegmentExit(game: GameState): void {
       game.ops.recoveredThisPhase = {}
       game.ops.dockedThisPhase = {}
       game.ops.maxSystem = {}
+      game.ops.cloakSearchedThisPhase.clear()
       resetTractorPhase(game)
       advanceCloakPhases(game)
       break
@@ -3124,6 +3148,12 @@ export function captureCraft(game: GameState, craftId: string, ship: ShipState):
 export function recoverShuttle(game: GameState, craftId: string, ship: ShipState): string | null {
   const craft = game.smallCraft.find((c) => c.id === craftId)
   if (!craft) return 'No such craft.'
+  // H6.4.9: a cloaked ship's bay doors don't open for anyone, its own
+  // shuttles included. Rules reading 3 only, so an old journal's recovery
+  // aboard a cloaked ship still replays as it was fought.
+  if (game.rulesVersion >= 3 && shipIsCloaked(game, ship)) {
+    return `${ship.name} is cloaked; small craft cannot land aboard it (H6.4.9).`
+  }
   const card = game.orders[ship.id]
   const speedChanged = card ? card.accel !== 0 : false
   const refusal = recoveryRefusal(craft, ship, speedChanged)
@@ -3145,6 +3175,13 @@ export function recoverShuttle(game: GameState, craftId: string, ship: ShipState
 export function dockShuttle(game: GameState, craftId: string, ship: ShipState): string | null {
   const craft = game.smallCraft.find((c) => c.id === craftId)
   if (!craft) return 'No such craft.'
+  // H6.4.9: small craft cannot land on a cloaked ship — a Track or Lock only
+  // gets its shields down (H6.4.1), not its bay doors open. Rules reading 3
+  // only, so an old journal's boarding of a cloaked ship still replays as it
+  // was fought.
+  if (game.rulesVersion >= 3 && shipIsCloaked(game, ship)) {
+    return `${ship.name} is cloaked; small craft cannot land aboard it (H6.4.9).`
+  }
   const docked = game.ops.dockedThisPhase[ship.id] ?? 0
   const refusal = dockingRefusal(craft, ship, docked, effectiveSpeed(game, ship))
   if (refusal) return refusal

@@ -1,5 +1,5 @@
 import { rollDie, type Rng } from './dice'
-import { actualRange } from './geometry'
+import { actualRange, hasLineOfSight, type CircleObstacle } from './geometry'
 import {
   scoutSensorsOn,
 } from './scouting'
@@ -224,11 +224,18 @@ export interface EngageResult {
 /**
  * Engage the cloak during Operations step 2A (H6.6.2). Any enemy within range 8
  * sees it happen and starts with a Contact (H6.6.3).
+ *
+ * `rulesVersion` gates H6.7.7's re-engage wait: reading 3 reads the worked
+ * example literally — off in Phase 1, it stays off through Phase 2 and may
+ * only come back in Phase 3, which is two phase-boundary ticks of
+ * `phasesUncloaked`. Reading 1/2 keep the original one-tick wait, so an old
+ * journal's re-engage still replays exactly as it was fought.
  */
 export function engageCloak(
   ship: ShipState,
   state: CloakState,
   enemies: readonly ShipState[],
+  rulesVersion = 1,
 ): EngageResult {
   if (state.engaged) return { ok: false, reason: 'Already cloaked.', freeContacts: [] }
   if (!cloakOperational(ship)) {
@@ -242,7 +249,8 @@ export function engageCloak(
     }
   }
   // H6.7.7: once off, the cloak stays off for a phase before it may re-engage.
-  if (state.phasesUncloaked < 1) {
+  const minUncloakedTicks = rulesVersion >= 3 ? 2 : 1
+  if (state.phasesUncloaked < minUncloakedTicks) {
     return {
       ok: false,
       reason: 'The cloak must stay off for a full phase before re-engaging (H6.7.7).',
@@ -274,9 +282,16 @@ export function engageCloak(
 /**
  * Whether the cloak may be switched off this phase. Once engaged it must stay
  * on for a full phase (H6.6.7).
+ *
+ * `rulesVersion` gates the same worked-example reading as `engageCloak`:
+ * activated in Phase 3, reading 3 holds it through Phase 1 of the next round
+ * and allows it off no earlier than Phase 2 — two phase-boundary ticks of
+ * `phasesCloaked`. Reading 1/2 keep one tick, so an old journal's early
+ * decloak still replays as it was fought.
  */
-export function mayDecloak(state: CloakState): boolean {
-  return state.engaged && state.phasesCloaked >= 1
+export function mayDecloak(state: CloakState, rulesVersion = 1): boolean {
+  const minCloakedTicks = rulesVersion >= 3 ? 2 : 1
+  return state.engaged && state.phasesCloaked >= minCloakedTicks
 }
 
 export function disengageCloak(state: CloakState): void {
@@ -294,13 +309,14 @@ export function disengageCloak(state: CloakState): void {
  * the ship stays under cloaking restrictions for the rest of Phase 1 (H6.6.8).
  *
  * Returns whether the cloak was damaged, so the caller can mark the box and
- * say so in the log.
+ * say so in the log. `rulesVersion` mirrors `mayDecloak`'s minimum.
  */
-export function cutCloakPower(state: CloakState, round: number): { damaged: boolean } {
+export function cutCloakPower(state: CloakState, round: number, rulesVersion = 1): { damaged: boolean } {
   if (!state.engaged || state.powerCut) return { damaged: false }
   state.powerCut = true
   // H6.6.7 wants a full phase; anything less and the drop is violent.
-  const damaged = state.phasesCloaked < 1
+  const minCloakedTicks = rulesVersion >= 3 ? 2 : 1
+  const damaged = state.phasesCloaked < minCloakedTicks
   if (damaged) state.restrictedRound = round
   return { damaged }
 }
@@ -341,13 +357,20 @@ export function searchTarget(cloaked: ShipState, state: CloakState, searcherId: 
   return detectionBy(state, searcherId) === 0 ? state.datum.position : cloaked.placement.position
 }
 
+/**
+ * Range AND line of sight to whatever the searcher measures to — the datum
+ * while undetected, the real hull once found (H6.9.1, H6.9.4). A planet or
+ * moon between the two blocks a search exactly as it blocks weapon fire.
+ */
 export function withinSearchRange(
   searcher: ShipState,
   cloaked: ShipState,
   state: CloakState,
+  obstacles: CircleObstacle[] = [],
 ): boolean {
   const to = searchTarget(cloaked, state, searcher.id)
-  return actualRange(searcher.placement.position, to) <= searchRange(searcher)
+  if (actualRange(searcher.placement.position, to) > searchRange(searcher)) return false
+  return hasLineOfSight(searcher.placement.position, to, obstacles)
 }
 
 /**
@@ -401,6 +424,7 @@ export function attemptSearch(
   cloaked: ShipState,
   state: CloakState,
   rng: Rng,
+  obstacles: CircleObstacle[] = [],
 ): SearchOutcome {
   const from = detectionBy(state, searcher.id)
   const fail = (reason: string): SearchOutcome => ({ faces: [], detected: false, from, to: from, reason })
@@ -419,8 +443,11 @@ export function attemptSearch(
   // H6.9.5 is the caller's to check: whether the *searcher* is running its own
   // cloak is not visible from here, and a ship hunting from behind its own
   // cloak is exactly what that rule forbids.
-  if (!withinSearchRange(searcher, cloaked, state)) {
-    return fail(`${cloaked.name} is beyond ${searcher.name}'s search range of ${searchRange(searcher)}" (H6.9.1).`)
+  if (!withinSearchRange(searcher, cloaked, state, obstacles)) {
+    return fail(
+      `${cloaked.name} is beyond ${searcher.name}'s search range of ${searchRange(searcher)}", or out of ` +
+        `line of sight to it (H6.9.1, H6.9.4).`,
+    )
   }
 
   const { count, color } = searchDice(searcher, cloaked, state)
@@ -458,6 +485,7 @@ export function bonusSearch(
   state: CloakState,
   dice: number,
   rng: Rng,
+  obstacles: CircleObstacle[] = [],
 ): SearchOutcome {
   const from = detectionBy(state, searcher.id)
   if (dice <= 0 || from >= 3 || !state.engaged) {
@@ -467,8 +495,11 @@ export function bonusSearch(
     return { faces: [], detected: false, from, to: from,
       reason: 'Already gained a level this segment (H6.15.1).' }
   }
-  if (!withinSearchRange(searcher, cloaked, state)) {
-    return { faces: [], detected: false, from, to: from, reason: 'Out of search range (H6.9.1).' }
+  if (!withinSearchRange(searcher, cloaked, state, obstacles)) {
+    return {
+      faces: [], detected: false, from, to: from,
+      reason: 'Out of search range, or no line of sight (H6.9.1, H6.9.4).',
+    }
   }
 
   const { color } = searchDice(searcher, cloaked, state)

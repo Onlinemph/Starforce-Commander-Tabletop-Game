@@ -16,7 +16,7 @@ import {
   withinSearchRange,
   type DetectionLevel,
 } from '../engine/cloaking'
-import { cloakOf, type GameState } from '../engine/game'
+import { cloakOf, terrainObstacles, type GameState } from '../engine/game'
 import { actualRange } from '../engine/geometry'
 import type { ShipState } from '../engine/shipState'
 import { dispatch } from './store'
@@ -164,8 +164,10 @@ export function CloakPanel({ game, ship }: Props) {
                 </button>
                 <button
                   type="button"
-                  disabled={!mayDecloak(own)}
-                  title={mayDecloak(own) ? '' : 'The cloak must run for a full phase first (H6.6.7)'}
+                  disabled={!mayDecloak(own, game.rulesVersion)}
+                  title={
+                    mayDecloak(own, game.rulesVersion) ? '' : 'The cloak must run for a full phase first (H6.6.7)'
+                  }
                   onClick={() => setError(dispatch({ type: 'decloak', shipId: ship.id }).message)}
                 >
                   Decloak (H6.7)
@@ -196,8 +198,14 @@ export function CloakPanel({ game, ship }: Props) {
             const state = cloakOf(game, ghost)!
             const level = detectionBy(state, ship.id)
             const { count, color } = searchDice(ship, ghost, state)
-            const inRange = withinSearchRange(ship, ghost, state)
-            const searched = state.searchedThisSegment.includes(ship.id)
+            // Reading 3 wants line of sight (H6.9.4) and spends the one search a
+            // phase against whichever ghost it was pointed at (H6.9.2) — the
+            // same gates the engine applies to the button.
+            const v3 = game.rulesVersion >= 3
+            const inRange = withinSearchRange(ship, ghost, state, v3 ? terrainObstacles(game.scenario.terrain) : [])
+            const searched = v3
+              ? game.ops.cloakSearchedThisPhase.has(ship.id)
+              : state.searchedThisSegment.includes(ship.id)
             const to = level === 0 ? state.datum.position : ghost.placement.position
             return (
               <div key={ghost.id} className="cloak-target">
@@ -216,7 +224,7 @@ export function CloakPanel({ game, ship }: Props) {
                     searched
                       ? 'Already searched this phase — one attempt per phase (H6.9.2)'
                       : !inRange
-                        ? 'Out of search range (H6.9.1)'
+                        ? 'Out of search range or line of sight (H6.9.1, H6.9.4)'
                         : count === 0
                           ? 'Targeting is below the cloaked ship’s jamming (H6.10.2)'
                           : `Roll ${count} ${color} ${count === 1 ? 'die' : 'dice'}`

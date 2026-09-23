@@ -186,6 +186,27 @@ describe('minimum cloak time (H6.6.7)', () => {
     expect(applyAction(game, { type: 'decloak', shipId: ghost.id }).message).toBeNull()
     expect(shipIsCloaked(game, ghost)).toBe(false)
   })
+
+  /**
+   * Rules reading 3 wants two ticks, matching the rulebook's own worked
+   * example — engaged in Phase 3, hold through Phase 1 of the next round,
+   * earliest off is Phase 2. Reading 1/2 above keeps the old one-tick
+   * minimum, so an early decloak already recorded in a journal still replays
+   * exactly as it was fought.
+   */
+  it('rules reading 3 wants two ticks before the cloak may come off', () => {
+    const { game, ghost } = battle()
+    game.rulesVersion = 3
+    cloak(game, ghost)
+
+    for (let i = 0; i < 40 && cloakOf(game, ghost)!.phasesCloaked < 1; i++) advanceSegment(game)
+    expect(applyAction(game, { type: 'decloak', shipId: ghost.id }).message).toMatch(/full phase/)
+    expect(shipIsCloaked(game, ghost)).toBe(true)
+
+    for (let i = 0; i < 40 && cloakOf(game, ghost)!.phasesCloaked < 2; i++) advanceSegment(game)
+    expect(applyAction(game, { type: 'decloak', shipId: ghost.id }).message).toBeNull()
+    expect(shipIsCloaked(game, ghost)).toBe(false)
+  })
 })
 
 describe('maneuvering in the dark (H6.8.5)', () => {
@@ -318,6 +339,34 @@ describe('losing power to the cloak (H6.3.2, H6.6.8)', () => {
     for (let i = 0; i < 20 && shipIsCloaked(game, ghost); i++) advanceSegment(game)
     expect(shipIsCloaked(game, ghost)).toBe(false)
     expect(game.log.some((l) => l.message.includes('H6.3.2'))).toBe(true)
+  })
+
+  /**
+   * Rules reading 3 wants the same two-tick minimum here as H6.6.7 — a power
+   * cut that lands after only one tick is still a violent one and damages
+   * the cloak, where reading 1/2 above call one tick clean.
+   */
+  it('rules reading 3 wants two ticks served before the cut is clean', () => {
+    // Engaged during Phase 3: only one Delayed Action tick lands before the
+    // round turns over, so the cut at the next Resource Allocation is still
+    // violent under the two-tick minimum.
+    const { game, ghost } = battle()
+    game.rulesVersion = 3
+    for (let i = 0; i < 60 && game.phase !== 'combat-3'; i++) advanceSegment(game)
+    cloak(game, ghost)
+    depower(ghost)
+    throughAllocation(game)
+    expect(ghost.systemDamage['CLOAK']).toBe(1)
+
+    // Engaged during Phase 2: two ticks land (Phase 2's own, then Phase 3's)
+    // before the round turns over, so the cut is clean.
+    const { game: game2, ghost: ghost2 } = battle()
+    game2.rulesVersion = 3
+    for (let i = 0; i < 60 && game2.phase !== 'combat-2'; i++) advanceSegment(game2)
+    cloak(game2, ghost2)
+    depower(ghost2)
+    throughAllocation(game2)
+    expect(ghost2.systemDamage['CLOAK'] ?? 0).toBe(0)
   })
 
   it('damages the cloak when the power goes before its minimum phase (H6.6.8)', () => {

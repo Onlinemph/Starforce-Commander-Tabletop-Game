@@ -3712,7 +3712,7 @@ function planOperations(
     // shooting once the guns are in their bracket.
     if (cloak && !cloaked && cloakFullyPowered(ship) && wantsCloak(game, ship, difficulty)) {
       actions.push({ type: 'engage-cloak', shipId: ship.id })
-    } else if (cloak && cloaked && mayDecloak(cloak)) {
+    } else if (cloak && cloaked && mayDecloak(cloak, game.rulesVersion)) {
       /*
        * Come off the cloak for the shot, not for the range band. A cloaked
        * ship cannot fire at all (H6.4.2), so every phase spent dark with the
@@ -3755,8 +3755,14 @@ function planOperations(
     if (!cloaked) {
       const ghost = huntedGhost(game, ship)
       // The one search per phase (H6.9.2) may already be spent — the engine
-      // now refuses the second roll, so don't keep proposing it.
-      if (ghost && !game.cloaks[ghost.id]?.searchedThisSegment.includes(ship.id)) {
+      // now refuses the second roll, so don't keep proposing it. Rules
+      // reading 3 spends the budget against any ghost searched this phase;
+      // reading 1/2 only track it per ghost, matching the engine's own gate.
+      const alreadySearched =
+        game.rulesVersion >= 3
+          ? game.ops.cloakSearchedThisPhase.has(ship.id)
+          : (ghost && game.cloaks[ghost.id]?.searchedThisSegment.includes(ship.id)) ?? false
+      if (ghost && !alreadySearched) {
         actions.push({ type: 'cloak-search', shipId: ship.id, ghostId: ghost.id })
       }
     }
@@ -4851,7 +4857,14 @@ function bestVolley(
 
     const arcs = arcTo(ship.placement.position, ship.placement.heading, enemy.placement.position)
     const actual = actualRange(ship.placement.position, enemy.placement.position)
-    const effective = effectiveRange(actual, enemy.sensors.jamming, ship.sensors.targeting)
+    // H6.4.5, rules reading 3: a cloaked enemy's jamming is feeding its
+    // cloak, not blocking a shot at the Track/Lock it has already been found
+    // under — mirrors the zeroing `resolveVolley` does under that reading,
+    // so this scores the shot it will actually get. Reading 1/2 score the
+    // enemy's jamming as normal, matching the engine's own gate.
+    const enemyCloak = cloakOf(game, enemy)
+    const enemyJamming = game.rulesVersion >= 3 && isCloaked(enemyCloak) ? 0 : enemy.sensors.jamming
+    const effective = effectiveRange(actual, enemyJamming, ship.sensors.targeting)
 
     const mounts: Array<{ weaponId: string; mountIndex: number }> = []
     let score = 0
