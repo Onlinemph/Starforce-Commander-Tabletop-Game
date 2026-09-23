@@ -4,9 +4,11 @@
  * for each entry in `fixtures.ts`, waits for `data-ready`, and photographs
  * the map. Dev-server only — it is not part of the production build.
  */
+import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { applyAction } from '../engine/actions'
 import { MapView } from '../ui/MapView'
-import { FIXTURES } from './fixtures'
+import { FIXTURES, type MapFixture } from './fixtures'
 import '../ui/styles.css'
 import '../ui/theme/tokens.css'
 import '../ui/theme/chrome.css'
@@ -16,6 +18,47 @@ import '../ui/theme/modals.css'
 import '../ui/theme/campaign.css'
 
 const name = new URLSearchParams(location.search).get('fixture') ?? ''
+
+declare global {
+  interface Window {
+    /** Advance the fixture's battle through its next Navigation Segment and redraw. */
+    __navigate?: () => void
+  }
+}
+
+/**
+ * The fixture on a map, plus one hook for checking motion: `__navigate()`
+ * steps the sequence of play until a Navigation Segment has resolved, so a
+ * test can photograph the counters mid-flight. The still baselines never
+ * call it.
+ */
+function Stage({ fixture }: { fixture: MapFixture }) {
+  const [, redraw] = useState(0)
+  window.__navigate = () => {
+    const game = fixture.game
+    for (let i = 0; i < 40; i++) {
+      const was = game.segment
+      applyAction(game, { type: 'advance-segment' })
+      if (was === 'navigation') break
+    }
+    redraw((n) => n + 1)
+  }
+  return (
+    <div className="visual-fixture" style={{ width: 1200, padding: 8 }}>
+      <MapView
+        game={fixture.game}
+        selectedId={fixture.selectedId}
+        targetId={fixture.targetId}
+        onSelect={() => {}}
+        showArcs={fixture.showArcs}
+        rangeRings={fixture.rangeRings}
+        viewSide={fixture.viewSide}
+        rulerMode={false}
+        viewLock
+      />
+    </div>
+  )
+}
 const root = document.getElementById('root')!
 
 if (name === 'list') {
@@ -26,21 +69,7 @@ if (name === 'list') {
   document.body.dataset.ready = 'error'
 } else {
   const f = FIXTURES[name]()
-  createRoot(root).render(
-    <div className="visual-fixture" style={{ width: 1200, padding: 8 }}>
-      <MapView
-        game={f.game}
-        selectedId={f.selectedId}
-        targetId={f.targetId}
-        onSelect={() => {}}
-        showArcs={f.showArcs}
-        rangeRings={f.rangeRings}
-        viewSide={f.viewSide}
-        rulerMode={false}
-        viewLock
-      />
-    </div>,
-  )
+  createRoot(root).render(<Stage fixture={f} />)
   /*
    * Ready once the SVG's raster images (asteroid scatter, ship art) have
    * loaded and two frames have painted — photographing earlier catches the

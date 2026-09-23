@@ -145,6 +145,38 @@ for (const fixture of fixtures) {
     console.log(`ERROR    ${fixture}: ${e.message.split('\n')[0]}`)
   }
 }
+/*
+ * Motion: a still cannot show that a turning ship flies forward and then
+ * pivots, so this samples the counter's transform through a plotted turn.
+ * Mid-leg it must have moved but kept its heading; at rest it must have
+ * turned. (The duel-plot fixture plots a standard turn with acceleration.)
+ */
+if (only.length === 0 || only.includes('motion')) {
+  try {
+    await open('duel-plot')
+    const read = () =>
+      page.evaluate(() => {
+        const m = new DOMMatrixReadOnly(getComputedStyle(document.querySelector('g.ship')).transform)
+        return { x: m.e, angle: Math.round((Math.atan2(m.b, m.a) * 180) / Math.PI) }
+      })
+    const start = await read()
+    await page.evaluate(() => window.__navigate())
+    await page.waitForTimeout(300)
+    const mid = await read()
+    await page.waitForTimeout(1800)
+    const rest = await read()
+    const flew = mid.x !== start.x && mid.x !== rest.x && mid.angle === start.angle && rest.angle !== start.angle
+    if (flew) console.log('ok       motion (forward, then pivot)')
+    else {
+      failed++
+      console.log(`FAIL     motion: start ${JSON.stringify(start)} mid ${JSON.stringify(mid)} rest ${JSON.stringify(rest)}`)
+    }
+  } catch (e) {
+    failed++
+    console.log(`ERROR    motion: ${e.message.split('\n')[0]}`)
+  }
+}
+
 if (errors.length > 0) {
   failed++
   console.log(`Page errors:\n  ${[...new Set(errors)].join('\n  ')}`)

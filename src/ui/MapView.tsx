@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { EscapePod } from '../engine/abandonShip'
 import { bestDetection, positionIsHidden } from '../engine/cloaking'
 import { Rng } from '../engine/dice'
@@ -22,6 +22,52 @@ import type { BattleFx } from './fx'
 import { OFFICIAL_SILHOUETTES, type OfficialFaction } from './officialSilhouettes'
 import { HOMING_ART } from './homingArt'
 import { labelHalfWidth, stackLabels } from './mapLabels'
+import { trailDuration, trailIsNewer, trailKeyframes, type MotionKey } from './motion'
+
+/** A Navigation leg queued for a counter to fly, stamped so it plays once. */
+interface ShipMotion {
+  keys: MotionKey[]
+  duration: number
+  serial: number
+}
+
+const reducedMotion = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Fly one or more elements through a motion's keyframes, once per serial.
+ *
+ * Runs in a layout effect, before the browser paints the new state: the
+ * element already carries its final transform from the render, the CSS
+ * transition that would otherwise tween the chord is switched off, and the
+ * Web Animation plays the leg over it. When it finishes the element simply is
+ * where the table says it is.
+ */
+function usePlayback(
+  motion: ShipMotion | undefined,
+  targets: Array<{ el: () => Element | null; frame: (k: MotionKey) => string }>,
+): void {
+  const played = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (!motion || played.current === motion.serial) return
+    played.current = motion.serial
+    if (reducedMotion()) return
+    for (const target of targets) {
+      const el = target.el()
+      if (!el || typeof (el as HTMLElement).animate !== 'function') continue
+      el.classList.add('is-flying')
+      const animation = el.animate(
+        motion.keys.map((k) => ({ transform: target.frame(k), offset: k.offset })),
+        { duration: motion.duration, easing: 'ease-in-out' },
+      )
+      const done = () => el.classList.remove('is-flying')
+      animation.onfinish = done
+      animation.oncancel = done
+    }
+    // Keyed on the serial alone: re-renders mid-flight must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motion?.serial])
+}
 
 /**
  * The asteroid photographs from the Print and Play counter sheet, bundled and
@@ -379,6 +425,35 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
       ship,
       formationSize: (formationOf(game.formations, ship.id)?.memberIds.length ?? 0) + 1,
     }))
+
+  /*
+    Movement playback. When a Navigation Segment has just moved a ship, its
+    counter flies the leg the maneuver actually took — forward, pivot, forward
+    — rather than tweening across the chord of the turn. The first render only
+    takes note of what is already there, so opening a save does not replay the
+    last move; after that, any leg newer than the one last shown plays once.
+    Scrubbing a replay backward updates the note without playing anything.
+  */
+  const seenTrails = useRef(new Map<string, { round: number; phase: string }>())
+  const motions = useRef(new Map<string, ShipMotion>())
+  const motionSerial = useRef(0)
+  const primed = useRef(false)
+  for (const { ship } of drawn) {
+    const trail = game.trails?.[ship.id]
+    if (!trail) continue
+    const newer = trailIsNewer(trail, seenTrails.current.get(ship.id))
+    seenTrails.current.set(ship.id, { round: trail.round, phase: trail.phase })
+    if (!newer || !primed.current) continue
+    const start = displayHeadings.current.get(ship.id) ?? trail.from.heading
+    const keys = trailKeyframes(trail, ship.placement, start)
+    if (keys.length < 2) continue
+    // The counter's resting heading is where the leg ends, unwrapped the same
+    // way, so the render below does not spin it back round.
+    displayHeadings.current.set(ship.id, keys[keys.length - 1].heading)
+    motionSerial.current += 1
+    motions.current.set(ship.id, { keys, duration: trailDuration(keys), serial: motionSerial.current })
+  }
+  primed.current = true
 
   /* Names under packed hulls step down a line rather than print on top of
      each other — a squadron in formation is exactly when they matter most.
@@ -770,6 +845,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
           cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
           redacted={viewSide !== null && ship.side !== viewSide}
           displayHeading={continuousHeading(ship.id, ship.placement.heading)}
+          motion={motions.current.get(ship.id)}
           onSelect={select}
         />
       ))}
@@ -827,6 +903,7 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
             shift={labelShifts[ship.id] ?? 0}
             cloaked={Boolean(cloak && positionIsHidden(cloak))}
             cloakBadge={badge}
+            motion={motions.current.get(ship.id)}
           />
         )
       })}
@@ -1385,6 +1462,7 @@ function ShipToken({
   cloaked,
   redacted,
   displayHeading,
+  motion,
   onSelect,
 }: {
   game: GameState
@@ -1399,11 +1477,35 @@ function ShipToken({
   redacted: boolean
   /** Unwrapped heading, so a CSS transition always turns the short way. */
   displayHeading: number
+  /** The Navigation leg to fly, when this counter has just moved. */
+  motion?: ShipMotion
   onSelect: (id: string) => void
 }) {
+  const size = SHIP_SIZE
+  const body = useRef<SVGGElement>(null)
+  const upright = useRef<Array<SVGGElement | null>>([])
+  // The shield figures and formation badge counter-rotate to stay readable, so
+  // they fly the same leg with the rotation negated.
+  const labelOffsets: Array<readonly [number, number]> = [
+    [0, -size / 2 - 11],
+    [0, size / 2 + 15],
+    [size / 2 + 12, 4],
+    [-size / 2 - 12, 4],
+    [0, 0],
+  ]
+  usePlayback(motion, [
+    {
+      el: () => body.current,
+      frame: (k) => `translate(${k.x * SCALE}px, ${k.y * SCALE}px) rotate(${k.heading}deg)`,
+    },
+    ...labelOffsets.map(([x, y], i) => ({
+      el: () => upright.current[i] ?? null,
+      frame: (k: MotionKey) => `translate(${x}px, ${y}px) rotate(${-k.heading}deg)`,
+    })),
+  ])
+
   if (ship.destroyed || ship.disengaged) return null
 
-  const size = SHIP_SIZE
   const cx = ship.placement.position.x * SCALE
   const cy = ship.placement.position.y * SCALE
   // The third side of the Aurelian Raid keeps the purple the fleet picker
@@ -1433,6 +1535,7 @@ function ShipToken({
 
   return (
     <g
+      ref={body}
       className={`ship map-mover ship-${sideClass}${selected ? ' is-selected' : ''}${targeted ? ' is-targeted' : ''}${cloaked ? ' is-cloaked' : ''}`}
       /* How broken the hull is, is public — the damage marker sits on the
          counter at the table (B1.9), so the counter carries it here too. */
@@ -1504,9 +1607,12 @@ function ShipToken({
           ['S', size / 2 + 12, 4],
           ['P', -size / 2 - 12, 4],
         ] as const
-      ).map(([side, x, y]) => (
+      ).map(([side, x, y], i) => (
         <g
           key={side}
+          ref={(el) => {
+            upright.current[i] = el
+          }}
           className="map-mover"
           style={{ transform: `translate(${x}px, ${y}px) rotate(${-displayHeading}deg)` }}
         >
@@ -1518,7 +1624,13 @@ function ShipToken({
 
       {/* Counter-rotate so the badge stays upright whatever the heading. */}
       {formationSize > 1 && (
-        <g className="map-mover" style={{ transform: `rotate(${-displayHeading}deg)` }}>
+        <g
+          ref={(el) => {
+            upright.current[4] = el
+          }}
+          className="map-mover"
+          style={{ transform: `translate(0px, 0px) rotate(${-displayHeading}deg)` }}
+        >
           <text x={size / 2 - 3} y={-size / 2 + 11} className="ship-formation" textAnchor="end">
             ×{formationSize}
           </text>
@@ -1542,6 +1654,7 @@ function ShipLabel({
   shift,
   cloaked,
   cloakBadge,
+  motion,
 }: {
   ship: ShipState
   formationSize: number
@@ -1555,12 +1668,19 @@ function ShipLabel({
    * the ship is not running a cloak.
    */
   cloakBadge: string | null
+  /** The Navigation leg the hull is flying; the name travels with it. */
+  motion?: ShipMotion
 }) {
   const cx = ship.placement.position.x * SCALE
   const cy = ship.placement.position.y * SCALE
+  const ref = useRef<SVGGElement>(null)
+  usePlayback(motion, [
+    { el: () => ref.current, frame: (k) => `translate(${k.x * SCALE}px, ${k.y * SCALE}px)` },
+  ])
 
   return (
     <g
+      ref={ref}
       className={`ship-label map-mover${cloaked ? ' is-cloaked' : ''}`}
       style={{ transform: `translate(${cx}px, ${cy}px)` }}
     >

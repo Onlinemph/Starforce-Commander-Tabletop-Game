@@ -5412,3 +5412,9 @@ button.primary .title-detail {
     grid-template-columns: 1fr;
   }
 }
+
+/* A counter flying its Navigation leg: the Web Animation drives the transform,
+   so the chord-tweening transition must not run underneath it (MapView usePlayback). */
+.map-mover.is-flying {
+  transition: none;
+}

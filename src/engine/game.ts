@@ -549,6 +549,19 @@ export function newOperationsState(): OperationsState {
   }
 }
 
+/** One ship's movement in one Navigation Segment, for the map to replay. */
+export interface MoveTrail {
+  round: number
+  phase: Phase
+  from: Placement
+  /** The maneuver's own sample points, first to last (`ManeuverResult.path`). */
+  path: Point[]
+  /** Heading at the end of the maneuver, before anything else turns the ship. */
+  heading: number
+  /** Moving astern (C3.7): the ship travels stern-first and keeps its facing. */
+  reverse: boolean
+}
+
 export interface GameState {
   scenario: Scenario
   round: number
@@ -678,6 +691,15 @@ export interface GameState {
   smallCraft: SmallCraft[]
   /** Fighter flights on the map. Package A of the Apr 2026 outline. */
   flights: Flight[]
+  /**
+   * Each ship's most recent Navigation Segment leg: where it started, the
+   * points it pivoted at, and the heading it finished the maneuver on.
+   * Nothing in the rules reads this — it is for the map, which uses it to fly
+   * a ship along its actual plot (forward, pivot, forward) instead of sliding
+   * it across the chord. Derived during play, so saves and replays rebuild it
+   * exactly; optional so states built before it existed still load.
+   */
+  trails?: Record<string, MoveTrail>
   /**
    * Serial numbers for the counters this battle puts on the map.
    *
@@ -1940,12 +1962,24 @@ function runSegmentExit(game: GameState): void {
         // the adjusted one, and the difference costs no acceleration and
         // causes no stress (J3.3.4, J3.4.5).
         const towed = isLinked(ship.id, game.ops.links)
+        const from = { position: { ...ship.placement.position }, heading: ship.placement.heading }
         const result = executeMovement(
           ship,
           card,
           towed ? adjustedSpeed(ship, game.ops.links, game.ships, card.speed) : undefined,
           speedLimitFor(game, ship),
         )
+        game.trails = {
+          ...game.trails,
+          [ship.id]: {
+            round: game.round,
+            phase: game.phase,
+            from,
+            path: result.path.map((p) => ({ ...p })),
+            heading: result.end.heading,
+            reverse: result.speed < 0,
+          },
+        }
         if (result.illegal) pushLog(game, `${ship.name}: illegal plot — ${result.illegal}`)
         if (result.stress > 0) pushLog(game, `${ship.name}: +${result.stress} stress from maneuver.`)
         applyTerrainDamage(game, ship, result.path)
