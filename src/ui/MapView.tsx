@@ -21,7 +21,7 @@ import { DENSITY_STATS } from '../data/terrainCounters'
 import type { BattleFx } from './fx'
 import { OFFICIAL_SILHOUETTES, type OfficialFaction } from './officialSilhouettes'
 import { HOMING_ART } from './homingArt'
-import { labelHalfWidth, stackLabels } from './mapLabels'
+import { labelHalfWidth, placeCraftLabels, stackLabels } from './mapLabels'
 import { trailDuration, trailIsNewer, trailKeyframes, type MotionKey } from './motion'
 
 /** A Navigation leg queued for a counter to fly, stamped so it plays once. */
@@ -201,6 +201,38 @@ function fannedFlights(flights: Flight[]): { flight: Flight; at: { x: number; y:
       },
     }
   })
+}
+
+/** A flight counter's label: the card's short name and how many are left. */
+function flightLabelText(flight: Flight): string {
+  return `${flight.cardId.slice(0, 4).toUpperCase()} ×${flight.members}`
+}
+
+/**
+ * Step a flight counter off a hull's shield figure. The strike planner berths
+ * a wing about an inch and a half off each facing it means to hit — which is
+ * exactly where that facing's strength is printed, so the delta sat on the
+ * one number its attack was about. Like the fanning above, this moves the
+ * drawing only, radially out from the hull and by at most half an inch; a
+ * flight closer in than the ring is on its attack run and is left where it is.
+ */
+function clearOfShieldFigures(at: { x: number; y: number }, ships: ShipState[]): { x: number; y: number } {
+  const figure = SHIP_SIZE / 2 + 12
+  const clearance = figure + 13
+  for (const ship of ships) {
+    const c = ship.placement.position
+    const dx = (at.x - c.x) * SCALE
+    const dy = (at.y - c.y) * SCALE
+    const d = Math.hypot(dx, dy)
+    if (d < SHIP_SIZE * 0.62 || d >= clearance) continue
+    // The figures sit on the four facing axes, which turn with the hull.
+    const bearing = (Math.atan2(dx, -dy) * 180) / Math.PI - ship.placement.heading
+    const offAxis = Math.abs((((bearing % 90) + 135) % 90) - 45)
+    if (offAxis > 25) continue
+    const k = Math.min(clearance, d + 0.5 * SCALE) / d
+    return { x: c.x + (dx * k) / SCALE, y: c.y + (dy * k) / SCALE }
+  }
+  return at
 }
 
 function isWorld(kind: TerrainKind): boolean {
@@ -485,6 +517,33 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
     }),
   )
   const podShift = (id: string) => labelShifts[id] ?? 0
+
+  /* Fighter labels go wherever is clear of the hulls, their shield figures
+     and the names — a wing berthed on a dreadnought's facings otherwise
+     prints straight across the numbers it is there to read. */
+  const flightCounters = fannedFlights(game.flights.filter((f) => !f.dockedTo && f.members > 0)).map(
+    ({ flight, at }) => ({ flight, at: clearOfShieldFigures(at, drawn.map((d) => d.ship)) }),
+  )
+  const flightSpots = placeCraftLabels(
+    flightCounters.map(({ flight, at }) => ({
+      id: flight.id,
+      x: at.x * SCALE,
+      y: at.y * SCALE,
+      halfWidth: flightLabelText(flight).length * 2.6,
+    })),
+    drawn.flatMap(({ ship, formationSize }) => {
+      const x = ship.placement.position.x * SCALE
+      const y = ship.placement.position.y * SCALE
+      // Out past the shield readouts, which print just beyond the ring.
+      const reach = SHIP_SIZE / 2 + 19
+      const name = y + LABEL_TOP + (labelShifts[ship.id] ?? 0)
+      const half = labelHalfWidth(shipLabelText(ship, formationSize))
+      return [
+        { x1: x - reach, x2: x + reach, y1: y - reach, y2: y + reach },
+        { x1: x - half, x2: x + half, y1: name - 9, y2: name + 3 },
+      ]
+    }),
+  )
 
   return (
     <svg
@@ -803,14 +862,33 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
         </g>
       ))}
 
+      {drawn.map(({ ship, formationSize }) => (
+        <ShipToken
+          key={ship.id}
+          game={game}
+          ship={ship}
+          selected={ship.id === selectedId}
+          targeted={ship.id === targetId}
+          formationSize={formationSize}
+          cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
+          redacted={viewSide !== null && ship.side !== viewSide}
+          displayHeading={continuousHeading(ship.id, ship.placement.heading)}
+          motion={motions.current.get(ship.id)}
+          onSelect={select}
+        />
+      ))}
+
       {/*
         Fighter flights. One counter for the whole flight — the leader's
         position is what everything is measured from, and E12.4.2 makes the
         flight the target rather than the fighters in it. The strength is on
-        the counter because both players can count it.
+        the counter because both players can count it. Drawn over the hulls:
+        a flight on its attack run sits hard against its target, and a
+        dreadnought's shield figures used to hide the whole counter.
       */}
-      {fannedFlights(game.flights.filter((f) => !f.dockedTo && f.members > 0)).map(
-        ({ flight, at }) => (
+      {flightCounters.map(({ flight, at }) => {
+        const spot = flightSpots[flight.id]
+        return (
           <g
             key={flight.id}
             className={`fighter-flight map-mover flight-${flight.side.startsWith('Blue') ? 'blue' : 'red'}`}
@@ -827,28 +905,12 @@ export function MapView({ game, selectedId, targetId, onSelect, showArcs, rangeR
               points={`0,${-0.35 * SCALE} ${0.3 * SCALE},${0.25 * SCALE} ${-0.3 * SCALE},${0.25 * SCALE}`}
               className="flight-counter"
             />
-            <text x={0} y={0.25 * SCALE + 9} className="craft-label" textAnchor="middle">
-              {`${flight.cardId.slice(0, 4).toUpperCase()} ×${flight.members}`}
+            <text x={spot.dx} y={spot.dy} className="craft-label" textAnchor="middle">
+              {flightLabelText(flight)}
             </text>
           </g>
-        ),
-      )}
-
-      {drawn.map(({ ship, formationSize }) => (
-        <ShipToken
-          key={ship.id}
-          game={game}
-          ship={ship}
-          selected={ship.id === selectedId}
-          targeted={ship.id === targetId}
-          formationSize={formationSize}
-          cloaked={Boolean(game.cloaks[ship.id] && positionIsHidden(game.cloaks[ship.id]))}
-          redacted={viewSide !== null && ship.side !== viewSide}
-          displayHeading={continuousHeading(ship.id, ship.placement.heading)}
-          motion={motions.current.get(ship.id)}
-          onSelect={select}
-        />
-      ))}
+        )
+      })}
 
       {/*
         Escape pods (E11.6.4): stationary, defenceless, and worth points to
@@ -1197,6 +1259,117 @@ export function hullRoleFor(form: { name: string; sizeClass: number }): HullRole
 }
 
 /**
+ * What a hull is for, beside how big it is. The deck's silhouettes are all
+ * warships, so a carrier, a freighter and an outpost used to fly the same
+ * shape as a gunship of their tonnage — at the table the counter sheet gives
+ * each its own art, and a commander hunting the carrier in a battle line
+ * should be able to find it without hovering every counter. Carriers keep
+ * their faction's silhouette and wear a flight deck over it; freighters and
+ * fixed installations get shapes of their own.
+ */
+export type HullKind = 'warship' | 'carrier' | 'freighter' | 'station'
+
+export function hullKindFor(form: { name: string }): HullKind {
+  const suffix = /-class\s+(.*)$/i.exec(form.name)?.[1]?.toLowerCase() ?? ''
+  if (/carrier/.test(suffix)) return 'carrier'
+  if (/outpost|station|satellite|habitat|starbase/.test(suffix)) return 'station'
+  if (/freighter|transport|tender|tanker/.test(suffix)) return 'freighter'
+  return 'warship'
+}
+
+/** Command variants — "Cmnd Cruiser", "YORKTOWN IIIc" — carry a flag mark. */
+export function isCommandHull(form: { name: string }): boolean {
+  return /\b(cmnd|command)\b/i.test(form.name) || /[IVX]+c-class/.test(form.name)
+}
+
+/** Half the beam of a carrier's flight deck, by the hull it is laid on. */
+const DECK_HALF_BEAM: Record<HullRole, number> = {
+  scout: 6,
+  frigate: 6,
+  destroyer: 7,
+  cruiser: 8,
+  battlecruiser: 9,
+  dreadnought: 10,
+}
+
+/**
+ * A flight deck laid along the keel: a slab with a chamfered bow, a dashed
+ * landing line down its centre and two lift wells. It rides over the
+ * faction silhouette so the carrier is still recognisably Union or Vallari.
+ */
+function FlightDeck({ role }: { role: HullRole }) {
+  const w = DECK_HALF_BEAM[role]
+  const bow = -38
+  const stern = 40
+  return (
+    <>
+      <path
+        className="glyph-hull glyph-deck"
+        d={`M ${-w} ${bow + 8} L ${-w * 0.55} ${bow} L ${w * 0.55} ${bow} L ${w} ${bow + 8} L ${w} ${stern} L ${-w} ${stern} Z`}
+      />
+      <line className="glyph-deck-line" x1={0} y1={bow + 6} x2={0} y2={stern - 4} />
+      <rect className="glyph-trim" x={-w * 0.55} y={-8} width={w * 1.1} height={5} />
+      <rect className="glyph-trim" x={-w * 0.55} y={18} width={w * 1.1} height={5} />
+    </>
+  )
+}
+
+/**
+ * A bulk hauler: bridge forward, a spine of cargo pods, the drive block aft.
+ * Pods widen with tonnage, so a WARFARER still looms over a RUNNER.
+ */
+function FreighterGlyph({ role }: { role: HullRole }) {
+  const pod = { scout: 7, frigate: 7, destroyer: 9, cruiser: 12, battlecruiser: 14, dreadnought: 17 }[role]
+  const rows = [-30, -12, 6]
+  return (
+    <>
+      <path className="glyph-hull" d="M -3 -36 L 3 -36 L 3 28 L -3 28 Z" />
+      {rows.flatMap((y) => [
+        <rect key={`p${y}`} className="glyph-hull" x={4} y={y} width={pod} height={15} rx={2} />,
+        <rect key={`s${y}`} className="glyph-hull" x={-4 - pod} y={y} width={pod} height={15} rx={2} />,
+      ])}
+      <path className="glyph-hull" d="M -8 -46 L 8 -46 L 10 -36 L -10 -36 Z" />
+      <path className="glyph-hull" d="M -11 26 L 11 26 L 11 40 L -11 40 Z" />
+      <rect className="glyph-trim" x={-9} y={40} width={6} height={4} />
+      <rect className="glyph-trim" x={3} y={40} width={6} height={4} />
+      <circle className="glyph-glass" cx={0} cy={-41} r={2.5} />
+    </>
+  )
+}
+
+/**
+ * A fixed installation. Outposts, habitats and battlestations are a hub in
+ * a ring on four spokes; a defence satellite is a hub between two solar
+ * wings. Either way a trim notch marks the bow, because a station still has
+ * a facing — its shields and arcs are measured from it like any hull's.
+ */
+function StationGlyph({ role }: { role: HullRole }) {
+  if (role === 'frigate' || role === 'scout') {
+    return (
+      <>
+        <rect className="glyph-hull" x={-44} y={-9} width={30} height={18} rx={1} />
+        <rect className="glyph-hull" x={14} y={-9} width={30} height={18} rx={1} />
+        <line className="glyph-deck-line" x1={-44} y1={0} x2={44} y2={0} />
+        <circle className="glyph-hull" cx={0} cy={0} r={12} />
+        <path className="glyph-trim" d="M 0 -22 L 5 -13 L -5 -13 Z" />
+      </>
+    )
+  }
+  const ring = (r: number) => `M ${r} 0 A ${r} ${r} 0 1 0 ${-r} 0 A ${r} ${r} 0 1 0 ${r} 0 Z`
+  return (
+    <>
+      {[0, 90].map((a) => (
+        <rect key={a} className="glyph-hull" x={-3} y={-36} width={6} height={72} transform={`rotate(${a})`} />
+      ))}
+      <path className="glyph-hull" fillRule="evenodd" d={`${ring(42)} ${ring(33)}`} />
+      <circle className="glyph-hull" cx={0} cy={0} r={14} />
+      <circle className="glyph-glass" cx={0} cy={0} r={4} />
+      <path className="glyph-trim" d="M 0 -49 L 6 -40 L -6 -40 Z" />
+    </>
+  )
+}
+
+/**
  * Union and Vallari fly the designer's own silhouettes — the shapes the
  * printed playing pieces use, traced from his drafts deck
  * (tools/trace_silhouettes.py). One solid path per hull role, through the
@@ -1230,13 +1403,25 @@ function GenericGlyph({ role }: { role: HullRole }) {
  * when the image cannot load — a rotten https link, an offline session — so
  * a counter never renders as nothing.
  */
-function ArtGlyph({ art, kind, role }: { art: string; kind: Silhouette; role: HullRole }) {
+function ArtGlyph({
+  art,
+  kind,
+  role,
+  hull,
+  command,
+}: {
+  art: string
+  kind: Silhouette
+  role: HullRole
+  hull: HullKind
+  command: boolean
+}) {
   const [broken, setBroken] = useState(false)
   // The builder validates this shape before publishing, but a library entry
   // or battle file is somebody else's data — the map re-checks rather than
   // handing an arbitrary string to <image>.
   const safe = /^data:image\/(png|jpeg|webp);base64,/.test(art) || /^https:\/\//.test(art)
-  if (broken || !safe) return <ShipGlyph kind={kind} role={role} />
+  if (broken || !safe) return <ShipGlyph kind={kind} role={role} hull={hull} command={command} />
   return (
     <image
       className="glyph-art"
@@ -1251,15 +1436,29 @@ function ArtGlyph({ art, kind, role }: { art: string; kind: Silhouette; role: Hu
   )
 }
 
-export function ShipGlyph({ kind, role }: { kind: Silhouette; role: HullRole }) {
-  switch (kind) {
-    case 'union':
-    case 'vallari':
-    case 'aurelian':
-      return <OfficialGlyph faction={kind} role={role} />
-    default:
-      return <GenericGlyph role={role} />
-  }
+export function ShipGlyph({
+  kind,
+  role,
+  hull = 'warship',
+  command = false,
+}: {
+  kind: Silhouette
+  role: HullRole
+  hull?: HullKind
+  command?: boolean
+}) {
+  if (hull === 'freighter') return <FreighterGlyph role={role} />
+  if (hull === 'station') return <StationGlyph role={role} />
+  const base =
+    kind === 'generic' ? <GenericGlyph role={role} /> : <OfficialGlyph faction={kind} role={role} />
+  return (
+    <>
+      {base}
+      {hull === 'carrier' && <FlightDeck role={role} />}
+      {/* A command ship's flag: a trim diamond amidships, clear of the deck lifts. */}
+      {command && <path className="glyph-trim glyph-flag" d="M 0 2 L 5 8 L 0 14 L -5 8 Z" />}
+    </>
+  )
 }
 
 /**
@@ -1589,9 +1788,16 @@ function ShipToken({
             art={ship.form.art}
             kind={silhouetteFor(ship.form.faction)}
             role={hullRoleFor(ship.form)}
+            hull={hullKindFor(ship.form)}
+            command={isCommandHull(ship.form)}
           />
         ) : (
-          <ShipGlyph kind={silhouetteFor(ship.form.faction)} role={hullRoleFor(ship.form)} />
+          <ShipGlyph
+            kind={silhouetteFor(ship.form.faction)}
+            role={hullRoleFor(ship.form)}
+            hull={hullKindFor(ship.form)}
+            command={isCommandHull(ship.form)}
+          />
         )}
       </g>
 

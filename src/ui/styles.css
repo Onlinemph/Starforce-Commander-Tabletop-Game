@@ -5418,3 +5418,24 @@ button.primary .title-detail {
 .map-mover.is-flying {
   transition: none;
 }
+
+/* A carrier's flight deck: the hull's own fill a shade lighter, so the slab
+   reads as laid over the silhouette, with its landing line in side colour. */
+.glyph-deck {
+  fill: #2c3752;
+}
+.glyph-deck-line {
+  stroke: rgba(200, 216, 245, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.ship-blue .glyph-deck-line {
+  stroke: rgba(122, 183, 255, 0.8);
+}
+.ship-red .glyph-deck-line {
+  stroke: rgba(255, 122, 122, 0.8);
+}
+.ship-aurelian .glyph-deck-line {
+  stroke: rgba(214, 173, 214, 0.8);
+}

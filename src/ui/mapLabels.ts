@@ -81,3 +81,67 @@ export function stackLabels(
   }
   return shifts
 }
+
+/** A small counter whose label may sit on any side of it, in map pixels. */
+export interface CraftLabel {
+  id: string
+  /** Centre of the counter. */
+  x: number
+  y: number
+  halfWidth: number
+}
+
+/** Where a craft label's text sits: centre offset from its counter, to the baseline. */
+export interface CraftLabelSpot {
+  dx: number
+  dy: number
+}
+
+/** Height of the 8px craft face above and below its baseline, with a hair of air. */
+const CRAFT_ASCENT = 7
+const CRAFT_DESCENT = 2
+/** How far a side label stands off the counter's centre, before its own half-width. */
+const CRAFT_SIDE_GAP = 10
+
+/**
+ * Where each fighter flight's label goes. Under the counter is the default —
+ * it is where every other label on the map lives — but a flight berthed off a
+ * dreadnought's bow puts its name right across that facing's shield figure,
+ * so a label that would land on a hull (with its shield readouts), on a name,
+ * or on another craft label tries above, then right, then left. None clear:
+ * it prints underneath after all, as it always did.
+ *
+ * `taken` is everything already on the map that a label must not cover: the
+ * hulls' reach boxes and the ship names. Flights are placed in a fixed order
+ * so the layout does not shuffle between renders.
+ */
+export function placeCraftLabels(
+  labels: CraftLabel[],
+  taken: LabelObstacle[],
+): Record<string, CraftLabelSpot> {
+  const blocked = [...taken]
+  const spots: Record<string, CraftLabelSpot> = {}
+  // Every counter is itself something a neighbour's label must not cover.
+  for (const l of labels) blocked.push({ x1: l.x - 7, x2: l.x + 7, y1: l.y - 8, y2: l.y + 6 })
+  const order = [...labels].sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id))
+  for (const l of order) {
+    const candidates: CraftLabelSpot[] = [
+      { dx: 0, dy: 14 },
+      { dx: 0, dy: -10 },
+      { dx: CRAFT_SIDE_GAP + l.halfWidth, dy: 3 },
+      { dx: -CRAFT_SIDE_GAP - l.halfWidth, dy: 3 },
+    ]
+    const box = (s: CraftLabelSpot): LabelObstacle => ({
+      x1: l.x + s.dx - l.halfWidth,
+      x2: l.x + s.dx + l.halfWidth,
+      y1: l.y + s.dy - CRAFT_ASCENT,
+      y2: l.y + s.dy + CRAFT_DESCENT,
+    })
+    const clear = (b: LabelObstacle) =>
+      !blocked.some((o) => o.x1 < b.x2 && b.x1 < o.x2 && o.y1 < b.y2 && b.y1 < o.y2)
+    const spot = candidates.find((s) => clear(box(s))) ?? candidates[0]
+    spots[l.id] = spot
+    blocked.push(box(spot))
+  }
+  return spots
+}

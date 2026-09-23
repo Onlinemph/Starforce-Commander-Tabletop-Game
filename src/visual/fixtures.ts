@@ -74,6 +74,48 @@ registerCustomScenarios([
       },
     ],
   },
+  {
+    id: 'visual-hull-gallery',
+    name: 'Visual fixture: hull gallery',
+    background: '',
+    victory: 'destruction',
+    bounds: { width: 36, height: 24, fixed: true },
+    terrain: [],
+    sides: [
+      {
+        side: 'Blue Fleet',
+        objective: 'destroy',
+        facing: 1,
+        speed: 0,
+        anchor: { x: 18, y: 6 },
+        spread: { x: 5, y: 0 },
+        force: [
+          'fan-union-saratoga-super-carrier',
+          'fan-vallari-v-13a-aerie-fleet-carrier',
+          'fan-aurelian-ala-regia-fleet-carrier',
+          'fan-union-independence-escort-carrier',
+          'union-yorktown-iiic-class-command-cruiser',
+          'aurelian-aquila-bellum-iii-class-cmnd-cruiser',
+        ],
+      },
+      {
+        side: 'Red Fleet',
+        objective: 'destroy',
+        facing: 1,
+        speed: 0,
+        anchor: { x: 18, y: 18 },
+        spread: { x: 5, y: 0 },
+        force: [
+          'union-warfarer-class-large-freighter',
+          'union-runner-class-light-freighter',
+          'union-galileo-i-class-transport',
+          'union-bastion-i-class-battlestation',
+          'vallari-tortuga-i-class-outpost',
+          'union-guardian-i-class-defense-satellite',
+        ],
+      },
+    ],
+  },
 ])
 
 export const FIXTURES: Record<string, () => MapFixture> = {
@@ -128,6 +170,16 @@ export const FIXTURES: Record<string, () => MapFixture> = {
     ]
     game.flights.forEach((f, i) => (f.position = berths[i]))
     return { game, selectedId: predator.id, targetId: carrier.id, showArcs: false, rangeRings: [], viewSide: null }
+  },
+
+  /** Every kind of hull the counters tell apart: carriers' decks, command flags, freighters, stations. */
+  'hull-gallery': () => {
+    const game = startScenario('visual-hull-gallery', { seed: 5 })
+    const alpha = game.ships.filter((s) => s.side === 'Blue Fleet')
+    const beta = game.ships.filter((s) => s.side !== 'Blue Fleet')
+    alpha.forEach((s, i) => place(game, s.id, 4 + i * 5.6, 7, 0))
+    beta.forEach((s, i) => place(game, s.id, 4 + i * 5.6, 17, 0))
+    return { game, selectedId: null, targetId: null, showArcs: false, rangeRings: [], viewSide: null }
   },
 
   /** A plasma torpedo in flight: only the Aurelians carry homing weapons in the printed roster. */

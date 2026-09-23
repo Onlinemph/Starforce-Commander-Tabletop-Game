@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LABEL_LINE, labelHalfWidth, stackLabels, type LabelBox } from './mapLabels'
+import { LABEL_LINE, labelHalfWidth, placeCraftLabels, stackLabels, type LabelBox } from './mapLabels'
 
 /**
  * A squadron in formation is exactly when you most need to read the names, and
@@ -86,5 +86,43 @@ describe('the layout is stable', () => {
 describe('width estimate', () => {
   it('grows with the name, so long names claim more room', () => {
     expect(labelHalfWidth('V.I.S. Karnath · spd 4')).toBeGreaterThan(labelHalfWidth('Hawk · spd 4'))
+  })
+})
+
+describe('fighter flight labels', () => {
+  const hull = (x: number, y: number, reach = 34) => ({ x1: x - reach, x2: x + reach, y1: y - reach, y2: y + reach })
+
+  it('print under the counter when there is room', () => {
+    const spots = placeCraftLabels([{ id: 'f', x: 100, y: 100, halfWidth: 18 }], [])
+    expect(spots.f).toEqual({ dx: 0, dy: 14 })
+  })
+
+  it('go above a flight berthed off a hull, rather than across its shield figures', () => {
+    // The hull sits just below the flight: underneath is taken.
+    const spots = placeCraftLabels([{ id: 'f', x: 100, y: 100, halfWidth: 18 }], [hull(100, 140)])
+    expect(spots.f.dy).toBeLessThan(0)
+  })
+
+  it('go to the side when a hull is below and another label is above', () => {
+    const spots = placeCraftLabels(
+      [{ id: 'f', x: 100, y: 100, halfWidth: 18 }],
+      [hull(100, 140), { x1: 60, x2: 140, y1: 80, y2: 95 }],
+    )
+    expect(spots.f.dy).toBe(3)
+    expect(Math.abs(spots.f.dx)).toBeGreaterThan(18)
+  })
+
+  it('never stack two flight labels on each other', () => {
+    const spots = placeCraftLabels(
+      [
+        { id: 'a', x: 100, y: 100, halfWidth: 18 },
+        { id: 'b', x: 104, y: 112, halfWidth: 18 },
+      ],
+      [],
+    )
+    const top = (id: 'a' | 'b', y: number) => y + spots[id].dy
+    const overlapY = Math.abs(top('a', 100) - top('b', 112)) < 9
+    const overlapX = Math.abs(100 + spots.a.dx - (104 + spots.b.dx)) < 36
+    expect(overlapX && overlapY).toBe(false)
   })
 })

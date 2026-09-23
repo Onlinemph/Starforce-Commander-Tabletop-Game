@@ -51,3 +51,6 @@ tools/scan_tier.csv
 
 # Screenshot-test output (baselines in tests/visual/ are committed)
 tests/visual/__out__/
+
+# Agent worktrees (parallel branches, merged by hand)
+/.claude/worktrees/
