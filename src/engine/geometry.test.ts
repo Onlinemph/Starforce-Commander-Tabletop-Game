@@ -134,7 +134,10 @@ describe('maneuvers (C2, C3)', () => {
   })
 
   it('pivots 90 degrees mid-move for an emergency turn (C3.5.6)', () => {
-    const result = applyManeuver({ start, speed: 5, maneuver: 'em-90', direction: 'left', turnTemplate: 20 })
+    // The default pivot is a full 90 degrees, unreduced by any turn-table
+    // limit — `turnTemplate` here is what `navigation.ts` would compute by
+    // default for an Emergency Turn (C3.9.3).
+    const result = applyManeuver({ start, speed: 5, maneuver: 'em-90', direction: 'left', turnTemplate: 90 })
     expect(result.end.heading).toBe(270)
     // 2.5 inches north, then 2.5 inches west.
     expect(result.end.position.y).toBeCloseTo(-2.5)
@@ -142,7 +145,7 @@ describe('maneuvers (C2, C3)', () => {
   })
 
   it('adds a second pivot for a 180-degree emergency turn (C3.5.7)', () => {
-    const result = applyManeuver({ start, speed: 4, maneuver: 'em-180', direction: 'right', turnTemplate: 20 })
+    const result = applyManeuver({ start, speed: 4, maneuver: 'em-180', direction: 'right', turnTemplate: 90 })
     expect(result.end.heading).toBe(180)
   })
 

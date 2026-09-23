@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   firingOrder,
+  isPointDefense,
   selectBracket,
   type FireMode,
   type MountSelection,
@@ -918,6 +919,9 @@ function HomingImpacts({ game, target }: { game: GameState; target: ShipState })
                 const state = target.mounts[weapon.id]?.[index]
                 if (!state || !mountIsReady(weapon, index, state)) return []
                 if (!canBearOn(mount.arcs, answering)) return []
+                // An impact is answered by defensive fire, which only a point
+                // defense weapon may make (E12.2.5, E12.2.6) — reading 3 on.
+                if (game.rulesVersion >= 3 && !isPointDefense(weapon)) return []
                 return [{ weapon, index }]
               }),
             )

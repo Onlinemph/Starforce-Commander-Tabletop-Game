@@ -77,6 +77,7 @@ import {
   shipUnderCloakRestrictions,
   sidesAwaited,
   flushPendingVolleys,
+  fullDisengagementOptions,
   recordShieldHit,
   settleCargoDeliveries,
   tacticalScanOf,
@@ -573,6 +574,16 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'allocate': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      // Allocation is a Resource Allocation Segment decision (A3.2.1); power
+      // is fixed for the round once it closes (B2.1.1) — without this, a
+      // client could add allocation after seeing how earlier combat phases
+      // went, defeating the secret/simultaneous plotting of B1.9.1. Gated to
+      // reading 3: turning an old journal's mid-round allocate into a
+      // refusal would rewrite a battle it was never fought that way.
+      if (game.rulesVersion >= 3) {
+        const wrong = inSegment(game, 'resource-allocation', 'Resource allocation (A3.2.1)')
+        if (wrong) return said(wrong.message)
+      }
       const refused = setAllocation(ship, action.lineId, action.circles)
       if (refused) return said(refused.message)
       // When the points now cover every circle a weapon may legally fill,
@@ -596,6 +607,21 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
       if (!ship) return said('No such ship.')
       const adrift = derelictRefusal(game, ship, 'nobody is arming its guns')
       if (adrift) return said(adrift)
+      // Arming spends allocated power (B2.2), so it belongs to the Resource
+      // Allocation Segment — with one carve-out already legalized elsewhere:
+      // battery power bought mid-round in a combat phase's Command Segment
+      // may be spent the moment it lands (B2.5.6), the same window
+      // `spend-battery` itself is restricted to. Gated to reading 3, same
+      // reason as `allocate` above.
+      if (
+        game.rulesVersion >= 3 &&
+        game.segment !== 'resource-allocation' &&
+        !(isCombatPhase(game.phase) && game.segment === 'command' && game.optionalBatteries)
+      ) {
+        return said(
+          'Arming happens during Resource Allocation, or with battery power in a Command Segment (B2.2, B2.5.6).',
+        )
+      }
       return said(armMount(ship, action.weaponId, action.mountIndex)?.message ?? null)
     }
 
@@ -615,10 +641,27 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'damage-control': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      // Rules reading 2's playtest decision (Union III vs four Yorktowns):
+      // a derelict answers no damage control at all, not even to structure —
+      // see `derelictRefusal`'s own comment. E11.2.4's "except available
+      // Damage Control to repair black structure boxes" reads otherwise, but
+      // that reading is a deliberate, documented deviation here, not a bug.
       const adrift = derelictRefusal(game, ship, 'no repair parties answer')
       if (adrift) return said(adrift)
       const noCrew = damageControlRefusal(ship)
       if (noCrew) return said(noCrew)
+      // Repairs are rolled once, in the Damage Control Segment (A3.2.2, B3.2)
+      // — before the Combat Phases, not after: without this a captain could
+      // defer the roll until they had seen what got hit that round, or
+      // repair a weapon knocked out in an earlier Combat Phase in time to
+      // fire it again the same round. Rules reading 3: turning yesterday's
+      // accepted out-of-segment call into today's refusal would rewrite old
+      // journals, so this is gated the same way rulesVersion 2 gated the
+      // split-fire opportunity change.
+      if (game.rulesVersion >= 3) {
+        const wrongSegment = inSegment(game, 'damage-control', 'Damage control (B3.2)')
+        if (wrongSegment) return said(wrongSegment.message)
+      }
       // One set of rolls per round (B3.2): without this, a failed repair was
       // simply rolled again until it worked — the same exploit the playtest
       // caught on cloak searches.
@@ -626,12 +669,18 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
         return said(`${ship.name}'s damage control has made its rolls this round (B3.2).`)
       }
       const messages: string[] = []
-      const outcomes = resolveDamageControl(ship, action.assignments, game.rng, (m) => {
-        messages.push(m)
-        // What got repaired lives on the hidden form until the round-end
-        // reveal opens it for the math check (B1.9.2).
-        pushLog(game, m, ship.side)
-      })
+      const outcomes = resolveDamageControl(
+        ship,
+        action.assignments,
+        game.rng,
+        (m) => {
+          messages.push(m)
+          // What got repaired lives on the hidden form until the round-end
+          // reveal opens it for the math check (B1.9.2).
+          pushLog(game, m, ship.side)
+        },
+        game.rulesVersion,
+      )
       for (const outcome of outcomes) {
         if (!outcome.success) messages.push(`${outcome.category}: no success on ${outcome.dice} dice.`)
       }
@@ -1334,6 +1383,22 @@ function resolveAction(game: GameState, action: GameAction): ActionOutcome {
     case 'disengage': {
       const ship = shipById(game, action.shipId)
       if (!ship) return said('No such ship.')
+      // Disengagement is decided in its own segment (J9), not conjured mid-
+      // round — this action used to skip every J9 check (range, FTL power,
+      // tractor/captured/cloud locks) and simply remove the ship on request.
+      // Gated to reading 3: an old journal may have disengaged a ship this
+      // action would now refuse, and replaying it must still succeed.
+      if (game.rulesVersion >= 3) {
+        if (ship.destroyed || ship.disengaged) {
+          return said(`${ship.name} is already out of the battle.`)
+        }
+        const wrong = inSegment(game, 'disengagement', 'Disengagement (J9)')
+        if (wrong) return said(wrong.message)
+        const options = fullDisengagementOptions(game, ship)
+        if (options.length === 0) {
+          return said(`${ship.name} has no route out of the battle this round (J9).`)
+        }
+      }
       ship.disengaged = true
       pushLog(game, `${ship.name} disengages from the battle.`)
       // A voluntary departure can end the battle on the spot, so a cargo

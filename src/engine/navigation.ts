@@ -1,11 +1,12 @@
 import { maneuverAllowedWhenCaptured } from './boarding'
-import { drawCard, resolveCard, type DamageContext } from './damage'
+import { drawAndResolve, drawCard, resolveCard, type DamageContext } from './damage'
 import { applyManeuver, maneuverStress, type ManeuverResult } from './geometry'
 import {
   currentMaxSpeed,
   driveDestroyed,
   findLine,
   lineValue,
+  mainReactorBoxes,
   maxReverseSpeed,
   turnTemplateAt,
   type ShipState,
@@ -197,16 +198,26 @@ export function plannedMovement(
    * A turn may be taken at any rate up to the one the table allows (C3.9.1) —
    * a captain who wants 20 degrees where the ship could manage 40 says so, and
    * the ship obliges. Never *more* than the table, whatever the card says.
+   *
+   * Emergency Turns are the exception: EMER power buys a pivot the Sublight
+   * Drive table doesn't otherwise grant, so their ceiling is a flat 90 degrees
+   * rather than the table entry at this speed (C3.9.3, C3.9.4).
    */
-  const allowed = turnTemplateAt(ship, travel)
+  const isEmergencyTurn = maneuver === 'em-90' || maneuver === 'em-180'
+  const ceiling = isEmergencyTurn ? 90 : turnTemplateAt(ship, travel)
+  const turnTemplate =
+    card.turnRate !== undefined ? Math.min(Math.max(0, card.turnRate), ceiling) : ceiling
+  const turnTemplate2 =
+    card.turnRate2 !== undefined ? Math.min(Math.max(0, card.turnRate2), ceiling) : turnTemplate
   const result = applyManeuver({
     start: ship.placement,
     speed: travel,
     maneuver,
     direction: card.direction,
-    turnTemplate:
-      card.turnRate !== undefined ? Math.min(Math.max(0, card.turnRate), allowed) : allowed,
+    turnTemplate,
+    turnTemplate2,
     halfSlide: card.halfSlide,
+    slideFirst: card.slideFirst,
   })
 
   // Stress from the maneuver itself (C3.1.2), or from stopping dead (C3.8.3).
@@ -316,8 +327,17 @@ export interface StressCheckResult {
  * with the Stress Damage icon causes damage, applying its system hit plus one
  * point of structure damage (C3.1.3, C3.1.4). Decks are not reshuffled between
  * checks (C3.1.5).
+ *
+ * `cascade` is rules reading 3: a Fire or Bridge Hit drawn as the Stress
+ * Damage card demands its extra cards be drawn and resolved too. Older
+ * journals never did, so it defaults on and the one caller that replays old
+ * journals turns it off.
  */
-export function resolveStressCheck(ship: ShipState, ctx: DamageContext): StressCheckResult {
+export function resolveStressCheck(
+  ship: ShipState,
+  ctx: DamageContext,
+  cascade = true,
+): StressCheckResult {
   // Acceleration stress is added at the Stress Check, from the /ROUND track.
   ship.stressMarkers += accelerationStress(ship)
 
@@ -352,9 +372,17 @@ export function resolveStressCheck(ship: ShipState, ctx: DamageContext): StressC
     }
 
     ctx.log(`${ship.name}: stress damage!`)
-    // The indicated system, plus one point of structure damage (C3.1.4).
-    resolveCard(ship, chosen, ctx)
-    resolveCard(ship, { id: 'stress-structure', category: 'structure', primary: 'structure', stressIcon: false }, ctx)
+    // The indicated system, plus one point of structure damage (C3.1.4). A
+    // Fire or Bridge Hit among those cascades into extra damage cards exactly
+    // as it would from ordinary combat damage (E7.3.4, E7.3.5) — drawn and
+    // resolved the same way `drawAndResolve` handles a volley's cascade.
+    let extraCards = resolveCard(ship, chosen, ctx)
+    extraCards += resolveCard(
+      ship,
+      { id: 'stress-structure', category: 'structure', primary: 'structure', stressIcon: false },
+      ctx,
+    )
+    if (cascade && extraCards > 0 && !ship.destroyed) drawAndResolve(ship, extraCards, ctx)
   }
 
   ship.stressMarkers = 0
@@ -384,6 +412,15 @@ export function disengagementOptions(
   bounds: MapBounds,
   /** Set false inside a nebula or gas cloud, which shuts FTL down (K4.2.7). */
   ftlAvailable = true,
+  /**
+   * J9.1.3 (rules reading 3): also require undamaged main reactor boxes
+   * covering the filled FTL circles, re-checked here rather than trusted
+   * from the Resource Allocation snapshot — combat damage since then can
+   * take the reactors below what the plotted circles need. Off by default:
+   * an old journal that disengaged on FTL power alone must keep replaying
+   * that way (see CURRENT_RULES_VERSION in savedGame.ts).
+   */
+  checkReactorPower = false,
 ): string[] {
   const options: string[] = []
 
@@ -391,7 +428,10 @@ export function disengagementOptions(
   const ftlLine = findLine(ship.form, 'ftl-drive')
   if (ftlAvailable && ftlLine && ship.ftlDriveDamage < ship.form.ftlDriveBoxes) {
     const filled = ship.allocation[ftlLine.id] ?? 0
-    if (filled >= ftlLine.steps.length && ftlLine.steps.length > 0) options.push('FTL disengagement (J9.1)')
+    const reactorOk = !checkReactorPower || mainReactorBoxes(ship) >= filled
+    if (filled >= ftlLine.steps.length && ftlLine.steps.length > 0 && reactorOk) {
+      options.push('FTL disengagement (J9.1)')
+    }
   }
 
   // Leaving a fixed map disengages the ship (J9.2.2).

@@ -413,17 +413,23 @@ export interface SmallTargetVolley {
  * A point defense weapon fires normally and applies its damage in full
  * (E12.4.3). Anything else must use Degraded Fire Control, which halves the
  * total and rounds down (E12.4.4, E10.2.3).
+ *
+ * A homing weapon has no separate leak track the way a ship does — leak is
+ * its whole damage total, so an `H`'s point of leak counts directly, making
+ * a Heavy Hit worth 5 against one rather than the usual 4 (E5.4.1(4b)).
  */
 export function smallTargetDamage(
   faces: DieFace[],
   specialDamage: number,
   pointDefense: boolean,
   automatic = false,
+  targetIsHoming = false,
 ): SmallTargetVolley {
-  const raw = faces.reduce(
-    (n, face) => n + (face === 'S' ? specialDamage : FACE_DAMAGE[face as Exclude<DieFace, 'S'>]),
-    0,
-  )
+  const raw = faces.reduce((n, face) => {
+    if (face === 'S') return n + specialDamage
+    const leak = targetIsHoming && face === 'H' ? 1 : 0
+    return n + FACE_DAMAGE[face as Exclude<DieFace, 'S'>] + leak
+  }, 0)
   const degraded = !pointDefense
   return {
     faces,

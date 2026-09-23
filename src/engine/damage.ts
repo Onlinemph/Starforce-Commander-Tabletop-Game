@@ -69,7 +69,19 @@ export interface DamageChoices {
   shieldPowerLoss(ship: ShipState): ShieldSide | null
   /** E8.5.3 — defender picks which battery is damaged. */
   battery(ship: ShipState): number | null
-  /** E8.5.10 — defender picks which main reactor takes the alternate hit. */
+  /**
+   * E8.4.10 — a Quarters hit marks off QTRS, but the owning player "may
+   * also (but is not required to)" mark CRGO or a Special system instead —
+   * a real choice offered on top of the QTRS default, not just the ordinary
+   * ALT HIT fallback that takes over once QTRS itself runs out.
+   */
+  quarters(ship: ShipState): SystemKind | null
+  /**
+   * "Any Main Reactor" only ever appears as an ALT HIT (E7.3.7) — there is no
+   * numbered rule spelling out who picks the specific group, so this follows
+   * the same defender's-choice convention as the card's siblings (E8.3.2 Any
+   * Weapon, E8.5.3 Battery).
+   */
   mainReactor(ship: ShipState): string | null
 }
 
@@ -200,6 +212,15 @@ export const autoChoices: DamageChoices = {
     return any === -1 ? null : any
   },
 
+  quarters(ship) {
+    // Nothing here has a combat function either way, so keep the card's own
+    // listed order — QTRS, then its printed alternates (E8.4.10).
+    for (const kind of ['QTRS', 'CRGO', 'SPCL'] as const) {
+      if (undamagedSystemBoxes(ship, kind) > 0) return kind
+    }
+    return null
+  },
+
   mainReactor(ship) {
     const groups = reactorGroupsFor(ship, ['left-main', 'right-main', 'center-main'])
     return groups[0] ?? null
@@ -227,6 +248,7 @@ export type DamageChoice =
   | { kind: 'shield-power-loss'; side: ShieldSide }
   | { kind: 'battery'; index: number }
   | { kind: 'main-reactor'; groupId: string }
+  | { kind: 'quarters'; target: SystemKind }
 
 export interface DamageOption {
   choice: DamageChoice
@@ -392,10 +414,25 @@ export function decisionFor(
       const auto = autoChoices.mainReactor(ship)
       return {
         ...base,
-        prompt: 'Choose which main reactor takes the hit (E8.5.10).',
+        // No E8.5.10 exists (E8.5 ends at .9) — see the defender's-choice
+        // note on `mainReactor` above.
+        prompt: 'Choose which main reactor takes the hit (E7.3.7).',
         options: reactorGroupsFor(ship, ['left-main', 'right-main', 'center-main']).map((groupId) =>
           option({ kind: 'main-reactor', groupId }, groupId, groupId === auto),
         ),
+      }
+    }
+    case 'quarters': {
+      const auto = autoChoices.quarters(ship)
+      const kinds = (['QTRS', 'CRGO', 'SPCL'] as const).filter((k) => undamagedSystemBoxes(ship, k) > 0)
+      return {
+        ...base,
+        // "The player may also (but is not required to) choose to mark off a
+        // Cargo system (CRGO) box or a Special system" (E8.4.10) — a real
+        // choice offered alongside the QTRS default, not the ALT HIT
+        // fallback that only kicks in once QTRS itself is gone.
+        prompt: 'Quarters — mark QTRS, or choose CRGO or a Special system instead (E8.4.10).',
+        options: kinds.map((kind) => option({ kind: 'quarters', target: kind }, kind, kind === auto)),
       }
     }
   }
@@ -465,6 +502,9 @@ export function scriptedChoices(
     },
     mainReactor(ship) {
       return take(ship, 'main-reactor')?.groupId ?? autoChoices.mainReactor(ship)
+    },
+    quarters(ship) {
+      return take(ship, 'quarters')?.target ?? autoChoices.quarters(ship)
     },
   }
   return provider
@@ -555,6 +595,13 @@ export interface DamageContext {
    * and so never reaches damage that skips the firing solution.
    */
   shieldsBypassed?: (ship: ShipState) => boolean
+  /**
+   * The battle's rules reading (see `CURRENT_RULES_VERSION` in savedGame.ts).
+   * Absent = 1, same convention as `GameSetup.rulesVersion` — a journal
+   * replays under the reading it was fought at, so a resolution change gates
+   * on this rather than applying to every battle ever recorded.
+   */
+  rulesVersion?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -606,10 +653,15 @@ function scoutSoaksHit(ship: ShipState, hit: DamageHit): boolean {
 }
 
 /** The group a hit will actually mark off, or null when nothing is left. */
-function systemTargetFor(ship: ShipState, hit: DamageHit): SystemKind | null {
+function systemTargetFor(ship: ShipState, hit: DamageHit, rulesVersion = 1): SystemKind | null {
   const primary = SYSTEM_FOR_HIT[hit]
   if (!primary) return null
   const order = [primary, ...(ALTERNATE_SYSTEMS[hit] ?? [])]
+  // Rules reading 3: J11.2.2 names three cards that may fall on Cargo —
+  // Quarters, Special System, and Any Hit — but Special System's own
+  // alternates list only ever carried PROB/CMND. Gated because it can change
+  // which box an old journal's Special System hit already marked.
+  if (rulesVersion >= 3 && hit === 'special-system') order.push('CRGO')
   return order.find((kind) => undamagedSystemBoxes(ship, kind) > 0) ?? null
 }
 
@@ -617,7 +669,7 @@ function systemTargetFor(ship: ShipState, hit: DamageHit): SystemKind | null {
 export function hitIsAvailable(ship: ShipState, hit: DamageHit, ctx: DamageContext): boolean {
   if (SYSTEM_FOR_HIT[hit]) {
     if (scoutSoaksHit(ship, hit)) return true
-    return systemTargetFor(ship, hit) !== null
+    return systemTargetFor(ship, hit, ctx.rulesVersion) !== null
   }
 
   switch (hit) {
@@ -695,13 +747,24 @@ function damageSystem(ship: ShipState, kind: SystemKind): void {
  * Returns extra cards to draw (fires, bridge hits) and structure applied.
  */
 function applyHit(ship: ShipState, hit: DamageHit, ctx: DamageContext): { extraCards: number } {
+  // Rules reading 3: E8.4.10's "may also (but is not required to)" reads as a
+  // real choice, not the ordinary ALT HIT fallback restated — but a fresh
+  // question a captain never used to get is exactly the kind of change a
+  // journal replay must not spring on an old battle, so it stays off until
+  // the reading that adds it.
+  if (hit === 'quarters' && (ctx.rulesVersion ?? 1) >= 3) {
+    const target = ctx.choices.quarters(ship)
+    if (target) damageSystem(ship, target)
+    ctx.log(`${ship.name}: ${HIT_LABELS[hit]}${target && target !== SYSTEM_FOR_HIT[hit] ? ` (${target})` : ''}`)
+    return { extraCards: 0 }
+  }
   if (SYSTEM_FOR_HIT[hit]) {
     // H3.1.1: scout sensors take Special System hits, and may take Sensor Hits.
     if (scoutSoaksHit(ship, hit) && damageScoutSensor(ship)) {
       ctx.log(`${ship.name}: ${HIT_LABELS[hit]} (scout sensor)`)
       return { extraCards: 0 }
     }
-    const target = systemTargetFor(ship, hit)
+    const target = systemTargetFor(ship, hit, ctx.rulesVersion)
     if (target) damageSystem(ship, target)
     ctx.log(`${ship.name}: ${HIT_LABELS[hit]}${target && target !== SYSTEM_FOR_HIT[hit] ? ` (${target})` : ''}`)
     return { extraCards: 0 }
@@ -1158,6 +1221,21 @@ export function checkDestruction(ship: ShipState, ctx: DamageContext): void {
     // ends up tumbling out of control and going up.
     chargeDeceleration(ship, Math.abs(ship.speed), ctx, 'coming to a stop as a derelict')
     ship.speed = 0
+    // "Derelict ships do not perform resource allocation. All arming points
+    // and stored power are lost" (E11.2.4) — whatever was armed or charged
+    // the instant the last black structure box went dies with the crew.
+    // Rules reading 3: a state change, not just a new refusal, but still one
+    // that only reaches battles fought under the new reading — see
+    // CURRENT_RULES_VERSION in savedGame.ts.
+    if ((ctx.rulesVersion ?? 1) >= 3) {
+      for (const group of Object.values(ship.mounts)) {
+        for (const mount of group) {
+          mount.armed = 0
+          mount.armedThisRound = 0
+        }
+      }
+      ship.batteryCharged = ship.batteryCharged.map(() => false)
+    }
     ctx.log(`${ship.name} is a derelict.`)
   }
   // E11.2.3: excess damage equal to the size class breaks the ship apart.

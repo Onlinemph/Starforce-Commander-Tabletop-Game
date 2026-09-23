@@ -60,11 +60,12 @@ import {
   FIRING_STEPS,
   type FiringStep,
 } from './coordinatedFire'
-import { FACE_DAMAGE, rollDice, rollDie, Rng } from './dice'
+import { expectedValue, FACE_DAMAGE, faceValue, reroll, rollDice, rollDie, Rng, type DieRoll } from './dice'
 import { commitAllocation, forfeitUnspentArming } from './engineering'
 import {
   alignToLead,
   formationOf,
+  leaveFormation,
   pruneFormations,
   type Formation,
 } from './formation'
@@ -107,6 +108,7 @@ import { hasCloak } from './cloaking'
 import {
   applyDefensiveFire,
   endurance,
+  HOMING_COUNTER_SIZE,
   impactShield,
   isHeadOn,
   overflies,
@@ -296,25 +298,39 @@ export function asteroidFieldsAt(terrain: Terrain[], position: { x: number; y: n
   )
 }
 
+/** Whether a line between two points is within an asteroid field's counter (K2.1.4). */
+function segmentOverlapsField(feature: Terrain, a: Point, b: Point, overlap: number): boolean {
+  return (
+    Math.hypot(a.x - feature.center.x, a.y - feature.center.y) <= feature.radius + overlap ||
+    Math.hypot(b.x - feature.center.x, b.y - feature.center.y) <= feature.radius + overlap ||
+    distanceToSegment(feature.center, a, b) < feature.radius
+  )
+}
+
 /**
- * Defender rerolls from asteroid cover (K2.1.8): each field whose counter the
- * line of sight crosses, or that either ship overlaps, adds its printed cover
- * diamonds. Cumulative across every field involved.
+ * Cover rerolls (K2.1.8) earned along a line between two points: each field
+ * whose counter the line crosses, or that either end overlaps, adds its
+ * printed cover diamonds. Cumulative across every field involved.
  */
-export function asteroidCoverRerolls(game: GameState, attacker: ShipState, target: ShipState): number {
-  const a = attacker.placement.position
-  const b = target.placement.position
+function asteroidCoverBetween(terrain: Terrain[], a: Point, b: Point, overlap = BASE_OVERLAP): number {
   let total = 0
-  for (const feature of game.scenario.terrain) {
+  for (const feature of terrain) {
     if (feature.kind !== 'asteroid-field' || !feature.cover) continue
-    const involved =
-      Math.hypot(a.x - feature.center.x, a.y - feature.center.y) <= feature.radius + BASE_OVERLAP ||
-      Math.hypot(b.x - feature.center.x, b.y - feature.center.y) <= feature.radius + BASE_OVERLAP ||
-      distanceToSegment(feature.center, a, b) < feature.radius
-    if (involved) total += feature.cover
+    if (segmentOverlapsField(feature, a, b, overlap)) total += feature.cover
   }
   return total
 }
+
+/** Defender rerolls from asteroid cover between an attacker and its target (K2.1.8). */
+export function asteroidCoverRerolls(game: GameState, attacker: ShipState, target: ShipState): number {
+  return asteroidCoverBetween(game.scenario.terrain, attacker.placement.position, target.placement.position)
+}
+
+/**
+ * Half of a homing weapon's own ¾" counter (E5.1.9) — the same reasoning
+ * `BASE_OVERLAP` applies to a ship's larger base (K2.1.4).
+ */
+const HOMING_OVERLAP = HOMING_COUNTER_SIZE / 2
 
 export function terrainObstacles(terrain: Terrain[]): CircleObstacle[] {
   return terrain.map((t) => ({
@@ -903,6 +919,7 @@ export function damageContext(game: GameState): DamageContext {
     // otherwise the doctrine (B: nobody is at the console).
     choices: currentChoices(game.damageScript),
     log: (message) => pushLog(game, message),
+    rulesVersion: game.rulesVersion,
     // Explosions reach neighbours, and everyone sharing a formation's counter
     // takes the blast on the aft shield (E11.3.2, E11.3.4, C5).
     ships: game.ships,
@@ -1803,6 +1820,22 @@ export function impactingHoming(game: GameState, target: ShipState): HomingWeapo
 }
 
 /**
+ * E5.3.5(5): a leg that strikes while it, or the target, sits inside a
+ * nebula or gas cloud resolves through Degraded Fire Control (E10.3, E10.4)
+ * instead of full damage. The whole map counts inside a nebula (K4.1.1); a
+ * gas cloud is checked at both ends of the strike, since the counter and the
+ * target's hull are effectively the same point by the time it lands.
+ */
+function homingImpactDegraded(conditions: CloudConditions, hw: HomingWeapon, target: ShipState): boolean {
+  if (!conditions.effects.degradedFireControl) return false
+  if (conditions.nebula) return true
+  return (
+    cloudAt(conditions.clouds, target.placement.position) !== null ||
+    cloudAt(conditions.clouds, hw.position) !== null
+  )
+}
+
+/**
  * Resolve every homing weapon that has reached its target (E5.4). Each shield
  * struck is a separate volley (E5.4 Step 3), and point defense damage assigned
  * to a volley is passed in per shield.
@@ -1826,52 +1859,89 @@ export function resolveHomingImpacts(
 
   const conditions = cloudConditions(game.scenario)
   for (const [side, group] of bySide) {
-    const owner = shipById(game, group[0].ownerId)
-    const def = owner?.form.weapons.find((w) => w.id === group[0].weaponId)
-    if (!def) continue
-
-    // Step 4: point defense fire, then Step 5 assigns it to the weapons.
-    const defensive = pointDefenseBySide[side] ?? 0
-    if (defensive > 0) {
-      const { destroyed } = applyDefensiveFire(group, def, defensive)
-      if (destroyed.length > 0) {
-        pushLog(game, `${target.name}'s point defense destroys ${destroyed.length} incoming weapon(s) (E5.4 Step 5).`)
+    /*
+     * E5.1.7 makes every weapon striking one shield in one step a single
+     * volley, but E5.4.1(4c) still resolves each weapon type on its own dice,
+     * brackets and missile/particle rules — a plasma torpedo caught in a
+     * group behind someone else's missile used to roll the missile's chart
+     * and dodge F1.16's absorption entirely. Sub-group by the weapon actually
+     * doing the hitting: its owner, its weapon system, and the flight phase
+     * it is on. Point defense stays pooled per shield (Step 4), spent across
+     * the sub-groups in turn — the same left-to-right allocation
+     * `applyDefensiveFire` already uses across the individual weapons within
+     * one — which is the defender's Step 5 choice, made deterministically.
+     *
+     * Reading 3+ only: a saved battle fought under an earlier reading rolled
+     * the whole shield's group off `group[0]`'s definition, and replaying it
+     * has to reproduce that, not the corrected split.
+     */
+    const subGroups = new Map<string, HomingWeapon[]>()
+    if (game.rulesVersion >= 3) {
+      for (const hw of group) {
+        const key = `${hw.ownerId}:${hw.weaponId}:${hw.phasesFlown}`
+        if (!subGroups.has(key)) subGroups.set(key, [])
+        subGroups.get(key)!.push(hw)
       }
+    } else {
+      subGroups.set('legacy', group)
     }
 
-    const survivors = group.filter((hw) => !hw.destroyed && !hw.tractored)
-    if (survivors.length === 0) continue
+    let remainingDefensive = pointDefenseBySide[side] ?? 0
+    for (const sub of subGroups.values()) {
+      const owner = shipById(game, sub[0].ownerId)
+      const def = owner?.form.weapons.find((w) => w.id === sub[0].weaponId)
+      if (!def) continue
 
-    const range = Math.floor(distance(survivors[0].position, target.placement.position))
-    const volley = resolveHomingVolley(survivors, def, side, survivors[0].phasesFlown, range, game.rng)
-    if (volley.standard === 0 && volley.leak === 0 && volley.structure === 0) {
-      pushLog(game, `${def.name} is worn down to nothing before it strikes (F1.16.2).`)
-      continue
+      // Step 4: point defense fire, then Step 5 assigns it to the weapons.
+      if (remainingDefensive > 0) {
+        const { destroyed, absorbed } = applyDefensiveFire(sub, def, remainingDefensive)
+        remainingDefensive -= absorbed
+        if (destroyed.length > 0) {
+          pushLog(game, `${target.name}'s point defense destroys ${destroyed.length} incoming weapon(s) (E5.4 Step 5).`)
+        }
+      }
+
+      const survivors = sub.filter((hw) => !hw.destroyed && !hw.tractored)
+      if (survivors.length === 0) continue
+
+      const range = Math.floor(distance(survivors[0].position, target.placement.position))
+      // E5.3.5(4): the leg that landed the hit may have crossed cover.
+      const rerolls = survivors.reduce((max, hw) => Math.max(max, hw.asteroidCoverAtImpact ?? 0), 0)
+      let volley = resolveHomingVolley(survivors, def, side, survivors[0].phasesFlown, range, game.rng, rerolls)
+      // Reading 3+ only (E5.3.5(5), E10.3, E10.4): a nebula or gas cloud
+      // degrades the impact.
+      if (game.rulesVersion >= 3 && homingImpactDegraded(conditions, survivors[0], target)) {
+        volley = { ...volley, standard: Math.floor(volley.standard / 2), leak: 0, structure: 0 }
+      }
+      if (volley.standard === 0 && volley.leak === 0 && volley.structure === 0) {
+        pushLog(game, `${def.name} is worn down to nothing before it strikes (F1.16.2).`)
+        continue
+      }
+
+      pushLog(
+        game,
+        `${def.name} strikes ${target.name}'s ${side} shield for ${volley.standard} damage` +
+          (volley.leak ? `, ${volley.leak} leak` : '') +
+          (volley.absorbed ? ` (reduced by ${volley.absorbed} points of defensive fire)` : ''),
+      )
+      const outcome = applyVolley(
+        target,
+        {
+          standard: volley.standard,
+          leak: volley.leak,
+          structurePenetration: volley.structure,
+          side,
+          shieldsInoperative:
+            shieldsInoperative(conditions, target) || shipIsCloaked(game, target),
+        },
+        damageContext(game),
+      )
+      // The strike is as public as any volley: the side was declared by the
+      // counter's approach and the absorption narrated — the table's shield
+      // record keeps it, same as direct fire.
+      recordShieldHit(game, target.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
+      damageRevealsCloak(game, target, volley.standard)
     }
-
-    pushLog(
-      game,
-      `${def.name} strikes ${target.name}'s ${side} shield for ${volley.standard} damage` +
-        (volley.leak ? `, ${volley.leak} leak` : '') +
-        (volley.absorbed ? ` (reduced by ${volley.absorbed} points of defensive fire)` : ''),
-    )
-    const outcome = applyVolley(
-      target,
-      {
-        standard: volley.standard,
-        leak: volley.leak,
-        structurePenetration: volley.structure,
-        side,
-        shieldsInoperative:
-          shieldsInoperative(conditions, target) || shipIsCloaked(game, target),
-      },
-      damageContext(game),
-    )
-    // The strike is as public as any volley: the side was declared by the
-    // counter's approach and the absorption narrated — the table's shield
-    // record keeps it, same as direct fire.
-    recordShieldHit(game, target.id, side, outcome.greenAbsorbed + outcome.blueAbsorbed)
-    damageRevealsCloak(game, target, volley.standard)
   }
 
   game.homing = game.homing.filter((hw) => !hw.impacted && !hw.destroyed)
@@ -1949,6 +2019,26 @@ export function advanceSegment(game: GameState): void {
   runSegmentEnter(game)
 }
 
+/**
+ * disengagementOptions (J9), with the blocks no single console can see on
+ * its own: K4.2.7's cloud lockout, J3.4.4's tractor lockout, and J6.2.5's
+ * ten-round captured-ship lockout. One function so the Disengagement
+ * Segment's automatic "left the map" sweep, the `disengage` action's guard
+ * (actions.ts), the panel and the AI all agree on what counts as legal.
+ */
+export function fullDisengagementOptions(game: GameState, ship: ShipState): string[] {
+  return disengagementOptions(
+    ship,
+    enemiesOf(game, ship),
+    game.scenario.bounds,
+    !cloudStatus(game, ship).ftlBlocked &&
+      !ftlBlockedBy(ship.id, game.ops.links) &&
+      capturedFtlAvailable(ship, game.round),
+    // J9.1.3, rules reading 3 — see disengagementOptions' own comment.
+    game.rulesVersion >= 3,
+  )
+}
+
 function runSegmentExit(game: GameState): void {
   switch (game.segment) {
     case 'resource-allocation': {
@@ -2019,9 +2109,22 @@ function runSegmentExit(game: GameState): void {
         // causes no stress (J3.3.4, J3.4.5).
         const towed = isLinked(ship.id, game.ops.links)
         const from = { position: { ...ship.placement.position }, heading: ship.placement.heading }
+        /*
+         * Rules reading 3 (C3.9.3, C3.9.4): a precise turn rate on an
+         * Emergency Turn used to be silently ignored, always pivoting the
+         * full 90 (or 90+90) regardless of what the card read. Older journals
+         * may carry a `turnRate`/`turnRate2` left over from editing the card
+         * before switching to an emergency turn, so strip it under the old
+         * reading rather than suddenly honoring it on replay.
+         */
+        const emergencyTurn = card.maneuver === 'em-90' || card.maneuver === 'em-180'
+        const movementCard =
+          game.rulesVersion < 3 && emergencyTurn
+            ? { ...card, turnRate: undefined, turnRate2: undefined }
+            : card
         const result = executeMovement(
           ship,
-          card,
+          movementCard,
           towed ? adjustedSpeed(ship, game.ops.links, game.ships, card.speed) : undefined,
           speedLimitFor(game, ship),
         )
@@ -2043,14 +2146,41 @@ function runSegmentExit(game: GameState): void {
         resolveOverflownHoming(game, ship, result.path)
       }
       // Only the lead ship's counter is on the map, so the rest of a formation
-      // finish the move sharing its position exactly (C5.1.3).
+      // finish the move sharing its position exactly (C5.1.3) — but, from
+      // rules reading 3, only a member that actually matched the lead's
+      // speed. Each member's card was copied from the lead's (C5.1.3,
+      // `applyFormationOrders`), but its own `executeMovement` still clamps
+      // to its own acceleration budget: a member that could not afford the
+      // full change comes out of that loop slower than the lead. C5.2 says a
+      // ship that cannot perform the same maneuver at the same speed must
+      // leave the formation, rather than being teleported up to a speed it
+      // never paid for. Older journals never checked this.
       pruneFormations(game.formations, game.ships)
-      for (const formation of game.formations) alignToLead(formation, game.ships)
+      for (const formation of [...game.formations]) {
+        const lead = game.ships.find((s) => s.id === formation.leadId)
+        if (!lead) continue
+        if (game.rulesVersion >= 3) {
+          for (const id of [...formation.memberIds]) {
+            const member = game.ships.find((s) => s.id === id)
+            if (member && member.speed !== lead.speed) {
+              leaveFormation(game.formations, id)
+              pushLog(
+                game,
+                `${member.name} could not match the formation's speed (had ${member.speed}, needed ${lead.speed}) and drops out (C5.2).`,
+              )
+            }
+          }
+        }
+        alignToLead(formation, game.ships)
+      }
       applyTurbulence(game)
       logCloakedSpeeds(game)
       moveHomingWeapons(game)
       expireHeldMissiles(game)
-      moveProbes(game)
+      // Reading 1/2: a probe moved here, in Navigation, rather than at the
+      // head of Combat (J7.3.2) — kept for an old journal's log order, even
+      // though nothing on the board ends up different either way.
+      if (game.rulesVersion < 3) moveProbes(game)
       scuttleJammers(game)
       // J3.6.2 — a link that has been stretched past its range is broken once
       // both ships have moved.
@@ -2145,24 +2275,15 @@ function runSegmentExit(game: GameState): void {
       const ctx = damageContext(game)
       for (const ship of activeShips(game)) {
         if (ship.stressMarkers === 0 && ship.accelUsedThisRound <= ship.form.sublight.safeAccelPerRound) continue
-        resolveStressCheck(ship, ctx)
+        // Rules reading 3: a Fire/Bridge Hit stress card cascades (C3.1.4).
+        resolveStressCheck(ship, ctx, game.rulesVersion >= 3)
       }
       break
     }
 
     case 'disengagement': {
       for (const ship of activeShips(game)) {
-        const options = disengagementOptions(
-          ship,
-          enemiesOf(game, ship),
-          game.scenario.bounds,
-          // K4.2.7 shuts FTL down inside a cloud; J3.4.4 does the same to a
-          // ship held in someone else's tractor beam; and a captured ship must
-          // wait ten rounds before its captors can jump it out (J6.2.5).
-          !cloudStatus(game, ship).ftlBlocked &&
-            !ftlBlockedBy(ship.id, game.ops.links) &&
-            capturedFtlAvailable(ship, game.round),
-        )
+        const options = fullDisengagementOptions(game, ship)
         // Leaving a fixed map is automatic (J9.2.4); the rest are voluntary and
         // are triggered from the UI before this segment ends.
         if (options.some((o) => o.startsWith('Left the map'))) {
@@ -2305,11 +2426,24 @@ function moveHomingWeapons(game: GameState): void {
       continue
     }
     const penalty = game.jammingVsHoming && owner ? jammingPenalty(target, owner) : 0
+    const from = { ...hw.position }
     const result = moveHomingWeapon(hw, def, target, penalty)
     if (result.expired) {
       hw.destroyed = true
       pushLog(game, `${hw.weaponName} runs out of endurance and is removed (E5.1.6).`)
-    } else if (result.impact) {
+      continue
+    }
+    // Reading 3+ only (E5.3.5(2), E5.3.5(4)): terrain punishes every leg's
+    // speed, whether or not it lands, and cover follows a landing leg into
+    // the strike. An old journal's counters flew terrain unscathed.
+    if (game.rulesVersion >= 3) {
+      if (result.flown > 0) applyHomingTerrainDamage(game, hw, def, from, hw.position, result.flown)
+      if (hw.destroyed) continue
+    }
+    if (result.impact) {
+      if (game.rulesVersion >= 3) {
+        hw.asteroidCoverAtImpact = asteroidCoverBetween(game.scenario.terrain, from, hw.position, HOMING_OVERLAP)
+      }
       pushLog(game, `${hw.weaponName} closes on ${target.name}'s ${result.side} shield (E5.4).`)
     }
   }
@@ -2322,6 +2456,10 @@ function runSegmentEnter(game: GameState): void {
     game.orders = {}
     for (const ship of activeShips(game)) game.orders[ship.id] = defaultCommandCard(ship)
   }
+  // J7.3.2, reading 3+: a probe moves during the Combat Segment's Resolve
+  // Homing Weapon Attacks step, after Navigation — not as part of Navigation
+  // itself.
+  if (game.segment === 'combat' && game.rulesVersion >= 3) moveProbes(game)
   if (game.segment === 'flight-operations') announceHangars(game)
 }
 
@@ -2509,6 +2647,17 @@ export function tractorIncomingHoming(
   const def = homingWeaponDef(game, hw)
   if (!def) return { refusal: 'That weapon has no launcher left.' }
 
+  // Rules reading 3: TRAC needs GEN SYS at MAX inside a nebula or gas cloud
+  // (K4.2.4), and does not work on an evasive ship at all (C3.6.7). Older
+  // journals never enforced either.
+  if (game.rulesVersion >= 3) {
+    if (systemIsHampered(cloudConditions(game.scenario), defender, 'TRAC')) {
+      return { refusal: `${defender.name}'s tractor beams are hampered here; GEN SYS must be at MAX (K4.2.4).` }
+    }
+    if (defender.evasive > 0) {
+      return { refusal: `${defender.name} is using evasive maneuvers; tractor beams may not be used (C3.6.7).` }
+    }
+  }
   const power = tractorPower(defender, maxSystemOf(game, defender))
   const refusal = lockRefusal(defender, hw.position, game.ops.links, power, beams)
   if (refusal) return { refusal }
@@ -2647,6 +2796,17 @@ export function attemptTractorLock(
   if (game.ops.brokenThisPhase.has(`${source.id}->${targetId}`)) {
     return { refusal: `That lock was broken this phase; it may not be reestablished until the next (J3.6).` }
   }
+  // Rules reading 3: TRAC needs GEN SYS at MAX inside a nebula or gas cloud
+  // (K4.2.4), and does not work on an evasive ship at all (C3.6.7). Older
+  // journals never enforced either.
+  if (game.rulesVersion >= 3) {
+    if (systemIsHampered(cloudConditions(game.scenario), source, 'TRAC')) {
+      return { refusal: `${source.name}'s tractor beams are hampered here; GEN SYS must be at MAX (K4.2.4).` }
+    }
+    if (source.evasive > 0) {
+      return { refusal: `${source.name} is using evasive maneuvers; tractor beams may not be used (C3.6.7).` }
+    }
+  }
   const power = tractorPower(source, maxSystemOf(game, source))
   const refusal = lockRefusal(source, target.position, game.ops.links, power, beams)
   if (refusal) return { refusal }
@@ -2772,7 +2932,14 @@ export function effectiveSpeed(game: GameState, ship: ShipState): number {
   return adjustedSpeed(ship, game.ops.links, game.ships)
 }
 
+/**
+ * Tractor beams do not function below GEN SYS MAX inside a nebula or gas
+ * cloud (K4.2.4) — the same hamper `workingSystemBoxes` applies to TRAN and
+ * (precision-targeting) SCNC.
+ */
 export function tractorBeamsFree(game: GameState, ship: ShipState): number {
+  // Rules reading 3 (K4.2.4): older journals never hampered TRAC in a cloud.
+  if (game.rulesVersion >= 3 && systemIsHampered(cloudConditions(game.scenario), ship, 'TRAC')) return 0
   return beamsAvailable(ship, game.ops.links)
 }
 
@@ -2867,6 +3034,8 @@ export function performScan(game: GameState, ship: ShipState, targetId: string):
     maxSystemOf(game, ship),
     ship.sensors.tacticalScan,
     scout?.bonusPoints ?? 0,
+    // Rules reading 3 (K4.2.4): older journals never hampered SCNC scans.
+    game.rulesVersion >= 3 && systemIsHampered(cloudConditions(game.scenario), ship, 'SCNC'),
   )
   addInfoPoints(game.ops.info, ship.side, targetId, yielded.total)
   game.ops.scannedThisPhase.add(key)
@@ -2907,6 +3076,12 @@ export function performTransport(
   }
   if (shipIsCloaked(game, to)) {
     return { refusal: `Nothing may be transported to a cloaked ship (H6.4.8).` }
+  }
+  // Transporters do not work on an evasive ship — it may still be boarded, so
+  // the restriction is on the sender, not the receiver (C3.6.7). Rules
+  // reading 3: older journals never had this restriction enforced.
+  if (game.rulesVersion >= 3 && from.evasive > 0) {
+    return { refusal: `${from.name} is using evasive maneuvers; transporters may not be used (C3.6.7).` }
   }
   const used = game.ops.transportedThisPhase[from.id] ?? 0
   const refusal = transportRefusal({
@@ -3075,6 +3250,10 @@ export function launchShuttle(
   kind: SmallCraftKind = 'shuttle',
   marines = 0,
 ): string | null {
+  // Rules reading 3: craft may not launch from an evasive ship (C3.6.7).
+  if (game.rulesVersion >= 3 && ship.evasive > 0) {
+    return `${ship.name} is using evasive maneuvers; craft may not launch (C3.6.7).`
+  }
   const refusal =
     launchRefusal(ship, game.smallCraft, game.ops.launchedThisPhase.has(ship.id)) ??
     (kind === 'jamming-shuttle' ? jammingLaunchRefusal(ship) : null)
@@ -3153,6 +3332,10 @@ export function recoverShuttle(game: GameState, craftId: string, ship: ShipState
   // aboard a cloaked ship still replays as it was fought.
   if (game.rulesVersion >= 3 && shipIsCloaked(game, ship)) {
     return `${ship.name} is cloaked; small craft cannot land aboard it (H6.4.9).`
+  }
+  // Rules reading 3: craft may not land aboard an evasive ship (C3.6.7).
+  if (game.rulesVersion >= 3 && ship.evasive > 0) {
+    return `${ship.name} is using evasive maneuvers; craft may not land (C3.6.7).`
   }
   const card = game.orders[ship.id]
   const speedChanged = card ? card.accel !== 0 : false
@@ -3374,6 +3557,25 @@ export function fireAtSmallTarget(
   if (mountDef.ammo !== undefined && state.ammoUsed >= mountDef.ammo) {
     return { refusal: `${weapon.name} mount ${mountIndex + 1} is out of ammunition (F1.2.4).` }
   }
+  /*
+   * E12.2.4/2.6: a homing weapon that has already struck is being answered
+   * with defensive fire, not offensive fire (E12.3.1/3.2), and standard
+   * weapons may never perform defensive fire — only a Point Defense-trait
+   * weapon may, whatever range band it would fire in. A counter still in
+   * flight is unaffected: that is offensive fire, and Degraded Fire Control
+   * lets a standard weapon through it (E12.4.4).
+   *
+   * Reading 3+ only — an old journal's standard-weapon shot at an impact,
+   * once accepted, has to stay accepted on replay.
+   */
+  if (game.rulesVersion >= 3 && target.kind === 'homing' && !isPointDefense(weapon)) {
+    const hw = game.homing.find((h) => h.id === targetId)
+    if (hw?.impacted) {
+      return {
+        refusal: `${weapon.name} has no Point Defense trait and may not answer an impact (E12.2.5, E12.2.6).`,
+      }
+    }
+  }
 
   const actual = Math.floor(distance(attacker.placement.position, target.position))
   /*
@@ -3466,6 +3668,9 @@ export function fireAtSmallTarget(
     weapon.special?.damage ?? 0,
     pointDefense,
     target.held,
+    // E5.4.1(4b), reading 3+ only: an old journal's Heavy Hit is still worth
+    // the ordinary 4 against a homing weapon, not 5.
+    game.rulesVersion >= 3 && target.kind === 'homing',
   )
 
   if (target.kind === 'craft') {
@@ -3619,6 +3824,10 @@ export function launchFlight(
   if (members < 1 || members > MAX_FLIGHT_SIZE) {
     return `A flight is 1 to ${MAX_FLIGHT_SIZE} fighters.`
   }
+  // Rules reading 3: fighters may not launch from an evasive carrier (C3.6.7).
+  if (game.rulesVersion >= 3 && ship.evasive > 0) {
+    return `${ship.name} is using evasive maneuvers; flights may not launch (C3.6.7).`
+  }
   const refusal = flightLaunchRefusal(
     ship,
     flightsAirborne(game, ship).length,
@@ -3705,6 +3914,10 @@ export function recoverFlight(game: GameState, flightId: string, ship: ShipState
   const flight = game.flights.find((f) => f.id === flightId)
   if (!flight) return 'No such flight.'
   if (flight.dockedTo) return 'That flight is already aboard.'
+  // Rules reading 3: fighters may not recover aboard an evasive carrier (C3.6.7).
+  if (game.rulesVersion >= 3 && ship.evasive > 0) {
+    return `${ship.name} is using evasive maneuvers; flights may not land (C3.6.7).`
+  }
   const refusal = flightRecoveryRefusal(
     flight,
     ship,
@@ -4051,10 +4264,35 @@ function applyTerrainDamage(game: GameState, ship: ShipState, path: Array<{ x: n
 
     // One die per point of speed over the safe speed (K2.1.6).
     const color = feature.damageDie ?? 'green'
+    const rolls: DieRoll[] = []
+    for (let i = 0; i < over; i++) rolls.push(rollDie(color, game.rng))
+
+    // Red `S` results count as a Heavy Hit for asteroid damage (K2.1.6), so
+    // that value stands in for the weapon-specific "special damage" faceValue
+    // and expectedValue otherwise need.
+    const special = FACE_DAMAGE.H
+    // Evasive maneuvering rerolls the transit dice the same way a ship
+    // rerolls attack dice (K2.1.7) — the worst-for-the-ship die each time,
+    // until the evasive budget runs out or no die is worth rerolling. Rules
+    // reading 3: older journals never rerolled these.
+    let rerollsLeft = game.rulesVersion >= 3 ? ship.evasive : 0
+    while (rerollsLeft > 0) {
+      let worst = -1
+      let worstGain = 0
+      rolls.forEach((die, i) => {
+        const gain = faceValue(die.face, special, 0) - expectedValue(die.color, special, 0)
+        if (gain > worstGain) {
+          worstGain = gain
+          worst = i
+        }
+      })
+      if (worst === -1) break
+      rolls[worst] = reroll(rolls[worst], game.rng)
+      rerollsLeft--
+    }
+
     let total = 0
-    for (let i = 0; i < over; i++) {
-      const die = rollDie(color, game.rng)
-      // Red `S` results count as a Heavy Hit for asteroid damage (K2.1.6).
+    for (const die of rolls) {
       total += die.face === 'S' ? FACE_DAMAGE.H : FACE_DAMAGE[die.face]
     }
     if (total === 0) continue
@@ -4104,6 +4342,78 @@ function applyCloudDamage(game: GameState, ship: ShipState): void {
     damageContext(game),
   )
   damageRevealsCloak(game, ship, total)
+}
+
+/**
+ * Overspeed damage to a homing weapon crossing terrain this leg (E5.3.5(2)):
+ * "any ship, small craft, or homing weapon" over a field's safe speed rolls
+ * for it, and a homing weapon's flight speed is nearly always well past one.
+ * Applied to every leg it flies, impact or not — unlike a ship, which only
+ * rolls once it has finished its own move for the phase.
+ */
+function applyHomingTerrainDamage(
+  game: GameState,
+  hw: HomingWeapon,
+  def: WeaponSystemDef,
+  from: Point,
+  to: Point,
+  flown: number,
+): void {
+  applyHomingCloudDamage(game, hw, def, to, flown)
+  if (hw.destroyed) return
+  for (const feature of game.scenario.terrain) {
+    if (feature.kind !== 'asteroid-field') continue
+    if (!segmentOverlapsField(feature, from, to, HOMING_OVERLAP)) continue
+
+    const over = flown - (feature.safeSpeed ?? 0)
+    if (over <= 0) continue
+
+    const color = feature.damageDie ?? 'green'
+    let total = 0
+    for (let i = 0; i < over; i++) {
+      const die = rollDie(color, game.rng)
+      total += die.face === 'S' ? FACE_DAMAGE.H : FACE_DAMAGE[die.face]
+    }
+    if (total === 0) continue
+
+    const { destroyed } = applyDefensiveFire([hw], def, total)
+    pushLog(game, `${hw.weaponName} takes ${total} damage transiting ${feature.name} (E5.3.5(2), K2.1.6).`)
+    if (destroyed.length > 0) {
+      pushLog(game, `${hw.weaponName} is destroyed crossing ${feature.name}.`)
+      return
+    }
+  }
+}
+
+/** Nebula/gas cloud overspeed damage to a homing weapon's leg (E5.3.5(2), K4.2.2, K5.2.2). */
+function applyHomingCloudDamage(
+  game: GameState,
+  hw: HomingWeapon,
+  def: WeaponSystemDef,
+  to: Point,
+  flown: number,
+): void {
+  const conditions = cloudConditions(game.scenario)
+  const limit = safeSpeed(conditions, to)
+  if (limit === Infinity) return
+  const dice = Math.max(0, flown - limit)
+  if (dice === 0) return
+
+  let total = 0
+  for (let i = 0; i < dice; i++) {
+    const die = rollDie('blue', game.rng)
+    total += die.face === 'S' ? 0 : FACE_DAMAGE[die.face]
+  }
+  if (total === 0) return
+
+  const { destroyed } = applyDefensiveFire([hw], def, total)
+  const where = cloudAt(conditions.clouds, to)
+  pushLog(
+    game,
+    `${hw.weaponName} takes ${total} damage flying ${flown}" through ${where ? where.name : 'the nebula'} ` +
+      `(E5.3.5(2), ${where ? 'K5.2.2' : 'K4.2.2'}).`,
+  )
+  if (destroyed.length > 0) pushLog(game, `${hw.weaponName} is destroyed by the terrain.`)
 }
 
 /**

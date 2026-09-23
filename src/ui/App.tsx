@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
-  cloudStatus,
+  fullDisengagementOptions,
   isCombatPhase,
   PHASE_LABELS,
   PHASE_SEGMENTS,
@@ -14,7 +14,6 @@ import {
   type GameState,
   logEntryVisible,
 } from '../engine/game'
-import { disengagementOptions } from '../engine/navigation'
 import { damageLevel, undamagedSystemBoxes, type ShipState } from '../engine/shipState'
 import { battleSummary } from '../engine/battleSummary'
 import { AbandonShipPanel } from './AbandonShipPanel'
@@ -1298,14 +1297,10 @@ function HangarBayPanel({ game, ship }: { game: GameState; ship: ShipState }) {
 
 /** Operations Segment steps A–E (A3.3.2). */
 function DisengagementPanel({ game, ship }: { game: GameState; ship: ShipState }) {
-  const enemies = game.ships.filter((s) => s.side !== ship.side && !s.destroyed && !s.disengaged)
-  // A nebula shuts the FTL drive down, including as a way out (K4.2.7).
-  const options = disengagementOptions(
-    ship,
-    enemies,
-    game.scenario.bounds,
-    !cloudStatus(game, ship).ftlBlocked,
-  )
+  // Full J9 check (range/FTL/cloud/tractor/captured) — the same one the
+  // engine's `disengage` guard enforces, so the button never offers a route
+  // the action would then refuse.
+  const options = fullDisengagementOptions(game, ship)
 
   return (
     <div className="segment-help">

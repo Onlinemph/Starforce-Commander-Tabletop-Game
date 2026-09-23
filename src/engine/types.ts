@@ -444,11 +444,28 @@ export interface CommandCard {
   /** Half-inch slide instead of a full inch (C2.4.1, C3.9.5). */
   halfSlide?: boolean
   /**
+   * Perform the slide before moving forward rather than after (C2.4.1,
+   * C2.4.2). Unset performs the slide after forward movement, as printed for
+   * the base case.
+   */
+  slideFirst?: boolean
+  /**
    * A turn taken at less than the ship could manage (C3.9.1). The chosen
    * template must be at or below the rate the Sublight Drive table allows at
-   * this speed; leave it unset to turn as hard as the ship is able.
+   * this speed; leave it unset to turn as hard as the ship is able. For a
+   * 90-Degree Emergency Turn this instead governs its one pivot, which is not
+   * limited by the table at all — a flat 90 unless reduced (C3.9.3). A
+   * 180-Degree Emergency Turn's *first* pivot is always a fixed 90 regardless
+   * of this field; see `turnRate2` for its second (C3.9.4).
    */
   turnRate?: number
+  /**
+   * The turn rate for a Hard Turn or S-Turn's *second* heading change, or a
+   * 180-Degree Emergency Turn's second pivot (its first is always a fixed 90),
+   * when plotted separately from `turnRate` (C3.9.2, C3.9.4). Leave unset to
+   * use the same rate as `turnRate`.
+   */
+  turnRate2?: number
   /**
    * Emergency stop (C3.8): the drive field is shut down and the ship stops
    * dead. Speed zero this phase and the next, straight ahead, stress equal to

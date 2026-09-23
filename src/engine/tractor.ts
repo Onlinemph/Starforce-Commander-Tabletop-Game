@@ -124,7 +124,11 @@ export function lockRefusal(
   if (tractorBeams(source) === 0) return `${source.name} has no undamaged TRAC boxes (J3.1.2).`
   const free = beamsAvailable(source, links)
   if (beams > free) {
-    return `${source.name} has ${free} free tractor beam(s); the rest are holding something (J3.2.4).`
+    // The unnumbered sentence between J3.1.3 and J3.1.4: "While towing or
+    // holding an object, a tractor beam may not be used for any other
+    // purpose until it releases its target." (J3.2.4 is Towing Small
+    // Objects — a different rule, wrongly cited here before.)
+    return `${source.name} has ${free} free tractor beam(s); the rest are holding something (J3.1.3-J3.1.4).`
   }
   if (beams < 1) return 'No tractor beams committed.'
   const range = actualRange(source.placement.position, targetPosition)
@@ -243,8 +247,13 @@ export function isLinked(shipId: string, links: TractorLink[]): boolean {
 
 /**
  * Whether a beam may shove its target around (J3.5.1). The tractoring ship must
- * be at least the target's size class and running at MAX; and two ships of
- * similar size that have grabbed each other simply hold each other in place.
+ * be at least the target's size class and running at MAX.
+ *
+ * The printed rule stops there — size and MAX power are its whole stated
+ * test. The mutual-lock cases below are a house rule, not J3.5.1 itself: two
+ * ships that have each locked the other with MAX-power beams read literally
+ * as each independently qualifying to displace the other, which is a
+ * symmetric-shove stalemate this engine declines to allow.
  */
 export function displaceRefusal(
   source: ShipState,
@@ -260,10 +269,10 @@ export function displaceRefusal(
   }
   const mutual = linkBetween(links, target.id, source.id)
   if (mutual && relativeSize(source.form.sizeClass, target.form.sizeClass) === 'similar') {
-    return 'Both ships have each other locked at similar size, so neither may displace the other (J3.5.1).'
+    return 'Both ships have each other locked at similar size, so neither may displace the other (house rule, not printed).'
   }
   if (mutual && source.form.sizeClass < target.form.sizeClass) {
-    return `${target.name} is the larger ship, so only it may displace (J3.5.1).`
+    return `${target.name} is the larger ship, so only it may displace (house rule, not printed).`
   }
   // J3.5.2: the shove happens after both ships have moved, and only if the
   // target is still in the beam once they have.

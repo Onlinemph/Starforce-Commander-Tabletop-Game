@@ -2,6 +2,7 @@ import type {
   Arc,
   FunctionLineDef,
   Placement,
+  ReactorHitKind,
   ScoutFunction,
   ShieldSide,
   ShipForm,
@@ -289,6 +290,25 @@ export function createShip(args: {
 export function reactorPower(ship: ShipState): number {
   let total = 0
   for (const group of ship.form.reactors) {
+    const damage = ship.reactorDamage[group.id] ?? []
+    group.points.forEach((point, i) => {
+      if ((damage[i] ?? 0) < point.boxes) total += 1
+    })
+  }
+  return total
+}
+
+const MAIN_REACTOR_KINDS: readonly ReactorHitKind[] = ['left-main', 'right-main', 'center-main']
+
+/**
+ * Undamaged boxes on main reactor groups only — AUX PWR and SL REAC do not
+ * count. Used by J9.1.3's FTL-disengagement power check, which names "main
+ * reactor boxes (REAC)" specifically.
+ */
+export function mainReactorBoxes(ship: ShipState): number {
+  let total = 0
+  for (const group of ship.form.reactors) {
+    if (!MAIN_REACTOR_KINDS.includes(group.hitKind)) continue
     const damage = ship.reactorDamage[group.id] ?? []
     group.points.forEach((point, i) => {
       if ((damage[i] ?? 0) < point.boxes) total += 1

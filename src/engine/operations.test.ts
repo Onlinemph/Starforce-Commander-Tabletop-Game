@@ -250,7 +250,7 @@ describe('tractor beams (J3)', () => {
     expect(result.refusal).toMatch(/J3\.1\.3/)
   })
 
-  it('refuses to commit more beams than are free (J3.2.4)', () => {
+  it('refuses to commit more beams than are free (J3.1.3-J3.1.4)', () => {
     attacker.systemDamage.TRAC = 2
     const result = attemptTractorLock(game, attacker, defender.id, 2)
     expect(result.refusal).toMatch(/free tractor beam/)
@@ -529,7 +529,7 @@ describe('displacing a towed ship (J3.5)', () => {
     expect(displaceRefusal(a, b, links, 'max')).toMatch(/too small/)
   })
 
-  it('locks two similar ships in place when both have each other (J3.5.1)', () => {
+  it('locks two similar ships in place when both have each other (house rule, not printed)', () => {
     const { a, b, links } = setup(5, 5)
     links.push({ id: 'y', sourceId: b.id, targetId: a.id, targetKind: 'ship', beams: 1, power: 'max' })
     expect(displaceRefusal(a, b, links, 'max')).toMatch(/neither may displace/)

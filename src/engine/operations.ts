@@ -114,9 +114,11 @@ export function scanYield(
   maxSystem: SystemKind | null,
   tacticalScan: number,
   scoutSensors = 0,
+  /** SCNC gathers nothing below GEN SYS MAX inside a nebula/gas cloud (K4.2.4). */
+  hampered = false,
 ): ScanYield {
   const power = systemPower(ship, 'SCNC', maxSystem)
-  const boxes = undamagedSystemBoxes(ship, 'SCNC')
+  const boxes = hampered ? 0 : undamagedSystemBoxes(ship, 'SCNC')
   const fromSciences = power === 'off' ? 0 : boxes * (power === 'max' ? 2 : 1)
   const fromSensors = Math.max(0, tacticalScan)
   const fromScout = Math.max(0, scoutSensors)

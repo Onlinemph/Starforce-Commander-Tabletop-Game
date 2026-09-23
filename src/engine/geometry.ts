@@ -210,6 +210,13 @@ export interface ManeuverInput {
    * (C2.2.2). `0` means the ship may not turn at this speed.
    */
   turnTemplate: number
+  /**
+   * Turn template for a maneuver's *second* heading change (Hard Turn, S-Turn),
+   * when it is plotted separately from the first (C3.9.2). Defaults to
+   * `turnTemplate` when unset, matching the maneuver's old single-rate
+   * behaviour.
+   */
+  turnTemplate2?: number
   /** Half-inch slide rather than a full inch (C2.4.1). */
   halfSlide?: boolean
   /** Perform the slide before moving forward rather than after (C2.4.1). */
@@ -272,6 +279,9 @@ export function applyManeuver(input: ManeuverInput): ManeuverResult {
   // Easy turns always use the 20-degree template regardless of the ship's
   // maximum turn rate (C2.3.2).
   const template = maneuver === 'easy' ? 20 : turnTemplate
+  // Hard Turns and S-Turns may plot a different rate for each of their two
+  // heading changes; unset falls back to the first turn's rate (C3.9.2).
+  const template2 = input.turnTemplate2 ?? template
 
   switch (maneuver) {
     case 'straight':
@@ -320,7 +330,7 @@ export function applyManeuver(input: ManeuverInput): ManeuverResult {
     }
 
     case 'hard': {
-      // Two standard turns in the same direction (C3.2.2).
+      // Two standard turns in the same direction, each its own turn rate (C3.2.2, C3.9.2).
       const half = travelDistance / 2
       const mid = translate(start.position, travelHeading, half)
       path.push(mid)
@@ -328,14 +338,14 @@ export function applyManeuver(input: ManeuverInput): ManeuverResult {
       const end = translate(mid, speed < 0 ? normalizeHeading(heading1 + 180) : heading1, half)
       path.push(end)
       return {
-        end: { position: end, heading: normalizeHeading(heading1 + template * sign) },
+        end: { position: end, heading: normalizeHeading(heading1 + template2 * sign) },
         path,
         stress: 1,
       }
     }
 
     case 's-turn': {
-      // Two standard turns in opposite directions (C3.3.2).
+      // Two standard turns in opposite directions, each its own turn rate (C3.3.2, C3.9.2).
       const half = travelDistance / 2
       const mid = translate(start.position, travelHeading, half)
       path.push(mid)
@@ -343,7 +353,7 @@ export function applyManeuver(input: ManeuverInput): ManeuverResult {
       const end = translate(mid, speed < 0 ? normalizeHeading(heading1 + 180) : heading1, half)
       path.push(end)
       return {
-        end: { position: end, heading: normalizeHeading(heading1 - template * sign) },
+        end: { position: end, heading: normalizeHeading(heading1 - template2 * sign) },
         path,
         stress: 1,
       }
@@ -352,15 +362,20 @@ export function applyManeuver(input: ManeuverInput): ManeuverResult {
     case 'em-90':
     case 'em-180': {
       // Half movement, pivot in place, remaining half (C3.5.6). The 180 adds a
-      // second 90-degree pivot in the same direction (C3.5.7).
+      // second pivot in the same direction (C3.5.7). The 90 pivot defaults to a
+      // full 90 degrees but the captain may plot any smaller template instead
+      // (C3.9.3); a 180's *first* pivot always stays a fixed 90, and only the
+      // second one may be reduced (C3.9.4) — `template`/`template2` already
+      // carry those chosen rates (defaulting to 90) from the caller.
       if (direction === null) return illegal('Emergency turn plotted with no direction.')
       const half = travelDistance / 2
       const mid = translate(start.position, travelHeading, half)
       path.push(mid)
-      let heading = normalizeHeading(start.heading + 90 * sign)
+      const firstTemplate = maneuver === 'em-180' ? 90 : template
+      let heading = normalizeHeading(start.heading + firstTemplate * sign)
       const end = translate(mid, speed < 0 ? normalizeHeading(heading + 180) : heading, half)
       path.push(end)
-      if (maneuver === 'em-180') heading = normalizeHeading(heading + 90 * sign)
+      if (maneuver === 'em-180') heading = normalizeHeading(heading + template2 * sign)
       return { end: { position: end, heading }, path, stress: emergencyTurnStress(maneuver, speed) }
     }
   }

@@ -6,7 +6,6 @@ import {
   crewIsArmed,
   blueShieldRemaining,
   damageControlRating,
-  findLine,
   genSysSetting,
   lineValue,
   mountIsDamaged,
@@ -126,14 +125,11 @@ export function validateAllocation(ship: ShipState): AllocationError[] {
     if (blocked) errors.push({ lineId: line.id, message: blocked })
   }
 
-  // GEN SYS must reach NRM before MAX (B2.2.10).
-  const genSys = findLine(ship.form, 'gen-sys')
-  if (genSys) {
-    const filled = ship.allocation[genSys.id] ?? 0
-    if (filled > 0 && genSys.freeValue === 0 && filled < 1) {
-      errors.push({ lineId: genSys.id, message: 'General Systems must be powered to NRM before MAX.' })
-    }
-  }
+  // B2.2.10: GEN SYS must reach NRM before MAX. Nothing to check here —
+  // `setAllocation` fills a line's circles strictly left to right (`circles`
+  // is a plain count, and `lineValue` reads `steps[circles - 1]`), so an
+  // allocation that skips NRM to buy MAX directly cannot exist by
+  // construction. A per-circle picker would need a real check here.
   return errors
 }
 
@@ -526,12 +522,31 @@ export function resolveDamageControl(
   assignments: RepairAssignment[],
   rng: Rng,
   log: (message: string) => void,
+  /**
+   * Rules reading (see CURRENT_RULES_VERSION in savedGame.ts). Capping
+   * repairs to one per category is a resolution change, gated to reading 3
+   * so an old journal that split a category's dice across two assignments
+   * still replays both repairs the way it was fought.
+   */
+  rulesVersion = 1,
 ): RepairOutcome[] {
   const budget = damageControlRating(ship)
   const outcomes: RepairOutcome[] = []
   let used = 0
+  // B3.2 Step 3: "regardless of the number of dice assigned to a category,
+  // the ship may only repair one damaged system from that category per
+  // round." Splitting a category's dice across two assignments is really one
+  // roll cut in half — honoring both would let the same budget buy two
+  // repairs, so only the first assignment naming a given category is rolled
+  // at all. Repelling boarders (B3.4) is not a system repair and is not
+  // capped by this rule.
+  const categoriesRolled = new Set<RepairCategory>()
 
   for (const assignment of assignments) {
+    if (rulesVersion >= 3 && assignment.category !== 'boarders') {
+      if (categoriesRolled.has(assignment.category)) continue
+      categoriesRolled.add(assignment.category)
+    }
     const dice = Math.min(assignment.dice, Math.max(0, budget - used))
     used += dice
     if (dice === 0) continue

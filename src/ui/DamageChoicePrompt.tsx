@@ -12,8 +12,8 @@ import {
  * "Which box?" — put to the captain whose ship is taking the hit.
  *
  * Several damage cards hand the *defender* the decision (E8.4.1, E8.3.2,
- * E8.3.5, E8.2.2, E8.5.3, E8.5.10), and until now the engine's own doctrine
- * answered them for everybody. This is the console.
+ * E8.3.5, E8.2.2, E8.5.3, E7.3.7's Any Main Reactor), and until now the
+ * engine's own doctrine answered them for everybody. This is the console.
  *
  * The options are worked out by the engine, which knows what is legal — a
  * ship with its sensors already gone cannot offer them, structure is offered

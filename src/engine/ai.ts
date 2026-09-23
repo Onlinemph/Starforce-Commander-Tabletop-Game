@@ -5,8 +5,8 @@ import {
   asteroidFieldsAt,
   attackAllowed,
   cloakOf,
-  cloudStatus,
   currentFiringStep,
+  fullDisengagementOptions,
   homingWeaponDef,
   impactingHoming,
   shipsUnderBoarding,
@@ -101,7 +101,7 @@ import {
   shieldsFacing,
   translate,
 } from './geometry'
-import { disengagementOptions, plannedMovement, validatePlot, accelerationBudget } from './navigation'
+import { plannedMovement, validatePlot, accelerationBudget } from './navigation'
 import {
   armingCapacityThisRound,
   blueShieldRemaining,
@@ -3768,7 +3768,12 @@ function planOperations(
     }
 
     // A missile in the tractor beam's reach is a missile that never lands (J3.2.2).
-    if (game.homing.length > 0 && tractorBeamsFree(game, ship) > 0) {
+    // Tractor beams do not work on an evasive ship (C3.6.7, rules reading 3).
+    if (
+      (game.rulesVersion < 3 || ship.evasive === 0) &&
+      game.homing.length > 0 &&
+      tractorBeamsFree(game, ship) > 0
+    ) {
       const missile = tractorableHoming(game, ship)[0]
       if (missile) {
         actions.push({ type: 'catch-missile', shipId: ship.id, homingId: missile.id, beams: 1 })
@@ -3799,6 +3804,8 @@ function planOperations(
       const captureRange = actualRange(ship.placement.position, cripple.placement.position)
       if (
         !cloaked &&
+        // Transporters do not work on an evasive ship (C3.6.7, rules reading 3).
+        (game.rulesVersion < 3 || ship.evasive === 0) &&
         transportCapacity(ship) > 0 &&
         ship.marineSquads >= 2 &&
         captureRange <= transporterRange(ship, null) &&
@@ -3941,6 +3948,11 @@ function planTractors(game: GameState, ship: ShipState, difficulty: AiDifficulty
       actions.push({ type: 'release-tractor', shipId: ship.id, targetId: link.targetId })
     }
   }
+
+  // Tractor beams may not be used to attempt a new lock while this ship is
+  // evasive (C3.6.7, rules reading 3); a lock already held may still be let
+  // go, above.
+  if (game.rulesVersion >= 3 && ship.evasive > 0) return actions
 
   // Beams that have not had their attempt this segment (J3.3.1). A lock this
   // ship cannot possibly roll is a wasted segment, so the reach test is the
@@ -5182,7 +5194,13 @@ function planFlightOps(
   // 1. Get the wing off the deck. Space superiority while there is anything to
   //    dogfight; strike when the sky belongs to us.
   for (const ship of fleet) {
-    if (hangarCapacity(ship) === 0 || flightsReadyToFly(game, ship) < 1) continue
+    // Fighters may not launch from an evasive carrier (C3.6.7, rules reading 3).
+    if (
+      hangarCapacity(ship) === 0 ||
+      flightsReadyToFly(game, ship) < 1 ||
+      (game.rulesVersion >= 3 && ship.evasive > 0)
+    )
+      continue
     const enemyShips = hostileShips(ship.side)
     const enemyFlights = hostileFlights(ship.side)
     const rate = launchRate(ship) - (game.ops.flightsLaunchedThisPhase[ship.id] ?? 0)
@@ -5309,7 +5327,12 @@ function planFlightOps(
           shipId: mother.id,
         })
       }
-      if (withinRecoveryRange(flight.position, mother.placement.position) && landings(mother) > 0) {
+      // Fighters may not recover aboard an evasive carrier (C3.6.7, rules reading 3).
+      if (
+        (game.rulesVersion < 3 || mother.evasive === 0) &&
+        withinRecoveryRange(flight.position, mother.placement.position) &&
+        landings(mother) > 0
+      ) {
         land()
         continue
       }
@@ -5335,7 +5358,12 @@ function planFlightOps(
         speed,
       )
       offer(`home:${flight.id}`, { type: 'move-flight', flightId: flight.id, ...step })
-      if (withinRecoveryRange(step, mother.placement.position) && landings(mother) > 0) land()
+      if (
+        (game.rulesVersion < 3 || mother.evasive === 0) &&
+        withinRecoveryRange(step, mother.placement.position) &&
+        landings(mother) > 0
+      )
+        land()
       continue
     }
     if (!canDogfight && !canStrike) continue
@@ -5723,14 +5751,12 @@ function planDisengagement(
   const actions: GameAction[] = []
   for (const ship of fleet) {
     if (!wantsToLeave(game, ship, difficulty)) continue
-    const enemies = enemiesOf(game, ship)
-    const options = disengagementOptions(
-      ship,
-      enemies,
-      game.scenario.bounds,
-      !cloudStatus(game, ship).ftlBlocked,
-    )
-    if (options.length > 0) actions.push({ type: 'disengage', shipId: ship.id })
+    // Full J9 check (range/FTL/cloud/tractor/captured), the same one the
+    // engine's guard now enforces — a plan the engine would refuse anyway
+    // just stalls a simulated round for nothing.
+    if (fullDisengagementOptions(game, ship).length > 0) {
+      actions.push({ type: 'disengage', shipId: ship.id })
+    }
   }
   return actions
 }

@@ -1,5 +1,5 @@
 import { hasTrait, traitValue } from './combat'
-import { FACE_DAMAGE, rollDice, type DieRoll, type Rng } from './dice'
+import { expectedValue, FACE_DAMAGE, faceValue, reroll, rollDice, type DieRoll, type Rng } from './dice'
 import { actualRange, arcTo, bearing, distance, shieldsFacing, translate } from './geometry'
 import type { ShipState } from './shipState'
 import type { Arc, Placement, Point, RangeBracketDef, ShieldSide, WeaponSystemDef } from './types'
@@ -112,6 +112,13 @@ export interface HomingWeapon {
    * (E5.9.1, E5.9.2), whatever the counters look like afterwards.
    */
   forcedShield?: ShieldSide
+  /**
+   * Asteroid cover rerolls (K2.1.8) earned by the leg that landed the impact,
+   * for the defender to spend on the impact's dice (E5.3.5(4)). Unset when
+   * the final leg crossed no field, or the impact was a head-on or overflight
+   * strike rather than an ordinary closing leg.
+   */
+  asteroidCoverAtImpact?: number
 }
 
 let sequence = 0
@@ -304,6 +311,10 @@ export interface HomingVolley {
  * The reduction eats standard damage first, then leak, then `STR +X`; if all
  * three reach zero the volley is destroyed and its special effects are ignored
  * (F1.16.2 steps 5–8).
+ *
+ * `rerolls` is asteroid cover earned by the impacting leg (E5.3.5(4)), spent
+ * the same way a defender's cover spends against direct fire — on whichever
+ * die stands to cost the attacker the most.
  */
 export function resolveHomingVolley(
   weapons: readonly HomingWeapon[],
@@ -312,12 +323,29 @@ export function resolveHomingVolley(
   phase: number,
   range: number,
   rng: Rng,
+  rerolls = 0,
 ): HomingVolley {
   const live = weapons.filter((w) => !w.destroyed && !w.tractored)
   const bracket = bracketForImpact(def, phase, range)
   const colors = bracket ? live.flatMap(() => bracket.dice) : []
   const rolls = rollDice(colors, rng)
   const bonus = bracket?.bonus ?? 0
+  const special = def.special?.damage ?? 0
+
+  for (let left = rerolls; left > 0; left--) {
+    let best = -1
+    let bestGain = 0
+    for (let i = 0; i < rolls.length; i++) {
+      const gain = faceValue(rolls[i].face, special, bonus) - expectedValue(rolls[i].color, special, bonus)
+      if (gain > bestGain) {
+        bestGain = gain
+        best = i
+      }
+    }
+    // Nothing left above its average: further rerolls would only hurt.
+    if (best === -1) break
+    rolls[best] = reroll(rolls[best], rng)
+  }
 
   let standard = 0
   let leak = 0
