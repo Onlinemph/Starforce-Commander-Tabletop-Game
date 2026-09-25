@@ -163,16 +163,28 @@ export class BattleScene {
 
   /** Point the camera at the board from one of the stock angles. */
   setPreset(preset: CameraPreset, instant = false): void {
-    const { width, height } = this.boardSize
-    const center = new Vector3(width / 2, 0, height / 2)
     const aspect = this.camera.aspect || 1.5
-    const elevation = preset === 'top' ? 89.5 : preset === 'low' ? 18 : 52
+    // Top shows the whole board, like the flat map. The angled views frame
+    // the action instead — the hulls plus room to manoeuvre — because a
+    // perspective camera pulled back far enough for a whole 48" table makes
+    // every ship a speck.
+    const { width, height } = this.boardSize
+    let frame = { x: width / 2, z: height / 2, w: width, h: height }
+    const extent = preset === 'top' ? null : this.ships.extent()
+    if (extent) {
+      const pad = 7
+      const w = Math.min(width, Math.max(18, extent.maxX - extent.minX + pad * 2))
+      const h = Math.min(height, Math.max(12, extent.maxZ - extent.minZ + pad * 2))
+      frame = { x: (extent.minX + extent.maxX) / 2, z: (extent.minZ + extent.maxZ) / 2, w, h }
+    }
+    const center = new Vector3(frame.x, 0, frame.z)
+    const elevation = preset === 'top' ? 89.5 : preset === 'low' ? 16 : 48
     const distance =
-      framingDistance(width, height, FOV, aspect) * (preset === 'top' ? 1 : preset === 'low' ? 0.8 : 1.12)
+      framingDistance(frame.w, frame.h, FOV, aspect) * (preset === 'top' ? 1 : preset === 'low' ? 0.75 : 1)
     const e = elevation * (Math.PI / 180)
     const position = new Vector3(center.x, Math.sin(e) * distance, center.z + Math.cos(e) * distance)
     this.follow = false
-    this.controls.maxDistance = distance * 2.2
+    this.controls.maxDistance = Math.max(distance, framingDistance(width, height, FOV, aspect)) * 2
     if (instant || this.reducedMotion) {
       this.camera.position.copy(position)
       this.controls.target.copy(center)

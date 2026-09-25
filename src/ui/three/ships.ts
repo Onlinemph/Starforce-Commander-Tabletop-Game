@@ -130,6 +130,22 @@ export class ShipsLayer implements Layer {
     return e ? { x: e.x, z: e.z, heading: e.heading } : null
   }
 
+  /** The board rectangle the drawn hulls occupy, or null with none drawn. */
+  extent(): { minX: number; maxX: number; minZ: number; maxZ: number } | null {
+    if (this.entries.size === 0) return null
+    let minX = Infinity
+    let maxX = -Infinity
+    let minZ = Infinity
+    let maxZ = -Infinity
+    for (const e of this.entries.values()) {
+      minX = Math.min(minX, e.target.x)
+      maxX = Math.max(maxX, e.target.x)
+      minZ = Math.min(minZ, e.target.z)
+      maxZ = Math.max(maxZ, e.target.z)
+    }
+    return { minX, maxX, minZ, maxZ }
+  }
+
   setHovered(id: string | null): void {
     this.hovered = id
   }

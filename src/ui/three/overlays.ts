@@ -129,13 +129,14 @@ export class OverlaysLayer implements Layer {
       // lay it flat, then turn it so it sweeps from `start` clockwise.
       geo.rotateX(-Math.PI / 2)
       geo.rotateY(-((start - 90) * DEG) - 45 * DEG)
-      const shade = arc.includes('F') ? 0x4a86ff : arc.includes('A') ? 0xff7a4a : 0x9a7dff
+      // The 2D fan's amber: a faint wash with brighter spokes, alternating
+      // a touch so neighbouring arcs can be told apart.
       const wedge = new Mesh(
         geo,
         new MeshBasicMaterial({
-          color: shade,
+          color: 0xff9c00,
           transparent: true,
-          opacity: 0.035,
+          opacity: ARC_ORDER.indexOf(arc) % 2 === 0 ? 0.03 : 0.016,
           side: DoubleSide,
           depthWrite: false,
           blending: AdditiveBlending,
@@ -150,7 +151,7 @@ export class OverlaysLayer implements Layer {
             y: -Math.cos(start * DEG) * ARC_RADIUS,
           },
         ]),
-        new LineBasicMaterial({ color: 0x8aa6ff, transparent: true, opacity: 0.35 }),
+        new LineBasicMaterial({ color: 0xff9c00, transparent: true, opacity: 0.3 }),
       )
       const mid = (start + 22.5) * DEG
       const label = makeLabel(arc, 'l3d-arc')

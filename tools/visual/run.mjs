@@ -177,6 +177,72 @@ if (only.length === 0 || only.includes('motion')) {
   }
 }
 
+/*
+ * The 3D view: WebGL output is not pixel-stable enough for a baseline (the
+ * hulls bob, the bloom is resolution-dependent), so this checks that it
+ * works rather than how it looks — the scene starts, draws something that is
+ * not empty space, and a click on a hull selects it.
+ */
+if (only.length === 0 || only.includes('three')) {
+  // Its own browser: SwiftShader gives headless Chromium a software WebGL,
+  // but also nudges how the flat map rasterises, so the baselines above
+  // are photographed without it.
+  const gl = await chromium.launch({
+    executablePath: chromiumPath(),
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  })
+  const view = await gl.newPage({ viewport: { width: 1216, height: 900 }, deviceScaleFactor: 1 })
+  view.on('pageerror', (e) => errors.push(e.message))
+  try {
+    await view.goto(`${base}visual.html?fixture=carrier-strike&view=3d`, { waitUntil: 'networkidle' })
+    await view.waitForFunction(() => window.__battle3d, null, { timeout: 30000 })
+    await view.waitForTimeout(1500)
+    // WebGL clears its buffer after each frame, so count lit pixels in a
+    // real screenshot of the canvas rather than reading it back.
+    const shot = await view.locator('canvas.battle3d-canvas').screenshot()
+    const lit = await view.evaluate(async (b64) => {
+      const img = new Image()
+      await new Promise((r) => {
+        img.onload = r
+        img.src = `data:image/png;base64,${b64}`
+      })
+      const c = document.createElement('canvas')
+      c.width = img.width
+      c.height = img.height
+      const ctx = c.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60) n++
+      return n / (d.length / 4)
+    }, shot.toString('base64'))
+    const labels = await view.evaluate(() => document.querySelectorAll('.l3d-name').length)
+    const id = await view.evaluate(() => [...window.__battle3d.ships.entries.keys()][1])
+    await view.evaluate((id) => window.__battle3d.focusShip(id, 5, true), id)
+    await view.waitForTimeout(400)
+    const xy = await view.evaluate((id) => {
+      const s = window.__battle3d
+      const p = s.ships.drawnPosition(id)
+      const v = s.camera.position.clone().set(p.x, 0.32, p.z).project(s.camera)
+      const r = s.renderer.domElement.getBoundingClientRect()
+      return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }
+    }, id)
+    await view.mouse.click(xy.x, xy.y)
+    await view.waitForTimeout(300)
+    const picked = await view.evaluate(() => window.__selected)
+    if (lit > 0.002 && labels >= 3 && picked === id) {
+      console.log(`ok       three (${(lit * 100).toFixed(2)}% lit, ${labels} names, click selects)`)
+    } else {
+      failed++
+      console.log(`FAIL     three: lit ${lit}, names ${labels}, clicked ${picked} expected ${id}`)
+    }
+  } catch (e) {
+    failed++
+    console.log(`ERROR    three: ${e.message.split('\n')[0]}`)
+  }
+  await gl.close()
+}
+
 if (errors.length > 0) {
   failed++
   console.log(`Page errors:\n  ${[...new Set(errors)].join('\n  ')}`)

@@ -216,8 +216,8 @@ export function buildHull(form: ShipForm, side: SideColor): HullModel {
       polygonOffsetUnits: 1,
     }),
     deck: new MeshStandardMaterial({ color: 0x3a4766, metalness: 0.3, roughness: 0.6 }),
-    trim: new MeshBasicMaterial({ color: sideColor.clone().multiplyScalar(1.4), toneMapped: false }),
-    glass: new MeshBasicMaterial({ color: new Color(0xcfe3ff).multiplyScalar(1.6), toneMapped: false }),
+    trim: new MeshBasicMaterial({ color: sideColor.clone().multiplyScalar(1.05), toneMapped: false }),
+    glass: new MeshBasicMaterial({ color: new Color(0xcfe3ff).multiplyScalar(0.95), toneMapped: false }),
     edges: new LineBasicMaterial({ color: sideColor, transparent: true, opacity: 0.7 }),
     engines: new SpriteMaterial({
       map: glowTexture(),

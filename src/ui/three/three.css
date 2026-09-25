@@ -174,7 +174,8 @@
 
 .l3d-arc {
   font-size: 10px;
-  color: rgba(170, 190, 255, 0.7);
+  letter-spacing: 0.06em;
+  color: rgba(255, 204, 102, 0.6);
 }
 
 .l3d-ring {
