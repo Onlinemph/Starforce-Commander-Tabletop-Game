@@ -54,3 +54,7 @@ tests/visual/__out__/
 
 # Agent worktrees (parallel branches, merged by hand)
 /.claude/worktrees/
+
+# Throwaway scripts (underscore-prefixed) used while developing; never committed
+/tools/_*.mjs
+/tools/_*.ts
