@@ -28,7 +28,7 @@ the game is a single static page and the rules engine runs in the browser.
 npm test             # 1,300+ rules and data-integrity tests
 npm run typecheck
 npm run check        # both of the above
-npm run test:visual  # battle-map screenshots vs tests/visual/*.png (--update to accept changes)
+npm run test:visual  # battle-map screenshots vs tests/visual/*.png (--update to accept changes), plus a 3D-view check
 npm run season       # the AI's standing baselines, measured (tools/README.md)
 npm run build        # static site in dist/
 npm run serve        # preview the built site on your network at :4173
@@ -516,6 +516,18 @@ torpedoes. See below.
 
 The map is drawn at 1 inch = 20 pixels, so every range and template on screen is the rulebook's own
 measurement.
+
+Or play it **in 3D**: *Map: 3D* under the board (and in the replay theater) swaps the flat map for a
+three.js view of the same battle.
+- The hulls are the counters' own silhouettes, extruded: carriers with their decks, freighters,
+  stations.
+- Shields, arcs, range rings, the plot ghost and the ruler work as they do in 2D, and so do fighter
+  wings, plasma torpedoes, terrain and gunfire.
+- The camera orbits, pans and zooms. Tilt, Top, Low and Follow are one click each, and a
+  double-click flies you to a ship.
+- The rules and orders are identical: clicking a hull selects it exactly as on the flat map.
+- three.js loads only when you pick 3D, the choice is remembered per browser, and a browser without
+  WebGL falls back to the flat map.
 
 **Forces** are composed from the full roster — 37 Union, 35 Vallari and 21 Aurelian ships, from the
 V-2N Flanker scout to the UNION III dreadnought — to a point budget, under the availability limits
