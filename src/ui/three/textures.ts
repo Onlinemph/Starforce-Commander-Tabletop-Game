@@ -3,7 +3,7 @@
  * canvas and cached. No image files: everything here is a gradient or noise
  * the view can make for itself, so the lazy 3D chunk carries no assets.
  */
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
+import { CanvasTexture, Color, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
 
 const cache = new Map<string, Texture>()
 
@@ -123,8 +123,8 @@ export function worldTexture(seed: number, kind: 'planet' | 'moon'): Texture {
   const key = `world-${kind}-${seed}`
   const hit = cache.get(key)
   if (hit) return hit
-  const w = 256
-  const h = 128
+  const w = kind === 'planet' ? 512 : 256
+  const h = kind === 'planet' ? 256 : 128
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
@@ -161,57 +161,7 @@ export function worldTexture(seed: number, kind: 'planet' | 'moon'): Texture {
       ctx.stroke()
     }
   } else {
-    const hue = rand() * 360
-    if (rand() > 0.5) {
-      // A gas giant: horizontal bands, each a jitter off the base hue.
-      let y = 0
-      while (y < h) {
-        const bandH = 4 + rand() * 14
-        ctx.fillStyle = hsl(hue + (rand() - 0.5) * 40, 35 + rand() * 25, 30 + rand() * 30)
-        ctx.fillRect(0, y, w, bandH)
-        y += bandH
-      }
-      // A soft turbulent overlay so the bands do not read as a barcode.
-      for (let i = 0; i < 18; i++) {
-        const cy = rand() * h
-        ctx.strokeStyle = `hsla(${Math.round(hue)}, 40%, 80%, ${0.04 + rand() * 0.06})`
-        ctx.lineWidth = 3 + rand() * 6
-        ctx.beginPath()
-        ctx.moveTo(0, cy)
-        for (let x = 0; x <= w; x += 16) ctx.lineTo(x, cy + Math.sin(x * 0.05 + i) * 6)
-        ctx.stroke()
-      }
-    } else {
-      // A rocky world: an ocean base with a scatter of smaller continents.
-      ctx.fillStyle = hsl(hue, 40, 26)
-      ctx.fillRect(0, 0, w, h)
-      const land = hsl(hue + 40, 28, 36)
-      for (let i = 0; i < 12; i++) {
-        const cx = rand() * w
-        const cy = h * 0.12 + rand() * h * 0.76
-        ctx.fillStyle = land
-        ctx.beginPath()
-        const points = 6 + Math.floor(rand() * 4)
-        for (let p = 0; p < points; p++) {
-          const a = (p / points) * Math.PI * 2
-          const rr = (6 + rand() * 13) * (0.7 + 0.3 * Math.sin(a * 3 + i))
-          const px = cx + Math.cos(a) * rr
-          const py = cy + Math.sin(a) * rr * 0.6
-          if (p === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
-        }
-        ctx.closePath()
-        ctx.fill()
-      }
-    }
-    // Polar caps, the same on every world so the lighting reads consistently.
-    const caps = ctx.createLinearGradient(0, 0, 0, h)
-    caps.addColorStop(0, 'rgba(235,240,250,0.55)')
-    caps.addColorStop(0.12, 'rgba(235,240,250,0)')
-    caps.addColorStop(0.88, 'rgba(235,240,250,0)')
-    caps.addColorStop(1, 'rgba(235,240,250,0.55)')
-    ctx.fillStyle = caps
-    ctx.fillRect(0, 0, w, h)
+    paintPlanet(ctx, w, h, rand)
   }
 
   const tex = new CanvasTexture(canvas)
@@ -251,4 +201,97 @@ export function beamTexture(): Texture {
   tex.wrapT = RepeatWrapping
   tex.repeat.set(1, 3)
   return tex
+}
+
+/**
+ * Smooth value noise that wraps horizontally with period `wrap`, so a
+ * texture made from it closes seamlessly round a sphere.
+ */
+function wrappedNoise(seed: number, wrap: number): (x: number, y: number) => number {
+  const hash = (ix: number, iy: number) => {
+    let h = (((ix % wrap) + wrap) % wrap) * 374761393 + iy * 668265263 + seed * 982451653
+    h = (h ^ (h >>> 13)) * 1274126177
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+  }
+  const smooth = (t: number) => t * t * (3 - 2 * t)
+  return (x, y) => {
+    const ix = Math.floor(x)
+    const iy = Math.floor(y)
+    const fx = smooth(x - ix)
+    const fy = smooth(y - iy)
+    const a = hash(ix, iy)
+    const b = hash(ix + 1, iy)
+    const c = hash(ix, iy + 1)
+    const d = hash(ix + 1, iy + 1)
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy
+  }
+}
+
+/** Fractal noise: octaves of wrapped value noise, 0..1. */
+function fbm(noise: Array<(x: number, y: number) => number>, x: number, y: number): number {
+  let sum = 0
+  let amp = 0.5
+  let norm = 0
+  for (let o = 0; o < noise.length; o++) {
+    const f = 1 << o
+    sum += noise[o](x * f, y * f) * amp
+    norm += amp
+    amp *= 0.5
+  }
+  return sum / norm
+}
+
+/**
+ * A planet's surface, pixel by pixel from fractal noise: either a gas giant
+ * (bands warped by turbulence) or a terrestrial world (oceans, lowlands,
+ * highlands and ice by height, under a layer of cloud). Seeded, so the same
+ * feature id always makes the same world.
+ */
+function paintPlanet(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number): void {
+  const seed = Math.floor(rand() * 1e6)
+  const period = 8
+  const octaves = (s0: number) => [0, 1, 2, 3, 4].map((o) => wrappedNoise(s0 + o * 17, period << o))
+  const ground = octaves(seed)
+  const cloud = octaves(seed + 101)
+  const img = ctx.createImageData(w, h)
+  const hue = rand()
+  const giant = rand() > 0.5
+  const tmp = new Color()
+  const base = new Color().setHSL(hue, 0.5, 0.3)
+  const alt = new Color().setHSL((hue + 0.08) % 1, 0.35, 0.52)
+  const deep = new Color().setHSL(0.58 + (hue - 0.5) * 0.1, 0.55, 0.16)
+  const shallow = new Color().setHSL(0.55, 0.5, 0.3)
+  const low = new Color().setHSL(0.25 + hue * 0.12, 0.35, 0.3)
+  const high = new Color().setHSL(0.08 + hue * 0.05, 0.3, 0.38)
+  const sea = 0.47 + rand() * 0.08
+
+  for (let py = 0; py < h; py++) {
+    const v = py / h
+    const lat = Math.abs(v - 0.5) * 2
+    for (let px = 0; px < w; px++) {
+      const x = (px / w) * period
+      const y = v * period * 0.5
+      if (giant) {
+        const turb = fbm(ground, x, y)
+        const band = 0.5 + 0.5 * Math.sin(v * Math.PI * (9 + hue * 8) + turb * 5)
+        tmp.copy(base).lerp(alt, band * 0.85)
+        tmp.multiplyScalar(0.85 + turb * 0.3)
+      } else {
+        const height = fbm(ground, x, y)
+        if (height < sea) tmp.copy(deep).lerp(shallow, Math.max(0, (height - sea + 0.12) / 0.12))
+        else if (height < sea + 0.08) tmp.copy(low)
+        else tmp.copy(low).lerp(high, Math.min(1, (height - sea - 0.08) / 0.14))
+        // Ice at the poles and on the highest peaks.
+        if (lat > 0.82 || height > sea + 0.26) tmp.lerp(new Color(0.9, 0.93, 0.97), 0.8)
+        const c = fbm(cloud, x * 1.3, y * 1.3)
+        if (c > 0.55) tmp.lerp(new Color(0.95, 0.96, 1), Math.min(0.85, (c - 0.55) * 4))
+      }
+      const k = (py * w + px) * 4
+      img.data[k] = Math.round(Math.min(1, tmp.r) * 255)
+      img.data[k + 1] = Math.round(Math.min(1, tmp.g) * 255)
+      img.data[k + 2] = Math.round(Math.min(1, tmp.b) * 255)
+      img.data[k + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
 }

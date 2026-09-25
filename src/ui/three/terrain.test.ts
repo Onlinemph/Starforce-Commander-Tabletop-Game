@@ -25,8 +25,8 @@ describe('rockCountFor', () => {
   })
 
   it('never drops below the floor or above the cap, however small or huge the field', () => {
-    expect(rockCountFor(0.1, 'light')).toBeGreaterThanOrEqual(14)
-    expect(rockCountFor(200, 'extreme')).toBeLessThanOrEqual(220)
+    expect(rockCountFor(0.1, 'light')).toBeGreaterThanOrEqual(24)
+    expect(rockCountFor(200, 'extreme')).toBeLessThanOrEqual(320)
   })
 })
 

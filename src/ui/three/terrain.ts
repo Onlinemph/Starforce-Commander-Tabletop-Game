@@ -15,7 +15,6 @@ import {
   CircleGeometry,
   Color,
   CylinderGeometry,
-  DodecahedronGeometry,
   DoubleSide,
   Float32BufferAttribute,
   Group,
@@ -28,13 +27,17 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   OctahedronGeometry,
+  Points,
+  PointsMaterial,
   Quaternion,
   RingGeometry,
+  ShaderMaterial,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
   Vector3,
 } from 'three'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Rng } from '../../engine/dice'
 import type { GameState, Terrain } from '../../engine/game'
 import type { MissionDef, MissionState } from '../../engine/missions'
@@ -42,7 +45,7 @@ import { DENSITY_STATS, type AsteroidDensity } from '../../data/terrainCounters'
 import { makeLabel, setLabel, type CSS2DObject } from './labels'
 import { disposeTree, setTooltip, type FrameContext, type Layer, type LayerContext } from './layer'
 import { toWorld } from './space'
-import { cloudTexture, glowTexture, worldTexture } from './textures'
+import { cloudTexture, worldTexture } from './textures'
 
 /** Just above the board, so nothing here z-fights the grid (overlays.ts uses the same idea). */
 const FLOOR = 0.04
@@ -76,7 +79,7 @@ export function hashId(id: string): number {
 export function rockCountFor(radius: number, density: AsteroidDensity | undefined): number {
   const factor = DENSITY_ROCK_FACTOR[density ?? 'medium']
   const area = Math.PI * radius * radius
-  return Math.max(14, Math.min(220, Math.round(area * factor)))
+  return Math.max(24, Math.min(320, Math.round(area * factor * 1.6)))
 }
 
 /** The 2D map's own terrain label text: the name, plus the safe speed for an asteroid field. */
@@ -94,30 +97,107 @@ function positionHash(x: number, y: number, z: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }
 
-/** A handful of shared, pre-jittered rock shapes, reused by every asteroid field in the view. */
+/**
+ * Smooth lumpy noise over a unit direction: a few low-frequency waves plus
+ * the fine per-vertex jitter, so a rock has a shape — a bulge here, a flat
+ * face there — rather than being a jittered ball.
+ */
+function lumps(x: number, y: number, z: number, seed: number): number {
+  const a = Math.sin(x * 2.1 + seed) * Math.cos(y * 1.7 - seed * 0.7)
+  const b = Math.sin(z * 2.9 + seed * 1.3) * Math.sin(x * 1.3 + y * 2.2)
+  const c = Math.cos(y * 4.3 + z * 3.1 + seed * 2.1)
+  return a * 0.22 + b * 0.16 + c * 0.07
+}
+
+/**
+ * A handful of shared rock shapes, reused by every asteroid field in the
+ * view: subdivided icosahedra pushed out by lumpy noise and squashed along
+ * one axis, with their seams welded so they shade smoothly as stone rather
+ * than as cut gems.
+ */
 function buildRockGeometries(): BufferGeometry[] {
   const variants: BufferGeometry[] = []
-  for (let v = 0; v < 3; v++) {
-    const geo = v % 2 === 0 ? new IcosahedronGeometry(1, 0) : new DodecahedronGeometry(1, 0)
-    const pos = geo.attributes.position
+  for (let v = 0; v < 5; v++) {
+    const base = mergeVertices(new IcosahedronGeometry(1, v % 2 === 0 ? 2 : 1).deleteAttribute('normal').deleteAttribute('uv'))
+    const pos = base.attributes.position
+    const squash = [0.62, 0.8, 0.7, 0.9, 0.55][v]
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
       const z = pos.getZ(i)
-      const jitter = 0.68 + positionHash(x, y, z) * 0.6
-      pos.setXYZ(i, x * jitter, y * jitter, z * jitter)
+      const r = 1 + lumps(x, y, z, v * 1.9) + (positionHash(x, y, z) - 0.5) * 0.14
+      pos.setXYZ(i, x * r, y * r * squash, z * r)
     }
-    geo.computeVertexNormals()
-    geo.userData.shared = true
-    variants.push(geo)
+    base.computeVertexNormals()
+    base.userData.shared = true
+    variants.push(base)
   }
   return variants
 }
 
 const ROCK_GEOMETRIES = buildRockGeometries()
-/** One material for every rock everywhere: instance colour carries the size/tone variety (InstancedMesh.setColorAt). */
-const ROCK_MATERIAL = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0.06 })
+
+/**
+ * A fresnel atmosphere: transparent face-on, glowing at the limb, brighter
+ * on the sunward side. Additive, so it only ever adds light.
+ */
+function atmosphereMaterial(color: Color): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      glow: { value: color },
+      sun: { value: new Vector3(-40, 60, -30).normalize() },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vView;
+      varying vec3 vWorldNormal;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vNormal = normalize(normalMatrix * normal);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vView = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 glow;
+      uniform vec3 sun;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      varying vec3 vWorldNormal;
+      void main() {
+        float rim = pow(1.0 - max(dot(vNormal, vView), 0.0), 4.5);
+        float lit = 0.35 + 0.65 * max(dot(vWorldNormal, sun), 0.0);
+        gl_FragColor = vec4(glow * rim * lit * 0.9, rim);
+      }
+    `,
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+  })
+}
+/** One material for every rock everywhere: instance colour carries the tone variety (InstancedMesh.setColorAt). */
+const ROCK_MATERIAL = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.02, envMapIntensity: 0.08 })
 ROCK_MATERIAL.userData.shared = true
+
+/** Rock tones: slate, basalt, rust and a pale silicate, the last rare. */
+const ROCK_TONES: ReadonlyArray<readonly [number, number, number]> = [
+  [0.2, 0.2, 0.21],
+  [0.14, 0.135, 0.14],
+  [0.25, 0.18, 0.13],
+  [0.33, 0.3, 0.26],
+]
+
+/** The fine dust drifting through a field, shared by every field. */
+const DUST_MATERIAL = new PointsMaterial({
+  color: 0x8f877c,
+  size: 0.07,
+  sizeAttenuation: true,
+  transparent: true,
+  opacity: 0.55,
+  depthWrite: false,
+})
+DUST_MATERIAL.userData.shared = true
 
 /** A flat ring lying on the board, for a terrain footprint or a mission zone. */
 function flatRing(radius: number, color: number, opacity: number, segments = 96): LineLoop {
@@ -155,8 +235,16 @@ interface FieldEntry {
   rocks: RockInstance[]
 }
 
+interface CloudPuff {
+  sprite: Sprite
+  baseY: number
+  phase: number
+  spin: number
+}
+
 interface CloudEntry {
   root: Group
+  puffs: CloudPuff[]
 }
 
 // ── Mission entries ──────────────────────────────────────────────────────
@@ -248,34 +336,48 @@ export class TerrainLayer implements Layer {
       new SphereGeometry(feature.radius, 40, 26),
       new MeshStandardMaterial({
         map: worldTexture(seed, feature.kind as 'planet' | 'moon'),
-        roughness: isPlanet ? 0.75 : 0.96,
-        metalness: isPlanet ? 0.08 : 0.02,
+        // A touch under white, so the scene's fill light that keeps the hulls
+        // readable does not flatten a world into a lamp.
+        color: 0xb4b4b4,
+        roughness: isPlanet ? 0.8 : 0.96,
+        metalness: 0,
+        // Lit by the sun, not the studio reflections the hulls use: a world
+        // should have a day side and a night side.
+        envMapIntensity: 0.05,
       }),
     )
     sphere.name = 'body'
     root.add(sphere)
 
+    const rng = new Rng((seed ^ 0x9a3) >>> 0)
+    const tint = isPlanet
+      ? new Color().setHSL((rng.next() + 0.55) % 1, 0.6, 0.62)
+      : new Color(0x9aa3b5)
     if (isPlanet) {
-      // Atmosphere: a soft additive halo, sunlit the same way the sphere
-      // itself is (the scene's own upper-left sun) — cheap and consistent
-      // with the codebase's other glows (hulls.ts's engine flares).
-      const rng = new Rng((seed ^ 0x9a3) >>> 0)
-      const tint = new Color().setHSL((rng.next() + 0.55) % 1, 0.55, 0.62).multiplyScalar(1.5)
-      const halo = new Sprite(
-        new SpriteMaterial({
-          map: glowTexture(),
-          color: tint,
-          transparent: true,
-          opacity: 0.5,
-          depthWrite: false,
-          blending: AdditiveBlending,
-          toneMapped: false,
-        }),
-      )
-      const size = feature.radius * 2.6
-      halo.scale.set(size, size, size)
-      root.add(halo)
+      // Atmosphere: a shell a little larger than the world that glows only
+      // toward its limb, where the eye looks through the most air. Lit from
+      // the scene's upper-left sun like everything else.
+      const shell = new Mesh(new SphereGeometry(feature.radius * 1.04, 48, 32), atmosphereMaterial(tint))
+      shell.name = 'atmosphere'
+      root.add(shell)
     }
+    // Where the world meets the table: a thin bright ring on the board at its
+    // rules circle, the footprint that blocks line of sight (E2.3.1).
+    const rim = new Mesh(
+      new RingGeometry(feature.radius, feature.radius + 0.12, 96),
+      new MeshBasicMaterial({
+        color: tint.clone().multiplyScalar(isPlanet ? 1.2 : 0.8),
+        transparent: true,
+        opacity: isPlanet ? 0.75 : 0.5,
+        blending: AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+        side: DoubleSide,
+      }),
+    )
+    rim.rotation.x = -Math.PI / 2
+    rim.position.y = FLOOR
+    root.add(rim)
 
     const label = makeLabel(terrainLabelText(feature), 'l3d-terrain')
     label.position.set(0, feature.radius + 0.6, 0)
@@ -309,25 +411,31 @@ export class TerrainLayer implements Layer {
         // Square-rooted radius so rocks spread evenly over the area (as MapView's own AsteroidScatter does).
         const d = Math.sqrt(rng.next()) * feature.radius * 0.94
         const a = rng.next() * Math.PI * 2
-        const position = new Vector3(Math.cos(a) * d, 0.05 + rng.next() * Math.min(1.1, feature.radius * 0.14), Math.sin(a) * d)
-        const size = feature.radius * (0.05 + rng.next() * 0.1)
+        // Sizes follow a steep power law, as real debris does: a lot of
+        // gravel, a scatter of rocks and the odd boulder that dominates.
+        const k = rng.next()
+        const size = Math.min(feature.radius * 0.12, 0.04 + k * k * k * k * 0.42 + k * 0.08)
+        const lift = 0.08 + size * 0.6 + rng.next() * Math.min(1.3, feature.radius * 0.16)
+        const position = new Vector3(Math.cos(a) * d, lift, Math.sin(a) * d)
         const scale = new Vector3(
-          size * (0.75 + rng.next() * 0.5),
-          size * (0.75 + rng.next() * 0.5),
-          size * (0.75 + rng.next() * 0.5),
+          size * (0.8 + rng.next() * 0.45),
+          size * (0.8 + rng.next() * 0.45),
+          size * (0.8 + rng.next() * 0.45),
         )
         const quat = new Quaternion().random()
         this.tmpMatrix.compose(position, quat, scale)
         mesh.setMatrixAt(i, this.tmpMatrix)
-        const tone = 0.8 + rng.next() * 0.35
-        mesh.setColorAt(i, new Color(0.5 * tone, 0.42 * tone, 0.34 * tone))
+        const tone = ROCK_TONES[rng.next() < 0.1 ? 3 : Math.floor(rng.next() * 3)]
+        const shade = 0.8 + rng.next() * 0.4
+        mesh.setColorAt(i, new Color(tone[0] * shade, tone[1] * shade, tone[2] * shade))
         rocks.push({
           mesh,
           index: i,
           position,
           scale,
           axis: new Vector3(rng.next() - 0.5, rng.next() - 0.5, rng.next() - 0.5).normalize(),
-          rate: 0.12 + rng.next() * 0.3,
+          // Small stones tumble faster than boulders.
+          rate: (0.1 + rng.next() * 0.25) / Math.max(0.35, size * 2),
           quat,
         })
       }
@@ -336,6 +444,19 @@ export class TerrainLayer implements Layer {
       root.add(mesh)
       meshes.push(mesh)
     })
+
+    // Dust and grit between the rocks, so a field reads as a volume of
+    // debris rather than a handful of stones on a floor.
+    const dustCount = Math.min(900, Math.round(total * 5))
+    const dust: number[] = []
+    for (let i = 0; i < dustCount; i++) {
+      const d = Math.sqrt(rng.next()) * feature.radius
+      const a = rng.next() * Math.PI * 2
+      dust.push(Math.cos(a) * d, 0.05 + rng.next() * Math.min(1.6, feature.radius * 0.2), Math.sin(a) * d)
+    }
+    const dustGeo = new BufferGeometry()
+    dustGeo.setAttribute('position', new Float32BufferAttribute(dust, 3))
+    root.add(new Points(dustGeo, DUST_MATERIAL))
 
     const density = feature.density ?? 'medium'
     root.add(flatRing(feature.radius, DENSITY_COLOR[density], 0.55))
@@ -358,7 +479,14 @@ export class TerrainLayer implements Layer {
     return { root, meshes, rocks }
   }
 
-  /** A soft, greenish-teal billboard cloud (K5): several additive puffs plus a faint boundary ring. */
+  /**
+   * A gas cloud (K5): a volume of soft additive puffs, teal through green,
+   * stacked through the cloud's height and slowly turning, over a faint
+   * boundary ring. The puffs skip the depth test — the board would otherwise
+   * slice each billboard off in a hard line where it dips below the table —
+   * so a ship inside a cloud is veiled by it, which is rather the point
+   * (K5.2).
+   */
   private buildCloud(feature: Terrain): CloudEntry {
     const root = new Group()
     root.name = `terrain:${feature.id}`
@@ -366,25 +494,32 @@ export class TerrainLayer implements Layer {
     root.position.set(at.x, 0, at.z)
 
     const rng = new Rng(hashId(feature.id) >>> 0)
-    const puffCount = Math.max(6, Math.min(16, Math.round(feature.radius * 1.5)))
+    const tints = [0x2fd9bd, 0x3fe39a, 0x25b8d0, 0x1f9f86]
+    const puffCount = Math.max(10, Math.min(30, Math.round(feature.radius * 4)))
+    const puffs: CloudPuff[] = []
     for (let i = 0; i < puffCount; i++) {
-      const sprite = new Sprite(
-        new SpriteMaterial({
-          map: cloudTexture(1 + ((hashId(feature.id) + i) % 5)),
-          color: new Color(0x2fd9bd),
-          transparent: true,
-          opacity: 0.13 + rng.next() * 0.09,
-          depthWrite: false,
-          blending: AdditiveBlending,
-          toneMapped: false,
-        }),
-      )
-      const d = Math.sqrt(rng.next()) * feature.radius * 0.8
+      const material = new SpriteMaterial({
+        map: cloudTexture(1 + ((hashId(feature.id) + i) % 5)),
+        color: new Color(tints[i % tints.length]),
+        transparent: true,
+        opacity: 0.07 + rng.next() * 0.07,
+        depthWrite: false,
+        depthTest: false,
+        blending: AdditiveBlending,
+        toneMapped: false,
+        rotation: rng.next() * Math.PI * 2,
+      })
+      const sprite = new Sprite(material)
+      // Denser towards the middle, thinning out to the edge of the counter.
+      const d = Math.pow(rng.next(), 0.8) * feature.radius * 0.85
       const a = rng.next() * Math.PI * 2
-      const size = feature.radius * (0.55 + rng.next() * 0.6)
+      const size = feature.radius * (0.45 + rng.next() * 0.55) * (1 - (d / feature.radius) * 0.35)
       sprite.scale.set(size, size, 1)
-      sprite.position.set(Math.cos(a) * d, 0.3 + rng.next() * 2.2, Math.sin(a) * d)
+      const baseY = 0.4 + rng.next() * Math.min(2.6, feature.radius * 0.5)
+      sprite.position.set(Math.cos(a) * d, baseY, Math.sin(a) * d)
+      sprite.renderOrder = 2
       root.add(sprite)
+      puffs.push({ sprite, baseY, phase: rng.next() * Math.PI * 2, spin: (rng.next() - 0.5) * 0.05 })
     }
 
     root.add(flatRing(feature.radius, 0x2fd9bd, 0.4))
@@ -395,7 +530,7 @@ export class TerrainLayer implements Layer {
     setTooltip(root, feature.scan !== undefined ? `${feature.name} — SCAN ${feature.scan}` : feature.name)
 
     this.features.add(root)
-    return { root }
+    return { root, puffs }
   }
 
   // ── Missions ──────────────────────────────────────────────────────────
@@ -530,6 +665,12 @@ export class TerrainLayer implements Layer {
     if (reducedMotion) return
     for (const world of this.worlds.values()) world.sphere.rotation.y += dt * world.spin
     for (const field of this.fields.values()) this.tumbleField(field, dt)
+    for (const cloud of this.clouds.values()) {
+      for (const puff of cloud.puffs) {
+        ;(puff.sprite.material as SpriteMaterial).rotation += puff.spin * dt
+        puff.sprite.position.y = puff.baseY + Math.sin(now / 4000 + puff.phase) * 0.15
+      }
+    }
     for (const cargo of this.cargos.values()) cargo.mesh.rotation.y += dt * 0.6
     for (const rescue of this.rescues.values()) this.pulseRescue(rescue, now)
   }

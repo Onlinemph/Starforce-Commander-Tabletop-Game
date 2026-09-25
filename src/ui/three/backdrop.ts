@@ -319,6 +319,9 @@ export class BackdropLayer implements Layer {
         transparent: true,
         opacity: 0.08 + rng.next() * 0.06,
         depthWrite: false,
+        // The board would slice each billboard off in a hard line where it
+        // dips below the table; a nebula veils everything, ships included.
+        depthTest: false,
         blending: AdditiveBlending,
         toneMapped: false,
       })

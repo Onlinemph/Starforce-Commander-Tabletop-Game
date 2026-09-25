@@ -142,6 +142,12 @@ export const FIXTURES: Record<string, () => MapFixture> = {
     return { game, selectedId: null, targetId: null, showArcs: false, rangeRings: [], viewSide: null }
   },
 
+  /** Printed asteroid counters of every density, rolled onto the duel (K1.1, K2.1). */
+  'terrain-asteroids': () => {
+    const game = startScenario('s3.1-the-duel', { seed: 11, terrain: 5 })
+    return { game, selectedId: null, targetId: null, showArcs: false, rangeRings: [], viewSide: null }
+  },
+
   /** A nebula tints the whole board (K4.1.1). */
   'terrain-nebula': () => {
     const game = startScenario('exp3-nebula-patrol', { seed: 3 })

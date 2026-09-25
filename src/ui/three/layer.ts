@@ -86,9 +86,17 @@ export function tooltipOf(object: Object3D | null): string | null {
   return null
 }
 
-/** Dispose every geometry and material under an object (textures included). */
+/**
+ * Dispose every geometry and material under an object (textures included),
+ * and take its HTML labels out of the page. A CSS2D label only removes its
+ * own element when it is itself the object detached from the scene; one
+ * nested inside a removed group would otherwise stay on screen, frozen where
+ * it was last drawn.
+ */
 export function disposeTree(root: Object3D): void {
   root.traverse((o) => {
+    const label = o as Object3D & { isCSS2DObject?: boolean; element?: HTMLElement }
+    if (label.isCSS2DObject) label.element?.remove()
     const mesh = o as Object3D & {
       geometry?: { dispose(): void; userData?: { shared?: boolean } }
       material?: { dispose(): void; userData?: { shared?: boolean }; map?: { dispose(): void } | null } | Array<{ dispose(): void }>
