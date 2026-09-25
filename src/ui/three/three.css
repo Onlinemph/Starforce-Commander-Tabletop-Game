@@ -234,4 +234,15 @@
 .theater-stage .battle3d {
   aspect-ratio: auto;
   height: min(68vh, 640px);
+
+/* ── Ordnance: flights, small craft and escape pods, tinted by side ──────── */
+
+.l3d-craft.l3d-blue {
+  color: #bcdcff;
+}
+.l3d-craft.l3d-red {
+  color: #ffc9c9;
+}
+.l3d-craft.l3d-aurelian {
+  color: #ecd2ec;
 }

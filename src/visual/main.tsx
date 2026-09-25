@@ -4,10 +4,12 @@
  * for each entry in `fixtures.ts`, waits for `data-ready`, and photographs
  * the map. Dev-server only — it is not part of the production build.
  */
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { applyAction } from '../engine/actions'
+import type { GameState } from '../engine/game'
 import { MapView } from '../ui/MapView'
+import type { BattleFx } from '../ui/fx'
 import { FIXTURES, type MapFixture } from './fixtures'
 import '../ui/styles.css'
 import '../ui/theme/tokens.css'
@@ -21,7 +23,51 @@ const params = new URLSearchParams(location.search)
 const name = params.get('fixture') ?? ''
 /** `view=3d` draws the fixture in the 3D view instead of the flat map. */
 const view3d = params.get('view') === '3d'
+/** `fx=1` feeds the 3D view a made-up volley between the first two ships, on
+ * a loop — there is no other way to catch `EffectsLayer` mid-flight from a
+ * fixture, since real fx only exist for the length of a replayed action. */
+const fxEnabled = params.get('fx') === '1'
 const BattleView3D = lazy(() => import('../ui/three/BattleView3D'))
+
+/**
+ * A synthetic volley — one of each shot the 2D fx stream can produce, plus
+ * both kinds of impact — fired between `game.ships[0]` and `[1]` every two
+ * seconds, purely so a screenshot has something to catch `EffectsLayer`
+ * doing. Dev-only; nothing here reads or writes the actual battle.
+ */
+function useSyntheticFx(game: GameState): BattleFx[] {
+  const [round, setRound] = useState(0)
+  useEffect(() => {
+    if (!fxEnabled) return
+    const timer = setInterval(() => setRound((r) => r + 1), 2000)
+    return () => clearInterval(timer)
+  }, [])
+  return useMemo(() => {
+    if (!fxEnabled) return []
+    const [a, b] = game.ships
+    if (!a || !b) return []
+    const from = a.placement.position
+    const to = b.placement.position
+    const id = round * 10
+    // Offset each shot sideways a little, the way fx.ts's own `offsetShot`
+    // fans a broadside out — three shots down the same exact line would
+    // stack into one indistinguishable beam.
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const len = Math.hypot(dx, dy) || 1
+    const lane = (n: number) => ({
+      from: { x: from.x + (-dy / len) * 0.5 * n, y: from.y + (dx / len) * 0.5 * n },
+      to: { x: to.x + (-dy / len) * 0.5 * n, y: to.y + (dx / len) * 0.5 * n },
+    })
+    return [
+      { id: id + 1, kind: 'shot', weapon: 'phaser', ...lane(-1), delay: 0 },
+      { id: id + 2, kind: 'shot', weapon: 'disruptor', ...lane(0), delay: 140 },
+      { id: id + 3, kind: 'shot', weapon: 'torpedo', ...lane(1), delay: 280 },
+      { id: id + 4, kind: 'impact', impact: 'shield', at: to, delay: 420 },
+      { id: id + 5, kind: 'impact', impact: 'hull', at: to, delay: 660 },
+    ]
+  }, [game, round])
+}
 
 declare global {
   interface Window {
@@ -40,6 +86,7 @@ declare global {
  */
 function Stage({ fixture }: { fixture: MapFixture }) {
   const [, redraw] = useState(0)
+  const fx = useSyntheticFx(fixture.game)
   window.__navigate = () => {
     const game = fixture.game
     for (let i = 0; i < 40; i++) {
@@ -65,6 +112,7 @@ function Stage({ fixture }: { fixture: MapFixture }) {
               rangeRings={fixture.rangeRings}
               viewSide={fixture.viewSide}
               rulerMode={false}
+              fx={fx}
             />
           </div>
         </Suspense>

@@ -221,3 +221,34 @@ export function worldTexture(seed: number, kind: 'planet' | 'moon'): Texture {
   cache.set(key, tex)
   return tex
 }
+
+/**
+ * A vertical energy band, bright along its centre and dark at both edges,
+ * with a few brighter rungs running across it — a tractor beam's current,
+ * not just its glow. Tiles along its length; animate `texture.offset.y` to
+ * scroll it (J3).
+ */
+export function beamTexture(): Texture {
+  const tex = canvasTexture('beam', 64, (ctx, s) => {
+    const across = ctx.createLinearGradient(0, 0, s, 0)
+    across.addColorStop(0, 'rgba(255,255,255,0)')
+    across.addColorStop(0.5, 'rgba(255,255,255,1)')
+    across.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = across
+    ctx.fillRect(0, 0, s, s)
+    ctx.globalCompositeOperation = 'lighter'
+    for (let i = 0; i < 4; i++) {
+      const y = (i / 4) * s
+      const rung = ctx.createLinearGradient(0, 0, s, 0)
+      rung.addColorStop(0, 'rgba(255,255,255,0)')
+      rung.addColorStop(0.5, 'rgba(255,255,255,0.55)')
+      rung.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = rung
+      ctx.fillRect(0, y, s, s * 0.16)
+    }
+  })
+  tex.wrapS = RepeatWrapping
+  tex.wrapT = RepeatWrapping
+  tex.repeat.set(1, 3)
+  return tex
+}
