@@ -15,6 +15,7 @@ import {
   DirectionalLight,
   HemisphereLight,
   MOUSE,
+  PMREMGenerator,
   Plane,
   PerspectiveCamera,
   Raycaster,
@@ -30,6 +31,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { GameState } from '../../engine/game'
 import { BackdropLayer } from './backdrop'
 import { EffectsLayer } from './effects'
@@ -93,6 +95,13 @@ export class BattleScene {
     host.appendChild(this.labels.domElement)
 
     this.scene.background = new Color(0x010206)
+    // A soft studio environment for reflections only — it is what makes the
+    // plating read as metal rather than matte card — kept dim so space stays
+    // dark and the sun does the modelling.
+    const pmrem = new PMREMGenerator(this.renderer)
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    this.scene.environmentIntensity = 0.28
+    pmrem.dispose()
     this.scene.add(new HemisphereLight(0x8fa8ff, 0x0a0612, 0.55))
     this.scene.add(new AmbientLight(0x404a66, 0.35))
     // One sun for the whole map, from the upper left as the 2D worlds are lit.
@@ -365,6 +374,7 @@ export class BattleScene {
     this.controls.dispose()
     for (const layer of this.layers) layer.dispose()
     this.composer.dispose()
+    this.scene.environment?.dispose()
     this.renderer.dispose()
     this.renderer.domElement.remove()
     this.labels.domElement.remove()
