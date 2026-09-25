@@ -1,0 +1,229 @@
+/* ── The 3D battle view ───────────────────────────────────────────────────
+   Sits where the 2D map does and sizes the same way; the canvas and the
+   label layer both fill it. Labels use the map's own type and colours. */
+
+.battle3d {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  min-height: 320px;
+  overflow: hidden;
+  border-radius: 4px 4px 4px 20px;
+  background: #010206;
+  box-shadow:
+    0 0 0 2px var(--lc-plum, #7d5ba6),
+    0 0 26px rgba(125, 91, 166, 0.28);
+  user-select: none;
+  touch-action: none;
+}
+
+@media (min-width: 1100px) {
+  .map-column > .battle3d {
+    flex: 1 1 0;
+    aspect-ratio: auto;
+    min-height: 260px;
+  }
+}
+
+.battle3d-canvas,
+.battle3d-labels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.battle3d-canvas {
+  display: block;
+  cursor: grab;
+}
+.battle3d-canvas:active {
+  cursor: grabbing;
+}
+.battle3d.is-ruler .battle3d-canvas {
+  cursor: crosshair;
+}
+.battle3d-labels {
+  pointer-events: none;
+}
+
+.battle3d-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+/* Camera chips and the one-line help, over the top-left of the view. */
+.battle3d-hud {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  pointer-events: none;
+  z-index: 2;
+}
+.battle3d-cams {
+  display: flex;
+  gap: 0.3rem;
+  pointer-events: auto;
+}
+.battle3d-cams .chip {
+  backdrop-filter: blur(4px);
+  background: rgba(8, 12, 24, 0.7);
+}
+.battle3d-help {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(159, 171, 198, 0.75);
+  text-shadow: 0 1px 2px #000;
+}
+@media (max-width: 700px) {
+  .battle3d-help {
+    display: none;
+  }
+}
+
+/* Hover text, the 3D counterpart of the map's <title> tooltips. */
+.battle3d-tip {
+  position: absolute;
+  z-index: 3;
+  max-width: 280px;
+  padding: 0.4rem 0.6rem;
+  white-space: pre-line;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #e6edff;
+  background: rgba(6, 10, 22, 0.92);
+  border: 1px solid rgba(125, 91, 166, 0.6);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.battle3d-ruler-read {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 0.25rem 0.6rem;
+  font-variant-numeric: tabular-nums;
+  color: #ffe08a;
+  background: rgba(6, 10, 22, 0.85);
+  border-radius: 4px;
+}
+
+/* ── Labels pinned in the scene ─────────────────────────────────────────── */
+
+.l3d {
+  font-family: inherit;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 0 3px #000,
+    0 1px 2px #000;
+}
+
+.l3d-name {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #dfe8ff;
+}
+.l3d-name.l3d-blue {
+  color: #bcdcff;
+}
+.l3d-name.l3d-red {
+  color: #ffc9c9;
+}
+.l3d-name.l3d-aurelian {
+  color: #ecd2ec;
+}
+.l3d-name.is-ghost {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.l3d-shield {
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(190, 205, 235, 0.92);
+}
+.l3d-shield.is-worn {
+  color: #ffd27a;
+}
+.l3d-shield.is-weak,
+.l3d-shield.is-gone {
+  color: #ff8a70;
+}
+
+.l3d-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #cfe0ff;
+}
+.l3d-badge.is-cloak {
+  color: #c7a8ff;
+}
+
+.l3d-arc {
+  font-size: 10px;
+  color: rgba(170, 190, 255, 0.7);
+}
+
+.l3d-ring {
+  font-size: 10px;
+  padding-bottom: 12px;
+}
+.l3d-ring.is-green {
+  color: #7fe095;
+}
+.l3d-ring.is-max {
+  color: #ffb070;
+}
+
+.l3d-los,
+.l3d-ruler {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffb020;
+}
+.l3d-ruler {
+  color: #ffe08a;
+}
+
+.l3d-plot {
+  font-size: 10px;
+  color: #9fd0ff;
+}
+.l3d-plot.is-illegal {
+  color: #ff8a70;
+}
+
+/* Small-craft, terrain and ordnance labels. */
+.l3d-craft {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim, #9fabc6);
+}
+.l3d-terrain {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: rgba(200, 212, 240, 0.8);
+}
+.l3d-mission {
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffe08a;
+}
+.l3d-datum {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #c7a8ff;
+}

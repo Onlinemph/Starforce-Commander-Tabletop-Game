@@ -4,7 +4,7 @@
  * for each entry in `fixtures.ts`, waits for `data-ready`, and photographs
  * the map. Dev-server only — it is not part of the production build.
  */
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { applyAction } from '../engine/actions'
 import { MapView } from '../ui/MapView'
@@ -17,12 +17,18 @@ import '../ui/theme/panels.css'
 import '../ui/theme/modals.css'
 import '../ui/theme/campaign.css'
 
-const name = new URLSearchParams(location.search).get('fixture') ?? ''
+const params = new URLSearchParams(location.search)
+const name = params.get('fixture') ?? ''
+/** `view=3d` draws the fixture in the 3D view instead of the flat map. */
+const view3d = params.get('view') === '3d'
+const BattleView3D = lazy(() => import('../ui/three/BattleView3D'))
 
 declare global {
   interface Window {
     /** Advance the fixture's battle through its next Navigation Segment and redraw. */
     __navigate?: () => void
+    /** The last ship the 3D view reported a click on. */
+    __selected?: string
   }
 }
 
@@ -45,6 +51,24 @@ function Stage({ fixture }: { fixture: MapFixture }) {
   }
   return (
     <div className="visual-fixture" style={{ width: 1200, padding: 8 }}>
+      {view3d ? (
+        <Suspense fallback={null}>
+          <div style={{ height: 800, display: 'flex' }} className="map-column">
+            <BattleView3D
+              game={fixture.game}
+              selectedId={fixture.selectedId}
+              targetId={fixture.targetId}
+              onSelect={(id) => {
+                window.__selected = id
+              }}
+              showArcs={fixture.showArcs}
+              rangeRings={fixture.rangeRings}
+              viewSide={fixture.viewSide}
+              rulerMode={false}
+            />
+          </div>
+        </Suspense>
+      ) : (
       <MapView
         game={fixture.game}
         selectedId={fixture.selectedId}
@@ -56,6 +80,7 @@ function Stage({ fixture }: { fixture: MapFixture }) {
         rulerMode={false}
         viewLock
       />
+      )}
     </div>
   )
 }

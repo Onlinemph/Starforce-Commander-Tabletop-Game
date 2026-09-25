@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
@@ -89,6 +89,7 @@ export function App() {
   const [showArcs, setShowArcs] = useState(true)
   const [showRings, setShowRings] = useState(false)
   const [rulerMode, setRulerMode] = useState(false)
+  const [mapView, setMapView] = useMapView()
   const [picking, setPicking] = useState(false)
   const [building, setBuilding] = useState(false)
   const [wrighting, setWrighting] = useState(false)
@@ -689,17 +690,34 @@ export function App() {
 
         <main className="layout">
           <section className="map-column">
-            <MapView
-              game={game}
-              selectedId={selected?.id ?? null}
-              targetId={targetId}
-              onSelect={onSelect}
-              showArcs={showArcs}
-              rangeRings={rangeRings}
-              viewSide={viewSide}
-              rulerMode={rulerMode}
-              fx={activeFx()}
-            />
+            {mapView === '3d' ? (
+              <Suspense fallback={<div className="battle3d battle3d-failed">Loading the 3D view…</div>}>
+                <BattleView3D
+                  game={game}
+                  selectedId={selected?.id ?? null}
+                  targetId={targetId}
+                  onSelect={onSelect}
+                  showArcs={showArcs}
+                  rangeRings={rangeRings}
+                  viewSide={viewSide}
+                  rulerMode={rulerMode}
+                  fx={activeFx()}
+                  onExit={() => setMapView('2d')}
+                />
+              </Suspense>
+            ) : (
+              <MapView
+                game={game}
+                selectedId={selected?.id ?? null}
+                targetId={targetId}
+                onSelect={onSelect}
+                showArcs={showArcs}
+                rangeRings={rangeRings}
+                viewSide={viewSide}
+                rulerMode={rulerMode}
+                fx={activeFx()}
+              />
+            )}
 
             <div className="map-controls">
               <div className="view-chips" title="B1.9 — ship forms are hidden information. A side view shows only what that commander may see.">
@@ -746,6 +764,19 @@ export function App() {
                         ))}
                   </>
                 )}
+              </div>
+              <div className="view-chips" title="The same battle drawn flat, or in three dimensions. Rules and orders are identical in both.">
+                <span>Map</span>
+                {(['2d', '3d'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`chip${mapView === mode ? ' is-on' : ''}`}
+                    onClick={() => setMapView(mode)}
+                  >
+                    {mode.toUpperCase()}
+                  </button>
+                ))}
               </div>
               <label className="checkbox">
                 <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
@@ -1414,6 +1445,34 @@ function MissionStatus({ game }: { game: GameState }) {
  * session.
  */
 const LOG_COMPACT_KEY = 'sfc.log-compact.v1'
+
+/**
+ * The optional 3D map. Loaded on first use, so three.js stays out of the
+ * bundle for anyone who plays on the flat map.
+ */
+const BattleView3D = lazy(() => import('./three/BattleView3D'))
+
+/** Which map the player last chose, remembered per browser. */
+const MAP_VIEW_KEY = 'sfc.map-view.v1'
+
+function useMapView(): ['2d' | '3d', (mode: '2d' | '3d') => void] {
+  const [mode, setMode] = useState<'2d' | '3d'>(() => {
+    try {
+      return localStorage.getItem(MAP_VIEW_KEY) === '3d' ? '3d' : '2d'
+    } catch {
+      return '2d'
+    }
+  })
+  const choose = (next: '2d' | '3d') => {
+    setMode(next)
+    try {
+      localStorage.setItem(MAP_VIEW_KEY, next)
+    } catch {
+      // Only the remembered preference is lost.
+    }
+  }
+  return [mode, choose]
+}
 
 function LogPanel({ game, viewSide }: { game: GameState; viewSide: string | null }) {
   const [compact, setCompact] = useState(() => {

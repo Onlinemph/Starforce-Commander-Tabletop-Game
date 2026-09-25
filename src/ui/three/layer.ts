@@ -1,0 +1,105 @@
+/**
+ * The contract every part of the 3D scene keeps.
+ *
+ * The scene is built from layers — backdrop, terrain, ships, ordnance,
+ * overlays, effects — each owning one `THREE.Group` and nothing else. The
+ * orchestrator (`BattleScene`) hands every layer the same view of the battle
+ * whenever it changes, and a clock every frame. A layer diffs the battle
+ * against what it has built (by id) rather than rebuilding, so a hull that
+ * has not changed is not touched and an animation in flight is not restarted.
+ *
+ * Layers never change the game. Like the 2D map, everything here is a pure
+ * reading of `GameState` plus the view's own props.
+ */
+import type { Camera, Group, Object3D } from 'three'
+import type { GameState } from '../../engine/game'
+import type { BattleFx } from '../fx'
+import type { RangeRing } from '../MapView'
+
+/** What the 3D view is asked to show: the same props as the 2D map. */
+export interface ViewProps {
+  selectedId: string | null
+  targetId: string | null
+  showArcs: boolean
+  rangeRings: RangeRing[]
+  viewSide: string | null
+  rulerMode: boolean
+  fx: BattleFx[]
+}
+
+export interface LayerContext {
+  game: GameState
+  view: ViewProps
+  /** `performance.now()` when this update was issued. */
+  now: number
+}
+
+export interface FrameContext {
+  /** Milliseconds, `performance.now()` clock. */
+  now: number
+  /** Seconds since the previous frame, clamped so a background tab does not jump. */
+  dt: number
+  camera: Camera
+  /** Honour prefers-reduced-motion: no bobbing, no flight playback. */
+  reducedMotion: boolean
+}
+
+export interface Layer {
+  readonly group: Group
+  update(ctx: LayerContext): void
+  tick?(frame: FrameContext): void
+  dispose(): void
+}
+
+/**
+ * Tag an object so a click on any mesh inside it resolves to a game entity.
+ * The picker walks up from the hit mesh to the first tagged ancestor.
+ */
+export interface Pickable {
+  kind: 'ship'
+  id: string
+}
+
+export function tagPickable(object: Object3D, pick: Pickable): void {
+  object.userData.pick = pick
+}
+
+export function pickableOf(object: Object3D | null): Pickable | null {
+  for (let o: Object3D | null = object; o; o = o.parent) {
+    if (o.userData.pick) return o.userData.pick as Pickable
+  }
+  return null
+}
+
+/**
+ * Hover text for any tagged object, shown in the view's tooltip — the 3D
+ * counterpart of the 2D map's `<title>` elements.
+ */
+export function setTooltip(object: Object3D, text: string): void {
+  object.userData.tooltip = text
+}
+
+export function tooltipOf(object: Object3D | null): string | null {
+  for (let o: Object3D | null = object; o; o = o.parent) {
+    if (typeof o.userData.tooltip === 'string') return o.userData.tooltip
+  }
+  return null
+}
+
+/** Dispose every geometry and material under an object (textures included). */
+export function disposeTree(root: Object3D): void {
+  root.traverse((o) => {
+    const mesh = o as Object3D & {
+      geometry?: { dispose(): void; userData?: { shared?: boolean } }
+      material?: { dispose(): void; userData?: { shared?: boolean }; map?: { dispose(): void } | null } | Array<{ dispose(): void }>
+    }
+    if (mesh.geometry && !mesh.geometry.userData?.shared) mesh.geometry.dispose()
+    const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []
+    for (const m of mats) {
+      const mat = m as { dispose(): void; userData?: { shared?: boolean }; map?: { dispose(): void } | null }
+      if (mat.userData?.shared) continue
+      mat.map?.dispose()
+      mat.dispose()
+    }
+  })
+}
