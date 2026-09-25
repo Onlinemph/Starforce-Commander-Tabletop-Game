@@ -228,3 +228,10 @@
   letter-spacing: 0.12em;
   color: #c7a8ff;
 }
+
+/* In the replay theater the view shares the stage with the transport
+   controls, so it takes the same cap as the flat map there. */
+.theater-stage .battle3d {
+  aspect-ratio: auto;
+  height: min(68vh, 640px);
+}

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { actionLabel, buildTimeline, replayPrefix } from '../data/replay'
 import { parseSavedGame, type SavedGame } from '../data/savedGame'
 import { PHASE_LABELS, SEGMENT_LABELS, victoryPoints, type GameState } from '../engine/game'
 import { fxAcross, type BattleFx } from './fx'
 import { MapView } from './MapView'
+import { BattleView3D, MapModeChips, useMapView } from './MapSwitch'
 import {
   canRecordVideo,
   DEFAULT_RECORD,
@@ -44,6 +45,7 @@ export function ReplayTheater({ initial, onClose }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [recording, setRecording] = useState<{ done: number; total: number } | null>(null)
+  const [mapView, setMapView] = useMapView()
   const [highlightsOnly, setHighlightsOnly] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -227,6 +229,9 @@ export function ReplayTheater({ initial, onClose }: Props) {
     const controller = new AbortController()
     abortRef.current = controller
     setRecording({ done: 0, total: last })
+    // Recording swaps a 3D stage for the flat map; let that render before the
+    // recorder looks for the SVG to film.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     try {
       const blob = await recordReplay(
         () => stageRef.current?.querySelector('svg') ?? null,
@@ -333,6 +338,12 @@ export function ReplayTheater({ initial, onClose }: Props) {
                 : '⏺ Export video'}
             </button>
           )}
+          <MapModeChips
+            mode={mapView}
+            onChange={setMapView}
+            disabled={recording !== null}
+            title="Watch the replay flat or in 3D. A video export is always filmed on the flat map."
+          />
           {note && <span className="hint">{note}</span>}
           <button type="button" onClick={onClose} aria-label="Close" disabled={recording !== null}>
             ✕
@@ -355,18 +366,37 @@ export function ReplayTheater({ initial, onClose }: Props) {
               ))}
             </div>
 
-            <MapView
-              game={game}
-              selectedId={selectedId}
-              targetId={null}
-              onSelect={setSelectedId}
-              showArcs={false}
-              rangeRings={[]}
-              viewSide={null}
-              rulerMode={false}
-              fx={fxRef.current}
-              viewLock={recording !== null}
-            />
+            {/* The video recorder films the flat map, so a recording always
+                plays out on it whatever the viewer had chosen. */}
+            {mapView === '3d' && recording === null ? (
+              <Suspense fallback={<div className="battle3d battle3d-failed">Loading the 3D view…</div>}>
+                <BattleView3D
+                  game={game}
+                  selectedId={selectedId}
+                  targetId={null}
+                  onSelect={setSelectedId}
+                  showArcs={false}
+                  rangeRings={[]}
+                  viewSide={null}
+                  rulerMode={false}
+                  fx={fxRef.current}
+                  onExit={() => setMapView('2d')}
+                />
+              </Suspense>
+            ) : (
+              <MapView
+                game={game}
+                selectedId={selectedId}
+                targetId={null}
+                onSelect={setSelectedId}
+                showArcs={false}
+                rangeRings={[]}
+                viewSide={null}
+                rulerMode={false}
+                fx={fxRef.current}
+                viewLock={recording !== null}
+              />
+            )}
 
             <div className="theater-controls">
               <button type="button" onClick={() => jump(0)} title="Back to deployment" aria-label="Start">

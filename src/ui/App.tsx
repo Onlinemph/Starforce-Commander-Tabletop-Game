@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { allScenarioEntries } from '../data/scenarios'
 import {
   activeShips,
@@ -29,6 +29,7 @@ import { FormationPanel } from './FormationPanel'
 import { ScoutSensorPanel } from './ScoutSensorPanel'
 import { DamageControlPanel } from './DamageControlPanel'
 import { MapView, type RangeRing } from './MapView'
+import { BattleView3D, MapModeChips, useMapView } from './MapSwitch'
 import { ScenarioDesigner } from './ScenarioDesigner'
 import { SensorLab } from './SensorLab'
 import { ShipBuilder } from './ShipBuilder'
@@ -765,19 +766,7 @@ export function App() {
                   </>
                 )}
               </div>
-              <div className="view-chips" title="The same battle drawn flat, or in three dimensions. Rules and orders are identical in both.">
-                <span>Map</span>
-                {(['2d', '3d'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`chip${mapView === mode ? ' is-on' : ''}`}
-                    onClick={() => setMapView(mode)}
-                  >
-                    {mode.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+              <MapModeChips mode={mapView} onChange={setMapView} />
               <label className="checkbox">
                 <input type="checkbox" checked={showArcs} onChange={(e) => setShowArcs(e.target.checked)} />
                 Firing arcs
@@ -1446,33 +1435,6 @@ function MissionStatus({ game }: { game: GameState }) {
  */
 const LOG_COMPACT_KEY = 'sfc.log-compact.v1'
 
-/**
- * The optional 3D map. Loaded on first use, so three.js stays out of the
- * bundle for anyone who plays on the flat map.
- */
-const BattleView3D = lazy(() => import('./three/BattleView3D'))
-
-/** Which map the player last chose, remembered per browser. */
-const MAP_VIEW_KEY = 'sfc.map-view.v1'
-
-function useMapView(): ['2d' | '3d', (mode: '2d' | '3d') => void] {
-  const [mode, setMode] = useState<'2d' | '3d'>(() => {
-    try {
-      return localStorage.getItem(MAP_VIEW_KEY) === '3d' ? '3d' : '2d'
-    } catch {
-      return '2d'
-    }
-  })
-  const choose = (next: '2d' | '3d') => {
-    setMode(next)
-    try {
-      localStorage.setItem(MAP_VIEW_KEY, next)
-    } catch {
-      // Only the remembered preference is lost.
-    }
-  }
-  return [mode, choose]
-}
 
 function LogPanel({ game, viewSide }: { game: GameState; viewSide: string | null }) {
   const [compact, setCompact] = useState(() => {
