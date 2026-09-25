@@ -67,6 +67,8 @@ export class BattleScene {
   private layers: Layer[]
   private ships = new ShipsLayer()
   private overlays = new OverlaysLayer()
+  private terrain = new TerrainLayer()
+  private ordnance = new OrdnanceLayer()
   private raycaster = new Raycaster()
   private board = new Plane(new Vector3(0, 1, 0), 0)
   private game: GameState | null = null
@@ -114,10 +116,10 @@ export class BattleScene {
 
     this.layers = [
       new BackdropLayer(),
-      new TerrainLayer(),
+      this.terrain,
       this.overlays,
       this.ships,
-      new OrdnanceLayer(),
+      this.ordnance,
       new EffectsLayer(),
     ]
     for (const layer of this.layers) this.scene.add(layer.group)
@@ -143,6 +145,10 @@ export class BattleScene {
     el.addEventListener('pointerleave', this.onPointerLeave)
     el.addEventListener('dblclick', this.onDoubleClick)
     el.addEventListener('contextmenu', (e) => e.preventDefault())
+
+    // Lines and points pick within a tenth of an inch, not the default inch.
+    this.raycaster.params.Line = { threshold: 0.1 }
+    this.raycaster.params.Points = { threshold: 0.1 }
 
     this.resizeObserver = new ResizeObserver(() => this.resize())
     this.resizeObserver.observe(host)
@@ -279,6 +285,13 @@ export class BattleScene {
     return hits.length > 0 ? hits[0].object : null
   }
 
+  /** The nearest terrain feature or small craft under the pointer that carries hover text. */
+  private hoverTarget(e: PointerEvent) {
+    this.raycaster.setFromCamera(this.ndc(e), this.camera)
+    const hits = this.raycaster.intersectObjects([this.ordnance.group, this.terrain.group], true)
+    return hits.find((h) => tooltipOf(h.object) !== null)?.object ?? null
+  }
+
   private rulerFrom: { x: number; y: number } | null = null
 
   private onPointerDown = (e: PointerEvent): void => {
@@ -308,10 +321,13 @@ export class BattleScene {
     if (e.buttons !== 0) return
     const hit = this.pick(e)
     const pick = pickableOf(hit)
+    // Hover text reaches past the hulls to the terrain and small craft, the
+    // way every 2D counter carries a <title>; only hulls are clickable.
+    const hover = hit ?? this.hoverTarget(e)
     this.ships.setHovered(pick?.id ?? null)
     this.renderer.domElement.style.cursor = pick ? 'pointer' : this.view?.rulerMode ? 'crosshair' : 'grab'
     const rect = this.host.getBoundingClientRect()
-    const text = tooltipOf(hit)
+    const text = tooltipOf(hover)
     this.callbacks.onHover(text, text ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null)
   }
 
