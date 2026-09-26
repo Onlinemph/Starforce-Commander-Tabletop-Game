@@ -13,6 +13,7 @@ import {
   AmbientLight,
   Color,
   DirectionalLight,
+  HalfFloatType,
   HemisphereLight,
   MOUSE,
   PMREMGenerator,
@@ -24,17 +25,20 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { GameState } from '../../engine/game'
 import { BackdropLayer } from './backdrop'
 import { EffectsLayer } from './effects'
+import { gradePass } from './grade'
 import { pickableOf, tooltipOf, type Layer, type ViewProps } from './layer'
 import { OrdnanceLayer } from './ordnance'
 import { OverlaysLayer } from './overlays'
@@ -62,6 +66,7 @@ export class BattleScene {
   private controls: OrbitControls
   private composer: EffectComposer
   private bloom: UnrealBloomPass
+  private grade: ShaderPass
   private last = performance.now()
   private frame = 0
   private layers: Layer[]
@@ -132,10 +137,16 @@ export class BattleScene {
     this.controls.minDistance = 3
     this.controls.mouseButtons = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }
 
-    this.composer = new EffectComposer(this.renderer)
+    // Post-processing renders into its own targets, which the canvas's own
+    // antialiasing never reaches — so the scene target is multisampled
+    // itself, or every hull edge and grid line would stair-step.
+    const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 })
+    this.composer = new EffectComposer(this.renderer, target)
     this.composer.addPass(new RenderPass(this.scene, this.camera))
     this.bloom = new UnrealBloomPass(new Vector2(256, 256), 0.85, 0.5, 0.62)
     this.composer.addPass(this.bloom)
+    this.grade = gradePass()
+    this.composer.addPass(this.grade)
     this.composer.addPass(new OutputPass())
 
     const el = this.renderer.domElement
@@ -261,6 +272,7 @@ export class BattleScene {
 
     const frame = { now, dt, camera: this.camera, reducedMotion: this.reducedMotion }
     for (const layer of this.layers) layer.tick?.(frame)
+    this.grade.uniforms.time.value = now / 1000
     this.composer.render()
     this.labels.render(this.scene, this.camera)
   }
