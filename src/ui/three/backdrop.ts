@@ -210,9 +210,9 @@ const BOARD_FRAGMENT = /* glsl */ `
     // tactical surface must never do to the hulls sitting on it.
     vec3 col = base + sheen * sheenColor;
     col *= falloff;
-    col += fine * vec3(0.006, 0.012, 0.024);
-    col += major * vec3(0.016, 0.034, 0.07);
-    col += plus * vec3(0.05, 0.1, 0.17);
+    col += fine * vec3(0.004, 0.008, 0.016);
+    col += major * vec3(0.011, 0.023, 0.048);
+    col += plus * vec3(0.03, 0.06, 0.105);
     col += sweep * vec3(0.012, 0.028, 0.055);
 
     gl_FragColor = vec4(col, 1.0);

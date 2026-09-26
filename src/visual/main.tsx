@@ -8,6 +8,8 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { applyAction } from '../engine/actions'
 import type { GameState } from '../engine/game'
+import type { HomingWeapon } from '../engine/homing'
+import type { TractorLink } from '../engine/tractor'
 import { MapView } from '../ui/MapView'
 import type { BattleFx } from '../ui/fx'
 import { FIXTURES, type MapFixture } from './fixtures'
@@ -69,12 +71,68 @@ function useSyntheticFx(game: GameState): BattleFx[] {
   }, [game, round])
 }
 
+/**
+ * An AMAT torpedo shuttling between the fixture's first two ships, and a
+ * tractor beam held between them, plus a slow drift for any fighter flights
+ * already on the board — `OrdnanceLayer`'s other moving parts, which no
+ * fixture alone puts in the air. Invented for the screenshot exactly like
+ * `useSyntheticFx`'s volley; undone on unmount so a fixture never carries
+ * this into a real test.
+ */
+function useSyntheticOrdnance(game: GameState, redraw: () => void): void {
+  useEffect(() => {
+    if (!fxEnabled) return
+    const [a, b] = game.ships
+    if (!a || !b) return
+    const amat: HomingWeapon = {
+      id: 'visual-amat',
+      ownerId: a.id,
+      side: a.side,
+      weaponId: 'visual-amat',
+      weaponName: 'AMAT TORPEDO',
+      targetId: b.id,
+      position: { ...a.placement.position },
+      phasesFlown: 1,
+      maxSpeed: 8,
+      damage: 0,
+      tractored: false,
+      destroyed: false,
+      impacted: false,
+    }
+    const link: TractorLink = { id: 'visual-tractor', sourceId: a.id, targetId: b.id, targetKind: 'ship', beams: 1, power: 'nrm' }
+    game.homing.push(amat)
+    game.ops.links.push(link)
+    const bases = game.flights.map((f) => ({ ...f.position }))
+    let leg = 0
+    const timer = setInterval(() => {
+      leg = (leg + 1) % 6
+      const from = a.placement.position
+      const to = b.placement.position
+      const along = 0.08 + 0.82 * (leg / 5)
+      amat.position = { x: from.x + (to.x - from.x) * along, y: from.y + (to.y - from.y) * along }
+      game.flights.forEach((f, i) => {
+        const base = bases[i]
+        if (!base) return
+        f.position = { x: base.x + Math.sin(leg * 1.1 + i) * 1.3, y: base.y + Math.cos(leg * 0.8 + i) * 0.6 }
+      })
+      redraw()
+    }, 480)
+    return () => {
+      clearInterval(timer)
+      game.homing = game.homing.filter((h) => h.id !== 'visual-amat')
+      game.ops.links = game.ops.links.filter((l) => l.id !== 'visual-tractor')
+    }
+  }, [game])
+}
+
 declare global {
   interface Window {
     /** Advance the fixture's battle through its next Navigation Segment and redraw. */
     __navigate?: () => void
     /** The last ship the 3D view reported a click on. */
     __selected?: string
+    /** The fixture's own battle, for poking at from the console while developing. */
+    __game?: GameState
   }
 }
 
@@ -87,6 +145,8 @@ declare global {
 function Stage({ fixture }: { fixture: MapFixture }) {
   const [, redraw] = useState(0)
   const fx = useSyntheticFx(fixture.game)
+  useSyntheticOrdnance(fixture.game, () => redraw((n) => n + 1))
+  window.__game = fixture.game
   window.__navigate = () => {
     const game = fixture.game
     for (let i = 0; i < 40; i++) {
