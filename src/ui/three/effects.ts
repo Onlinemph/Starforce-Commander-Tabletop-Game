@@ -330,7 +330,9 @@ export class EffectsLayer implements Layer {
       this.sheathTemplates.set(
         weapon,
         new MeshBasicMaterial({
-          color: tint.clone().multiplyScalar(1.7),
+          // Bright enough to bloom into a glow, not so bright the glow
+          // washes a quarter of the screen.
+          color: tint.clone().multiplyScalar(1.15),
           transparent: true,
           opacity: 0,
           toneMapped: false,

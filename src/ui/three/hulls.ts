@@ -358,9 +358,9 @@ function nav() {
     return m
   }
   navMaterials = {
-    red: make(new Color(0xff3030).multiplyScalar(2)),
-    green: make(new Color(0x30ff70).multiplyScalar(2)),
-    white: make(new Color(0xffffff).multiplyScalar(2.4)),
+    red: make(new Color(0xff3030).multiplyScalar(1.1)),
+    green: make(new Color(0x30ff70).multiplyScalar(1.1)),
+    white: make(new Color(0xdfe8ff).multiplyScalar(0.9)),
   }
   return navMaterials
 }
@@ -463,7 +463,7 @@ export function buildHull(form: ShipForm, side: SideColor): HullModel {
   const light = (m: SpriteMaterial, at: Vector3) => {
     const s = new Sprite(m)
     s.position.copy(at)
-    s.scale.setScalar(0.09)
+    s.scale.setScalar(0.07)
     group.add(s)
     return s
   }
