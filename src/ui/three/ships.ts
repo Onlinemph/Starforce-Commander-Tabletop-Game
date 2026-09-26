@@ -40,6 +40,7 @@ import { makeLabel, setLabel, type CSS2DObject } from './labels'
 import { disposeTree, setTooltip, tagPickable, type FrameContext, type Layer, type LayerContext } from './layer'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { DEG, HULL_ALTITUDE, SHIELD_COLOR, SHIP_SIZE, SIDE_COLOR, alongHeading, headingToYaw, shieldBand, sideColorOf } from './space'
+import { ShieldBubble } from './shieldBubble'
 import { Wake } from './wake'
 import { drawnShips } from './visibility'
 
@@ -108,6 +109,8 @@ interface Entry {
   speed: number
   /** The glowing wake a flying hull leaves behind it. */
   wake: Wake
+  /** The shield envelope shown round the selected or hovered hull. */
+  bubble: ShieldBubble
   /** Drawn position and unwrapped heading right now. */
   x: number
   z: number
@@ -256,6 +259,7 @@ export class ShipsLayer implements Layer {
       this.group.remove(entry.root, entry.wake.mesh)
       disposeTree(entry.root)
       entry.wake.dispose()
+      entry.bubble.dispose()
       this.entries.delete(id)
     }
     this.primed = true
@@ -364,6 +368,9 @@ export class ShipsLayer implements Layer {
     const wake = new Wake(0x6fb4ff, Math.max(0.08, model.geometry.halfBeam * 0.55))
     this.group.add(wake.mesh)
 
+    const bubble = new ShieldBubble(model.geometry.halfBeam, model.geometry.halfLength, Math.max(0.32, model.geometry.top * 2.2))
+    body.add(bubble.mesh)
+
     return {
       root,
       turn,
@@ -378,6 +385,7 @@ export class ShipsLayer implements Layer {
       lockMaterial,
       speed: ship.speed,
       wake,
+      bubble,
       x: ship.placement.position.x,
       z: ship.placement.position.y,
       heading: ship.placement.heading,
@@ -390,6 +398,7 @@ export class ShipsLayer implements Layer {
   }
 
   private updateShields(entry: Entry, ship: ShipState, cloakRunning: boolean): void {
+    const facings = {} as Record<Facing, { color: number; fraction: number }>
     for (const [side, start, end] of SHIELD_ARCS) {
       const arc = entry.shields[side]
       const armor = armorOnly(ship, side)
@@ -425,7 +434,10 @@ export class ShipsLayer implements Layer {
             ? `${blue}+${green}`
             : `${blue}`
       setLabel(arc.figure, text, `l3d-shield is-${dead ? 'gone' : band}`)
+      // Armour is plate, not energy: it has no place in the bubble.
+      facings[side] = { color: SHIELD_COLOR[band === 'gone' ? 'weak' : band], fraction: armor || dead ? 0 : Math.max(0.15, fraction) }
     }
+    entry.bubble.setFacings(facings)
   }
 
   tick({ now, dt, reducedMotion }: FrameContext): void {
@@ -455,6 +467,7 @@ export class ShipsLayer implements Layer {
       e.body.rotation.z = reducedMotion ? 0 : Math.sin(now / 1700 + e.phase) * 0.02
 
       animateHull(e.model, now, dt, e.speed, reducedMotion)
+      e.bubble.tick(id === this.selectedId ? 1 : this.hovered === id ? 0.55 : 0, now, dt)
       if (!reducedMotion) {
         const stern = alongHeading({ x: e.x, z: e.z }, e.heading, -e.model.geometry.halfLength)
         e.wake.update(stern, HULL_ALTITUDE * 0.7, e.flight !== null, now, dt)
@@ -485,6 +498,7 @@ export class ShipsLayer implements Layer {
     for (const e of this.entries.values()) {
       disposeTree(e.root)
       e.wake.dispose()
+      e.bubble.dispose()
     }
     this.entries.clear()
     this.pickGeometry.dispose()
