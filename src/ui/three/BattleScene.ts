@@ -83,6 +83,16 @@ export class BattleScene {
   private down: { x: number; y: number } | null = null
   private measuring = false
   private resizeObserver: ResizeObserver
+  /**
+   * Adaptive resolution: the view watches its own frame time and trades
+   * pixels for smoothness on a device that is struggling, then buys them
+   * back when there is headroom. A strategy board wants a steady 30+ fps
+   * more than it wants every last pixel.
+   */
+  private maxPixelRatio = 1
+  private pixelRatio = 1
+  private frameTimes: number[] = []
+  private lastQualityCheck = 0
   private reducedMotion =
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -91,7 +101,9 @@ export class BattleScene {
     private callbacks: SceneCallbacks,
   ) {
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+    this.pixelRatio = this.maxPixelRatio
+    this.renderer.setPixelRatio(this.pixelRatio)
     this.renderer.outputColorSpace = SRGBColorSpace
     this.renderer.toneMapping = ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.05
@@ -255,6 +267,24 @@ export class BattleScene {
     }
   }
 
+  /** Step the render resolution toward what this device can hold at 30+ fps. */
+  private adaptQuality(now: number, dt: number): void {
+    this.frameTimes.push(dt)
+    if (now - this.lastQualityCheck < 2000 || this.frameTimes.length < 6) return
+    this.lastQualityCheck = now
+    const sorted = [...this.frameTimes].sort((a, b) => a - b)
+    const typical = sorted[Math.floor(sorted.length / 2)]
+    this.frameTimes.length = 0
+    let next = this.pixelRatio
+    if (typical > 1 / 28) next = Math.max(0.75, this.pixelRatio - 0.25)
+    else if (typical < 1 / 55) next = Math.min(this.maxPixelRatio, this.pixelRatio + 0.25)
+    if (next === this.pixelRatio) return
+    this.pixelRatio = next
+    this.renderer.setPixelRatio(next)
+    this.composer.setPixelRatio(next)
+    this.resize()
+  }
+
   private resize(): void {
     const w = Math.max(1, this.host.clientWidth)
     const h = Math.max(1, this.host.clientHeight)
@@ -269,8 +299,12 @@ export class BattleScene {
   private loop = (): void => {
     this.frame = requestAnimationFrame(this.loop)
     const now = performance.now()
-    const dt = Math.min((now - this.last) / 1000, 0.1)
+    const raw = (now - this.last) / 1000
+    const dt = Math.min(raw, 0.1)
     this.last = now
+    // A tab back from the background (animation frames stop while hidden)
+    // or the first frame's shader compile is not a device in trouble.
+    if (raw < 3 && this.flight?.start !== Infinity) this.adaptQuality(now, raw)
 
     if (this.flight) {
       const t = Math.max(0, Math.min(1, (now - this.flight.start) / this.flightMs))
