@@ -234,6 +234,7 @@
 .theater-stage .battle3d {
   aspect-ratio: auto;
   height: min(68vh, 640px);
+}
 
 /* ── Ordnance: flights, small craft and escape pods, tinted by side ──────── */
 
@@ -245,4 +246,12 @@
 }
 .l3d-craft.l3d-aurelian {
   color: #ecd2ec;
+}
+
+/* ── Backdrop: the board edge's ruler labels (A2.9), every 6" ────────────── */
+
+.l3d-edge {
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  color: rgba(206, 182, 232, 0.55);
 }

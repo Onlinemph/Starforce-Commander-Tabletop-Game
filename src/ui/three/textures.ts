@@ -295,3 +295,151 @@ function paintPlanet(ctx: CanvasRenderingContext2D, w: number, h: number, rand: 
   }
   ctx.putImageData(img, 0, 0)
 }
+
+// ── Skybox: a deep-space equirectangular panorama ───────────────────────
+// Painted once and cached like everything else here, so `BackdropLayer`'s
+// huge inverted sphere never repaints: the same canvas wraps it for the
+// life of the tab. The nebula base is painted at a small, cheap resolution
+// (the softness reads better than sharp per-pixel noise ever would) and
+// scaled up; stars and galaxies go on directly at full size afterwards.
+
+/** The Milky Way's tilt, off the sphere's own poles so the band reads as a diagonal sweep, not a boring horizon line. */
+export const MILKY_WAY_AXIS = normalizeXYZ(0.55, 0.62, -0.56)
+
+function normalizeXYZ(x: number, y: number, z: number): { x: number; y: number; z: number } {
+  const len = Math.hypot(x, y, z) || 1
+  return { x: x / len, y: y / len, z: z / len }
+}
+
+/**
+ * A unit direction for equirectangular canvas coordinates (u, v in [0,1)),
+ * matching `SphereGeometry`'s own UV convention exactly (it pushes
+ * `(u, 1 - v)` for its vertices), so the painted sky wraps the sphere with
+ * no seam and the pole pinch falls where nothing here needs to line up.
+ * Exported only so its geometry can be checked by a plain-node test.
+ */
+export function skyDirection(u: number, v: number): { x: number; y: number; z: number } {
+  const theta = v * Math.PI
+  const phi = u * Math.PI * 2
+  const s = Math.sin(theta)
+  return { x: -s * Math.cos(phi), y: Math.cos(theta), z: s * Math.sin(phi) }
+}
+
+/**
+ * The deep-space skybox: fractal nebula clouds (violet, deep blue and teal,
+ * with a warmer patch near the sun), a Milky-Way band of fine stars, a
+ * scatter of brighter stars, and a couple of distant spiral galaxies.
+ * `sunDir` must already be normalized. Cached by pixel size only — the sun
+ * direction is a fixed constant of the game's lighting, not a variable.
+ */
+export function skyboxTexture(w: number, h: number, sunDir: { x: number; y: number; z: number }): Texture {
+  const key = `sky-${w}x${h}`
+  const hit = cache.get(key)
+  if (hit) return hit
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+
+  // The nebula base: fractal noise at a quarter the size or less, then
+  // smoothed up onto the full canvas.
+  const lw = 256
+  const lh = 128
+  const low = document.createElement('canvas')
+  low.width = lw
+  low.height = lh
+  const lctx = low.getContext('2d')!
+  const img = lctx.createImageData(lw, lh)
+  const period = 5
+  const octaves = (s0: number) => [0, 1, 2, 3].map((o) => wrappedNoise(s0 + o * 11, period << o))
+  const structureN = octaves(701)
+  const hueN = octaves(823)
+  const violet = new Color(0x4a2a8a)
+  const blue = new Color(0x1c3f9a)
+  const teal = new Color(0x13606a)
+  const warm = new Color(0xffb066)
+  const wave = new Color(0x9fb0d8)
+  const bg = new Color(0x03040a)
+  const tmp = new Color()
+  const tmp2 = new Color()
+
+  for (let py = 0; py < lh; py++) {
+    const v = py / lh
+    for (let px = 0; px < lw; px++) {
+      const u = px / lw
+      const x = u * period
+      const y = v * period * 0.5
+      const structure = fbm(structureN, x, y)
+      const hue = fbm(hueN, x * 1.7, y * 1.7)
+      // Sparse patches, not a uniform haze: most of the sky stays black.
+      const cloud = Math.min(1, Math.max(0, structure - 0.38) * 1.6)
+
+      tmp.copy(bg)
+      if (cloud > 0) {
+        tmp2.copy(violet).lerp(blue, hue).lerp(teal, Math.max(0, hue - 0.55) * 2.2)
+        tmp.lerp(tmp2, cloud * 0.85)
+        // Brighter filaments where the clouds are densest.
+        if (cloud > 0.55) tmp.lerp(tmp2.clone().multiplyScalar(1.8), (cloud - 0.55) * 0.9)
+      }
+
+      const dir = skyDirection(u, v)
+      const sunDot = dir.x * sunDir.x + dir.y * sunDir.y + dir.z * sunDir.z
+      const warmth = Math.max(0, sunDot - 0.5) / 0.5
+      if (warmth > 0) tmp.lerp(warm, Math.min(0.4, warmth * warmth * 0.45))
+
+      const bandDot = dir.x * MILKY_WAY_AXIS.x + dir.y * MILKY_WAY_AXIS.y + dir.z * MILKY_WAY_AXIS.z
+      const band = Math.max(0, 1 - Math.abs(bandDot) / 0.12)
+      if (band > 0) tmp.lerp(wave, Math.pow(band, 1.6) * 0.32)
+
+      const k = (py * lw + px) * 4
+      img.data[k] = Math.round(Math.min(1, tmp.r) * 255)
+      img.data[k + 1] = Math.round(Math.min(1, tmp.g) * 255)
+      img.data[k + 2] = Math.round(Math.min(1, tmp.b) * 255)
+      img.data[k + 3] = 255
+    }
+  }
+  lctx.putImageData(img, 0, 0)
+  ctx.imageSmoothingEnabled = true
+  ctx.drawImage(low, 0, 0, w, h)
+
+  // Stars are not painted here: stretched over a whole sky they would be
+  // several screen pixels wide and soft. BackdropLayer draws them as points,
+  // crisp at any resolution. Only the galaxies, which should be soft, stay.
+  const rand = seededRandom(0x51a1 ^ w ^ (h << 1))
+
+  // A couple of distant spiral galaxies: a soft elliptical core seen at an
+  // angle, plus a few faint arm streaks — nothing that needs per-pixel work.
+  for (let i = 0; i < 2; i++) {
+    const px = rand() * w
+    const py = rand() * h * 0.85 + h * 0.05
+    const size = Math.min(w, h) * (0.05 + rand() * 0.04)
+    const tint = i === 0 ? 'rgba(200,210,255,' : 'rgba(255,224,190,'
+    ctx.save()
+    ctx.translate(px, py)
+    ctx.rotate(rand() * Math.PI)
+    ctx.scale(1, 0.32 + rand() * 0.18)
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, size)
+    core.addColorStop(0, tint + '0.5)')
+    core.addColorStop(0.4, tint + '0.22)')
+    core.addColorStop(1, tint + '0)')
+    ctx.fillStyle = core
+    ctx.fillRect(-size, -size, size * 2, size * 2)
+    ctx.globalCompositeOperation = 'lighter'
+    for (let a = 0; a < 3; a++) {
+      const arm = ctx.createLinearGradient(-size * 1.4, 0, size * 1.4, 0)
+      arm.addColorStop(0, tint + '0)')
+      arm.addColorStop(0.5, tint + '0.12)')
+      arm.addColorStop(1, tint + '0)')
+      ctx.fillStyle = arm
+      ctx.fillRect(-size * 1.4, -size * 0.12 + a * size * 0.1, size * 2.8, size * 0.1)
+    }
+    ctx.restore()
+  }
+
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  tex.userData.shared = true
+  cache.set(key, tex)
+  return tex
+}

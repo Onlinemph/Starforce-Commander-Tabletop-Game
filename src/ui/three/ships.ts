@@ -467,7 +467,7 @@ export class ShipsLayer implements Layer {
       e.body.rotation.z = reducedMotion ? 0 : Math.sin(now / 1700 + e.phase) * 0.02
 
       animateHull(e.model, now, dt, e.speed, reducedMotion)
-      e.bubble.tick(id === this.selectedId ? 1 : this.hovered === id ? 0.55 : 0, now, dt)
+      e.bubble.tick(id === this.selectedId ? 0.75 : this.hovered === id ? 0.45 : 0, now, dt)
       if (!reducedMotion) {
         const stern = alongHeading({ x: e.x, z: e.z }, e.heading, -e.model.geometry.halfLength)
         e.wake.update(stern, HULL_ALTITUDE * 0.7, e.flight !== null, now, dt)
@@ -485,7 +485,10 @@ export class ShipsLayer implements Layer {
         e.lock.rotation.z = -now / 2500
         e.lock.scale.setScalar(1 + 0.04 * Math.sin(now / 260))
       }
-      e.model.materials.edges.color.setHex(selected ? 0xeaf4ff : targeted ? 0xffb020 : e.edgeBase)
+      // Selected hulls brighten their own outline rather than turning white:
+      // with the bubble and reticle on top, white bloomed the whole ship out.
+      e.model.materials.edges.color.setHex(targeted ? 0xffb020 : e.edgeBase)
+      if (selected) e.model.materials.edges.color.multiplyScalar(1.35)
     }
   }
 
