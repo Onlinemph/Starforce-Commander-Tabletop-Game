@@ -10,11 +10,17 @@
  */
 import {
   AdditiveBlending,
+  BufferGeometry,
+  Color,
   CylinderGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
+  PlaneGeometry,
   RingGeometry,
+  Shape,
+  ShapeGeometry,
   TorusGeometry,
   type Object3D,
 } from 'three'
@@ -28,10 +34,13 @@ import {
   type ShipState,
 } from '../../engine/shipState'
 import { trailDuration, trailIsNewer, trailKeyframes, type MotionKey } from '../motion'
-import { buildHull, styleHull, type HullModel } from './hulls'
+import { animateHull, buildHull, styleHull, type HullModel } from './hulls'
+import { glowTexture } from './textures'
 import { makeLabel, setLabel, type CSS2DObject } from './labels'
 import { disposeTree, setTooltip, tagPickable, type FrameContext, type Layer, type LayerContext } from './layer'
-import { DEG, HULL_ALTITUDE, SHIELD_COLOR, SHIP_SIZE, headingToYaw, shieldBand, sideColorOf } from './space'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { DEG, HULL_ALTITUDE, SHIELD_COLOR, SHIP_SIZE, SIDE_COLOR, alongHeading, headingToYaw, shieldBand, sideColorOf } from './space'
+import { Wake } from './wake'
 import { drawnShips } from './visibility'
 
 type Facing = 'F' | 'S' | 'A' | 'P'
@@ -90,8 +99,15 @@ interface Entry {
   shields: Record<Facing, ShieldArc>
   name: CSS2DObject
   badge: CSS2DObject
-  selectRing: Mesh<RingGeometry, MeshBasicMaterial>
-  targetRing: Mesh<RingGeometry, MeshBasicMaterial>
+  /** The holographic selection reticle and the target-lock brackets. */
+  reticle: Group
+  reticleMaterial: MeshBasicMaterial
+  lock: Group
+  lockMaterial: MeshBasicMaterial
+  /** The ship's speed, which sets how long its drive plumes burn. */
+  speed: number
+  /** The glowing wake a flying hull leaves behind it. */
+  wake: Wake
   /** Drawn position and unwrapped heading right now. */
   x: number
   z: number
@@ -115,13 +131,23 @@ export class ShipsLayer implements Layer {
   private targetId: string | null = null
   private pickGeometry = new CylinderGeometry(SHIP_SIZE / 2, SHIP_SIZE / 2, 0.7, 20)
   private pickMaterial = new MeshBasicMaterial({ visible: false })
-  private ringGeometry = new RingGeometry(RING_RADIUS + 0.1, RING_RADIUS + 0.14, 64)
+  private ringGeometry = new RingGeometry(RING_RADIUS + 0.1, RING_RADIUS + 0.125, 64)
+  /** Four short arcs outside the ring, turning slowly: the reticle's ticks. */
+  private tickGeometry = mergeGeometries(
+    [0, 90, 180, 270].map((deg) => new RingGeometry(RING_RADIUS + 0.2, RING_RADIUS + 0.28, 8, 1, ((deg - 12) * Math.PI) / 180, (24 * Math.PI) / 180)),
+  )!
+  /** Four corner brackets, the target lock. */
+  private bracketGeometry = lockBrackets(RING_RADIUS + 0.42)
+  private shadowGeometry = new PlaneGeometry(1, 1)
 
   constructor() {
     this.group.name = 'ships'
     this.pickGeometry.userData.shared = true
     this.pickMaterial.userData.shared = true
     this.ringGeometry.userData.shared = true
+    this.tickGeometry.userData.shared = true
+    this.bracketGeometry.userData.shared = true
+    this.shadowGeometry.userData.shared = true
   }
 
   /** Where a ship is drawn right now (mid-flight included), for the camera and overlays. */
@@ -176,6 +202,7 @@ export class ShipsLayer implements Layer {
         }
       }
       entry.target = { x: ship.placement.position.x, z: ship.placement.position.y, heading: ship.placement.heading }
+      entry.speed = ship.speed
       if (!entry.seen) {
         // First sight: appear where the table says, no flight.
         entry.x = entry.target.x
@@ -226,8 +253,9 @@ export class ShipsLayer implements Layer {
 
     for (const [id, entry] of this.entries) {
       if (live.has(id)) continue
-      this.group.remove(entry.root)
+      this.group.remove(entry.root, entry.wake.mesh)
       disposeTree(entry.root)
+      entry.wake.dispose()
       this.entries.delete(id)
     }
     this.primed = true
@@ -277,22 +305,64 @@ export class ShipsLayer implements Layer {
     badge.position.set(0, HULL_ALTITUDE + 0.2, -(RING_RADIUS + 0.55))
     root.add(badge)
 
-    const ringMaterial = (color: number) =>
+    // Grounding: a soft dark shadow on the board under the hull, and a pool
+    // of the side's colour around it, so ships sit on the table and their
+    // allegiance reads even from far off.
+    const shadow = new Mesh(
+      this.shadowGeometry,
+      new MeshBasicMaterial({ color: 0x000000, map: glowTexture(), transparent: true, opacity: 0.8, depthWrite: false }),
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.y = 0.011
+    shadow.scale.set(model.geometry.halfBeam * 3.2, model.geometry.halfLength * 2.9, 1)
+    const pool = new Mesh(
+      this.shadowGeometry,
       new MeshBasicMaterial({
-        color,
+        color: new Color(SIDE_COLOR[sideColorOf(ship.side)]),
+        map: glowTexture(),
         transparent: true,
-        opacity: 0,
+        opacity: 0.22,
         blending: AdditiveBlending,
         depthWrite: false,
-      })
-    const selectRing = new Mesh(this.ringGeometry, ringMaterial(0xcfe6ff))
-    selectRing.rotation.x = -Math.PI / 2
-    selectRing.position.y = 0.012
-    const targetRing = new Mesh(this.ringGeometry, ringMaterial(0xffb020))
-    targetRing.rotation.x = -Math.PI / 2
-    targetRing.position.y = 0.014
-    targetRing.scale.setScalar(1.12)
-    root.add(selectRing, targetRing)
+      }),
+    )
+    pool.rotation.x = -Math.PI / 2
+    pool.position.y = 0.012
+    pool.scale.setScalar(SHIP_SIZE * 1.35)
+    turn.add(shadow)
+    root.add(pool)
+
+    const reticleMaterial = new MeshBasicMaterial({
+      color: 0xcfe6ff,
+      transparent: true,
+      opacity: 0,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      side: DoubleSide,
+    })
+    const reticle = new Group()
+    reticle.add(new Mesh(this.ringGeometry, reticleMaterial), new Mesh(this.tickGeometry, reticleMaterial))
+    reticle.rotation.x = -Math.PI / 2
+    reticle.position.y = 0.014
+    const lockMaterial = new MeshBasicMaterial({
+      color: new Color(0xffb020).multiplyScalar(1.4),
+      transparent: true,
+      opacity: 0,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+      side: DoubleSide,
+    })
+    const lock = new Group()
+    lock.add(new Mesh(this.bracketGeometry, lockMaterial))
+    lock.rotation.x = -Math.PI / 2
+    lock.position.y = 0.016
+    root.add(reticle, lock)
+
+    // The wake lives in world space, in the layer's own group, since it
+    // traces where the hull has been rather than riding along with it.
+    const wake = new Wake(0x6fb4ff, Math.max(0.08, model.geometry.halfBeam * 0.55))
+    this.group.add(wake.mesh)
 
     return {
       root,
@@ -302,8 +372,12 @@ export class ShipsLayer implements Layer {
       shields,
       name,
       badge,
-      selectRing,
-      targetRing,
+      reticle,
+      reticleMaterial,
+      lock,
+      lockMaterial,
+      speed: ship.speed,
+      wake,
       x: ship.placement.position.x,
       z: ship.placement.position.y,
       heading: ship.placement.heading,
@@ -380,11 +454,24 @@ export class ShipsLayer implements Layer {
       e.body.position.y = HULL_ALTITUDE + bob
       e.body.rotation.z = reducedMotion ? 0 : Math.sin(now / 1700 + e.phase) * 0.02
 
+      animateHull(e.model, now, dt, e.speed, reducedMotion)
+      if (!reducedMotion) {
+        const stern = alongHeading({ x: e.x, z: e.z }, e.heading, -e.model.geometry.halfLength)
+        e.wake.update(stern, HULL_ALTITUDE * 0.7, e.flight !== null, now, dt)
+      }
+
       const selected = id === this.selectedId
       const targeted = id === this.targetId
-      const pulse = 0.4 + 0.2 * Math.sin(now / 320)
-      e.selectRing.material.opacity = selected ? pulse : this.hovered === id ? 0.22 : 0
-      e.targetRing.material.opacity = targeted ? 0.45 + 0.25 * Math.sin(now / 200) : 0
+      const pulse = 0.55 + 0.2 * Math.sin(now / 320)
+      e.reticleMaterial.opacity = selected ? pulse : this.hovered === id ? 0.25 : 0
+      e.reticle.visible = e.reticleMaterial.opacity > 0
+      if (!reducedMotion) e.reticle.rotation.z = now / 4000
+      e.lockMaterial.opacity = targeted ? 0.6 + 0.3 * Math.sin(now / 180) : 0
+      e.lock.visible = targeted
+      if (targeted && !reducedMotion) {
+        e.lock.rotation.z = -now / 2500
+        e.lock.scale.setScalar(1 + 0.04 * Math.sin(now / 260))
+      }
       e.model.materials.edges.color.setHex(selected ? 0xeaf4ff : targeted ? 0xffb020 : e.edgeBase)
     }
   }
@@ -395,12 +482,36 @@ export class ShipsLayer implements Layer {
   }
 
   dispose(): void {
-    for (const e of this.entries.values()) disposeTree(e.root)
+    for (const e of this.entries.values()) {
+      disposeTree(e.root)
+      e.wake.dispose()
+    }
     this.entries.clear()
     this.pickGeometry.dispose()
     this.pickMaterial.dispose()
     this.ringGeometry.dispose()
+    this.tickGeometry.dispose()
+    this.bracketGeometry.dispose()
+    this.shadowGeometry.dispose()
   }
+}
+
+/** Four L-shaped corner brackets around a square of half-size `r`, flat in XY. */
+function lockBrackets(r: number): BufferGeometry {
+  const arm = r * 0.32
+  const w = 0.05
+  const corner = (sx: number, sy: number) => {
+    const shape = new Shape()
+    shape.moveTo(sx * r, sy * r)
+    shape.lineTo(sx * (r - arm), sy * r)
+    shape.lineTo(sx * (r - arm), sy * (r - w))
+    shape.lineTo(sx * (r - w), sy * (r - w))
+    shape.lineTo(sx * (r - w), sy * (r - arm))
+    shape.lineTo(sx * r, sy * (r - arm))
+    shape.closePath()
+    return shape
+  }
+  return new ShapeGeometry([corner(1, 1), corner(-1, 1), corner(-1, -1), corner(1, -1)])
 }
 
 /** Position and heading at `t` (0..1) along keyframes with offsets. */

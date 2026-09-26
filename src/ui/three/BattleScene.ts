@@ -178,7 +178,23 @@ export class BattleScene {
     const ctx = { game, view, now: performance.now() }
     for (const layer of this.layers) layer.update(ctx)
     this.overlays.setShipPositions((id) => this.ships.drawnPosition(id))
-    if (first || resized) this.setPreset('tilt', true)
+    if (first || resized) {
+      this.setPreset('tilt', true)
+      // Opening the view swoops in from high and wide onto the battle, the
+      // establishing shot — once, and never under reduced motion.
+      if (first && !this.reducedMotion) {
+        const end = this.camera.position.clone()
+        const target = this.controls.target.clone()
+        const start = end.clone().sub(target).applyAxisAngle(new Vector3(0, 1, 0), -0.7).multiplyScalar(1.9).add(target)
+        start.y = end.y * 1.6
+        this.camera.position.copy(start)
+        // Timed from the first frame actually drawn: compiling the shaders can
+        // take a moment on a slow device, and the swoop should not have
+        // finished before anyone sees it.
+        this.flight = { from: start, to: end, fromT: target.clone(), toT: target, start: Infinity }
+        this.flightMs = 2200
+      }
+    }
     if (!view.rulerMode && this.measuring) {
       this.measuring = false
       this.overlays.setRuler(null)
@@ -210,6 +226,7 @@ export class BattleScene {
     const e = elevation * (Math.PI / 180)
     const position = new Vector3(center.x, Math.sin(e) * distance, center.z + Math.cos(e) * distance)
     this.follow = false
+    this.flight = null
     this.controls.maxDistance = Math.max(distance, framingDistance(width, height, FOV, aspect)) * 2
     if (instant || this.reducedMotion) {
       this.camera.position.copy(position)
@@ -226,7 +243,9 @@ export class BattleScene {
   }
 
   private flight: { from: Vector3; to: Vector3; fromT: Vector3; toT: Vector3; start: number } | null = null
+  private flightMs = 900
   private flyTo(position: Vector3, target: Vector3): void {
+    this.flightMs = 900
     this.flight = {
       from: this.camera.position.clone(),
       to: position,
@@ -254,7 +273,7 @@ export class BattleScene {
     this.last = now
 
     if (this.flight) {
-      const t = Math.min(1, (now - this.flight.start) / 900)
+      const t = Math.max(0, Math.min(1, (now - this.flight.start) / this.flightMs))
       const k = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
       this.camera.position.lerpVectors(this.flight.from, this.flight.to, k)
       this.controls.target.lerpVectors(this.flight.fromT, this.flight.toT, k)
@@ -274,6 +293,7 @@ export class BattleScene {
     for (const layer of this.layers) layer.tick?.(frame)
     this.grade.uniforms.time.value = now / 1000
     this.composer.render()
+    if (this.flight && this.flight.start === Infinity) this.flight.start = performance.now()
     this.labels.render(this.scene, this.camera)
   }
 
@@ -376,6 +396,7 @@ export class BattleScene {
     if (!at) return false
     const target = new Vector3(at.x, 0, at.z)
     const offset = this.camera.position.clone().sub(this.controls.target).setLength(distance)
+    this.flight = null
     if (instant) {
       this.camera.position.copy(target.clone().add(offset))
       this.controls.target.copy(target)
@@ -388,6 +409,7 @@ export class BattleScene {
 
   /** Orbit to a given elevation (degrees) and bearing about the current target. */
   orbitTo(elevation: number, bearing: number, distance?: number): void {
+    this.flight = null
     const d = distance ?? this.camera.position.distanceTo(this.controls.target)
     const e = elevation * (Math.PI / 180)
     const b = bearing * (Math.PI / 180)

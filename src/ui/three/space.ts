@@ -81,13 +81,15 @@ export const WEAPON_COLOR = {
 
 /** Hull plating washes by damage level, from the 2D stylesheet. */
 export const DAMAGE_TINT: Record<string, number> = {
-  none: 0x2a3550,
-  minor: 0x2f3348,
-  light: 0x3a3324,
-  moderate: 0x4a2f1c,
-  heavy: 0x55241a,
-  crippled: 0x5e1a14,
-  derelict: 0x1c1c22,
+  // Multiplied by the panel texture, so these are the plating's paint:
+  // gunmetal when whole, scorched toward rust and char as it is hurt.
+  none: 0x7482a0,
+  minor: 0x6f7b96,
+  light: 0x76705f,
+  moderate: 0x76604f,
+  heavy: 0x6d4838,
+  crippled: 0x5a2f25,
+  derelict: 0x2e2e34,
 }
 
 /** How big the hull glyph is drawn, as a fraction of the counter (same curve as 2D). */
