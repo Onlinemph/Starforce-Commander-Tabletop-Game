@@ -28,6 +28,17 @@ export interface BattleView3DProps {
   onExit?: () => void
 }
 
+const EFFECTS_KEY = 'sfc.3d-effects.v1'
+
+/** The player's bloom-and-grading choice on this device (on unless turned off). */
+function storedEffects(): boolean {
+  try {
+    return localStorage.getItem(EFFECTS_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
 /** Whether this browser can draw WebGL at all. */
 export function webglAvailable(): boolean {
   try {
@@ -57,6 +68,7 @@ export default function BattleView3D({
   const [ruler, setRuler] = useState<{ inches: number } | null>(null)
   const [preset, setPreset] = useState<CameraPreset>('tilt')
   const [follow, setFollow] = useState(false)
+  const [effects, setEffects] = useState(storedEffects)
   const select = useRef(onSelect)
   select.current = onSelect
 
@@ -92,6 +104,15 @@ export default function BattleView3D({
   useEffect(() => {
     scene.current?.setFollow(follow)
   }, [follow])
+
+  useEffect(() => {
+    scene.current?.setEffects(effects)
+    try {
+      localStorage.setItem(EFFECTS_KEY, effects ? 'on' : 'off')
+    } catch {
+      // Private mode or blocked storage: the choice lasts this visit only.
+    }
+  }, [effects])
 
   const choose = (p: CameraPreset) => {
     setPreset(p)
@@ -146,6 +167,15 @@ export default function BattleView3D({
             onClick={() => setFollow((f) => !f)}
           >
             Follow
+          </button>
+          <button
+            type="button"
+            className={`chip${effects ? ' is-on' : ''}`}
+            aria-pressed={effects}
+            title="Glow and film grading. Turn off if the picture looks wrong or runs slowly on this device"
+            onClick={() => setEffects((on) => !on)}
+          >
+            Effects
           </button>
         </div>
         <p className="battle3d-help">

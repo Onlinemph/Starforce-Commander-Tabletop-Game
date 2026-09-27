@@ -16,6 +16,7 @@ import {
   HalfFloatType,
   HemisphereLight,
   MOUSE,
+  UnsignedByteType,
   PMREMGenerator,
   Plane,
   PerspectiveCamera,
@@ -93,6 +94,10 @@ export class BattleScene {
   private pixelRatio = 1
   private frameTimes: number[] = []
   private lastQualityCheck = 0
+  /** What the canvas and render targets were last sized to. */
+  private sized = { w: 0, h: 0, pr: 0 }
+  /** Bloom and grading on; off draws the scene straight to the canvas. */
+  private effects = true
   private reducedMotion =
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -151,9 +156,18 @@ export class BattleScene {
 
     // Post-processing renders into its own targets, which the canvas's own
     // antialiasing never reaches — so the scene target is multisampled
-    // itself, or every hull edge and grid line would stair-step.
-    const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 })
+    // itself, or every hull edge and grid line would stair-step. Half-float
+    // (headroom for bloom) only where the GPU can render to it, and never
+    // more samples than it offers.
+    const floatOk = this.renderer.extensions.has('EXT_color_buffer_float')
+    const target = new WebGLRenderTarget(1, 1, {
+      type: floatOk ? HalfFloatType : UnsignedByteType,
+      samples: Math.min(4, this.renderer.capabilities.maxSamples),
+    })
     this.composer = new EffectComposer(this.renderer, target)
+    // The composer is sized in drawing-buffer pixels (see fitToHost), so its
+    // targets always match the canvas exactly, at any pixel ratio.
+    this.composer.setPixelRatio(1)
     this.composer.addPass(new RenderPass(this.scene, this.camera))
     this.bloom = new UnrealBloomPass(new Vector2(256, 256), 0.85, 0.5, 0.62)
     this.composer.addPass(this.bloom)
@@ -173,9 +187,9 @@ export class BattleScene {
     this.raycaster.params.Line = { threshold: 0.1 }
     this.raycaster.params.Points = { threshold: 0.1 }
 
-    this.resizeObserver = new ResizeObserver(() => this.resize())
+    this.resizeObserver = new ResizeObserver(() => this.fitToHost())
     this.resizeObserver.observe(host)
-    this.resize()
+    this.fitToHost()
     this.loop()
   }
 
@@ -278,22 +292,41 @@ export class BattleScene {
     let next = this.pixelRatio
     if (typical > 1 / 28) next = Math.max(0.75, this.pixelRatio - 0.25)
     else if (typical < 1 / 55) next = Math.min(this.maxPixelRatio, this.pixelRatio + 0.25)
-    if (next === this.pixelRatio) return
     this.pixelRatio = next
-    this.renderer.setPixelRatio(next)
-    this.composer.setPixelRatio(next)
-    this.resize()
   }
 
-  private resize(): void {
+  /**
+   * Keep the canvas, the render targets, the labels and the camera in step
+   * with the view's box. Checked every frame, not only on ResizeObserver: a
+   * window dragged to a screen of another pixel density, or a browser that
+   * reports a layout late, must not leave the picture drawn at a stale size.
+   */
+  private fitToHost(): void {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    if (dpr !== this.maxPixelRatio) {
+      this.maxPixelRatio = dpr
+      this.pixelRatio = dpr
+    }
     const w = Math.max(1, this.host.clientWidth)
     const h = Math.max(1, this.host.clientHeight)
+    const pr = this.pixelRatio
+    const canvas = this.renderer.domElement
+    const bufW = Math.floor(w * pr)
+    const bufH = Math.floor(h * pr)
+    const { sized } = this
+    if (sized.w === w && sized.h === h && sized.pr === pr && canvas.width === bufW && canvas.height === bufH) return
+    this.sized = { w, h, pr }
+    this.renderer.setPixelRatio(pr)
     this.renderer.setSize(w, h, false)
+    this.composer.setSize(canvas.width, canvas.height)
     this.labels.setSize(w, h)
-    this.composer.setSize(w, h)
-    this.bloom.resolution.set(w / 2, h / 2)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()
+  }
+
+  /** Bloom and grading on or off (off is plainer, and lighter on the GPU). */
+  setEffects(on: boolean): void {
+    this.effects = on
   }
 
   private loop = (): void => {
@@ -305,6 +338,7 @@ export class BattleScene {
     // A tab back from the background (animation frames stop while hidden)
     // or the first frame's shader compile is not a device in trouble.
     if (raw < 3 && this.flight?.start !== Infinity) this.adaptQuality(now, raw)
+    this.fitToHost()
 
     if (this.flight) {
       const t = Math.max(0, Math.min(1, (now - this.flight.start) / this.flightMs))
@@ -326,7 +360,8 @@ export class BattleScene {
     const frame = { now, dt, camera: this.camera, reducedMotion: this.reducedMotion }
     for (const layer of this.layers) layer.tick?.(frame)
     this.grade.uniforms.time.value = now / 1000
-    this.composer.render()
+    if (this.effects) this.composer.render()
+    else this.renderer.render(this.scene, this.camera)
     if (this.flight && this.flight.start === Infinity) this.flight.start = performance.now()
     this.labels.render(this.scene, this.camera)
   }
