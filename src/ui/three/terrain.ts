@@ -1,6 +1,7 @@
 /**
  * Terrain (Section K) and the missions (missions.ts): planets and moons that
- * block line of sight, asteroid fields that cost speed and grant cover, gas
+ * block line of sight — hung just under the table, seen through a window in
+ * the board, so a ship crossing one visibly flies over it (K3.1.3) — asteroid fields that cost speed and grant cover, gas
  * clouds that hide, and the objectives scenarios drop on top of any of it.
  *
  * Terrain is fixed for the life of a scenario, so `update` builds each
@@ -67,6 +68,12 @@ const DENSITY_ROCK_FACTOR: Record<AsteroidDensity, number> = {
 }
 
 // ── Pure helpers (tested in terrain.test.ts) ───────────────────────────────
+
+/** How far under the table a world's top sits: just clear of the board plane. */
+const WORLD_SINK = 0.06
+
+/** The glowing wall of the window a world is seen through, as a fraction of its radius. */
+const WELL_DEPTH = 0.55
 
 /** A stable, cheap hash from a feature's id to a numeric seed — the same technique MapView's AsteroidScatter uses. */
 export function hashId(id: string): number {
@@ -141,6 +148,32 @@ const ROCK_GEOMETRIES = buildRockGeometries()
  * A fresnel atmosphere: transparent face-on, glowing at the limb, brighter
  * on the sunward side. Additive, so it only ever adds light.
  */
+/** The window wall's glow: bright at the rim, gone a little way down. */
+function wellMaterial(color: Color): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: color } },
+    vertexShader: /* glsl */ `
+      varying float vUp;
+      void main() {
+        vUp = uv.y;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      varying float vUp;
+      void main() {
+        float a = pow(vUp, 3.0) * 0.32;
+        gl_FragColor = vec4(uColor * a, a);
+      }
+    `,
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: DoubleSide,
+  })
+}
+
 function atmosphereMaterial(color: Color): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
@@ -323,12 +356,27 @@ export class TerrainLayer implements Layer {
     }
   }
 
-  /** A lit, procedurally-textured sphere whose radius is the rules circle (E2.3): it blocks line of sight for real. */
+  /**
+   * A lit, procedurally-textured sphere whose radius is the rules circle
+   * (E2.3), hung so its top sits just under the table and seen through a
+   * window of exactly that circle (see the board shader in backdrop.ts).
+   *
+   * Line of sight is a flat rule — the circle blocks or it does not — so the
+   * world does not stand up and hide ships from some camera angles but not
+   * others. Instead a ship over it plainly flies over it, and the blocked
+   * sightlines are drawn (overlays.ts) from the rules' own check.
+   */
   private buildWorld(feature: Terrain): WorldEntry {
     const root = new Group()
     root.name = `terrain:${feature.id}`
     const at = toWorld(feature.center)
     root.position.set(at.x, 0, at.z)
+    const body = new Group()
+    body.position.y = -feature.radius - WORLD_SINK
+    // Tipped well over, so the camera above the table looks down on a
+    // world's middle latitudes rather than straight onto its pole.
+    body.rotation.set(1.15, 0, 0.35)
+    root.add(body)
 
     const seed = hashId(feature.id)
     const isPlanet = feature.kind === 'planet'
@@ -347,7 +395,7 @@ export class TerrainLayer implements Layer {
       }),
     )
     sphere.name = 'body'
-    root.add(sphere)
+    body.add(sphere)
 
     const rng = new Rng((seed ^ 0x9a3) >>> 0)
     const tint = isPlanet
@@ -359,8 +407,18 @@ export class TerrainLayer implements Layer {
       // the scene's upper-left sun like everything else.
       const shell = new Mesh(new SphereGeometry(feature.radius * 1.04, 48, 32), atmosphereMaterial(tint))
       shell.name = 'atmosphere'
-      root.add(shell)
+      body.add(shell)
     }
+    // The window's wall: a short sleeve down from the table's edge, glowing
+    // at the top and fading into the dark, so the opening reads as a cut
+    // in the board rather than a hole in the picture.
+    const well = new Mesh(
+      new CylinderGeometry(feature.radius, feature.radius, feature.radius * WELL_DEPTH, 96, 1, true),
+      wellMaterial(tint.clone().multiplyScalar(isPlanet ? 1 : 0.8)),
+    )
+    well.name = 'well'
+    well.position.y = -(feature.radius * WELL_DEPTH) / 2
+    root.add(well)
     // Where the world meets the table: a thin bright ring on the board at its
     // rules circle, the footprint that blocks line of sight (E2.3.1).
     const rim = new Mesh(
@@ -379,10 +437,11 @@ export class TerrainLayer implements Layer {
     rim.position.y = FLOOR
     root.add(rim)
 
+    // Named at its north edge, clear of any ship crossing the middle.
     const label = makeLabel(terrainLabelText(feature), 'l3d-terrain')
-    label.position.set(0, feature.radius + 0.6, 0)
+    label.position.set(0, FLOOR, -feature.radius - 0.5)
     root.add(label)
-    setTooltip(root, feature.name)
+    setTooltip(root, `${feature.name} — blocks line of sight across it; a ship over it sees and is seen`)
 
     this.features.add(root)
     // A stable, slow spin — pure decoration, no rules meaning.

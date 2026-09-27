@@ -9,7 +9,8 @@
  */
 import { positionIsHidden } from '../../engine/cloaking'
 import { formationOf } from '../../engine/formation'
-import type { GameState } from '../../engine/game'
+import type { GameState, Terrain } from '../../engine/game'
+import { hasLineOfSight } from '../../engine/geometry'
 import type { ShipState } from '../../engine/shipState'
 
 export interface DrawnShip {
@@ -36,4 +37,58 @@ export function drawnShips(game: GameState, viewSide: string | null): DrawnShip[
     })
   }
   return out
+}
+
+/**
+ * The enemy hulls the selected ship cannot see, each with the planet or
+ * moon in the way (E2.3.1). It is the rules' own line-of-sight check, so a
+ * ship over a world sees and is seen (K3.1.3), and the answer does not
+ * depend on where the camera is.
+ */
+export function blockedSightlines(
+  game: GameState,
+  selectedId: string | null,
+  viewSide: string | null,
+): Map<string, Terrain> {
+  const out = new Map<string, Terrain>()
+  const drawn = drawnShips(game, viewSide)
+  const from = drawn.find((d) => d.ship.id === selectedId)?.ship
+  if (!from) return out
+  const worlds = game.scenario.terrain.filter((t) => t.kind === 'planet' || t.kind === 'moon')
+  if (worlds.length === 0) return out
+  for (const { ship } of drawn) {
+    if (ship.side === from.side) continue
+    const blocker = worlds.find(
+      (w) =>
+        !hasLineOfSight(from.placement.position, ship.placement.position, [
+          { center: w.center, radius: w.radius, blocksLos: true },
+        ]),
+    )
+    if (blocker) out.set(ship.id, blocker)
+  }
+  return out
+}
+
+/**
+ * Where a sightline from `a` toward `b` first meets a world's circle, as a
+ * fraction of the way along — or null if it does not (for drawing the line
+ * cut off where the world blocks it).
+ */
+export function sightlineCut(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  world: { center: { x: number; y: number }; radius: number },
+): number | null {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const fx = a.x - world.center.x
+  const fy = a.y - world.center.y
+  const qa = dx * dx + dy * dy
+  if (qa === 0) return null
+  const qb = 2 * (fx * dx + fy * dy)
+  const qc = fx * fx + fy * fy - world.radius * world.radius
+  const disc = qb * qb - 4 * qa * qc
+  if (disc < 0) return null
+  const t = (-qb - Math.sqrt(disc)) / (2 * qa)
+  return t >= 0 && t <= 1 ? t : null
 }

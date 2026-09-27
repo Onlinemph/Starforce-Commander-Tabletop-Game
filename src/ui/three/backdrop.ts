@@ -37,6 +37,7 @@ import {
   Vector3,
 } from 'three'
 import { Rng } from '../../engine/dice'
+import type { Terrain } from '../../engine/game'
 import { makeLabel } from './labels'
 import { disposeTree, type FrameContext, type Layer, type LayerContext } from './layer'
 import { DEG, toWorld } from './space'
@@ -119,6 +120,23 @@ interface FlareSprite {
   baseOpacity: number
 }
 
+/** The most worlds the board can open a window for; more than any printed scenario sets out. */
+export const MAX_WINDOWS = 16
+
+/**
+ * The circles the board is cut away over — every planet and moon (K3.1),
+ * which hang just under the table (terrain.ts) — packed for the shader as
+ * (x, z, radius), unused slots zero.
+ */
+export function boardWindows(terrain: Terrain[]): Vector3[] {
+  const out = Array.from({ length: MAX_WINDOWS }, () => new Vector3())
+  terrain
+    .filter((t) => t.kind === 'planet' || t.kind === 'moon')
+    .slice(0, MAX_WINDOWS)
+    .forEach((t, i) => out[i].set(t.center.x, t.center.y, t.radius))
+  return out
+}
+
 // ── The holographic board shader ────────────────────────────────────────
 // One ShaderMaterial paints the whole surface: a near-black navy base with
 // a sheen toward the sun, fine 1" and brighter 3" lines (fwidth-antialiased
@@ -144,6 +162,8 @@ const BOARD_FRAGMENT = /* glsl */ `
   uniform vec3 uSun;
   uniform vec2 uCenter;
   uniform float uRadius;
+  // Planets and moons: (x, z, radius), radius 0 for an unused slot.
+  uniform vec3 uWindows[${MAX_WINDOWS}];
   varying vec2 vUv;
   varying vec3 vWorldPos;
 
@@ -168,6 +188,12 @@ const BOARD_FRAGMENT = /* glsl */ `
   void main() {
     vec2 p = vWorldPos.xz;
     vec2 rel = p - uCenter;
+
+    // A window over every world, so it can be seen hanging below the table.
+    for (int i = 0; i < ${MAX_WINDOWS}; i++) {
+      vec3 w = uWindows[i];
+      if (w.z > 0.0 && length(p - w.xy) < w.z) discard;
+    }
 
     vec3 base = vec3(0.0018, 0.0038, 0.013);
     vec3 sheenColor = vec3(0.002, 0.003, 0.007);
@@ -231,6 +257,7 @@ export class BackdropLayer implements Layer {
 
   private boardSize = { width: 0, height: 0 }
   private nebulaOn = false
+  private windowsKey = ''
 
   private skyMesh: Mesh | null = null
   private starPoints: Points[] = []
@@ -265,6 +292,12 @@ export class BackdropLayer implements Layer {
     if (width !== this.boardSize.width || height !== this.boardSize.height) {
       this.boardSize = { width, height }
       this.rebuild(width, height)
+    }
+    const worlds = game.scenario.terrain.filter((t) => t.kind === 'planet' || t.kind === 'moon')
+    const windowsKey = `${width}x${height}|` + worlds.map((t) => `${t.center.x},${t.center.y},${t.radius}`).join(';')
+    if (windowsKey !== this.windowsKey && this.boardMaterial) {
+      this.windowsKey = windowsKey
+      this.boardMaterial.uniforms.uWindows.value = boardWindows(worlds)
     }
     const nebula = game.scenario.nebula === true
     if (nebula !== this.nebulaOn) {
@@ -464,6 +497,7 @@ export class BackdropLayer implements Layer {
         uSun: { value: SUN_DIRECTION.clone() },
         uCenter: { value: new Vector2(width / 2, height / 2) },
         uRadius: { value: Math.max(1, diag / 2) },
+        uWindows: { value: boardWindows([]) },
       },
       vertexShader: BOARD_VERTEX,
       fragmentShader: BOARD_FRAGMENT,

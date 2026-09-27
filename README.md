@@ -523,8 +523,12 @@ three.js view of the same battle.
   stations.
 - Shields, arcs, range rings, the plot ghost and the ruler work as they do in 2D, and so do fighter
   wings, plasma torpedoes, terrain and gunfire.
+- Planets and moons hang just under the table, seen through a window in the board, so a ship
+  crossing one flies over it. Select a ship and every enemy a world hides from it is marked "no
+  line of sight", with the sightline drawn to where the world cuts it off.
 - The camera orbits, pans and zooms. Tilt, Top, Low and Follow are one click each, and a
-  double-click flies you to a ship.
+  double-click flies you to a ship. *Effects* turns the glow and grading off on a device that
+  struggles with them.
 - The rules and orders are identical: clicking a hull selects it exactly as on the flat map.
 - three.js loads only when you pick 3D, the choice is remembered per browser, and a browser without
   WebGL falls back to the flat map.

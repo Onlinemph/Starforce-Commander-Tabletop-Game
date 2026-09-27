@@ -148,6 +148,22 @@
   opacity: 0.55;
   font-style: italic;
 }
+/* An enemy a planet or moon hides from the selected ship (E2.3.1). */
+.l3d-name.is-blocked {
+  opacity: 0.6;
+}
+.l3d-los.is-blocked {
+  color: #ff8a8a;
+}
+.l3d-cut {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ff6b6b;
+  text-shadow:
+    0 0 6px rgba(255, 60, 60, 0.7),
+    0 1px 2px #000;
+}
 
 .l3d-shield {
   font-size: 9.5px;

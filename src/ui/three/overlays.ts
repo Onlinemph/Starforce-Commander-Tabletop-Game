@@ -1,7 +1,8 @@
 /**
  * The commander's instruments, drawn on the board: the selected ship's
  * firing arcs (E2.2) and weapon range rings (E1.2), the line of sight to the
- * current target with its range (E1.1, E2.3), the plotted move while orders
+ * current target with its range (E1.1, E2.3), a cut-off sightline to every
+ * enemy a planet or moon hides from it (E2.3.1), the plotted move while orders
  * are written (C1, C2), and the ruler.
  *
  * All of it lies flat on the board, just above the grid, and follows the
@@ -19,24 +20,32 @@ import {
   LineBasicMaterial,
   LineDashedMaterial,
   LineLoop,
+  LineSegments,
   Mesh,
   MeshBasicMaterial,
   RingGeometry,
   Vector3,
 } from 'three'
 import { ARC_ORDER, ARC_START, actualRange } from '../../engine/geometry'
-import type { GameState } from '../../engine/game'
+import type { GameState, Terrain } from '../../engine/game'
 import { plannedMovement } from '../../engine/navigation'
 import type { ShipState } from '../../engine/shipState'
 import { adjustedSpeed, isLinked } from '../../engine/tractor'
 import { makeLabel, setLabel, type CSS2DObject } from './labels'
 import { disposeTree, type FrameContext, type Layer, type LayerContext } from './layer'
 import { DEG, SHIP_SIZE, headingToYaw } from './space'
+import { blockedSightlines, sightlineCut } from './visibility'
 
 /** Just above the grid, so nothing z-fights with it. */
 const FLOOR = 0.03
 
 const ARC_RADIUS = 7
+
+/** The colour of a sightline a world cuts off. */
+const BLOCKED = 0xff5a5a
+
+/** Half the length of the bar across a cut-off sightline where the world stops it. */
+const CUT_BAR = 0.35
 
 type Locator = (id: string) => { x: number; z: number; heading: number } | null
 
@@ -65,6 +74,12 @@ export class OverlaysLayer implements Layer {
   private arcs = new Group()
   private rings = new Group()
   private los = new Group()
+  private blocked = new Group()
+  private blockedLines = new Map<
+    string,
+    { world: Terrain; line: LineSegments<BufferGeometry, LineBasicMaterial>; mark: CSS2DObject }
+  >()
+  private targetBlockedBy: Terrain | null = null
   private plot = new Group()
   private ruler = new Group()
   private locate: Locator = () => null
@@ -80,7 +95,7 @@ export class OverlaysLayer implements Layer {
   constructor() {
     this.group.name = 'overlays'
     this.anchor.add(this.arcs, this.rings)
-    this.group.add(this.anchor, this.los, this.plot, this.ruler)
+    this.group.add(this.anchor, this.los, this.blocked, this.plot, this.ruler)
   }
 
   setShipPositions(locate: Locator): void {
@@ -108,6 +123,9 @@ export class OverlaysLayer implements Layer {
       this.ringsKey = ringsKey
     }
 
+    const hidden = blockedSightlines(game, view.selectedId, view.viewSide)
+    this.targetBlockedBy = target ? (hidden.get(target.id) ?? null) : null
+    this.updateBlocked(hidden)
     this.updateLos(selected, target)
     this.updatePlot(game, selected, view.viewSide)
   }
@@ -196,7 +214,33 @@ export class OverlaysLayer implements Layer {
     }
     this.losLine.visible = true
     this.losLabel!.visible = true
-    setLabel(this.losLabel!, `${actualRange(selected.placement.position, target.placement.position)}"`)
+    const range = `${actualRange(selected.placement.position, target.placement.position)}"`
+    const by = this.targetBlockedBy
+    setLabel(this.losLabel!, by ? `${range} · no line of sight (${by.name})` : range, `l3d-los${by ? ' is-blocked' : ''}`)
+    this.losLine.material.color.setHex(by ? BLOCKED : 0xffb020)
+  }
+
+  /** One cut-off line per hidden enemy: the target's own line already says it, so it gets none. */
+  private updateBlocked(hidden: Map<string, Terrain>): void {
+    for (const [id, entry] of this.blockedLines) {
+      if (hidden.get(id) === entry.world && id !== this.targetId) continue
+      this.blocked.remove(entry.line, entry.mark)
+      disposeTree(entry.line)
+      disposeTree(entry.mark)
+      this.blockedLines.delete(id)
+    }
+    for (const [id, world] of hidden) {
+      if (id === this.targetId || this.blockedLines.has(id)) continue
+      const line = new LineSegments(
+        new BufferGeometry(),
+        new LineBasicMaterial({ color: BLOCKED, transparent: true, opacity: 0.85, toneMapped: false }),
+      )
+      line.frustumCulled = false
+      // Where the world stops the line: a no-entry mark, readable from any angle.
+      const mark = makeLabel('⊘', 'l3d-cut')
+      this.blocked.add(line, mark)
+      this.blockedLines.set(id, { world, line, mark })
+    }
   }
 
   private updatePlot(game: GameState, selected: ShipState | null, viewSide: string | null): void {
@@ -279,6 +323,28 @@ export class OverlaysLayer implements Layer {
 
   tick(_frame: FrameContext): void {
     const at = this.selectedId ? this.locate(this.selectedId) : null
+    for (const [id, { world, line, mark }] of this.blockedLines) {
+      const to = this.locate(id)
+      // Drawn from where the hulls are right now, so the line stays on them
+      // while a leg plays; a frame where the flight clears the world skips it.
+      const t = at && to ? sightlineCut({ x: at.x, y: at.z }, { x: to.x, y: to.z }, world) : null
+      line.visible = t !== null
+      mark.visible = t !== null
+      if (!at || !to || t === null) continue
+      const cx = at.x + (to.x - at.x) * t
+      const cz = at.z + (to.z - at.z) * t
+      const len = Math.hypot(to.x - at.x, to.z - at.z) || 1
+      const nx = (-(to.z - at.z) / len) * CUT_BAR
+      const nz = ((to.x - at.x) / len) * CUT_BAR
+      const y = FLOOR + 0.05
+      mark.position.set(cx, y, cz)
+      line.geometry.setFromPoints([
+        new Vector3(at.x, y, at.z),
+        new Vector3(cx, y, cz),
+        new Vector3(cx - nx, y, cz - nz),
+        new Vector3(cx + nx, y, cz + nz),
+      ])
+    }
     this.anchor.visible = at !== null
     if (at) {
       this.anchor.position.set(at.x, 0, at.z)

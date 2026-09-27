@@ -42,7 +42,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { DEG, HULL_ALTITUDE, SHIELD_COLOR, SHIP_SIZE, SIDE_COLOR, alongHeading, headingToYaw, shieldBand, sideColorOf } from './space'
 import { ShieldBubble } from './shieldBubble'
 import { Wake } from './wake'
-import { drawnShips } from './visibility'
+import { blockedSightlines, drawnShips } from './visibility'
 
 type Facing = 'F' | 'S' | 'A' | 'P'
 
@@ -183,6 +183,8 @@ export class ShipsLayer implements Layer {
     this.selectedId = view.selectedId
     this.targetId = view.targetId
     const drawn = drawnShips(game, view.viewSide)
+    const hidden = blockedSightlines(game, view.selectedId, view.viewSide)
+    const selectedName = game.ships.find((s) => s.id === view.selectedId)?.name
     const live = new Set<string>()
 
     for (const { ship, formationSize, ghosted } of drawn) {
@@ -228,8 +230,13 @@ export class ShipsLayer implements Layer {
         `${ship.name} · spd ${ship.speed}` +
         (formationSize > 1 ? ` · formation of ${formationSize}` : '') +
         (ship.stressMarkers > 0 ? ` · ${ship.stressMarkers} stress` : '') +
-        (ship.derelict ? ' · DERELICT' : '')
-      setLabel(entry.name, label, `l3d-name l3d-${sideColorOf(ship.side)}${ghosted ? ' is-ghost' : ''}`)
+        (ship.derelict ? ' · DERELICT' : '') +
+        (hidden.has(ship.id) ? ' · no line of sight' : '')
+      setLabel(
+        entry.name,
+        label,
+        `l3d-name l3d-${sideColorOf(ship.side)}${ghosted ? ' is-ghost' : ''}${hidden.has(ship.id) ? ' is-blocked' : ''}`,
+      )
 
       const badge = cloak?.engaged
         ? bestDetection(cloak) === 0
@@ -250,7 +257,8 @@ export class ShipsLayer implements Layer {
           (view.viewSide !== null && ship.side !== view.viewSide ? '' : ` · marines ${ship.marineSquads}`) +
           (ghosted ? '\nCLOAKED — visible only to you' : '') +
           (ship.derelict ? '\nDERELICT' : '') +
-          (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : ''),
+          (ship.capturedBy ? `\ncaptured by ${ship.capturedBy}` : '') +
+          (hidden.has(ship.id) ? `\nNo line of sight from ${selectedName}: ${hidden.get(ship.id)!.name} is in the way` : ''),
       )
     }
 
